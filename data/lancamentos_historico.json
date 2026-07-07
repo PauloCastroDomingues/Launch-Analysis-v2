@@ -1,0 +1,289 @@
+[
+  {
+    "modelo_id": "gt",
+    "modelo": "GT Collection",
+    "day_zero_base": "2025-02-11",
+    "data_oficial": "2024-10-18",
+    "gap_dias": 116,
+    "janelas": {
+      "15d": {
+        "receita": 122401,
+        "pares": 186,
+        "pedidos": 120,
+        "ticket": 1020,
+        "novos_pct": 0.47,
+        "origem": "historico"
+      },
+      "30d": {
+        "receita": 183232,
+        "pares": 272,
+        "pedidos": 201,
+        "ticket": 912,
+        "novos_pct": 0.51,
+        "origem": "historico"
+      },
+      "90d": {
+        "receita": 889939,
+        "pares": 1300,
+        "pedidos": 1011,
+        "ticket": 880,
+        "novos_pct": 0.6,
+        "origem": "historico"
+      }
+    },
+    "multiplicadores": {
+      "m30_15": 1.5,
+      "m90_15": 7.27,
+      "m90_30": 4.86
+    },
+    "cores": [
+      {
+        "sub_modelo": "RS6 GT",
+        "cor": "Off White",
+        "pares": 229
+      },
+      {
+        "sub_modelo": "RS6 GT",
+        "cor": "Branco",
+        "pares": 127
+      },
+      {
+        "sub_modelo": "RS6 GT",
+        "cor": "All Black",
+        "pares": 84
+      },
+      {
+        "sub_modelo": "KNIT GT",
+        "cor": "Preto",
+        "pares": 74
+      },
+      {
+        "sub_modelo": "KNIT GT",
+        "cor": "Cinza",
+        "pares": 66
+      },
+      {
+        "sub_modelo": "KNIT GT",
+        "cor": "All Black",
+        "pares": 35
+      },
+      {
+        "sub_modelo": "911 GT",
+        "cor": "Branco",
+        "pares": 40
+      },
+      {
+        "sub_modelo": "911 GT",
+        "cor": "Camurça",
+        "pares": 27
+      },
+      {
+        "sub_modelo": "911 GT",
+        "cor": "Preto",
+        "pares": 21
+      }
+    ],
+    "insights": [
+      "Usar GT apenas como referência de curva; abertura real está incompleta pelo gap de 116 dias.",
+      "Multiplicador 90÷30 de 4,86× é útil como cenário otimista, mas precisa de ressalva."
+    ]
+  },
+  {
+    "modelo_id": "avant",
+    "modelo": "Avant",
+    "day_zero_base": "2025-10-02",
+    "data_oficial": "2025-10-02",
+    "gap_dias": 0,
+    "janelas": {
+      "15d": {
+        "receita": 168020,
+        "pares": 282,
+        "pedidos": 234,
+        "ticket": 718,
+        "novos_pct": 0.58,
+        "origem": "historico"
+      },
+      "30d": {
+        "receita": 418050,
+        "pares": 705,
+        "pedidos": 569,
+        "ticket": 735,
+        "novos_pct": 0.61,
+        "origem": "historico"
+      },
+      "90d": {
+        "receita": 1077654,
+        "pares": 1930,
+        "pedidos": 1551,
+        "ticket": 695,
+        "novos_pct": 0.71,
+        "origem": "historico"
+      }
+    },
+    "multiplicadores": {
+      "m30_15": 2.49,
+      "m90_15": 6.41,
+      "m90_30": 2.58
+    },
+    "cores": [
+      {
+        "sub_modelo": "RS8 Avant",
+        "cor": "Cinza",
+        "pares": 452
+      },
+      {
+        "sub_modelo": "RS8 Avant",
+        "cor": "Branco",
+        "pares": 261
+      },
+      {
+        "sub_modelo": "RS8 Avant",
+        "cor": "Preto",
+        "pares": 187
+      },
+      {
+        "sub_modelo": "RS6 Avant",
+        "cor": "Branco",
+        "pares": 231
+      },
+      {
+        "sub_modelo": "RS6 Avant",
+        "cor": "Off White",
+        "pares": 194
+      },
+      {
+        "sub_modelo": "RS6 Avant",
+        "cor": "Azul-marinho",
+        "pares": 123
+      },
+      {
+        "sub_modelo": "RS7 Avant",
+        "cor": "Preto",
+        "pares": 142
+      },
+      {
+        "sub_modelo": "RS7 Avant",
+        "cor": "Off White",
+        "pares": 120
+      },
+      {
+        "sub_modelo": "RS7 Avant",
+        "cor": "Marrom",
+        "pares": 42
+      }
+    ],
+    "insights": [
+      "Janela 90d foi favorecida por Black Friday, Cyber Monday e Natal.",
+      "Usar multiplicador 90÷30 como referência conservadora, não como verdade absoluta."
+    ]
+  },
+  {
+    "modelo_id": "phantom",
+    "modelo": "Phantom",
+    "day_zero_base": "2026-04-16",
+    "data_oficial": "2026-04-16",
+    "gap_dias": 0,
+    "janelas": {
+      "15d": {
+        "receita": 212824,
+        "pares": 296,
+        "pedidos": 225,
+        "ticket": 946,
+        "novos_pct": 0.54,
+        "origem": "historico"
+      },
+      "30d": {
+        "receita": 396888,
+        "pares": 552,
+        "pedidos": 413,
+        "ticket": 961,
+        "novos_pct": 0.569,
+        "origem": "historico"
+      },
+      "90d": null
+    },
+    "multiplicadores": {
+      "m30_15": 1.86,
+      "m90_15": null,
+      "m90_30": null
+    },
+    "semanas": [
+      {
+        "label": "Sem 1 · 16–22/abr",
+        "receita": 110726,
+        "pedidos": 119
+      },
+      {
+        "label": "Sem 2 · 23–29/abr",
+        "receita": 91313,
+        "pedidos": 95
+      },
+      {
+        "label": "Sem 3 · 30/abr–6/mai",
+        "receita": 81966,
+        "pedidos": 84
+      },
+      {
+        "label": "Sem 4 · 7–13/mai",
+        "receita": 88437,
+        "pedidos": 92
+      },
+      {
+        "label": "Sem 5 · 14–16/mai",
+        "receita": 38826,
+        "pedidos": 34
+      }
+    ],
+    "cores": [
+      {
+        "sub_modelo": "Phantom Slip",
+        "cor": "Marrom",
+        "pares": 93
+      },
+      {
+        "sub_modelo": "Phantom Slip",
+        "cor": "Preto",
+        "pares": 59
+      },
+      {
+        "sub_modelo": "Phantom Slip",
+        "cor": "Off White",
+        "pares": 41
+      },
+      {
+        "sub_modelo": "Phantom Easy",
+        "cor": "Marrom",
+        "pares": 92
+      },
+      {
+        "sub_modelo": "Phantom Easy",
+        "cor": "Off White",
+        "pares": 87
+      },
+      {
+        "sub_modelo": "Phantom Easy",
+        "cor": "Preto",
+        "pares": 81
+      },
+      {
+        "sub_modelo": "Phantom Knit",
+        "cor": "Off White",
+        "pares": 9
+      },
+      {
+        "sub_modelo": "Phantom Knit",
+        "cor": "Preto",
+        "pares": 5
+      },
+      {
+        "sub_modelo": "Phantom Knit",
+        "cor": "Cinza",
+        "pares": 4
+      }
+    ],
+    "insights": [
+      "Maior ticket médio entre as linhas históricas: R$ 961 no 30d.",
+      "Curva 30÷15 de 1,86× fica entre GT e Avant."
+    ]
+  }
+]

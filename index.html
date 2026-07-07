@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reise — Launch Analysis v2</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-mark">R</div>
+        <div>
+          <div class="brand-title">Reise</div>
+          <div class="brand-sub">Launch Analysis v2</div>
+        </div>
+      </div>
+
+      <div class="nav-label">Navegação</div>
+      <nav class="nav-list">
+        <a href="#metodologia"><span>Metodologia</span><span>00</span></a>
+        <a href="#estado"><span>Estado</span><span>01</span></a>
+        <a href="#comparativo"><span>Comparativo</span><span>02</span></a>
+        <a href="#curvas"><span>Curvas</span><span>03</span></a>
+        <a href="#estoque"><span>Estoque</span><span>04</span></a>
+        <a href="#cores"><span>Mix de cores</span><span>05</span></a>
+        <a href="#calendario"><span>Calendário</span><span>06</span></a>
+        <a href="#acoes"><span>Ações</span><span>07</span></a>
+        <a href="#projecao"><span>Projeção</span><span>08</span></a>
+        <a href="#insights"><span>Insights</span><span>09</span></a>
+      </nav>
+
+      <div class="sidebar-note">
+        <strong>Regra de dados:</strong><br />
+        Dado ausente vira “—” na interface e <code>null</code> nos gráficos. Nunca vira zero.
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Dashboard interno · Produto / Growth / CRM</div>
+          <h1>Análise de lançamentos</h1>
+          <p class="section-desc">Benchmark histórico, lançamentos em curso, sazonalidade, ações comerciais, estoque e projeção de 90 dias.</p>
+        </div>
+        <div class="top-meta">
+          <div><span>Último snapshot</span><strong id="last-update">—</strong></div>
+          <div><span>Modelos</span><strong id="model-count">—</strong></div>
+          <div><span>Ativos</span><strong id="active-count">—</strong></div>
+          <div><span>Planejados</span><strong id="planned-count">—</strong></div>
+        </div>
+      </header>
+
+      <div id="model-selector" class="model-selector"></div>
+
+      <section id="metodologia">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">00 · Metodologia</div>
+            <h2>Base, regras e origem do dado</h2>
+          </div>
+        </div>
+        <div class="card">
+          <div id="methodology-list" class="method-list"></div>
+        </div>
+      </section>
+
+      <section id="estado">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">01 · Estado do lançamento</div>
+            <h2><span id="selected-title">—</span></h2>
+            <p class="section-desc">KPIs calculados a partir da melhor janela disponível para o modelo selecionado.</p>
+          </div>
+          <div id="selected-status"></div>
+        </div>
+        <div id="launch-state"></div>
+      </section>
+
+      <section id="comparativo">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">02 · Comparativo por janela</div>
+            <h2>15d, 30d e 90d lado a lado</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Modelo</th>
+                <th>15d Fat.</th>
+                <th>30d Fat.</th>
+                <th>90d Fat.</th>
+                <th class="num">Ticket 30d</th>
+                <th class="num">% Novos 30d</th>
+                <th class="num">Mult. 90÷30</th>
+                <th>Fonte</th>
+              </tr>
+            </thead>
+            <tbody id="comparison-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="curvas">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">03 · Curvas de aceleração</div>
+            <h2>Receita, pares, mix e rampa semanal</h2>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="chart-card wide">
+            <div class="chart-head">
+              <div><div class="chart-title">Faturamento acumulado</div><div class="chart-sub">R$ por janela</div></div>
+            </div>
+            <div class="chart-canvas"><canvas id="chart-revenue"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><div><div class="chart-title">Pares acumulados</div><div class="chart-sub">Unidades por janela</div></div></div>
+            <div class="chart-canvas"><canvas id="chart-pairs"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><div><div class="chart-title">Multiplicadores</div><div class="chart-sub">30÷15, 90÷15, 90÷30</div></div></div>
+            <div class="chart-canvas"><canvas id="chart-multipliers"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><div><div class="chart-title">Mix de clientes</div><div class="chart-sub">Novos vs recorrentes no 30d</div></div></div>
+            <div class="chart-canvas"><canvas id="chart-mix"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-head"><div><div class="chart-title" id="weekly-title">Semana a semana</div><div class="chart-sub">Faturamento + pedidos</div></div></div>
+            <div class="chart-canvas"><canvas id="chart-weekly"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="estoque">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">04 · Estoque</div>
+            <h2>Cobertura por sub-modelo e cor</h2>
+            <p class="section-desc">Alerta quando cobertura estimada fica abaixo de 15 dias.</p>
+          </div>
+        </div>
+        <div id="stock-grid" class="stock-grid"></div>
+      </section>
+
+      <section id="cores">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">05 · Mix de cores</div>
+            <h2>Ranking normalizado por sub-modelo</h2>
+          </div>
+        </div>
+        <div id="color-mix" class="color-mix"></div>
+      </section>
+
+      <section id="calendario">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">06 · Calendário sazonal</div>
+            <h2>Promotores, ofensores e neutros por janela</h2>
+          </div>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+
+      <section id="acoes">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">07 · Ações comerciais</div>
+            <h2>Mídia paga e CRM</h2>
+            <p class="section-desc">ROAS de mídia vem de midia_paga.json. CRM usa proxy e deve ser lido como apoio, não atribuição direta.</p>
+          </div>
+        </div>
+        <div class="actions-grid">
+          <div class="card">
+            <div class="chart-title" style="margin-bottom:12px">Mídia paga</div>
+            <div class="table-wrap">
+              <table style="min-width:640px">
+                <thead>
+                  <tr><th>Janela</th><th>Canal</th><th class="num">Invest.</th><th class="num">Receita</th><th class="num">ROAS</th><th class="num">CPA</th><th>Status</th></tr>
+                </thead>
+                <tbody id="media-table"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="chart-title" style="margin-bottom:12px">CRM / disparos</div>
+            <div class="table-wrap">
+              <table style="min-width:600px">
+                <thead>
+                  <tr><th>Data</th><th>Canal</th><th class="num">Receita linha</th><th class="num">Receita dia</th><th class="num">ROAS proxy</th><th>Status</th></tr>
+                </thead>
+                <tbody id="crm-table"></tbody>
+              </table>
+            </div>
+            <p class="metric-sub">ROAS CRM = proxy. Quando não houver receita_dia, usa a leitura cadastrada na planilha.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="projecao">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">08 · Projeção de cenários</div>
+            <h2>Estimativa de 90 dias</h2>
+          </div>
+        </div>
+        <div id="projection-content"></div>
+        <div class="chart-card" style="margin-top:14px">
+          <div class="chart-head"><div><div class="chart-title">Cenários</div><div class="chart-sub">Conservador, base e otimista</div></div></div>
+          <div class="chart-canvas"><canvas id="chart-projection"></canvas></div>
+        </div>
+      </section>
+
+      <section id="insights">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">09 · Insights</div>
+            <h2>Leituras e recomendações</h2>
+          </div>
+        </div>
+        <div id="insights-list" class="insights-list"></div>
+      </section>
+
+      <footer class="footer">
+        <div>Reise · Launch Analysis v2</div>
+        <div>HTML + Chart.js · JSON via fetch · Vercel-ready</div>
+      </footer>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+  <script src="assets/embedded-data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

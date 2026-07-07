@@ -1,0 +1,62 @@
+[
+  {
+    "modelo_id": "gt",
+    "modelo": "GT Collection",
+    "linha": "GT Collection",
+    "data_lancamento": "2024-10-18",
+    "data_oficial": "2024-10-18",
+    "day_zero_base": "2025-02-11",
+    "termos_busca": "GT Collection|RS6 GT|KNIT GT|911 GT",
+    "sku_prefixos": "RS6-GT,KNIT-GT,911-GT",
+    "status": "historico",
+    "observacao": "Histórico com gap de 116 dias entre D0 oficial e primeira venda disponível na base. Usar day_zero_base para análises."
+  },
+  {
+    "modelo_id": "avant",
+    "modelo": "Avant",
+    "linha": "Avant",
+    "data_lancamento": "2025-10-02",
+    "data_oficial": "2025-10-02",
+    "day_zero_base": "2025-10-02",
+    "termos_busca": "Avant|RS8 Avant|RS6 Avant|RS7 Avant",
+    "sku_prefixos": "RS8-AVANT,RS6-AVANT,RS7-AVANT",
+    "status": "historico",
+    "observacao": "Histórico completo. Janela 90d inflada por Black Friday, Cyber Monday e Natal."
+  },
+  {
+    "modelo_id": "phantom",
+    "modelo": "Phantom",
+    "linha": "Phantom",
+    "data_lancamento": "2026-04-16",
+    "data_oficial": "2026-04-16",
+    "day_zero_base": "2026-04-16",
+    "termos_busca": "Phantom|Phantom Slip|Phantom Easy|Phantom Knit",
+    "sku_prefixos": "PHANTOM-SLIP,PHANTOM-EASY,PHANTOM-KNIT",
+    "status": "historico",
+    "observacao": "30d real. Janela 90d ainda não consolidada no histórico estático."
+  },
+  {
+    "modelo_id": "rs8_monochrome",
+    "modelo": "RS8 Avant Monochrome",
+    "linha": "RS8 Avant",
+    "data_lancamento": "2026-06-25",
+    "data_oficial": "2026-06-25",
+    "day_zero_base": "2026-06-25",
+    "termos_busca": "RS8 Avant Monochrome|RS8 Monochrome|Monochrome",
+    "sku_prefixos": "RS8-AVANT-MONO,RS8-MONO",
+    "status": "ativo",
+    "observacao": "Em curso. Dados devem entrar via lancamentos_produtos_dia.json gerado pelo Apps Script/BigQuery."
+  },
+  {
+    "modelo_id": "pais_2026",
+    "modelo": "Lançamento Dia dos Pais",
+    "linha": "Dia dos Pais 2026",
+    "data_lancamento": "2026-08-10",
+    "data_oficial": "2026-08-10",
+    "day_zero_base": "2026-08-10",
+    "termos_busca": "Dia dos Pais|Pais 2026",
+    "sku_prefixos": "",
+    "status": "planejado",
+    "observacao": "Modelo planejado. Entra no dashboard antes do D0 para leitura de benchmark e sazonalidade."
+  }
+]
