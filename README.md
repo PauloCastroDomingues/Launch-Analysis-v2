@@ -12,7 +12,7 @@ Ele roda na Vercel, lê JSONs da pasta `/data` via `fetch` e não depende de bac
 - `data/*.json`: estrutura inicial de dados com histórico de GT, Avant e Phantom, além de RS8 Avant Monochrome ativo e Dia dos Pais planejado.
 - `apps_script/ExportLaunchAnalysis.gs`: exporta Google Sheets + BigQuery para JSON no GitHub.
 - `sql/lancamentos_produtos_dia.sql`: query-base do pipeline de vendas por lançamento.
-- `sql/diagnostico_rs8_monochrome.sql`: query de diagnóstico para produtos RS8/Avant/Mono vendidos desde o D0 do Monochrome.
+- `sql/diagnostico_monochrome.sql`: query de diagnóstico para produtos RS8/Avant/Mono vendidos desde o D0 do Monochrome.
 - `vercel.json`: configuração simples para deploy estático.
 
 ## Estrutura
@@ -36,6 +36,7 @@ reise-launch-dashboard-v2/
 ├── apps_script/
 │   └── ExportLaunchAnalysis.gs
 └── sql/
+    ├── diagnostico_monochrome.sql
     ├── diagnostico_rs8_monochrome.sql
     └── lancamentos_produtos_dia.sql
 ```
@@ -74,6 +75,7 @@ Regras fixas:
 - Rodar as queries em `southamerica-east1`.
 - Se `novos` e `recorrentes` ainda não forem seguros, exportar `null`.
 - Ausência de dado vira `—` no front e `null` nos gráficos, nunca `0`.
+- A saída de `lancamentos_produtos_dia.json` inclui `origem`, `source_order_id`, `sku`, `nome_produto`, `variant_title`, `sub_modelo`, `cor`, `pedidos`, `pares`, `receita`, `novos` e `recorrentes`.
 
 ## Como cadastrar novo lançamento
 
@@ -119,7 +121,7 @@ Ele deve puxar vendas desde `2026-06-25`. Se aparecer sem dados, o problema espe
 Termos atuais:
 
 ```txt
-RS8 Avant Monochrome|RS8 Avant Mono|RS8 Monochrome|RS8 Mono|Monochrome|Mono
+RS8|Monochrome|Mono|RS8 Avant|RS8 Monochrome|RS8 Avant Monochrome
 ```
 
 Prefixos atuais:
@@ -128,7 +130,18 @@ Prefixos atuais:
 RS8-AVANT-MONO,RS8-MONO,RS8AVANTMONO,RS8AVANT,MONO
 ```
 
-Para diagnosticar, rodar `sql/diagnostico_rs8_monochrome.sql` no BigQuery ou a função `diagnosticarRs8Monochrome()` no Apps Script.
+Para diagnosticar, rodar `sql/diagnostico_monochrome.sql` no BigQuery ou a função `diagnosticarMonochrome()` no Apps Script. A função antiga `diagnosticarRs8Monochrome()` continua como alias.
+
+## Comparativos
+
+O dashboard mostra quatro leituras:
+
+- Comparativo por janelas fixas: 15d, 30d e 90d.
+- Comparativo D+n real: usa dados diários reais até o D+ atual do modelo selecionado; se um histórico só tiver janelas agregadas, aparece `—`.
+- Ranking de lançamentos: faturamento, ticket, pares, % novos e velocidade R$/dia, sempre com delta contra o modelo selecionado.
+- Curva normalizada D0 → D+90: dados diários viram linha contínua; históricos apenas agregados viram pontos/linha pontilhada em D+15, D+30 e D+90.
+
+O bloco de metodologia também mostra `Data oficial`, `Day zero usado`, `Primeira venda encontrada` e `Gap base`. Se a primeira venda encontrada vier depois do D0 em lançamento ativo, o dashboard alerta para revisar termos, SKU e exportação.
 
 ## Regras preservadas
 

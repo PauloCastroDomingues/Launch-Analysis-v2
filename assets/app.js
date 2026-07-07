@@ -61,6 +61,14 @@
     return new Date(y, m - 1, d, 12, 0, 0);
   };
 
+  const toIsoDate = (date) => {
+    if (!date) return null;
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const daysBetween = (startIso, endDate) => {
     const start = toDate(startIso);
     if (!start || !endDate) return null;
@@ -115,12 +123,47 @@
         : null
     );
 
+    const todayIdx = daysBetween(model.day_zero_base, TODAY);
+    const firstSaleDate = modelRows
+      .map((row) => row.data)
+      .filter(Boolean)
+      .sort()[0] || null;
+
+    const dailyMap = new Map();
+    modelRows.forEach((row) => {
+      const idx = dayIndex(model.day_zero_base, row.data);
+      if (idx === null || idx < 0 || idx > 90) return;
+      if (todayIdx !== null && idx > todayIdx) return;
+      const current = dailyMap.get(row.data) || {
+        data: row.data,
+        day: idx,
+        receita: 0,
+        pares: 0,
+        pedidos: 0,
+        orderIds: new Set()
+      };
+      current.receita += Number(row.receita || 0);
+      current.pares += Number(row.pares || 0);
+      if (row.source_order_id) current.orderIds.add(row.source_order_id);
+      else current.pedidos += Number(row.pedidos || 0);
+      dailyMap.set(row.data, current);
+    });
+
+    const daily = [...dailyMap.values()]
+      .sort((a, b) => a.day - b.day)
+      .map(({ orderIds, ...row }) => ({
+        ...row,
+        pedidos: orderIds.size || row.pedidos,
+        ticket: (orderIds.size || row.pedidos) ? row.receita / (orderIds.size || row.pedidos) : null
+      }));
+
     const windows = { '15d': 15, '30d': 30, '90d': 90 };
     const janelas = {};
     Object.entries(windows).forEach(([key, days]) => {
+      const maxIdx = Math.min(days - 1, todayIdx ?? days - 1);
       const filtered = modelRows.filter((row) => {
         const idx = dayIndex(model.day_zero_base, row.data);
-        return idx !== null && idx >= 0 && idx < days;
+        return idx !== null && idx >= 0 && idx <= maxIdx;
       });
       if (!filtered.length) {
         janelas[key] = null;
@@ -184,6 +227,9 @@
       })),
       cores: [...coresMap.values()],
       multiplicadores: { m30_15: m30, m90_15, m90_30 },
+      daily,
+      first_sale_date: firstSaleDate,
+      first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(model.day_zero_base, toDate(firstSaleDate)) || 0) : null,
       origem: 'pipeline'
     };
   }
@@ -204,6 +250,9 @@
         multiplicadores: { m30_15: null, m90_15: null, m90_30: null },
         semanas: [],
         cores: [],
+        daily: [],
+        first_sale_date: null,
+        first_sale_gap_dias: null,
         origem: model.status === 'planejado' ? 'planejado' : 'pipeline'
       };
       const d0 = model.day_zero_base || model.data_lancamento;
@@ -218,6 +267,9 @@
         d0,
         dPlus,
         pipelineRowCount: pipelineRows.length,
+        daily: metrics.daily || [],
+        first_sale_date: metrics.first_sale_date || (metrics.origem === 'historico' ? metrics.day_zero_base : null),
+        first_sale_gap_dias: metrics.first_sale_gap_dias ?? (metrics.origem === 'historico' ? Math.max(0, daysBetween(metrics.data_oficial, toDate(metrics.day_zero_base)) || 0) : null),
         isFuture,
         isActive,
         isHistorical
@@ -374,6 +426,25 @@
       });
     }
 
+    const firstSaleGap = selected?.first_sale_date
+      ? daysBetween(selected.d0, toDate(selected.first_sale_date))
+      : null;
+    rows.push({
+      title: 'Datas do modelo',
+      copy: `Data oficial: ${fmtDate(selected.data_oficial)} · Day zero usado: ${fmtDate(selected.d0)} · Primeira venda encontrada: ${fmtDate(selected.first_sale_date)} · Gap base: ${fmtNum(selected.gap_dias ?? 0)} dias`,
+      badge: selected.first_sale_date
+        ? badge(firstSaleGap > 0 && selected.isActive ? 'neg' : 'pipeline', firstSaleGap > 0 ? `1ª venda D+${firstSaleGap}` : 'D0')
+        : badge('parcial', 'Sem venda')
+    });
+
+    if (selected.isActive && firstSaleGap > 0) {
+      rows.push({
+        title: 'Alerta de match',
+        copy: 'Primeira venda encontrada após o D0. Verifique termos de busca, SKU e exportação do BigQuery.',
+        badge: badge('neg', 'Verificar')
+      });
+    }
+
     if (selected?.modelo_id === 'gt') {
       rows.push({
         title: 'GT Collection',
@@ -483,8 +554,155 @@
     return before[before.length - 1] || hist[hist.length - 1] || null;
   }
 
+  function comparableLaunches() {
+    return state.launches.filter((launch) => !launch.isFuture && launch.status !== 'planejado');
+  }
+
+  function comparisonDay(selected) {
+    if (!selected || selected.isFuture) return null;
+    if (selected.daily?.length) return Math.min(90, Math.max(...selected.daily.map((row) => row.day)));
+    if (selected.isActive && selected.dPlus !== null) return Math.min(90, Math.max(0, selected.dPlus));
+    return Math.min(90, Math.max(0, selected.dPlus ?? 90));
+  }
+
+  function cumulativeAt(launch, day) {
+    if (!launch.daily?.length || day === null || day === undefined) return null;
+    const rows = launch.daily.filter((row) => row.day <= day);
+    if (!rows.length) return null;
+    const receita = rows.reduce((acc, row) => acc + Number(row.receita || 0), 0);
+    const pedidos = rows.reduce((acc, row) => acc + Number(row.pedidos || 0), 0);
+    const pares = rows.reduce((acc, row) => acc + Number(row.pares || 0), 0);
+    return {
+      receita,
+      pedidos,
+      pares,
+      ticket: pedidos ? receita / pedidos : null,
+      velocidade: receita / (day + 1)
+    };
+  }
+
+  function windowVelocity(launch) {
+    const { key, data } = bestWindow(launch);
+    if (!key || !data?.receita) return null;
+    return data.receita / Number(key.replace('d', ''));
+  }
+
+  function renderDplusComparison(selected) {
+    const day = comparisonDay(selected);
+    if (day === null || day === undefined || selected.isFuture) {
+      $('dplus-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: comparativo D+n fica fora da análise até D0 e dados reais.</td></tr>`;
+      return;
+    }
+
+    const rows = comparableLaunches().map((launch) => {
+      const data = cumulativeAt(launch, day);
+      return `
+        <tr>
+          <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D+${day}${launch.daily?.length ? '' : ' · sem curva diária'}</div></td>
+          <td class="num">${fmtBRL(data?.receita)}</td>
+          <td class="num">${fmtNum(data?.pedidos)}</td>
+          <td class="num">${fmtNum(data?.pares)}</td>
+          <td class="num">${fmtBRL(data?.ticket)}</td>
+          <td class="num">${data?.velocidade == null ? '—' : `${fmtBRL(data.velocidade)}/dia`}</td>
+        </tr>`;
+    }).join('');
+
+    $('dplus-table').innerHTML = rows || `<tr><td colspan="6" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
+  }
+
+  function metricDelta(value, selectedValue, formatter = fmtBRL) {
+    if (value === null || value === undefined || selectedValue === null || selectedValue === undefined) return '—';
+    const delta = value - selectedValue;
+    const cls = delta >= 0 ? 'delta--pos' : 'delta--neg';
+    return `<span class="delta ${cls}">${delta >= 0 ? '▲' : '▼'} ${formatter(Math.abs(delta))}</span>`;
+  }
+
+  function renderRankings(selected) {
+    const rankingDefs = [
+      { title: 'Faturamento 15d', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL },
+      { title: 'Faturamento 30d', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL },
+      { title: 'Ticket 30d', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL },
+      { title: 'Pares 30d', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum },
+      { title: '% novos 30d', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct },
+      { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL }
+    ];
+
+    $('ranking-grid').innerHTML = rankingDefs.map((def) => {
+      const selectedValue = def.get(selected);
+      const rows = comparableLaunches()
+        .map((launch) => ({ launch, value: def.get(launch) }))
+        .filter((row) => row.value !== null && row.value !== undefined)
+        .sort((a, b) => b.value - a.value);
+
+      return `<div class="card">
+        <div class="chart-title" style="margin-bottom:10px">${escapeHtml(def.title)}</div>
+        <div class="table-wrap">
+          <table style="min-width:420px">
+            <tbody>
+              ${rows.length ? rows.map((row, index) => `
+                <tr>
+                  <td>${index + 1}</td>
+                  <td>${escapeHtml(row.launch.modelo)}</td>
+                  <td class="num">${def.fmt(row.value)}</td>
+                  <td class="num">${metricDelta(row.value, selectedValue, def.fmt)}</td>
+                </tr>`).join('') : `<tr><td class="cell-muted">Sem dados</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderHistoricalAverage(selected) {
+    if (selected.isFuture) {
+      $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Lançamento planejado.</strong>Comparativo contra média histórica fica fora da análise até D0 e dados reais.</div></div>`;
+      return;
+    }
+
+    const day = comparisonDay(selected);
+    const dailyRefs = comparableLaunches().filter((l) => l.status === 'historico' && l.daily?.length);
+    const selectedDaily = cumulativeAt(selected, day);
+    let label = day !== null ? `D+${day}` : '—';
+    let selectedValue = selectedDaily?.receita ?? null;
+    const dailyValues = day !== null
+      ? dailyRefs.map((launch) => cumulativeAt(launch, day)?.receita).filter((value) => value !== null && value !== undefined)
+      : [];
+    let avg = dailyValues.length
+      ? dailyValues.reduce((acc, value) => acc + value, 0) / dailyValues.length
+      : null;
+
+    if (avg === null || selectedValue === null) {
+      const { key, data } = bestWindow(selected);
+      const fallbackKey = key || '15d';
+      const refs = comparableLaunches().filter((l) => l.status === 'historico' && getWindow(l, fallbackKey)?.receita);
+      label = fallbackKey;
+      selectedValue = data?.receita ?? null;
+      avg = refs.length ? refs.reduce((acc, launch) => acc + getWindow(launch, fallbackKey)?.receita, 0) / refs.length : null;
+    }
+
+    const diff = selectedValue !== null && avg !== null ? selectedValue - avg : null;
+    const pct = diff !== null && avg ? diff / avg : null;
+
+    $('historical-average').innerHTML = `
+      <div class="card">
+        <div class="metric-label">Modelo selecionado</div>
+        <div class="metric-value">${fmtBRL(selectedValue)}</div>
+        <div class="metric-sub">${escapeHtml(selected.modelo)} · ${escapeHtml(label)}</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">Média histórica</div>
+        <div class="metric-value">${fmtBRL(avg)}</div>
+        <div class="metric-sub">Históricos disponíveis · ${escapeHtml(label)}</div>
+      </div>
+      <div class="card">
+        <div class="metric-label">Diferença vs média</div>
+        <div class="metric-value">${diff === null ? '—' : metricDelta(selectedValue, avg, fmtBRL)}</div>
+        <div class="metric-sub">${pct === null ? '—' : fmtPct(pct)}</div>
+      </div>`;
+  }
+
   function renderComparison() {
-    const rows = state.launches.filter((launch) => !launch.isFuture).map((launch) => {
+    const rows = comparableLaunches().map((launch) => {
       const j15 = getWindow(launch, '15d');
       const j30 = getWindow(launch, '30d');
       const j90 = getWindow(launch, '90d');
@@ -508,7 +726,7 @@
     destroyCharts();
     if (!window.Chart) return;
 
-    const chartLaunches = state.launches.filter((l) => !l.isFuture);
+    const chartLaunches = comparableLaunches();
     const labels = ['15d', '30d', '90d'];
 
     createChart('chart-revenue', {
@@ -610,6 +828,59 @@
           y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: (v) => fmtNum(v) } }
         },
         plugins: { tooltip: { callbacks: { label: (ctx) => ctx.dataset.label === 'Faturamento' ? `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}` : `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)}` } } }
+      })
+    });
+
+    const normalizedLabels = Array.from({ length: 91 }, (_, day) => `D+${day}`);
+    createChart('chart-normalized', {
+      type: 'line',
+      data: {
+        labels: normalizedLabels,
+        datasets: chartLaunches.map((launch, index) => {
+          const data = Array(91).fill(null);
+          const hasDaily = Boolean(launch.daily?.length);
+          if (hasDaily) {
+            let running = 0;
+            launch.daily.forEach((row) => {
+              if (row.day < 0 || row.day > 90) return;
+              running += Number(row.receita || 0);
+              data[row.day] = running;
+            });
+          } else {
+            const points = [
+              { day: 15, value: getWindow(launch, '15d')?.receita },
+              { day: 30, value: getWindow(launch, '30d')?.receita },
+              { day: 90, value: getWindow(launch, '90d')?.receita }
+            ];
+            points.forEach((point) => {
+              if (point.value !== null && point.value !== undefined) data[point.day] = point.value;
+            });
+          }
+          return {
+            label: hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
+            data,
+            borderColor: colorFor(launch.modelo_id, index),
+            backgroundColor: fillFor(launch.modelo_id, index),
+            borderDash: hasDaily ? [] : [6, 5],
+            pointRadius: hasDaily ? 1.8 : 4,
+            pointHoverRadius: 5,
+            tension: hasDaily ? 0.25 : 0,
+            spanGaps: !hasDaily
+          };
+        })
+      },
+      options: chartOptions({
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}` } }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { callback: (_, index) => index % 15 === 0 ? `D+${index}` : '' }
+          },
+          y: { ticks: { callback: (v) => fmtBRL(v, true) } }
+        }
       })
     });
   }
@@ -757,7 +1028,7 @@
   }
 
   function renderActions(selected) {
-    if (selected.isFuture) {
+    if (selected.isFuture || selected.status === 'planejado') {
       $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
       return;
@@ -808,7 +1079,7 @@
 
   function renderProjection(selected) {
     const scenarios = projectionScenarios(selected);
-    if (!scenarios || selected.isFuture) {
+    if (!scenarios || selected.isFuture || selected.status === 'planejado') {
       $('projection-content').innerHTML = `<div class="empty-state"><div><strong>Sem dados suficientes para projeção.</strong>A seção aparece quando o modelo tem ao menos 15 dias de venda registrados.</div></div>`;
       return;
     }
@@ -874,6 +1145,9 @@
     renderMethodology(selected);
     renderState(selected);
     renderComparison();
+    renderHistoricalAverage(selected);
+    renderDplusComparison(selected);
+    renderRankings(selected);
     renderCharts(selected);
     renderStock(selected);
     renderColorMix(selected);
