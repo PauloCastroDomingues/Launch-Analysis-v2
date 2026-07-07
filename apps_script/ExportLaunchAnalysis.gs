@@ -113,14 +113,17 @@ WITH params AS (
 ), shopify_items AS (
   SELECT
     'SHOPIFY' AS source_system,
-    CAST(source_order_id AS STRING) AS source_order_id,
-    NULLIF(TRIM(CAST(sku AS STRING)), '') AS sku,
-    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS nome_produto,
-    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS product_title,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS product_title,
     CAST(NULL AS STRING) AS variant_title,
-    SAFE_CAST(quantity AS INT64) AS quantidade,
-    SAFE_CAST(line_gross_amount AS NUMERIC) AS receita
-  FROM \`reise-ssot.stg.shopify_order_items\`
+    SAFE_CAST(i.quantity AS INT64) AS quantidade,
+    SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount) AS NUMERIC) AS receita
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  JOIN \`reise-ssot.mart_shared.fct_order\` o
+    ON o.order_sk = i.order_sk
+  WHERE o.is_valid_order
 ), shoppub_item_json AS (
   SELECT
     'SHOPPUB' AS source_system,
@@ -271,14 +274,17 @@ WITH params AS (
 ), shopify_items AS (
   SELECT
     'SHOPIFY' AS source_system,
-    CAST(source_order_id AS STRING) AS source_order_id,
-    NULLIF(TRIM(CAST(sku AS STRING)), '') AS sku,
-    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS nome_produto,
-    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS product_title,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS product_title,
     CAST(NULL AS STRING) AS variant_title,
-    SAFE_CAST(quantity AS INT64) AS quantidade,
-    SAFE_CAST(line_gross_amount AS NUMERIC) AS receita
-  FROM \`reise-ssot.stg.shopify_order_items\`
+    SAFE_CAST(i.quantity AS INT64) AS quantidade,
+    SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount) AS NUMERIC) AS receita
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  JOIN \`reise-ssot.mart_shared.fct_order\` o
+    ON o.order_sk = i.order_sk
+  WHERE o.is_valid_order
 ), shoppub_item_json AS (
   SELECT
     'SHOPPUB' AS source_system,
@@ -441,14 +447,17 @@ WITH params AS (
 ), shopify_items AS (
   SELECT
     'SHOPIFY' AS source_system,
-    CAST(i.source_order_id AS STRING) AS source_order_id,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS product_title,
     CAST(NULL AS STRING) AS variant_title,
     SAFE_CAST(i.quantity AS INT64) AS pares,
-    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita
-  FROM \`reise-ssot.stg.shopify_order_items\` i
+    SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount) AS NUMERIC) AS receita
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  JOIN \`reise-ssot.mart_shared.fct_order\` o
+    ON o.order_sk = i.order_sk
+  WHERE o.is_valid_order
 ), shoppub_item_json AS (
   SELECT
     'SHOPPUB' AS source_system,
@@ -695,13 +704,16 @@ WITH params AS (
 ), shopify_items AS (
   SELECT
     'SHOPIFY' AS source_system,
-    CAST(source_order_id AS STRING) AS source_order_id,
-    NULLIF(TRIM(CAST(sku AS STRING)), '') AS sku,
-    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS nome_produto,
-    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS product_title,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS product_title,
     CAST(NULL AS STRING) AS variant_title,
-    SAFE_CAST(quantity AS INT64) AS quantidade
-  FROM \`reise-ssot.stg.shopify_order_items\`
+    SAFE_CAST(i.quantity AS INT64) AS quantidade
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  JOIN \`reise-ssot.mart_shared.fct_order\` o
+    ON o.order_sk = i.order_sk
+  WHERE o.is_valid_order
 ), shoppub_item_json AS (
   SELECT
     'SHOPPUB' AS source_system,
@@ -803,7 +815,8 @@ ORDER BY origem`;
 function logProdutosDiaExport_(modelos, produtosDia) {
   const tables = [
     'reise-ssot.mart_shared.orders_all_valid_no_migracao',
-    'reise-ssot.stg.shopify_order_items',
+    'reise-ssot.mart_shared.fct_order_item',
+    'reise-ssot.mart_shared.fct_order',
     'reise-ssot.stg.shoppub_orders_tbl'
   ];
   const byModelo = {};
