@@ -1,11 +1,12 @@
--- Diagnostico RS8 Avant Monochrome
--- Mantido por compatibilidade. A logica canonica tambem esta em diagnostico_monochrome.sql.
--- Lista produtos/SKUs vendidos desde 2026-06-25 que podem ser RS8 Avant Monochrome.
+-- Diagnostico amplo Monochrome
+-- Lista os produtos mais vendidos entre 2026-06-25 e 2026-07-07 sem filtro de nome/SKU.
+-- Objetivo: descobrir como o RS8 Avant Monochrome esta cadastrado de verdade.
 -- Nao cria views/tabelas; rodar em southamerica-east1.
 
 WITH params AS (
   SELECT
     DATE('2026-06-25') AS d0,
+    DATE('2026-07-07') AS data_fim,
     TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
 ),
 pedidos_validos AS (
@@ -15,7 +16,7 @@ pedidos_validos AS (
     DATE(o.paid_at, 'America/Sao_Paulo') AS data
   FROM `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
   CROSS JOIN params p
-  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= p.d0
+  WHERE DATE(o.paid_at, 'America/Sao_Paulo') BETWEEN p.d0 AND p.data_fim
     AND (
       (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
       OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
@@ -142,19 +143,18 @@ vendas AS (
     AND i.quantidade > 0
 )
 SELECT
-  data,
   origem,
-  order_id,
   sku,
   nome_produto,
   product_title,
   variant_title,
-  quantidade,
-  receita,
-  match_text_norm
+  COUNT(DISTINCT order_id) AS pedidos,
+  SUM(quantidade) AS quantidade,
+  SUM(receita) AS receita,
+  MIN(data) AS primeira_data,
+  MAX(data) AS ultima_data,
+  ANY_VALUE(match_text_norm) AS match_text_norm
 FROM vendas
-WHERE REGEXP_CONTAINS(
-  match_text_norm,
-  r'(rs8|avant|mono|monochrome|rs8 avant)'
-)
-ORDER BY data, origem, order_id, sku;
+GROUP BY 1,2,3,4,5
+ORDER BY receita DESC, quantidade DESC
+LIMIT 200;

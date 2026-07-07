@@ -145,11 +145,12 @@ SELECT
   origem,
   order_id,
   sku,
-  product_title,
   nome_produto,
+  product_title,
   variant_title,
   quantidade,
-  receita
+  receita,
+  match_text_norm
 FROM vendas
 WHERE REGEXP_CONTAINS(
   match_text_norm,

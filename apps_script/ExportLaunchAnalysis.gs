@@ -30,6 +30,7 @@ function exportarTudo() {
   const ativos = modelos.filter(m => ['ativo', 'pipeline'].includes(String(m.status || '').toLowerCase()));
 
   const produtosDia = ativos.length ? consultarProdutosDia_(ativos) : [];
+  logProdutosDiaExport_(ativos, produtosDia);
   const estoque = ativos.length ? consultarEstoque_(ativos) : [];
   const manifest = {
     generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
@@ -218,11 +219,12 @@ SELECT
   origem,
   order_id,
   sku,
-  product_title,
   nome_produto,
+  product_title,
   variant_title,
   quantidade,
-  receita
+  receita,
+  match_text_norm
 FROM vendas
 WHERE REGEXP_CONTAINS(
   match_text_norm,
@@ -231,6 +233,164 @@ WHERE REGEXP_CONTAINS(
 ORDER BY data, origem, order_id, sku`;
 
   const rows = runBq_(query);
+  Logger.log(JSON.stringify(rows.slice(0, 200), null, 2));
+  return rows;
+}
+
+function diagnosticarMonochromeAmplo() {
+  const query = `
+WITH params AS (
+  SELECT
+    DATE('2026-06-25') AS d0,
+    DATE('2026-07-07') AS data_fim,
+    TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
+), pedidos_validos AS (
+  SELECT
+    o.source_order_id,
+    UPPER(o.source_system) AS source_system,
+    DATE(o.paid_at, 'America/Sao_Paulo') AS data
+  FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
+  CROSS JOIN params p
+  WHERE DATE(o.paid_at, 'America/Sao_Paulo') BETWEEN p.d0 AND p.data_fim
+    AND (
+      (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
+      OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
+    )
+), shopify_items AS (
+  SELECT
+    'SHOPIFY' AS source_system,
+    CAST(source_order_id AS STRING) AS source_order_id,
+    NULLIF(TRIM(CAST(sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS nome_produto,
+    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS product_title,
+    CAST(NULL AS STRING) AS variant_title,
+    SAFE_CAST(quantity AS INT64) AS quantidade,
+    SAFE_CAST(line_gross_amount AS NUMERIC) AS receita
+  FROM \`reise-ssot.stg.shopify_order_items\`
+), shoppub_item_json AS (
+  SELECT
+    'SHOPPUB' AS source_system,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    item_json
+  FROM \`reise-ssot.stg.shoppub_orders_tbl\` o
+  CROSS JOIN params p,
+  UNNEST(IFNULL(COALESCE(
+    JSON_EXTRACT_ARRAY(o.row_json, '$.pedidoitem_set'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.items'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.itens'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.line_items'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.order_items')
+  ), ARRAY<STRING>[])) AS item_json
+  WHERE o.is_valid_order_calc
+    AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt
+), shoppub_items AS (
+  SELECT
+    source_system,
+    source_order_id,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.sku'),
+      JSON_EXTRACT_SCALAR(item_json, '$.codigo'),
+      JSON_EXTRACT_SCALAR(item_json, '$.codigo_produto'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_sku'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.codigo'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.sku')
+    )), '') AS sku,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.descricao'),
+      JSON_EXTRACT_SCALAR(item_json, '$.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome')
+    )), '') AS nome_produto,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto')
+    )), '') AS product_title,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.variant_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.variant'),
+      JSON_EXTRACT_SCALAR(item_json, '$.variacao'),
+      JSON_EXTRACT_SCALAR(item_json, '$.grade'),
+      JSON_EXTRACT_SCALAR(item_json, '$.cor'),
+      JSON_EXTRACT_SCALAR(item_json, '$.color')
+    )), '') AS variant_title,
+    SAFE_CAST(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.quantidade'),
+      JSON_EXTRACT_SCALAR(item_json, '$.qty'),
+      JSON_EXTRACT_SCALAR(item_json, '$.quantity')
+    ) AS INT64) AS quantidade,
+    COALESCE(
+      SAFE_CAST(COALESCE(
+        JSON_EXTRACT_SCALAR(item_json, '$.valor_total'),
+        JSON_EXTRACT_SCALAR(item_json, '$.total'),
+        JSON_EXTRACT_SCALAR(item_json, '$.subtotal'),
+        JSON_EXTRACT_SCALAR(item_json, '$.total_price'),
+        JSON_EXTRACT_SCALAR(item_json, '$.line_total')
+      ) AS NUMERIC),
+      SAFE_CAST(COALESCE(
+        JSON_EXTRACT_SCALAR(item_json, '$.valor_unitario'),
+        JSON_EXTRACT_SCALAR(item_json, '$.valor'),
+        JSON_EXTRACT_SCALAR(item_json, '$.preco'),
+        JSON_EXTRACT_SCALAR(item_json, '$.price'),
+        JSON_EXTRACT_SCALAR(item_json, '$.unit_price')
+      ) AS NUMERIC)
+      * SAFE_CAST(COALESCE(
+        JSON_EXTRACT_SCALAR(item_json, '$.quantidade'),
+        JSON_EXTRACT_SCALAR(item_json, '$.qty'),
+        JSON_EXTRACT_SCALAR(item_json, '$.quantity')
+      ) AS INT64)
+    ) AS receita
+  FROM shoppub_item_json
+), itens_unificados AS (
+  SELECT * FROM shopify_items
+  UNION ALL
+  SELECT * FROM shoppub_items
+), vendas AS (
+  SELECT
+    p.data,
+    LOWER(p.source_system) AS origem,
+    p.source_order_id AS order_id,
+    COALESCE(i.sku, '') AS sku,
+    COALESCE(i.nome_produto, i.product_title, '') AS nome_produto,
+    COALESCE(i.product_title, i.nome_produto, '') AS product_title,
+    COALESCE(i.variant_title, '') AS variant_title,
+    i.quantidade,
+    i.receita,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(
+      COALESCE(i.nome_produto, ''), ' ',
+      COALESCE(i.product_title, ''), ' ',
+      COALESCE(i.variant_title, ''), ' ',
+      COALESCE(i.sku, '')
+    ), NFD), r'\\p{M}', '') AS match_text_norm
+  FROM pedidos_validos p
+  JOIN itens_unificados i
+    ON i.source_order_id = p.source_order_id
+   AND i.source_system = p.source_system
+  WHERE i.quantidade IS NOT NULL
+    AND i.quantidade > 0
+)
+SELECT
+  origem,
+  sku,
+  nome_produto,
+  product_title,
+  variant_title,
+  COUNT(DISTINCT order_id) AS pedidos,
+  SUM(quantidade) AS quantidade,
+  SUM(receita) AS receita,
+  MIN(data) AS primeira_data,
+  MAX(data) AS ultima_data,
+  ANY_VALUE(match_text_norm) AS match_text_norm
+FROM vendas
+GROUP BY 1,2,3,4,5
+ORDER BY receita DESC, quantidade DESC
+LIMIT 200`;
+
+  const rows = runBq_(query);
+  Logger.log('diagnosticarMonochromeAmplo: produtos mais vendidos entre 2026-06-25 e 2026-07-07');
   Logger.log(JSON.stringify(rows.slice(0, 200), null, 2));
   return rows;
 }
@@ -495,6 +655,47 @@ GROUP BY 1,2,3
 ORDER BY modelo_id, sub_modelo, cor`;
 
   return runBq_(query);
+}
+
+function logProdutosDiaExport_(modelos, produtosDia) {
+  const tables = [
+    'reise-ssot.mart_shared.orders_all_valid_no_migracao',
+    'reise-ssot.stg.shopify_order_items',
+    'reise-ssot.stg.shoppub_orders_tbl'
+  ];
+  const byModelo = {};
+  const byOrigem = {};
+  produtosDia.forEach(row => {
+    const modeloId = row.modelo_id || 'sem_modelo';
+    const origem = row.origem || 'sem_origem';
+    byModelo[modeloId] = (byModelo[modeloId] || 0) + 1;
+    byOrigem[origem] = (byOrigem[origem] || 0) + 1;
+  });
+
+  Logger.log(`exportarTudo: ${produtosDia.length} linhas em lancamentos_produtos_dia.json.`);
+  Logger.log(`exportarTudo: tabelas consultadas = ${tables.join(', ')}`);
+  Logger.log(`exportarTudo: linhas por modelo = ${JSON.stringify(byModelo)}`);
+  Logger.log(`exportarTudo: linhas por origem = ${JSON.stringify(byOrigem)}`);
+
+  modelos.forEach(modelo => {
+    Logger.log(`modelo ${modelo.modelo_id}: d0=${modelo.day_zero_base || modelo.data_lancamento}; termos_busca=${modelo.termos_busca || ''}; sku_prefixos=${modelo.sku_prefixos || ''}`);
+  });
+
+  const mono = modelos.find(modelo => String(modelo.modelo_id || '') === 'rs8_monochrome');
+  if (!mono) return;
+
+  const monoRows = produtosDia.filter(row => row.modelo_id === 'rs8_monochrome');
+  const monoReceita = monoRows.reduce((acc, row) => acc + Number(row.receita || 0), 0);
+  const monoPares = monoRows.reduce((acc, row) => acc + Number(row.pares || 0), 0);
+  Logger.log(`rs8_monochrome: ${monoRows.length} linhas, receita=${monoReceita}, pares=${monoPares}.`);
+
+  if (!monoRows.length) {
+    Logger.log('rs8_monochrome: sem linhas no match final. Rodando diagnostico filtrado e diagnostico amplo para separar fonte vs match.');
+    const filtrado = diagnosticarMonochrome();
+    Logger.log(`rs8_monochrome: diagnostico filtrado retornou ${filtrado.length} linhas candidatas.`);
+    const amplo = diagnosticarMonochromeAmplo();
+    Logger.log(`rs8_monochrome: diagnostico amplo retornou ${amplo.length} produtos agregados.`);
+  }
 }
 
 function runBq_(query) {

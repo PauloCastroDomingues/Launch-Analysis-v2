@@ -12,7 +12,8 @@ Ele roda na Vercel, lê JSONs da pasta `/data` via `fetch` e não depende de bac
 - `data/*.json`: estrutura inicial de dados com histórico de GT, Avant e Phantom, além de RS8 Avant Monochrome ativo e Dia dos Pais planejado.
 - `apps_script/ExportLaunchAnalysis.gs`: exporta Google Sheets + BigQuery para JSON no GitHub.
 - `sql/lancamentos_produtos_dia.sql`: query-base do pipeline de vendas por lançamento.
-- `sql/diagnostico_monochrome.sql`: query de diagnóstico para produtos RS8/Avant/Mono vendidos desde o D0 do Monochrome.
+- `sql/diagnostico_monochrome.sql`: query de diagnóstico filtrado para produtos RS8/Avant/Mono vendidos desde o D0 do Monochrome.
+- `sql/diagnostico_monochrome_amplo.sql`: diagnóstico amplo, sem filtro de nome/SKU, para descobrir como o produto foi cadastrado de verdade.
 - `vercel.json`: configuração simples para deploy estático.
 
 ## Estrutura
@@ -37,6 +38,7 @@ reise-launch-dashboard-v2/
 │   └── ExportLaunchAnalysis.gs
 └── sql/
     ├── diagnostico_monochrome.sql
+    ├── diagnostico_monochrome_amplo.sql
     ├── diagnostico_rs8_monochrome.sql
     └── lancamentos_produtos_dia.sql
 ```
@@ -130,7 +132,7 @@ Prefixos atuais:
 RS8-AVANT-MONO,RS8-MONO,RS8AVANTMONO,RS8AVANT,MONO
 ```
 
-Para diagnosticar, rodar `sql/diagnostico_monochrome.sql` no BigQuery ou a função `diagnosticarMonochrome()` no Apps Script. A função antiga `diagnosticarRs8Monochrome()` continua como alias.
+Para diagnosticar, rodar `sql/diagnostico_monochrome.sql` no BigQuery ou a função `diagnosticarMonochrome()` no Apps Script. Se o filtro não retornar nada, rodar `sql/diagnostico_monochrome_amplo.sql` ou `diagnosticarMonochromeAmplo()` para listar os produtos mais vendidos entre `2026-06-25` e `2026-07-07` sem filtro de nome/SKU. A função antiga `diagnosticarRs8Monochrome()` continua como alias.
 
 ## Comparativos
 
