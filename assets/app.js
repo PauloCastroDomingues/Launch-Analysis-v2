@@ -109,6 +109,12 @@
     const modelRows = rows.filter((row) => row.modelo_id === model.modelo_id);
     if (!modelRows.length) return null;
 
+    const sumNullable = (items, field) => (
+      items.some((row) => row[field] !== null && row[field] !== undefined)
+        ? items.reduce((acc, row) => acc + Number(row[field] || 0), 0)
+        : null
+    );
+
     const windows = { '15d': 15, '30d': 30, '90d': 90 };
     const janelas = {};
     Object.entries(windows).forEach(([key, days]) => {
@@ -120,16 +126,18 @@
         janelas[key] = null;
         return;
       }
-      const receita = filtered.reduce((acc, row) => acc + Number(row.receita || 0), 0);
-      const pares = filtered.reduce((acc, row) => acc + Number(row.pares || 0), 0);
-      const pedidos = filtered.reduce((acc, row) => acc + Number(row.pedidos || 0), 0);
+      const receita = sumNullable(filtered, 'receita');
+      const pares = sumNullable(filtered, 'pares');
+      const pedidosSomados = sumNullable(filtered, 'pedidos') || 0;
+      const pedidosDistintos = new Set(filtered.map((row) => row.source_order_id).filter(Boolean));
+      const pedidos = pedidosDistintos.size || pedidosSomados;
       const novos = filtered.reduce((acc, row) => acc + Number(row.novos || 0), 0);
       const recorrentes = filtered.reduce((acc, row) => acc + Number(row.recorrentes || 0), 0);
       janelas[key] = {
         receita,
         pares,
         pedidos,
-        ticket: pedidos ? receita / pedidos : null,
+        ticket: pedidos && receita !== null ? receita / pedidos : null,
         novos_pct: novos + recorrentes ? novos / (novos + recorrentes) : null,
         origem: 'pipeline'
       };
@@ -141,9 +149,10 @@
       if (idx === null || idx < 0) return;
       const week = Math.floor(idx / 7) + 1;
       const key = `Sem ${week}`;
-      const current = semanasMap.get(key) || { label: key, receita: 0, pedidos: 0 };
+      const current = semanasMap.get(key) || { label: key, receita: 0, pedidos: 0, orderIds: new Set() };
       current.receita += Number(row.receita || 0);
-      current.pedidos += Number(row.pedidos || 0);
+      if (row.source_order_id) current.orderIds.add(row.source_order_id);
+      else current.pedidos += Number(row.pedidos || 0);
       semanasMap.set(key, current);
     });
 
@@ -157,9 +166,10 @@
       coresMap.set(key, current);
     });
 
-    const m30 = janelas['30d']?.receita && janelas['15d']?.receita ? janelas['30d'].receita / janelas['15d'].receita : null;
-    const m90_15 = janelas['90d']?.receita && janelas['15d']?.receita ? janelas['90d'].receita / janelas['15d'].receita : null;
-    const m90_30 = janelas['90d']?.receita && janelas['30d']?.receita ? janelas['90d'].receita / janelas['30d'].receita : null;
+    const hasRevenue = (key) => janelas[key]?.receita !== null && janelas[key]?.receita !== undefined;
+    const m30 = hasRevenue('30d') && hasRevenue('15d') && janelas['15d'].receita ? janelas['30d'].receita / janelas['15d'].receita : null;
+    const m90_15 = hasRevenue('90d') && hasRevenue('15d') && janelas['15d'].receita ? janelas['90d'].receita / janelas['15d'].receita : null;
+    const m90_30 = hasRevenue('90d') && hasRevenue('30d') && janelas['30d'].receita ? janelas['90d'].receita / janelas['30d'].receita : null;
 
     return {
       modelo_id: model.modelo_id,
@@ -168,7 +178,10 @@
       data_oficial: model.data_oficial,
       gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(model.day_zero_base)) || 0),
       janelas,
-      semanas: [...semanasMap.values()],
+      semanas: [...semanasMap.values()].map(({ orderIds, ...week }) => ({
+        ...week,
+        pedidos: orderIds.size || week.pedidos
+      })),
       cores: [...coresMap.values()],
       multiplicadores: { m30_15: m30, m90_15, m90_30 },
       origem: 'pipeline'
@@ -179,6 +192,7 @@
     const histById = new Map(data.lancamentos_historico.map((item) => [item.modelo_id, item]));
     return data.lancamentos_modelos.map((model, idx) => {
       const hist = histById.get(model.modelo_id);
+      const pipelineRows = (data.lancamentos_produtos_dia || []).filter((row) => row.modelo_id === model.modelo_id);
       const pipeline = aggregatePipeline(model, data.lancamentos_produtos_dia || []);
       const metrics = pipeline || hist || {
         modelo_id: model.modelo_id,
@@ -203,6 +217,7 @@
         order: idx,
         d0,
         dPlus,
+        pipelineRowCount: pipelineRows.length,
         isFuture,
         isActive,
         isHistorical
@@ -220,6 +235,16 @@
     if (getWindow(launch, '15d')) return { key: '15d', data: getWindow(launch, '15d') };
     if (getWindow(launch, '90d')) return { key: '90d', data: getWindow(launch, '90d') };
     return { key: null, data: null };
+  }
+
+  function hasPipelineRows(launch) {
+    return Number(launch?.pipelineRowCount || 0) > 0;
+  }
+
+  function numberOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    return Number.isNaN(num) ? null : num;
   }
 
   function coverageBadge(launch, key) {
@@ -331,7 +356,7 @@
       },
       {
         title: 'SSOT',
-        copy: 'Vendas e estoque vêm do BigQuery em southamerica-east1. A query usa D0 inclusivo com filtro >=.',
+        copy: 'Vendas vêm do BigQuery/SSOT unificando Shopify + Shoppub em southamerica-east1. A query usa D0 inclusivo com filtro >=.',
         badge: badge('pipeline', 'BigQuery')
       },
       {
@@ -340,6 +365,14 @@
         badge: badge('parcial', 'Regra fixa')
       }
     ];
+
+    if (!(state.data.lancamentos_produtos_dia || []).length) {
+      rows.unshift({
+        title: 'Alerta técnico',
+        copy: 'lancamentos_produtos_dia.json está vazio. Sem dados carregados no pipeline. Verifique BigQuery, termos de busca e exportação do Apps Script.',
+        badge: badge('neg', 'Pipeline vazio')
+      });
+    }
 
     if (selected?.modelo_id === 'gt') {
       rows.push({
@@ -414,7 +447,7 @@
       { label: 'Pares vendidos', value: fmtNum(data?.pares), sub: data?.pares ? `${fmtNum(data.pares)} pares` : 'Sem pares no JSON' }
     ];
 
-    const empty = !data ? `<div class="empty-state"><div><strong>Sem dados de venda para este lançamento.</strong>Rode o Apps Script para gerar data/lancamentos_produtos_dia.json. A tela não transforma ausência em zero.</div></div>` : '';
+    const empty = !data ? `<div class="empty-state"><div><strong>${selected.isActive && !hasPipelineRows(selected) ? 'Sem dados carregados no pipeline.' : 'Sem dados de venda para este lançamento.'}</strong> Verifique BigQuery, termos de busca e exportação do Apps Script. A tela não transforma ausência em zero.</div></div>` : '';
 
     container.innerHTML = `
       <div class="grid grid-5">
@@ -451,7 +484,7 @@
   }
 
   function renderComparison() {
-    const rows = state.launches.map((launch) => {
+    const rows = state.launches.filter((launch) => !launch.isFuture).map((launch) => {
       const j15 = getWindow(launch, '15d');
       const j30 = getWindow(launch, '30d');
       const j90 = getWindow(launch, '90d');
@@ -468,7 +501,7 @@
           <td>${sourceBadge(launch)}</td>
         </tr>`;
     }).join('');
-    $('comparison-table').innerHTML = rows;
+    $('comparison-table').innerHTML = rows || `<tr><td colspan="8" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
   }
 
   function renderCharts(selected) {
@@ -662,18 +695,88 @@
     return badge('pipeline', 'Eficiente');
   }
 
+  function inferMediaWindow(row, launch) {
+    if (row.janela) return row.janela;
+    const end = toDate(row.data_fim || row.data_inicio);
+    const d0 = toDate(launch.d0);
+    if (!end || !d0) return '—';
+    if (end < d0) return 'pre-d0';
+    const days = Math.floor((end - d0) / 86400000) + 1;
+    if (days <= 15) return '15d';
+    if (days <= 30) return '30d';
+    if (days <= 90) return '90d';
+    return `${days}d`;
+  }
+
+  function normalizeMediaRow(row, launch) {
+    const investimento = numberOrNull(row.investimento);
+    const receita = numberOrNull(row.receita_atribuida);
+    const pedidos = numberOrNull(row.pedidos);
+    const roas = numberOrNull(row.roas) ?? (investimento && receita !== null ? receita / investimento : null);
+    const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
+    return {
+      campanha: row.campanha || 'Campanha sem nome',
+      janela: inferMediaWindow(row, launch),
+      canal: row.canal || '—',
+      investimento,
+      receita_atribuida: receita,
+      pedidos,
+      roas,
+      cpa,
+      status: row.status || ''
+    };
+  }
+
+  function aggregateMediaRows(rows) {
+    const groups = new Map();
+    rows.forEach((row) => {
+      const key = `${row.janela}::${row.canal}`;
+      const current = groups.get(key) || {
+        campanha: 'Total janela/canal',
+        janela: row.janela,
+        canal: row.canal,
+        investimento: 0,
+        receita_atribuida: 0,
+        pedidos: 0,
+        aggregate: true
+      };
+      current.investimento += row.investimento || 0;
+      current.receita_atribuida += row.receita_atribuida || 0;
+      current.pedidos += row.pedidos || 0;
+      groups.set(key, current);
+    });
+    return [...groups.values()].map((row) => ({
+      ...row,
+      roas: row.investimento ? row.receita_atribuida / row.investimento : null,
+      cpa: row.pedidos ? row.investimento / row.pedidos : null
+    }));
+  }
+
+  function mediaValue(value, formatter) {
+    return value === null || value === undefined ? '—' : formatter(value);
+  }
+
   function renderActions(selected) {
+    if (selected.isFuture) {
+      $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
+      $('crm-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
+      return;
+    }
+
     const mediaRows = (state.data.midia_paga || []).filter((row) => row.modelo_id === selected.modelo_id);
-    $('media-table').innerHTML = mediaRows.length ? mediaRows.map((row) => `
+    const detailedRows = mediaRows.map((row) => normalizeMediaRow(row, selected));
+    const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows];
+    $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
       <tr>
+        <td>${row.aggregate ? `<strong>${escapeHtml(row.campanha)}</strong>` : escapeHtml(row.campanha)}</td>
         <td>${escapeHtml(row.janela)}</td>
         <td>${escapeHtml(row.canal)}</td>
-        <td class="num">${fmtBRL(row.investimento)}</td>
-        <td class="num">${fmtBRL(row.receita_atribuida)}</td>
-        <td class="num">${fmtNum(row.roas, 2)}×</td>
-        <td class="num">${fmtBRL(row.cpa)}</td>
+        <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
+        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}</td>
+        <td class="num">${row.roas == null ? '—' : `${fmtNum(row.roas, 2)}×`}</td>
+        <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
         <td>${roasBadge(row.roas)}</td>
-      </tr>`).join('') : `<tr><td colspan="7" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
+      </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
 
     const crmRows = (state.data.crm_disparos || []).filter((row) => row.modelo_id === selected.modelo_id);
     $('crm-table').innerHTML = crmRows.length ? crmRows.map((row) => `

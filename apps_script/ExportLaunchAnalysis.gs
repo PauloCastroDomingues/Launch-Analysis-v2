@@ -25,7 +25,7 @@ const CONFIG = {
 function exportarTudo() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const modelos = sheetToObjects_(ss.getSheetByName('lancamentos_modelos'));
-  const midia = sheetToObjects_(ss.getSheetByName('midia_paga'));
+  const midia = normalizeMidiaPaga_(sheetToObjects_(ss.getSheetByName('midia_paga')), modelos);
   const crm = sheetToObjects_(ss.getSheetByName('crm_disparos'));
   const ativos = modelos.filter(m => ['ativo', 'pipeline'].includes(String(m.status || '').toLowerCase()));
 
@@ -75,27 +75,173 @@ function removerTriggers_(handler) {
   });
 }
 
+function diagnosticarRs8Monochrome() {
+  const query = `
+WITH params AS (
+  SELECT
+    DATE('2026-06-25') AS d0,
+    TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
+)
+SELECT
+  DATE(o.paid_at, 'America/Sao_Paulo') AS data,
+  UPPER(o.source_system) AS source_system,
+  o.source_order_id,
+  COALESCE(i.sku, '') AS sku,
+  COALESCE(i.item_name, '') AS nome_produto,
+  SAFE_CAST(i.quantity AS INT64) AS pares,
+  SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita
+FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
+JOIN \`reise-ssot.stg.shopify_order_items\` i
+  ON i.source_order_id = o.source_order_id
+CROSS JOIN params p
+WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= p.d0
+  AND UPPER(o.source_system) = 'SHOPIFY'
+  AND o.paid_at >= p.cutoff_brt
+  AND REGEXP_CONTAINS(
+    LOWER(CONCAT(COALESCE(i.item_name, ''), ' ', COALESCE(i.sku, ''))),
+    r'(rs8|avant|mono|monochrome|rs8 avant)'
+  )
+ORDER BY data, source_order_id, sku`;
+
+  const rows = runBq_(query);
+  Logger.log(JSON.stringify(rows.slice(0, 200), null, 2));
+  return rows;
+}
+
 function consultarProdutosDia_(modelos) {
   const modelosSql = modelos.map(m => {
-    const regex = String(m.termos_busca || m.modelo || '').replace(/'/g, "\\'");
-    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base || m.data_lancamento)}') AS d0, r'${regex}' AS regex`;
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base || m.data_lancamento)}') AS d0, LOWER('${sql_(termosRegex)}') AS termos_regex, LOWER('${sql_(skuPrefixos)}') AS sku_prefixos`;
   }).join('\nUNION ALL\n');
 
   const query = `
-WITH modelos AS (
+WITH params AS (
+  SELECT TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
+), modelos AS (
   ${modelosSql}
-), vendas AS (
+), pedidos_validos AS (
   SELECT
-    DATE(o.paid_at, 'America/Sao_Paulo') AS data,
     o.source_order_id,
-    COALESCE(i.sku, '') AS sku,
-    COALESCE(i.item_name, '') AS nome_produto,
+    UPPER(o.source_system) AS source_system,
+    o.paid_at,
+    DATE(o.paid_at, 'America/Sao_Paulo') AS data
+  FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
+  CROSS JOIN params p
+  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos)
+    AND (
+      (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
+      OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
+    )
+), shopify_items AS (
+  SELECT
+    'SHOPIFY' AS source_system,
+    CAST(i.source_order_id AS STRING) AS source_order_id,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS product_title,
+    CAST(NULL AS STRING) AS variant_title,
     SAFE_CAST(i.quantity AS INT64) AS pares,
     SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita
   FROM \`reise-ssot.stg.shopify_order_items\` i
-  JOIN \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
-    ON o.source_order_id = i.source_order_id
-  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos)
+), shoppub_item_json AS (
+  SELECT
+    'SHOPPUB' AS source_system,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    item_json
+  FROM \`reise-ssot.stg.shoppub_orders_tbl\` o
+  CROSS JOIN params p,
+  UNNEST(IFNULL(COALESCE(
+    JSON_EXTRACT_ARRAY(o.row_json, '$.pedidoitem_set'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.items'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.itens'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.line_items'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.order_items')
+  ), ARRAY<STRING>[])) AS item_json
+  WHERE o.is_valid_order_calc
+    AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt
+), shoppub_items AS (
+  SELECT
+    source_system,
+    source_order_id,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.sku'),
+      JSON_EXTRACT_SCALAR(item_json, '$.codigo'),
+      JSON_EXTRACT_SCALAR(item_json, '$.codigo_produto'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_sku'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.codigo'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.sku')
+    )), '') AS sku,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.descricao'),
+      JSON_EXTRACT_SCALAR(item_json, '$.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome')
+    )), '') AS nome_produto,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto')
+    )), '') AS product_title,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.variant_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.variant'),
+      JSON_EXTRACT_SCALAR(item_json, '$.variacao'),
+      JSON_EXTRACT_SCALAR(item_json, '$.grade'),
+      JSON_EXTRACT_SCALAR(item_json, '$.cor'),
+      JSON_EXTRACT_SCALAR(item_json, '$.color')
+    )), '') AS variant_title,
+    SAFE_CAST(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.quantidade'),
+      JSON_EXTRACT_SCALAR(item_json, '$.qty'),
+      JSON_EXTRACT_SCALAR(item_json, '$.quantity')
+    ) AS INT64) AS pares,
+    COALESCE(
+      SAFE_CAST(COALESCE(
+        JSON_EXTRACT_SCALAR(item_json, '$.valor_total'),
+        JSON_EXTRACT_SCALAR(item_json, '$.total'),
+        JSON_EXTRACT_SCALAR(item_json, '$.subtotal'),
+        JSON_EXTRACT_SCALAR(item_json, '$.total_price'),
+        JSON_EXTRACT_SCALAR(item_json, '$.line_total')
+      ) AS NUMERIC),
+      SAFE_CAST(COALESCE(
+        JSON_EXTRACT_SCALAR(item_json, '$.valor_unitario'),
+        JSON_EXTRACT_SCALAR(item_json, '$.valor'),
+        JSON_EXTRACT_SCALAR(item_json, '$.preco'),
+        JSON_EXTRACT_SCALAR(item_json, '$.price'),
+        JSON_EXTRACT_SCALAR(item_json, '$.unit_price')
+      ) AS NUMERIC)
+      * SAFE_CAST(COALESCE(
+        JSON_EXTRACT_SCALAR(item_json, '$.quantidade'),
+        JSON_EXTRACT_SCALAR(item_json, '$.qty'),
+        JSON_EXTRACT_SCALAR(item_json, '$.quantity')
+      ) AS INT64)
+    ) AS receita
+  FROM shoppub_item_json
+), itens_unificados AS (
+  SELECT * FROM shopify_items
+  UNION ALL
+  SELECT * FROM shoppub_items
+), vendas AS (
+  SELECT
+    p.data,
+    p.source_system,
+    p.source_order_id,
+    COALESCE(i.sku, '') AS sku,
+    COALESCE(i.nome_produto, i.product_title, '') AS nome_produto,
+    COALESCE(i.product_title, i.nome_produto, '') AS product_title,
+    COALESCE(i.variant_title, '') AS variant_title,
+    i.pares,
+    i.receita
+  FROM pedidos_validos p
+  JOIN itens_unificados i
+    ON i.source_order_id = p.source_order_id
+   AND i.source_system = p.source_system
+  WHERE i.pares IS NOT NULL
+    AND i.pares > 0
 ), match AS (
   SELECT
     m.modelo_id,
@@ -103,28 +249,52 @@ WITH modelos AS (
     v.source_order_id,
     v.sku,
     v.nome_produto,
-    REGEXP_EXTRACT(v.nome_produto, r'^(.*?)(?: - | / |\\|)') AS sub_modelo,
-    NULL AS cor,
+    COALESCE(
+      NULLIF(v.product_title, ''),
+      NULLIF(REGEXP_EXTRACT(v.nome_produto, r'^(.*?)(?: - | / |\\|)'), ''),
+      NULLIF(v.nome_produto, '')
+    ) AS sub_modelo,
+    COALESCE(
+      NULLIF(v.variant_title, ''),
+      NULLIF(REGEXP_EXTRACT(v.nome_produto, r'(?i)(?:cor|color)[: -]+([^|/,-]+)'), '')
+    ) AS cor,
     v.pares,
     v.receita
   FROM vendas v
   JOIN modelos m
     ON v.data >= m.d0 -- inclui D0
-   AND REGEXP_CONTAINS(LOWER(CONCAT(v.nome_produto, ' ', v.sku)), LOWER(m.regex))
+   AND (
+    (
+      IFNULL(m.termos_regex, '') != ''
+      AND REGEXP_CONTAINS(
+        LOWER(CONCAT(v.nome_produto, ' ', v.product_title, ' ', v.variant_title, ' ', v.sku)),
+        m.termos_regex
+      )
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM UNNEST(SPLIT(IFNULL(m.sku_prefixos, ''), '|')) AS prefixo
+      WHERE prefixo != ''
+        AND STARTS_WITH(LOWER(v.sku), prefixo)
+    )
+   )
 )
 SELECT
   modelo_id,
   data,
+  source_order_id,
+  sku,
+  nome_produto,
   COALESCE(NULLIF(sub_modelo, ''), nome_produto) AS sub_modelo,
-  cor,
+  NULLIF(cor, '') AS cor,
   COUNT(DISTINCT source_order_id) AS pedidos,
   SUM(pares) AS pares,
   SUM(receita) AS receita,
   CAST(NULL AS INT64) AS novos,
   CAST(NULL AS INT64) AS recorrentes
 FROM match
-GROUP BY 1,2,3,4
-ORDER BY modelo_id, data, sub_modelo`;
+GROUP BY 1,2,3,4,5,6,7
+ORDER BY modelo_id, data, source_order_id, sku`;
 
   return runBq_(query);
 }
@@ -200,6 +370,88 @@ function sheetToObjects_(sheet) {
       headers.forEach((h, i) => obj[h] = normalizeCell_(row[i]));
       return obj;
     });
+}
+
+function normalizeMidiaPaga_(rows, modelos) {
+  const modelosById = {};
+  modelos.forEach(m => modelosById[String(m.modelo_id || '').trim()] = m);
+
+  return rows.map((row, index) => {
+    const campanha = String(row.campanha || '').trim();
+    if (!campanha) {
+      throw new Error(`midia_paga linha ${index + 2}: coluna campanha e obrigatoria.`);
+    }
+
+    const modeloId = String(row.modelo_id || '').trim();
+    const modelo = modelosById[modeloId] || {};
+    const investimento = numberOrNull_(row.investimento);
+    const receita = numberOrNull_(row.receita_atribuida);
+    const pedidos = numberOrNull_(row.pedidos);
+
+    return {
+      modelo_id: modeloId || null,
+      campanha,
+      canal: row.canal || null,
+      data_inicio: row.data_inicio || null,
+      data_fim: row.data_fim || null,
+      janela: row.janela || inferJanelaMidia_(row, modelo),
+      investimento,
+      receita_atribuida: receita,
+      pedidos,
+      roas: numberOrNull_(row.roas) ?? (investimento && receita !== null ? receita / investimento : null),
+      cpa: numberOrNull_(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null),
+      observacao: row.observacao || null,
+      status: row.status || null
+    };
+  });
+}
+
+function inferJanelaMidia_(row, modelo) {
+  const d0 = dateOnly_(modelo.day_zero_base || modelo.data_lancamento);
+  const end = dateOnly_(row.data_fim || row.data_inicio);
+  if (!d0 || !end) return null;
+  if (end < d0) return 'pre-d0';
+  const days = Math.floor((end - d0) / 86400000) + 1;
+  if (days <= 15) return '15d';
+  if (days <= 30) return '30d';
+  if (days <= 90) return '90d';
+  return `${days}d`;
+}
+
+function dateOnly_(value) {
+  if (!value) return null;
+  if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  const parts = String(value).slice(0, 10).split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function numberOrNull_(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') return Number.isNaN(value) ? null : value;
+  const text = String(value).trim();
+  if (!text) return null;
+  const normalized = text.includes(',')
+    ? text.replace(/\./g, '').replace(',', '.')
+    : text;
+  const parsed = Number(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function termosRegex_(model) {
+  return String(model.termos_busca || model.modelo || '')
+    .split('|')
+    .map(term => term.trim())
+    .filter(Boolean)
+    .join('|');
+}
+
+function skuPrefixos_(model) {
+  return String(model.sku_prefixos || '')
+    .split(/[|,]/)
+    .map(prefix => prefix.trim())
+    .filter(Boolean)
+    .join('|');
 }
 
 function escreverJsonGitHub_(fileName, payload) {

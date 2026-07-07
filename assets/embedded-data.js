@@ -43,8 +43,8 @@ window.REISE_FALLBACK_DATA = {
       "data_lancamento": "2026-06-25",
       "data_oficial": "2026-06-25",
       "day_zero_base": "2026-06-25",
-      "termos_busca": "RS8 Avant Monochrome|RS8 Monochrome|Monochrome",
-      "sku_prefixos": "RS8-AVANT-MONO,RS8-MONO",
+      "termos_busca": "RS8 Avant Monochrome|RS8 Avant Mono|RS8 Monochrome|RS8 Mono|Monochrome|Mono",
+      "sku_prefixos": "RS8-AVANT-MONO,RS8-MONO,RS8AVANTMONO,RS8AVANT,MONO",
       "status": "ativo",
       "observacao": "Em curso. Dados devem entrar via lancamentos_produtos_dia.json gerado pelo Apps Script/BigQuery."
     },
@@ -354,8 +354,11 @@ window.REISE_FALLBACK_DATA = {
   "midia_paga": [
     {
       "modelo_id": "gt",
+      "campanha": "GT Collection 15d",
       "janela": "15d",
       "canal": "Paid total",
+      "data_inicio": "2025-02-11",
+      "data_fim": "2025-02-25",
       "investimento": 2798,
       "receita_atribuida": 122401,
       "pedidos": 120,
@@ -366,8 +369,11 @@ window.REISE_FALLBACK_DATA = {
     },
     {
       "modelo_id": "gt",
+      "campanha": "GT Collection 30d",
       "janela": "30d",
       "canal": "Paid total",
+      "data_inicio": "2025-02-11",
+      "data_fim": "2025-03-12",
       "investimento": 4560,
       "receita_atribuida": 183232,
       "pedidos": 201,
@@ -378,8 +384,11 @@ window.REISE_FALLBACK_DATA = {
     },
     {
       "modelo_id": "gt",
+      "campanha": "GT Collection 90d",
       "janela": "90d",
       "canal": "Paid total",
+      "data_inicio": "2025-02-11",
+      "data_fim": "2025-05-11",
       "investimento": 39187,
       "receita_atribuida": 889939,
       "pedidos": 1011,
@@ -390,8 +399,11 @@ window.REISE_FALLBACK_DATA = {
     },
     {
       "modelo_id": "avant",
+      "campanha": "Avant 15d",
       "janela": "15d",
       "canal": "Paid total",
+      "data_inicio": "2025-10-02",
+      "data_fim": "2025-10-16",
       "investimento": 20910,
       "receita_atribuida": 168020,
       "pedidos": 234,
@@ -402,8 +414,11 @@ window.REISE_FALLBACK_DATA = {
     },
     {
       "modelo_id": "avant",
+      "campanha": "Avant 30d",
       "janela": "30d",
       "canal": "Paid total",
+      "data_inicio": "2025-10-02",
+      "data_fim": "2025-10-31",
       "investimento": 49230,
       "receita_atribuida": 418050,
       "pedidos": 569,
@@ -414,8 +429,11 @@ window.REISE_FALLBACK_DATA = {
     },
     {
       "modelo_id": "avant",
+      "campanha": "Avant 90d",
       "janela": "90d",
       "canal": "Paid total",
+      "data_inicio": "2025-10-02",
+      "data_fim": "2025-12-30",
       "investimento": 229136,
       "receita_atribuida": 1077654,
       "pedidos": 1551,
@@ -426,8 +444,11 @@ window.REISE_FALLBACK_DATA = {
     },
     {
       "modelo_id": "phantom",
+      "campanha": "Phantom 15d",
       "janela": "15d",
       "canal": "Paid total",
+      "data_inicio": "2026-04-16",
+      "data_fim": "2026-04-30",
       "investimento": 14003,
       "receita_atribuida": 212824,
       "pedidos": 225,
@@ -726,7 +747,7 @@ window.REISE_FALLBACK_DATA = {
   "manifest": {
     "generated_at": "2026-07-07T14:00:00-03:00",
     "project": "Reise Launch Analysis v2",
-    "source_note": "Base inicial criada a partir das fontes fornecidas. Dados ativos devem vir do Apps Script + BigQuery.",
+    "source_note": "Base inicial criada a partir das fontes fornecidas. Dados ativos devem vir do Apps Script + BigQuery/SSOT, unificando Shopify + Shoppub.",
     "files": [
       "lancamentos_modelos.json",
       "lancamentos_historico.json",
