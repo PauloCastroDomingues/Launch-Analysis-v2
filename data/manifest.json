@@ -1,19 +1,33 @@
 {
-  "generated_at": "2026-07-07T14:00:00-03:00",
+  "generated_at": "2026-07-07T17:51:45-03:00",
   "project": "Reise Launch Analysis v2",
-  "source_note": "Base inicial criada a partir das fontes fornecidas. Dados ativos devem vir do Apps Script + BigQuery/SSOT, unificando Shopify + Shoppub.",
+  "model_source": "github_json",
+  "sales_source": "bigquery_ssot_shopify_shoppub",
+  "active_models": [
+    "rs8_monochrome"
+  ],
+  "row_counts": {
+    "lancamentos_produtos_dia": 304,
+    "estoque": 0,
+    "midia_paga": "skipped",
+    "crm_disparos": "skipped"
+  },
+  "export_status": {
+    "estoque": "exported",
+    "midia_paga": "skipped",
+    "crm_disparos": "skipped"
+  },
   "files": [
     "lancamentos_modelos.json",
-    "lancamentos_historico.json",
     "lancamentos_produtos_dia.json",
     "midia_paga.json",
     "crm_disparos.json",
     "estoque.json",
-    "calendario_br.json"
+    "manifest.json"
   ],
   "warnings": [
-    "GT deve usar day_zero_base 2025-02-11 por gap de 116 dias.",
-    "Avant 90d deve exibir aviso de inflação por Black Friday/Natal.",
-    "Dados ausentes devem ser null/—, nunca zero."
+    "Filtros de data usam >= para incluir D0.",
+    "Dados ausentes devem permanecer null/—; nunca transformar em zero.",
+    "GT deve usar day_zero_base 2025-02-11."
   ]
 }
