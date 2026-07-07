@@ -1,6 +1,6 @@
 /**
  * Reise Launch Analysis v2
- * Exporta Google Sheets + BigQuery para /data/*.json do repositório GitHub.
+ * Exporta BigQuery + fontes opcionais para /data/*.json do repositório GitHub.
  *
  * Propriedades esperadas em Script Properties:
  * - BQ_PROJECT_ID = reise-ssot
@@ -8,6 +8,7 @@
  * - GITHUB_REPO = owner/repo
  * - GITHUB_BRANCH = main
  * - DATA_PATH = data
+ * - MIDIA_SPREADSHEET_ID (opcional, usado apenas para midia_paga e crm_disparos)
  *
  * Serviços avançados necessários:
  * - BigQuery API
@@ -23,19 +24,35 @@ const CONFIG = {
 };
 
 function exportarTudo() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const modelos = sheetToObjects_(ss.getSheetByName('lancamentos_modelos'));
-  const midia = normalizeMidiaPaga_(sheetToObjects_(ss.getSheetByName('midia_paga')), modelos);
-  const crm = sheetToObjects_(ss.getSheetByName('crm_disparos'));
+  const modelos = carregarModelos_();
   const ativos = modelos.filter(m => ['ativo', 'pipeline'].includes(String(m.status || '').toLowerCase()));
+  Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${ativos.length} ativos/pipeline.`);
 
   const produtosDia = ativos.length ? consultarProdutosDia_(ativos) : [];
   logProdutosDiaExport_(ativos, produtosDia);
-  const estoque = ativos.length ? consultarEstoque_(ativos) : [];
+  escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
+
+  const estoqueStatus = exportarEstoqueSeDisponivel_(ativos);
+  const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos);
+  const crmStatus = exportarCrmSeConfigurado_();
+
   const manifest = {
     generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
     project: 'Reise Launch Analysis v2',
+    model_source: 'github_json',
+    sales_source: 'bigquery_ssot_shopify_shoppub',
     active_models: ativos.map(m => m.modelo_id),
+    row_counts: {
+      lancamentos_produtos_dia: produtosDia.length,
+      estoque: estoqueStatus.rows,
+      midia_paga: midiaStatus.rows,
+      crm_disparos: crmStatus.rows
+    },
+    export_status: {
+      estoque: estoqueStatus.status,
+      midia_paga: midiaStatus.status,
+      crm_disparos: crmStatus.status
+    },
     files: [
       'lancamentos_modelos.json',
       'lancamentos_produtos_dia.json',
@@ -51,11 +68,6 @@ function exportarTudo() {
     ]
   };
 
-  escreverJsonGitHub_('lancamentos_modelos.json', modelos);
-  escreverJsonGitHub_('midia_paga.json', midia);
-  escreverJsonGitHub_('crm_disparos.json', crm);
-  escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
-  escreverJsonGitHub_('estoque.json', estoque);
   escreverJsonGitHub_('manifest.json', manifest);
 }
 
@@ -242,7 +254,7 @@ function diagnosticarMonochromeAmplo() {
 WITH params AS (
   SELECT
     DATE('2026-06-25') AS d0,
-    DATE('2026-07-07') AS data_fim,
+    CURRENT_DATE('America/Sao_Paulo') AS data_fim,
     TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
 ), pedidos_validos AS (
   SELECT
@@ -390,7 +402,7 @@ ORDER BY receita DESC, quantidade DESC
 LIMIT 200`;
 
   const rows = runBq_(query);
-  Logger.log('diagnosticarMonochromeAmplo: produtos mais vendidos entre 2026-06-25 e 2026-07-07');
+  Logger.log('diagnosticarMonochromeAmplo: produtos mais vendidos desde 2026-06-25 ate hoje');
   Logger.log(JSON.stringify(rows.slice(0, 200), null, 2));
   return rows;
 }
@@ -580,6 +592,10 @@ WITH params AS (
           REGEXP_CONTAINS(v.match_text_norm, r'\\brs8\\b')
           AND REGEXP_CONTAINS(v.match_text_norm, r'(monochrome|mono)')
         )
+        OR (
+          REGEXP_CONTAINS(v.match_text_norm, r'\\bavant\\b')
+          AND REGEXP_CONTAINS(v.match_text_norm, r'(monochrome|mono)')
+        )
       )
     )
     OR (
@@ -657,6 +673,133 @@ ORDER BY modelo_id, sub_modelo, cor`;
   return runBq_(query);
 }
 
+function diagnosticarPipelineMonochrome_() {
+  const query = `
+WITH params AS (
+  SELECT
+    DATE('2026-06-25') AS d0,
+    CURRENT_DATE('America/Sao_Paulo') AS data_fim,
+    TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
+), pedidos_validos AS (
+  SELECT
+    o.source_order_id,
+    UPPER(o.source_system) AS source_system,
+    DATE(o.paid_at, 'America/Sao_Paulo') AS data
+  FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
+  CROSS JOIN params p
+  WHERE DATE(o.paid_at, 'America/Sao_Paulo') BETWEEN p.d0 AND p.data_fim
+    AND (
+      (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
+      OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
+    )
+), shopify_items AS (
+  SELECT
+    'SHOPIFY' AS source_system,
+    CAST(source_order_id AS STRING) AS source_order_id,
+    NULLIF(TRIM(CAST(sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS nome_produto,
+    NULLIF(TRIM(CAST(item_name AS STRING)), '') AS product_title,
+    CAST(NULL AS STRING) AS variant_title,
+    SAFE_CAST(quantity AS INT64) AS quantidade
+  FROM \`reise-ssot.stg.shopify_order_items\`
+), shoppub_item_json AS (
+  SELECT
+    'SHOPPUB' AS source_system,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    item_json
+  FROM \`reise-ssot.stg.shoppub_orders_tbl\` o
+  CROSS JOIN params p,
+  UNNEST(IFNULL(COALESCE(
+    JSON_EXTRACT_ARRAY(o.row_json, '$.pedidoitem_set'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.items'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.itens'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.line_items'),
+    JSON_EXTRACT_ARRAY(o.row_json, '$.order_items')
+  ), ARRAY<STRING>[])) AS item_json
+  WHERE o.is_valid_order_calc
+    AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt
+), shoppub_items AS (
+  SELECT
+    source_system,
+    source_order_id,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.sku'),
+      JSON_EXTRACT_SCALAR(item_json, '$.codigo'),
+      JSON_EXTRACT_SCALAR(item_json, '$.codigo_produto'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_sku'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.codigo'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.sku')
+    )), '') AS sku,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.descricao'),
+      JSON_EXTRACT_SCALAR(item_json, '$.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome')
+    )), '') AS nome_produto,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto')
+    )), '') AS product_title,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.variant_title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.variant'),
+      JSON_EXTRACT_SCALAR(item_json, '$.variacao'),
+      JSON_EXTRACT_SCALAR(item_json, '$.grade'),
+      JSON_EXTRACT_SCALAR(item_json, '$.cor'),
+      JSON_EXTRACT_SCALAR(item_json, '$.color')
+    )), '') AS variant_title,
+    SAFE_CAST(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.quantidade'),
+      JSON_EXTRACT_SCALAR(item_json, '$.qty'),
+      JSON_EXTRACT_SCALAR(item_json, '$.quantity')
+    ) AS INT64) AS quantidade
+  FROM shoppub_item_json
+), itens_unificados AS (
+  SELECT * FROM shopify_items
+  UNION ALL
+  SELECT * FROM shoppub_items
+), vendas AS (
+  SELECT
+    LOWER(p.source_system) AS origem,
+    p.source_order_id AS order_id,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(
+      COALESCE(i.nome_produto, ''), ' ',
+      COALESCE(i.product_title, ''), ' ',
+      COALESCE(i.variant_title, ''), ' ',
+      COALESCE(i.sku, '')
+    ), NFD), r'\\p{M}', '') AS match_text_norm
+  FROM pedidos_validos p
+  JOIN itens_unificados i
+    ON i.source_order_id = p.source_order_id
+   AND i.source_system = p.source_system
+  WHERE i.quantidade IS NOT NULL
+    AND i.quantidade > 0
+)
+SELECT
+  origem,
+  COUNT(*) AS linhas_fonte,
+  COUNT(DISTINCT order_id) AS pedidos_fonte,
+  COUNTIF(REGEXP_CONTAINS(match_text_norm, r'(rs8|avant|mono|monochrome|rs8 monochrome|rs8 avant)')) AS linhas_diagnostico,
+  COUNTIF(
+    (
+      REGEXP_CONTAINS(match_text_norm, r'\\brs8\\b')
+      OR REGEXP_CONTAINS(match_text_norm, r'\\bavant\\b')
+    )
+    AND REGEXP_CONTAINS(match_text_norm, r'(monochrome|mono)')
+  ) AS linhas_match_monochrome
+FROM vendas
+GROUP BY origem
+ORDER BY origem`;
+
+  const rows = runBq_(query);
+  Logger.log(`diagnosticarPipelineMonochrome_: ${JSON.stringify(rows)}`);
+  return rows;
+}
+
 function logProdutosDiaExport_(modelos, produtosDia) {
   const tables = [
     'reise-ssot.mart_shared.orders_all_valid_no_migracao',
@@ -691,10 +834,24 @@ function logProdutosDiaExport_(modelos, produtosDia) {
 
   if (!monoRows.length) {
     Logger.log('rs8_monochrome: sem linhas no match final. Rodando diagnostico filtrado e diagnostico amplo para separar fonte vs match.');
-    const filtrado = diagnosticarMonochrome();
-    Logger.log(`rs8_monochrome: diagnostico filtrado retornou ${filtrado.length} linhas candidatas.`);
-    const amplo = diagnosticarMonochromeAmplo();
-    Logger.log(`rs8_monochrome: diagnostico amplo retornou ${amplo.length} produtos agregados.`);
+    try {
+      const resumo = diagnosticarPipelineMonochrome_();
+      Logger.log(`rs8_monochrome: resumo fonte/match = ${JSON.stringify(resumo)}`);
+    } catch (error) {
+      Logger.log(`rs8_monochrome: falha no diagnostico resumo. Erro: ${error.message}`);
+    }
+    try {
+      const filtrado = diagnosticarMonochrome();
+      Logger.log(`rs8_monochrome: diagnostico filtrado retornou ${filtrado.length} linhas candidatas.`);
+    } catch (error) {
+      Logger.log(`rs8_monochrome: falha no diagnostico filtrado. Erro: ${error.message}`);
+    }
+    try {
+      const amplo = diagnosticarMonochromeAmplo();
+      Logger.log(`rs8_monochrome: diagnostico amplo retornou ${amplo.length} produtos agregados.`);
+    } catch (error) {
+      Logger.log(`rs8_monochrome: falha no diagnostico amplo. Erro: ${error.message}`);
+    }
   }
 }
 
@@ -719,6 +876,160 @@ function runBq_(query) {
     pageToken = page.pageToken;
   } while (pageToken);
   return rows;
+}
+
+function carregarModelos_() {
+  const modelos = lerJsonGitHub_('lancamentos_modelos.json');
+  if (!Array.isArray(modelos)) {
+    throw new Error('data/lancamentos_modelos.json precisa conter um array de modelos.');
+  }
+
+  const validos = [];
+  modelos.forEach((modelo, index) => {
+    const missing = [];
+    if (!modelo.modelo_id) missing.push('modelo_id');
+    if (!modelo.modelo) missing.push('modelo');
+    if (!modelo.linha) missing.push('linha');
+    if (!modelo.data_lancamento && !modelo.day_zero_base) missing.push('data_lancamento/day_zero_base');
+    if (!modelo.termos_busca && !modelo.sku_prefixos) missing.push('termos_busca/sku_prefixos');
+    if (!modelo.status) missing.push('status');
+
+    if (missing.length) {
+      Logger.log(`lancamentos_modelos.json item ${index + 1}: campos ausentes = ${missing.join(', ')}`);
+    }
+
+    const bloqueantes = ['modelo_id', 'modelo', 'data_lancamento/day_zero_base', 'status'];
+    if (missing.some(field => bloqueantes.includes(field))) {
+      Logger.log(`lancamentos_modelos.json item ${index + 1}: ignorado por falta de campo essencial.`);
+      return;
+    }
+
+    validos.push(modelo);
+  });
+
+  if (!validos.length) {
+    throw new Error('Nenhum modelo valido encontrado em data/lancamentos_modelos.json.');
+  }
+
+  return validos;
+}
+
+function lerJsonGitHub_(path) {
+  const token = getProp_('GITHUB_TOKEN', '');
+  if (!token || !CONFIG.githubRepo) throw new Error('Configure GITHUB_TOKEN e GITHUB_REPO nas Script Properties.');
+
+  const repoPath = githubDataPath_(path);
+  const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${repoPath}`;
+  const response = UrlFetchApp.fetch(`${api}?ref=${CONFIG.githubBranch}`, {
+    method: 'get',
+    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' },
+    muteHttpExceptions: true
+  });
+
+  const code = response.getResponseCode();
+  const body = response.getContentText();
+  if (code !== 200) {
+    throw new Error(`Nao consegui ler ${repoPath} no GitHub. HTTP ${code}: ${body.slice(0, 300)}`);
+  }
+
+  let metadata;
+  try {
+    metadata = JSON.parse(body);
+  } catch (error) {
+    throw new Error(`Resposta invalida do GitHub ao ler ${repoPath}: ${error.message}`);
+  }
+
+  const encoded = String(metadata.content || '').replace(/\s/g, '');
+  if (!encoded) throw new Error(`Arquivo ${repoPath} nao retornou conteudo pelo GitHub.`);
+
+  let text;
+  try {
+    text = Utilities.newBlob(Utilities.base64Decode(encoded)).getDataAsString('UTF-8');
+  } catch (error) {
+    throw new Error(`Nao consegui decodificar ${repoPath}: ${error.message}`);
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`JSON invalido em ${repoPath}: ${error.message}`);
+  }
+}
+
+function githubDataPath_(path) {
+  const clean = String(path || '').replace(/^\/+/, '');
+  const dataPath = String(CONFIG.dataPath || 'data').replace(/^\/+|\/+$/g, '');
+  if (!clean) throw new Error('Caminho JSON vazio.');
+  if (clean === dataPath || clean.startsWith(`${dataPath}/`)) return clean;
+  if (clean.indexOf('/') >= 0) return clean;
+  return `${dataPath}/${clean}`;
+}
+
+function exportarEstoqueSeDisponivel_(ativos) {
+  if (!ativos.length) {
+    Logger.log('Sem modelos ativos/pipeline; estoque nao consultado.');
+    return { status: 'skipped', rows: 'skipped' };
+  }
+
+  try {
+    const estoque = consultarEstoque_(ativos);
+    escreverJsonGitHub_('estoque.json', estoque);
+    Logger.log(`estoque.json exportado com ${estoque.length} linhas.`);
+    return { status: 'exported', rows: estoque.length };
+  } catch (error) {
+    Logger.log(`Estoque nao exportado; mantendo estoque.json atual. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message };
+  }
+}
+
+function exportarMidiaPagaSeConfigurada_(modelos) {
+  const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
+  if (!spreadsheetId) {
+    Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo midia_paga.json atual');
+    return { status: 'skipped', rows: 'skipped' };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName('midia_paga');
+    if (!sheet) {
+      Logger.log('Aba midia_paga nao encontrada; mantendo midia_paga.json atual');
+      return { status: 'skipped', rows: 'skipped' };
+    }
+
+    const midia = normalizeMidiaPaga_(sheetToObjects_(sheet), modelos);
+    escreverJsonGitHub_('midia_paga.json', midia);
+    Logger.log(`midia_paga.json exportado com ${midia.length} linhas.`);
+    return { status: 'exported', rows: midia.length };
+  } catch (error) {
+    Logger.log(`midia_paga.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message };
+  }
+}
+
+function exportarCrmSeConfigurado_() {
+  const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
+  if (!spreadsheetId) {
+    Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo crm_disparos.json atual');
+    return { status: 'skipped', rows: 'skipped' };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName('crm_disparos');
+    if (!sheet) {
+      Logger.log('Aba crm_disparos nao encontrada; mantendo crm_disparos.json atual');
+      return { status: 'skipped', rows: 'skipped' };
+    }
+
+    const crm = sheetToObjects_(sheet);
+    escreverJsonGitHub_('crm_disparos.json', crm);
+    Logger.log(`crm_disparos.json exportado com ${crm.length} linhas.`);
+    return { status: 'exported', rows: crm.length };
+  } catch (error) {
+    Logger.log(`crm_disparos.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message };
+  }
 }
 
 function sheetToObjects_(sheet) {

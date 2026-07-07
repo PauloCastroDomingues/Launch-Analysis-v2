@@ -1,12 +1,12 @@
 -- Diagnostico amplo Monochrome
--- Lista os produtos mais vendidos entre 2026-06-25 e 2026-07-07 sem filtro de nome/SKU.
+-- Lista os produtos mais vendidos desde 2026-06-25 ate hoje sem filtro de nome/SKU.
 -- Objetivo: descobrir como o RS8 Avant Monochrome esta cadastrado de verdade.
 -- Nao cria views/tabelas; rodar em southamerica-east1.
 
 WITH params AS (
   SELECT
     DATE('2026-06-25') AS d0,
-    DATE('2026-07-07') AS data_fim,
+    CURRENT_DATE('America/Sao_Paulo') AS data_fim,
     TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
 ),
 pedidos_validos AS (

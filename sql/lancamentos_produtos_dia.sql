@@ -200,6 +200,10 @@ match AS (
           REGEXP_CONTAINS(v.match_text_norm, r'\brs8\b')
           AND REGEXP_CONTAINS(v.match_text_norm, r'(monochrome|mono)')
         )
+        OR (
+          REGEXP_CONTAINS(v.match_text_norm, r'\bavant\b')
+          AND REGEXP_CONTAINS(v.match_text_norm, r'(monochrome|mono)')
+        )
       )
     )
     OR (
