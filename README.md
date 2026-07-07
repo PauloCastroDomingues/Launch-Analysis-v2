@@ -70,7 +70,7 @@ Script Properties obrigatórias:
 ```txt
 BQ_PROJECT_ID = reise-ssot
 GITHUB_TOKEN
-GITHUB_REPO = owner/repo
+GITHUB_REPO = PauloCastroDomingues/Launch-Analysis-v2
 GITHUB_BRANCH = main
 DATA_PATH = data
 ```
@@ -98,6 +98,7 @@ Regras fixas:
 - Se `novos` e `recorrentes` ainda não forem seguros, exportar `null`.
 - Ausência de dado vira `—` no front e `null` nos gráficos, nunca `0`.
 - A saída de `lancamentos_produtos_dia.json` inclui `origem`, `source_order_id`, `sku`, `nome_produto`, `variant_title`, `sub_modelo`, `cor`, `pedidos`, `pares`, `receita`, `novos` e `recorrentes`.
+- A classificação da linha do produto usa prioridade fixa pelo texto/SKU normalizado: Monochrome, Phantom, GT e depois Avant.
 
 ## Como cadastrar novo lançamento
 

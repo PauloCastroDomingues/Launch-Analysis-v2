@@ -5,7 +5,7 @@
  * Propriedades esperadas em Script Properties:
  * - BQ_PROJECT_ID = reise-ssot
  * - GITHUB_TOKEN
- * - GITHUB_REPO = owner/repo
+ * - GITHUB_REPO = PauloCastroDomingues/Launch-Analysis-v2
  * - GITHUB_BRANCH = main
  * - DATA_PATH = data
  * - MIDIA_SPREADSHEET_ID (opcional, usado apenas para midia_paga e crm_disparos)
@@ -24,6 +24,7 @@ const CONFIG = {
 };
 
 function exportarTudo() {
+  validarGithubConfig_();
   const modelos = carregarModelos_();
   const ativos = modelos.filter(m => ['ativo', 'pipeline'].includes(String(m.status || '').toLowerCase()));
   Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${ativos.length} ativos/pipeline.`);
@@ -415,9 +416,7 @@ LIMIT 200`;
 
 function consultarProdutosDia_(modelos) {
   const modelosSql = modelos.map(m => {
-    const termosRegex = termosRegex_(m);
-    const skuPrefixos = skuPrefixos_(m);
-    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base || m.data_lancamento)}') AS d0, '${sql_(termosRegex)}' AS termos_regex, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base || m.data_lancamento)}') AS d0`;
   }).join('\nUNION ALL\n');
 
   const query = `
@@ -425,12 +424,6 @@ WITH params AS (
   SELECT TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
 ), modelos AS (
   ${modelosSql}
-), modelos_norm AS (
-  SELECT
-    *,
-    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(IFNULL(termos_regex, ''), NFD), r'\\p{M}', '') AS termos_regex_norm,
-    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(REPLACE(IFNULL(sku_prefixos, ''), ',', '|'), NFD), r'\\p{M}', '') AS sku_prefixos_norm
-  FROM modelos
 ), pedidos_validos AS (
   SELECT
     o.source_order_id,
@@ -439,7 +432,7 @@ WITH params AS (
     DATE(o.paid_at, 'America/Sao_Paulo') AS data
   FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
   CROSS JOIN params p
-  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos_norm)
+  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos)
     AND (
       (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
       OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
@@ -452,6 +445,8 @@ WITH params AS (
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS product_title,
     CAST(NULL AS STRING) AS variant_title,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS title_text,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS name_text,
     SAFE_CAST(i.quantity AS INT64) AS pares,
     SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount) AS NUMERIC) AS receita
   FROM \`reise-ssot.mart_shared.fct_order_item\` i
@@ -508,6 +503,16 @@ WITH params AS (
       JSON_EXTRACT_SCALAR(item_json, '$.cor'),
       JSON_EXTRACT_SCALAR(item_json, '$.color')
     )), '') AS variant_title,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.title'),
+      JSON_EXTRACT_SCALAR(item_json, '$.product_title')
+    )), '') AS title_text,
+    NULLIF(TRIM(COALESCE(
+      JSON_EXTRACT_SCALAR(item_json, '$.name'),
+      JSON_EXTRACT_SCALAR(item_json, '$.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto.nome'),
+      JSON_EXTRACT_SCALAR(item_json, '$.produto')
+    )), '') AS name_text,
     SAFE_CAST(COALESCE(
       JSON_EXTRACT_SCALAR(item_json, '$.quantidade'),
       JSON_EXTRACT_SCALAR(item_json, '$.qty'),
@@ -549,13 +554,15 @@ WITH params AS (
     COALESCE(i.nome_produto, i.product_title, '') AS nome_produto,
     COALESCE(i.product_title, i.nome_produto, '') AS product_title,
     COALESCE(i.variant_title, '') AS variant_title,
-    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(
+      COALESCE(i.sku, ''), ' ',
       COALESCE(i.nome_produto, ''), ' ',
       COALESCE(i.product_title, ''), ' ',
       COALESCE(i.variant_title, ''), ' ',
-      COALESCE(i.sku, '')
-    ), NFD), r'\\p{M}', '') AS match_text_norm,
-    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', '') AS sku_norm,
+      COALESCE(i.title_text, ''), ' ',
+      COALESCE(i.name_text, '')
+    ), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS sku_norm,
     i.pares,
     i.receita
   FROM pedidos_validos p
@@ -564,65 +571,58 @@ WITH params AS (
    AND i.source_system = p.source_system
   WHERE i.pares IS NOT NULL
     AND i.pares > 0
+), classificado AS (
+  SELECT
+    v.*,
+    CASE
+      WHEN
+        REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])(monochrome)([^a-z0-9]|$)')
+        OR (
+          REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])mono([^a-z0-9]|$)')
+          AND REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])(rs8|avant)([^a-z0-9]|$)')
+        )
+        OR REGEXP_CONTAINS(v.sku_norm, r'(mono|monochrome)')
+      THEN 'rs8_monochrome'
+
+      WHEN REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])phantom([^a-z0-9]|$)')
+        OR REGEXP_CONTAINS(v.sku_norm, r'phantom')
+      THEN 'phantom'
+
+      WHEN REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])gt([^a-z0-9]|$)')
+        OR REGEXP_CONTAINS(v.sku_norm, r'(^|[^a-z0-9])gt([^a-z0-9]|$)')
+      THEN 'gt'
+
+      WHEN REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])avant([^a-z0-9]|$)')
+        OR REGEXP_CONTAINS(v.sku_norm, r'avant')
+      THEN 'avant'
+
+      ELSE NULL
+    END AS modelo_id_detectado
+  FROM vendas v
 ), match AS (
   SELECT
     m.modelo_id,
-    v.data,
-    v.origem,
-    v.source_order_id,
-    v.sku,
-    v.nome_produto,
-    v.variant_title,
+    c.data,
+    c.origem,
+    c.source_order_id,
+    c.sku,
+    c.nome_produto,
+    c.variant_title,
     COALESCE(
-      NULLIF(v.product_title, ''),
-      NULLIF(REGEXP_EXTRACT(v.nome_produto, r'^(.*?)(?: - | / |\\|)'), ''),
-      NULLIF(v.nome_produto, '')
+      NULLIF(c.product_title, ''),
+      NULLIF(REGEXP_EXTRACT(c.nome_produto, r'^(.*?)(?: - | / |\\|)'), ''),
+      NULLIF(c.nome_produto, '')
     ) AS sub_modelo,
     COALESCE(
-      NULLIF(v.variant_title, ''),
-      NULLIF(REGEXP_EXTRACT(v.nome_produto, r'(?i)(?:cor|color)[: -]+([^|/,-]+)'), '')
+      NULLIF(c.variant_title, ''),
+      NULLIF(REGEXP_EXTRACT(c.nome_produto, r'(?i)(?:cor|color)[: -]+([^|/,-]+)'), '')
     ) AS cor,
-    v.pares,
-    v.receita
-  FROM vendas v
-  JOIN modelos_norm m
-    ON v.data >= m.d0 -- inclui D0
-   AND (
-    (
-      m.modelo_id = 'rs8_monochrome'
-      AND (
-        EXISTS (
-          SELECT 1
-          FROM UNNEST(SPLIT(IFNULL(m.sku_prefixos_norm, ''), '|')) AS prefixo
-          WHERE prefixo != ''
-            AND STARTS_WITH(v.sku_norm, prefixo)
-        )
-        OR (
-          REGEXP_CONTAINS(v.match_text_norm, r'\\brs8\\b')
-          AND REGEXP_CONTAINS(v.match_text_norm, r'(monochrome|mono)')
-        )
-        OR (
-          REGEXP_CONTAINS(v.match_text_norm, r'\\bavant\\b')
-          AND REGEXP_CONTAINS(v.match_text_norm, r'(monochrome|mono)')
-        )
-      )
-    )
-    OR (
-      m.modelo_id != 'rs8_monochrome'
-      AND (
-        (
-          IFNULL(m.termos_regex_norm, '') != ''
-          AND REGEXP_CONTAINS(v.match_text_norm, m.termos_regex_norm)
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM UNNEST(SPLIT(IFNULL(m.sku_prefixos_norm, ''), '|')) AS prefixo
-          WHERE prefixo != ''
-            AND STARTS_WITH(v.sku_norm, prefixo)
-        )
-      )
-    )
-   )
+    c.pares,
+    c.receita
+  FROM classificado c
+  JOIN modelos m
+    ON c.data >= m.d0 -- inclui D0
+   AND c.modelo_id_detectado = m.modelo_id
 )
 SELECT
   modelo_id,
@@ -830,6 +830,7 @@ function logProdutosDiaExport_(modelos, produtosDia) {
 
   Logger.log(`exportarTudo: ${produtosDia.length} linhas em lancamentos_produtos_dia.json.`);
   Logger.log(`exportarTudo: tabelas consultadas = ${tables.join(', ')}`);
+  Logger.log('exportarTudo: classificacao de linha por prioridade fixa = Monochrome > Phantom > GT > Avant.');
   Logger.log(`exportarTudo: linhas por modelo = ${JSON.stringify(byModelo)}`);
   Logger.log(`exportarTudo: linhas por origem = ${JSON.stringify(byOrigem)}`);
 
@@ -891,6 +892,15 @@ function runBq_(query) {
   return rows;
 }
 
+function validarGithubConfig_() {
+  const missing = [];
+  if (!getProp_('GITHUB_TOKEN', '')) missing.push('GITHUB_TOKEN');
+  if (!CONFIG.githubRepo) missing.push('GITHUB_REPO');
+  if (missing.length) {
+    throw new Error(`Exportacao interrompida antes de consultar o BigQuery: configure ${missing.join(', ')} nas Script Properties. Sem GITHUB_TOKEN e GITHUB_REPO, o Apps Script nao consegue ler data/lancamentos_modelos.json no GitHub.`);
+  }
+}
+
 function carregarModelos_() {
   const modelos = lerJsonGitHub_('lancamentos_modelos.json');
   if (!Array.isArray(modelos)) {
@@ -928,8 +938,8 @@ function carregarModelos_() {
 }
 
 function lerJsonGitHub_(path) {
+  validarGithubConfig_();
   const token = getProp_('GITHUB_TOKEN', '');
-  if (!token || !CONFIG.githubRepo) throw new Error('Configure GITHUB_TOKEN e GITHUB_REPO nas Script Properties.');
 
   const repoPath = githubDataPath_(path);
   const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${repoPath}`;
@@ -1142,8 +1152,8 @@ function skuPrefixos_(model) {
 }
 
 function escreverJsonGitHub_(fileName, payload) {
+  validarGithubConfig_();
   const token = getProp_('GITHUB_TOKEN', '');
-  if (!token || !CONFIG.githubRepo) throw new Error('Configure GITHUB_TOKEN e GITHUB_REPO nas Script Properties.');
   const path = `${CONFIG.dataPath}/${fileName}`;
   const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${path}`;
   const current = UrlFetchApp.fetch(`${api}?ref=${CONFIG.githubBranch}`, {
