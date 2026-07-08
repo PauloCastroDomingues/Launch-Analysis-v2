@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-08T11:13:06-03:00",
+  "generated_at": "2026-07-08T14:25:26-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_shopify_shoppub",
@@ -7,10 +7,28 @@
     "rs8_monochrome"
   ],
   "row_counts": {
-    "lancamentos_produtos_dia": 1001,
+    "lancamentos_produtos_dia": 319,
+    "auditoria_monochrome": 1,
     "estoque": 0,
     "midia_paga": "skipped",
     "crm_disparos": "skipped"
+  },
+  "data_quality": {
+    "rs8_monochrome": {
+      "status": "ok",
+      "auditado": true,
+      "pedidos_auditoria": 250,
+      "pares_auditoria": 319,
+      "receita_auditoria": 229361,
+      "pedidos_exportados": 250,
+      "pares_exportados": 319,
+      "receita_exportada": 229361,
+      "diferenca_pedidos_pct": 0,
+      "diferenca_pares_pct": 0,
+      "diferenca_receita_pct": 0,
+      "linhas_suspeitas": 0,
+      "duplicidades": 0
+    }
   },
   "export_status": {
     "estoque": "exported",
@@ -20,6 +38,7 @@
   "files": [
     "lancamentos_modelos.json",
     "lancamentos_produtos_dia.json",
+    "auditoria_monochrome.json",
     "midia_paga.json",
     "crm_disparos.json",
     "estoque.json",
