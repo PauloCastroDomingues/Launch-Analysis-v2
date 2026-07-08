@@ -1,0 +1,475 @@
+{
+  "modelo_id": "rs8_monochrome",
+  "fonte": "reise-ssot.core.order_item + core.order",
+  "regra_match": "item_name normalizado contem monochrome; SKU especifico permitido apenas para RS8-AVANT-MONO, RS8-MONO, RS8AVANTMONO",
+  "periodo": {
+    "inicio": "2026-06-25",
+    "fim": "2026-07-08"
+  },
+  "resumo": {
+    "primeira_venda": "2026-06-25",
+    "ultima_venda": "2026-07-08",
+    "pedidos": 250,
+    "pares_vendidos": 319,
+    "receita_liquida_itens": 229361,
+    "preco_medio_liquido": 719
+  },
+  "por_dia": [
+    {
+      "data": "2026-06-25",
+      "pedidos": 39,
+      "pares_vendidos": 44,
+      "receita_liquida_itens": 31636,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-06-26",
+      "pedidos": 22,
+      "pares_vendidos": 26,
+      "receita_liquida_itens": 18694,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-06-27",
+      "pedidos": 17,
+      "pares_vendidos": 25,
+      "receita_liquida_itens": 17975,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-06-28",
+      "pedidos": 23,
+      "pares_vendidos": 33,
+      "receita_liquida_itens": 23727,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-06-29",
+      "pedidos": 16,
+      "pares_vendidos": 20,
+      "receita_liquida_itens": 14380,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-06-30",
+      "pedidos": 9,
+      "pares_vendidos": 11,
+      "receita_liquida_itens": 7909,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-01",
+      "pedidos": 19,
+      "pares_vendidos": 27,
+      "receita_liquida_itens": 19413,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-02",
+      "pedidos": 22,
+      "pares_vendidos": 26,
+      "receita_liquida_itens": 18694,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-03",
+      "pedidos": 18,
+      "pares_vendidos": 26,
+      "receita_liquida_itens": 18694,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-04",
+      "pedidos": 15,
+      "pares_vendidos": 15,
+      "receita_liquida_itens": 10785,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-05",
+      "pedidos": 14,
+      "pares_vendidos": 19,
+      "receita_liquida_itens": 13661,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-06",
+      "pedidos": 18,
+      "pares_vendidos": 22,
+      "receita_liquida_itens": 15818,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-07",
+      "pedidos": 14,
+      "pares_vendidos": 21,
+      "receita_liquida_itens": 15099,
+      "preco_medio_liquido": 719
+    },
+    {
+      "data": "2026-07-08",
+      "pedidos": 4,
+      "pares_vendidos": 4,
+      "receita_liquida_itens": 2876,
+      "preco_medio_liquido": 719
+    }
+  ],
+  "por_produto": [
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
+      "sku": "RS8AVANT-MC-40",
+      "pedidos": 28,
+      "pares_vendidos": 28,
+      "receita_liquida_itens": 20132,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
+      "sku": "RS8AVANT-MC-42",
+      "pedidos": 25,
+      "pares_vendidos": 25,
+      "receita_liquida_itens": 17975,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
+      "sku": "RS8AVANT-MC-41",
+      "pedidos": 25,
+      "pares_vendidos": 25,
+      "receita_liquida_itens": 17975,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
+      "sku": "RS8AVANT-AB-40",
+      "pedidos": 20,
+      "pares_vendidos": 20,
+      "receita_liquida_itens": 14380,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
+      "sku": "RS8AVANT-AB-41",
+      "pedidos": 19,
+      "pares_vendidos": 19,
+      "receita_liquida_itens": 13661,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
+      "sku": "RS8AVANT-AB-42",
+      "pedidos": 17,
+      "pares_vendidos": 17,
+      "receita_liquida_itens": 12223,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
+      "sku": "RS8AVANT-CT-41",
+      "pedidos": 17,
+      "pares_vendidos": 17,
+      "receita_liquida_itens": 12223,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
+      "sku": "RS8AVANT-CT-40",
+      "pedidos": 15,
+      "pares_vendidos": 15,
+      "receita_liquida_itens": 10785,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
+      "sku": "RS8AVANT-CF-41",
+      "pedidos": 15,
+      "pares_vendidos": 15,
+      "receita_liquida_itens": 10785,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
+      "sku": "RS8AVANT-AB-43",
+      "pedidos": 14,
+      "pares_vendidos": 14,
+      "receita_liquida_itens": 10066,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
+      "sku": "RS8AVANT-CT-42",
+      "pedidos": 13,
+      "pares_vendidos": 13,
+      "receita_liquida_itens": 9347,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
+      "sku": "RS8AVANT-CF-40",
+      "pedidos": 12,
+      "pares_vendidos": 12,
+      "receita_liquida_itens": 8628,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
+      "sku": "RS8AVANT-MC-43",
+      "pedidos": 11,
+      "pares_vendidos": 11,
+      "receita_liquida_itens": 7909,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
+      "sku": "RS8AVANT-CF-42",
+      "pedidos": 11,
+      "pares_vendidos": 11,
+      "receita_liquida_itens": 7909,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
+      "sku": "RS8AVANT-MC-44",
+      "pedidos": 9,
+      "pares_vendidos": 9,
+      "receita_liquida_itens": 6471,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
+      "sku": "RS8AVANT-CF-43",
+      "pedidos": 8,
+      "pares_vendidos": 8,
+      "receita_liquida_itens": 5752,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
+      "sku": "RS8AVANT-MC-39",
+      "pedidos": 7,
+      "pares_vendidos": 7,
+      "receita_liquida_itens": 5033,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 44",
+      "sku": "RS8AVANT-CT-44",
+      "pedidos": 5,
+      "pares_vendidos": 5,
+      "receita_liquida_itens": 3595,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
+      "sku": "RS8AVANT-CT-43",
+      "pedidos": 5,
+      "pares_vendidos": 5,
+      "receita_liquida_itens": 3595,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 44",
+      "sku": "RS8AVANT-CF-44",
+      "pedidos": 5,
+      "pares_vendidos": 5,
+      "receita_liquida_itens": 3595,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 39",
+      "sku": "RS8AVANT-CT-39",
+      "pedidos": 5,
+      "pares_vendidos": 5,
+      "receita_liquida_itens": 3595,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 39",
+      "sku": "RS8AVANT-AB-39",
+      "pedidos": 4,
+      "pares_vendidos": 4,
+      "receita_liquida_itens": 2876,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 39",
+      "sku": "RS8AVANT-CF-39",
+      "pedidos": 4,
+      "pares_vendidos": 4,
+      "receita_liquida_itens": 2876,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 38",
+      "sku": "RS8AVANT-AB-38",
+      "pedidos": 4,
+      "pares_vendidos": 4,
+      "receita_liquida_itens": 2876,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 38",
+      "sku": "RS8AVANT-CF-38",
+      "pedidos": 3,
+      "pares_vendidos": 3,
+      "receita_liquida_itens": 2157,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 38",
+      "sku": "RS8AVANT-CT-38",
+      "pedidos": 3,
+      "pares_vendidos": 3,
+      "receita_liquida_itens": 2157,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 45",
+      "sku": "RS8AVANT-MC-45",
+      "pedidos": 3,
+      "pares_vendidos": 3,
+      "receita_liquida_itens": 2157,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 46",
+      "sku": "RS8AVANT-CT-46",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_liquida_itens": 1438,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 46",
+      "sku": "RS8AVANT-AB-46",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_liquida_itens": 1438,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 45",
+      "sku": "RS8AVANT-CF-45",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_liquida_itens": 1438,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 45",
+      "sku": "RS8AVANT-CT-45",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_liquida_itens": 1438,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 44",
+      "sku": "RS8AVANT-AB-44",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_liquida_itens": 1438,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 38",
+      "sku": "RS8AVANT-MC-38",
+      "pedidos": 1,
+      "pares_vendidos": 1,
+      "receita_liquida_itens": 719,
+      "preco_medio_liquido": 719
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 45",
+      "sku": "RS8AVANT-AB-45",
+      "pedidos": 1,
+      "pares_vendidos": 1,
+      "receita_liquida_itens": 719,
+      "preco_medio_liquido": 719
+    }
+  ],
+  "por_cor": [
+    {
+      "cor": "cinza",
+      "pedidos": 109,
+      "pares_vendidos": 109,
+      "receita_liquida_itens": 78371
+    },
+    {
+      "cor": "all black",
+      "pedidos": 83,
+      "pares_vendidos": 83,
+      "receita_liquida_itens": 59677
+    },
+    {
+      "cor": "caqui",
+      "pedidos": 67,
+      "pares_vendidos": 67,
+      "receita_liquida_itens": 48173
+    },
+    {
+      "cor": "marrom",
+      "pedidos": 60,
+      "pares_vendidos": 60,
+      "receita_liquida_itens": 43140
+    }
+  ],
+  "por_tamanho": [
+    {
+      "tamanho": "41",
+      "pedidos": 62,
+      "pares_vendidos": 76,
+      "receita_liquida_itens": 54644
+    },
+    {
+      "tamanho": "40",
+      "pedidos": 59,
+      "pares_vendidos": 75,
+      "receita_liquida_itens": 53925
+    },
+    {
+      "tamanho": "42",
+      "pedidos": 50,
+      "pares_vendidos": 66,
+      "receita_liquida_itens": 47454
+    },
+    {
+      "tamanho": "43",
+      "pedidos": 25,
+      "pares_vendidos": 38,
+      "receita_liquida_itens": 27322
+    },
+    {
+      "tamanho": "44",
+      "pedidos": 15,
+      "pares_vendidos": 21,
+      "receita_liquida_itens": 15099
+    },
+    {
+      "tamanho": "39",
+      "pedidos": 17,
+      "pares_vendidos": 20,
+      "receita_liquida_itens": 14380
+    },
+    {
+      "tamanho": "38",
+      "pedidos": 11,
+      "pares_vendidos": 11,
+      "receita_liquida_itens": 7909
+    },
+    {
+      "tamanho": "45",
+      "pedidos": 7,
+      "pares_vendidos": 8,
+      "receita_liquida_itens": 5752
+    },
+    {
+      "tamanho": "46",
+      "pedidos": 4,
+      "pares_vendidos": 4,
+      "receita_liquida_itens": 2876
+    }
+  ],
+  "duplicidades": [],
+  "linhas_suspeitas": []
+}
