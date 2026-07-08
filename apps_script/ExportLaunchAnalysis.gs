@@ -1424,7 +1424,7 @@ function exportarCrmSeConfigurado_() {
       return { status: 'skipped', rows: 'skipped' };
     }
 
-    const crm = sheetToObjects_(sheet);
+    const crm = normalizeCrmDisparos_(sheetToObjects_(sheet));
     escreverJsonGitHub_('crm_disparos.json', crm);
     Logger.log(`crm_disparos.json exportado com ${crm.length} linhas.`);
     return { status: 'exported', rows: crm.length };
@@ -1482,6 +1482,24 @@ function normalizeMidiaPaga_(rows, modelos) {
   });
 }
 
+function normalizeCrmDisparos_(rows) {
+  return rows.map(row => ({
+    modelo_id: row.modelo_id || null,
+    modelo: row.modelo || null,
+    data_disparo: row.data_disparo || null,
+    campanha: row.campanha || null,
+    canal: row.canal || null,
+    investimento: numberOrNull_(row.investimento),
+    receita_linha: numberOrNull_(row.receita_linha),
+    receita_dia: numberOrNull_(row.receita_dia),
+    pedidos: numberOrNull_(row.pedidos),
+    roas_proxy: numberOrNull_(row.roas_proxy),
+    cpa: numberOrNull_(row.cpa),
+    observacao: row.observacao || null,
+    status: row.status || null
+  }));
+}
+
 function inferJanelaMidia_(row, modelo) {
   const d0 = dateOnly_(modelo.day_zero_base || modelo.data_lancamento);
   const end = dateOnly_(row.data_fim || row.data_inicio);
@@ -1507,9 +1525,12 @@ function numberOrNull_(value) {
   if (typeof value === 'number') return Number.isNaN(value) ? null : value;
   const text = String(value).trim();
   if (!text) return null;
-  const normalized = text.includes(',')
-    ? text.replace(/\./g, '').replace(',', '.')
-    : text;
+  const cleaned = text.replace(/\s/g, '').replace(/[^\d,.-]/g, '');
+  if (!cleaned || !/[0-9]/.test(cleaned)) return null;
+  const usesDecimalComma = cleaned.includes(',') && (!cleaned.includes('.') || cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.'));
+  const normalized = usesDecimalComma
+    ? cleaned.replace(/\./g, '').replace(',', '.')
+    : cleaned.replace(/,/g, '');
   const parsed = Number(normalized);
   return Number.isNaN(parsed) ? null : parsed;
 }

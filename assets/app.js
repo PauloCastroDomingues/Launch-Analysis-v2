@@ -748,7 +748,16 @@
 
   function numberOrNull(value) {
     if (value === null || value === undefined || value === '') return null;
-    const num = Number(value);
+    if (typeof value === 'number') return Number.isNaN(value) ? null : value;
+    const text = String(value).trim();
+    if (!text) return null;
+    const cleaned = text.replace(/\s/g, '').replace(/[^\d,.-]/g, '');
+    if (!cleaned || !/[0-9]/.test(cleaned)) return null;
+    const usesDecimalComma = cleaned.includes(',') && (!cleaned.includes('.') || cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.'));
+    const normalized = usesDecimalComma
+      ? cleaned.replace(/\./g, '').replace(',', '.')
+      : cleaned.replace(/,/g, '');
+    const num = Number(normalized);
     return Number.isNaN(num) ? null : num;
   }
 
@@ -1772,6 +1781,24 @@
     };
   }
 
+  function normalizeCrmRow(row) {
+    const investimento = numberOrNull(row.investimento);
+    const receitaLinha = numberOrNull(row.receita_linha);
+    const receitaDia = numberOrNull(row.receita_dia);
+    const pedidos = numberOrNull(row.pedidos);
+    const roas = numberOrNull(row.roas_proxy) ?? (investimento && receitaLinha !== null ? receitaLinha / investimento : null);
+    const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
+    return {
+      ...row,
+      investimento,
+      receita_linha: receitaLinha,
+      receita_dia: receitaDia,
+      pedidos,
+      roas_proxy: roas,
+      cpa
+    };
+  }
+
   function aggregateMediaRows(rows) {
     const groups = new Map();
     rows.forEach((row) => {
@@ -1823,7 +1850,9 @@
         <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
 
-    const crmRows = (state.data.crm_disparos || []).filter((row) => row.modelo_id === selected.modelo_id);
+    const crmRows = (state.data.crm_disparos || [])
+      .filter((row) => row.modelo_id === selected.modelo_id)
+      .map(normalizeCrmRow);
     $('crm-table').innerHTML = crmRows.length ? crmRows.map((row) => `
       <tr>
         <td>${fmtDate(row.data_disparo)}</td>
