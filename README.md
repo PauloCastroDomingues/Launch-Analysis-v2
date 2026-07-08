@@ -14,7 +14,7 @@ Ele roda na Vercel, lê JSONs da pasta `/data` via `fetch` e não depende de bac
 - `sql/lancamentos_produtos_dia.sql`: query-base do pipeline de vendas por lançamento.
 - `sql/diagnostico_monochrome.sql`: query de diagnóstico filtrado para produtos RS8/Avant/Mono vendidos desde o D0 do Monochrome.
 - `sql/diagnostico_monochrome_amplo.sql`: diagnóstico amplo, sem filtro de nome/SKU, para descobrir como o produto foi cadastrado de verdade.
-- `sql/auditoria_historico_gt_avant.sql`: query de auditoria para recalcular GT e Avant no SSOT usando apenas pedidos validos.
+- `sql/auditoria_historico_gt_avant.sql`: query de auditoria para recalcular GT e Avant no SSOT usando apenas pedidos validos, com abertura Shopify/Shoppub.
 - `vercel.json`: configuração simples para deploy estático.
 
 ## Estrutura
@@ -92,7 +92,7 @@ As vendas vêm do BigQuery/SSOT e precisam unificar Shopify + Shoppub.
 Regras fixas:
 
 - Usar `reise-ssot.mart_shared.orders_all_valid_no_migracao` como base de pedidos válidos.
-- Para recalcular benchmarks historicos de GT e Avant, usar `sql/auditoria_historico_gt_avant.sql`, baseada em `reise-ssot.core.order_item` + `reise-ssot.core.order` com `o.is_valid_order = TRUE`.
+- Para recalcular benchmarks historicos de GT e Avant, usar `sql/auditoria_historico_gt_avant.sql`, baseada em pedidos validos de Shopify e Shoppub, com abertura de pedidos, pares e receita por origem.
 - Usar Shopify para pedidos a partir de `2025-07-10 05:00:00` BRT.
 - Usar Shoppub para histórico até `2025-07-10 05:00:00` BRT.
 - Sempre filtrar lançamento com `v.data >= m.d0` para incluir o D0.

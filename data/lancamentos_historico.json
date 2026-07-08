@@ -13,7 +13,13 @@
         "ticket": 925,
         "preco_medio_par": 777,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 105,
+        "pares_shoppub": 0,
+        "pares_shopify": 125,
+        "receita_shoppub": 0,
+        "receita_shopify": 97125
       },
       "15d": {
         "receita": 131257,
@@ -22,7 +28,13 @@
         "ticket": 924.35,
         "preco_medio_par": 776.67,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 142,
+        "pares_shoppub": 0,
+        "pares_shopify": 169,
+        "receita_shoppub": 0,
+        "receita_shopify": 131257
       },
       "30d": {
         "receita": 302197,
@@ -31,7 +43,13 @@
         "ticket": 1223.47,
         "preco_medio_par": 772.88,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 247,
+        "pares_shoppub": 0,
+        "pares_shopify": 391,
+        "receita_shoppub": 0,
+        "receita_shopify": 302197
       },
       "60d": {
         "receita": 574639,
@@ -40,7 +58,13 @@
         "ticket": 1149.28,
         "preco_medio_par": 767.21,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 500,
+        "pares_shoppub": 0,
+        "pares_shopify": 749,
+        "receita_shoppub": 0,
+        "receita_shopify": 574639
       },
       "90d": {
         "receita": 938191.5,
@@ -49,7 +73,13 @@
         "ticket": 1068.56,
         "preco_medio_par": 767.75,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 878,
+        "pares_shoppub": 0,
+        "pares_shopify": 1222,
+        "receita_shoppub": 0,
+        "receita_shopify": 938191.5
       }
     },
     "multiplicadores": {
@@ -109,7 +139,8 @@
     "insights": [
       "Janelas recalculadas pelo SSOT com pedidos validos (core.order_item + core.order; o.is_valid_order = TRUE).",
       "D0 analitico ajustado para a primeira venda valida encontrada: 2025-12-17.",
-      "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio."
+      "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio.",
+      "Abertura por origem da auditoria: 0 Shoppub e 100% Shopify nas janelas recalculadas."
     ],
     "first_sale_date": "2025-12-17",
     "first_sale_gap_dias": 0
@@ -128,7 +159,13 @@
         "ticket": 652.48,
         "preco_medio_par": 529.37,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 172,
+        "pares_shoppub": 0,
+        "pares_shopify": 212,
+        "receita_shoppub": 0,
+        "receita_shopify": 112226
       },
       "15d": {
         "receita": 179208,
@@ -137,7 +174,13 @@
         "ticket": 666.2,
         "preco_medio_par": 533.36,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 269,
+        "pares_shoppub": 0,
+        "pares_shopify": 336,
+        "receita_shoppub": 0,
+        "receita_shopify": 179208
       },
       "30d": {
         "receita": 430225,
@@ -146,7 +189,13 @@
         "ticket": 894.44,
         "preco_medio_par": 534.44,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 481,
+        "pares_shoppub": 0,
+        "pares_shopify": 805,
+        "receita_shoppub": 0,
+        "receita_shopify": 430225
       },
       "60d": {
         "receita": 1141861,
@@ -155,7 +204,13 @@
         "ticket": 812.71,
         "preco_medio_par": 540.4,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 1405,
+        "pares_shoppub": 0,
+        "pares_shopify": 2113,
+        "receita_shoppub": 0,
+        "receita_shopify": 1141861
       },
       "90d": {
         "receita": 2189551.37,
@@ -164,7 +219,13 @@
         "ticket": 800.57,
         "preco_medio_par": 559.84,
         "novos_pct": null,
-        "origem": "ssot_pedidos_validos"
+        "origem": "ssot_pedidos_validos",
+        "pedidos_shoppub": 0,
+        "pedidos_shopify": 2735,
+        "pares_shoppub": 0,
+        "pares_shopify": 3911,
+        "receita_shoppub": 0,
+        "receita_shopify": 2189551.37
       }
     },
     "multiplicadores": {
@@ -224,7 +285,8 @@
     "insights": [
       "Janelas recalculadas pelo SSOT com pedidos validos (core.order_item + core.order; o.is_valid_order = TRUE).",
       "D0 analitico ajustado para a primeira venda valida encontrada: 2025-12-14.",
-      "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio."
+      "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio.",
+      "Abertura por origem da auditoria: 0 Shoppub e 100% Shopify nas janelas recalculadas."
     ],
     "first_sale_date": "2025-12-14",
     "first_sale_gap_dias": 0

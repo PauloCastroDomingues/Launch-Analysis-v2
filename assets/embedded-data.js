@@ -76,7 +76,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 925,
           "preco_medio_par": 777,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 105,
+          "pares_shoppub": 0,
+          "pares_shopify": 125,
+          "receita_shoppub": 0,
+          "receita_shopify": 97125
         },
         "15d": {
           "receita": 131257,
@@ -85,7 +91,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 924.35,
           "preco_medio_par": 776.67,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 142,
+          "pares_shoppub": 0,
+          "pares_shopify": 169,
+          "receita_shoppub": 0,
+          "receita_shopify": 131257
         },
         "30d": {
           "receita": 302197,
@@ -94,7 +106,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 1223.47,
           "preco_medio_par": 772.88,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 247,
+          "pares_shoppub": 0,
+          "pares_shopify": 391,
+          "receita_shoppub": 0,
+          "receita_shopify": 302197
         },
         "60d": {
           "receita": 574639,
@@ -103,7 +121,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 1149.28,
           "preco_medio_par": 767.21,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 500,
+          "pares_shoppub": 0,
+          "pares_shopify": 749,
+          "receita_shoppub": 0,
+          "receita_shopify": 574639
         },
         "90d": {
           "receita": 938191.5,
@@ -112,7 +136,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 1068.56,
           "preco_medio_par": 767.75,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 878,
+          "pares_shoppub": 0,
+          "pares_shopify": 1222,
+          "receita_shoppub": 0,
+          "receita_shopify": 938191.5
         }
       },
       "multiplicadores": {
@@ -172,7 +202,8 @@ window.REISE_FALLBACK_DATA = {
       "insights": [
         "Janelas recalculadas pelo SSOT com pedidos validos (core.order_item + core.order; o.is_valid_order = TRUE).",
         "D0 analitico ajustado para a primeira venda valida encontrada: 2025-12-17.",
-        "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio."
+        "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio.",
+        "Abertura por origem da auditoria: 0 Shoppub e 100% Shopify nas janelas recalculadas."
       ],
       "first_sale_date": "2025-12-17",
       "first_sale_gap_dias": 0
@@ -191,7 +222,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 652.48,
           "preco_medio_par": 529.37,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 172,
+          "pares_shoppub": 0,
+          "pares_shopify": 212,
+          "receita_shoppub": 0,
+          "receita_shopify": 112226
         },
         "15d": {
           "receita": 179208,
@@ -200,7 +237,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 666.2,
           "preco_medio_par": 533.36,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 269,
+          "pares_shoppub": 0,
+          "pares_shopify": 336,
+          "receita_shoppub": 0,
+          "receita_shopify": 179208
         },
         "30d": {
           "receita": 430225,
@@ -209,7 +252,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 894.44,
           "preco_medio_par": 534.44,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 481,
+          "pares_shoppub": 0,
+          "pares_shopify": 805,
+          "receita_shoppub": 0,
+          "receita_shopify": 430225
         },
         "60d": {
           "receita": 1141861,
@@ -218,7 +267,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 812.71,
           "preco_medio_par": 540.4,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 1405,
+          "pares_shoppub": 0,
+          "pares_shopify": 2113,
+          "receita_shoppub": 0,
+          "receita_shopify": 1141861
         },
         "90d": {
           "receita": 2189551.37,
@@ -227,7 +282,13 @@ window.REISE_FALLBACK_DATA = {
           "ticket": 800.57,
           "preco_medio_par": 559.84,
           "novos_pct": null,
-          "origem": "ssot_pedidos_validos"
+          "origem": "ssot_pedidos_validos",
+          "pedidos_shoppub": 0,
+          "pedidos_shopify": 2735,
+          "pares_shoppub": 0,
+          "pares_shopify": 3911,
+          "receita_shoppub": 0,
+          "receita_shopify": 2189551.37
         }
       },
       "multiplicadores": {
@@ -287,7 +348,8 @@ window.REISE_FALLBACK_DATA = {
       "insights": [
         "Janelas recalculadas pelo SSOT com pedidos validos (core.order_item + core.order; o.is_valid_order = TRUE).",
         "D0 analitico ajustado para a primeira venda valida encontrada: 2025-12-14.",
-        "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio."
+        "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio.",
+        "Abertura por origem da auditoria: 0 Shoppub e 100% Shopify nas janelas recalculadas."
       ],
       "first_sale_date": "2025-12-14",
       "first_sale_gap_dias": 0
@@ -400,6 +462,99 @@ window.REISE_FALLBACK_DATA = {
         "Maior ticket médio entre as linhas históricas: R$ 961 no 30d.",
         "Curva 30÷15 de 1,86× fica entre GT e Avant."
       ]
+    }
+  ],
+  "calendario_br": [
+    {
+      "data": "2025-03-03",
+      "nome": "Carnaval",
+      "tipo": "ofensor",
+      "peso": "forte",
+      "observacao": "Ofensor de consumo dentro dos 30d do GT."
+    },
+    {
+      "data": "2025-03-15",
+      "nome": "Dia do Consumidor",
+      "tipo": "promotor",
+      "peso": "medio",
+      "observacao": "Promotor dentro dos 90d do GT."
+    },
+    {
+      "data": "2025-04-20",
+      "nome": "Páscoa",
+      "tipo": "neutro",
+      "peso": "baixo",
+      "observacao": "Neutro no contexto de calçados masculinos."
+    },
+    {
+      "data": "2025-05-11",
+      "nome": "Dia das Mães",
+      "tipo": "promotor",
+      "peso": "medio",
+      "observacao": "Último dia da janela 90d do GT."
+    },
+    {
+      "data": "2025-11-28",
+      "nome": "Black Friday",
+      "tipo": "promotor",
+      "peso": "forte",
+      "observacao": "Infla a janela 90d do Avant."
+    },
+    {
+      "data": "2025-12-01",
+      "nome": "Cyber Monday",
+      "tipo": "promotor",
+      "peso": "medio",
+      "observacao": "Infla a janela 90d do Avant."
+    },
+    {
+      "data": "2025-12-25",
+      "nome": "Natal",
+      "tipo": "promotor",
+      "peso": "forte",
+      "observacao": "Infla a janela 90d do Avant."
+    },
+    {
+      "data": "2026-04-05",
+      "nome": "Páscoa",
+      "tipo": "neutro",
+      "peso": "baixo",
+      "observacao": "Antes do D0 de Phantom."
+    },
+    {
+      "data": "2026-05-10",
+      "nome": "Dia das Mães",
+      "tipo": "promotor",
+      "peso": "medio",
+      "observacao": "Dentro dos 30d de Phantom."
+    },
+    {
+      "data": "2026-06-12",
+      "nome": "Dia dos Namorados",
+      "tipo": "promotor",
+      "peso": "medio",
+      "observacao": "Dentro dos 90d de Phantom."
+    },
+    {
+      "data": "2026-08-09",
+      "nome": "Dia dos Pais",
+      "tipo": "promotor",
+      "peso": "forte",
+      "observacao": "Data principal para o lançamento planejado de agosto."
+    },
+    {
+      "data": "2026-11-27",
+      "nome": "Black Friday",
+      "tipo": "promotor",
+      "peso": "forte",
+      "observacao": "Maior data comercial do segundo semestre."
+    },
+    {
+      "data": "2026-12-25",
+      "nome": "Natal",
+      "tipo": "promotor",
+      "peso": "forte",
+      "observacao": "Forte período de presentes."
     }
   ],
   "lancamentos_produtos_dia": [
@@ -6765,101 +6920,8 @@ window.REISE_FALLBACK_DATA = {
     }
   ],
   "estoque": [],
-  "calendario_br": [
-    {
-      "data": "2025-03-03",
-      "nome": "Carnaval",
-      "tipo": "ofensor",
-      "peso": "forte",
-      "observacao": "Ofensor de consumo dentro dos 30d do GT."
-    },
-    {
-      "data": "2025-03-15",
-      "nome": "Dia do Consumidor",
-      "tipo": "promotor",
-      "peso": "medio",
-      "observacao": "Promotor dentro dos 90d do GT."
-    },
-    {
-      "data": "2025-04-20",
-      "nome": "Páscoa",
-      "tipo": "neutro",
-      "peso": "baixo",
-      "observacao": "Neutro no contexto de calçados masculinos."
-    },
-    {
-      "data": "2025-05-11",
-      "nome": "Dia das Mães",
-      "tipo": "promotor",
-      "peso": "medio",
-      "observacao": "Último dia da janela 90d do GT."
-    },
-    {
-      "data": "2025-11-28",
-      "nome": "Black Friday",
-      "tipo": "promotor",
-      "peso": "forte",
-      "observacao": "Infla a janela 90d do Avant."
-    },
-    {
-      "data": "2025-12-01",
-      "nome": "Cyber Monday",
-      "tipo": "promotor",
-      "peso": "medio",
-      "observacao": "Infla a janela 90d do Avant."
-    },
-    {
-      "data": "2025-12-25",
-      "nome": "Natal",
-      "tipo": "promotor",
-      "peso": "forte",
-      "observacao": "Infla a janela 90d do Avant."
-    },
-    {
-      "data": "2026-04-05",
-      "nome": "Páscoa",
-      "tipo": "neutro",
-      "peso": "baixo",
-      "observacao": "Antes do D0 de Phantom."
-    },
-    {
-      "data": "2026-05-10",
-      "nome": "Dia das Mães",
-      "tipo": "promotor",
-      "peso": "medio",
-      "observacao": "Dentro dos 30d de Phantom."
-    },
-    {
-      "data": "2026-06-12",
-      "nome": "Dia dos Namorados",
-      "tipo": "promotor",
-      "peso": "medio",
-      "observacao": "Dentro dos 90d de Phantom."
-    },
-    {
-      "data": "2026-08-09",
-      "nome": "Dia dos Pais",
-      "tipo": "promotor",
-      "peso": "forte",
-      "observacao": "Data principal para o lançamento planejado de agosto."
-    },
-    {
-      "data": "2026-11-27",
-      "nome": "Black Friday",
-      "tipo": "promotor",
-      "peso": "forte",
-      "observacao": "Maior data comercial do segundo semestre."
-    },
-    {
-      "data": "2026-12-25",
-      "nome": "Natal",
-      "tipo": "promotor",
-      "peso": "forte",
-      "observacao": "Forte período de presentes."
-    }
-  ],
   "manifest": {
-    "generated_at": "2026-07-08T14:43:48-03:00",
+    "generated_at": "2026-07-08T14:59:39-03:00",
     "project": "Reise Launch Analysis v2",
     "model_source": "github_json",
     "sales_source": "bigquery_ssot_shopify_shoppub",
