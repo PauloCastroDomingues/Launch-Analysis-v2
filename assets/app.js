@@ -20,6 +20,17 @@
     _fallback: ['#E05252', '#5BB8D4', '#A87FD4', '#8FBD56']
   };
 
+  const WINDOW_DAYS = { '7d': 7, '15d': 15, '30d': 30, '60d': 60, '90d': 90 };
+  const WINDOW_KEYS = Object.keys(WINDOW_DAYS);
+  const WINDOW_LABELS = {
+    '7d': '7 dias',
+    '15d': '15 dias',
+    '30d': '30 dias',
+    '60d': '60 dias',
+    '90d': '90 dias'
+  };
+  const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
+
   const state = {
     data: null,
     launches: [],
@@ -95,6 +106,11 @@
 
   const colorFor = (id, index = 0) => CORES_MODELO[id]?.line || CORES_MODELO._fallback[index % CORES_MODELO._fallback.length];
   const fillFor = (id, index = 0) => CORES_MODELO[id]?.fill || `${CORES_MODELO._fallback[index % CORES_MODELO._fallback.length]}33`;
+  const windowLabel = (key) => WINDOW_LABELS[key] || key;
+  const emptyWindows = () => WINDOW_KEYS.reduce((acc, key) => {
+    acc[key] = null;
+    return acc;
+  }, {});
 
   async function loadData() {
     const out = {};
@@ -295,14 +311,17 @@
       const pedidosSomados = sumNullable(filtered, 'pedidos') || 0;
       const pedidosDistintos = new Set(filtered.map((row) => row.source_order_id).filter(Boolean));
       const pedidos = pedidosDistintos.size || pedidosSomados;
-      const novos = filtered.reduce((acc, row) => acc + Number(row.novos || 0), 0);
-      const recorrentes = filtered.reduce((acc, row) => acc + Number(row.recorrentes || 0), 0);
+      const novos = sumNullable(filtered, 'novos');
+      const recorrentes = sumNullable(filtered, 'recorrentes');
+      const clientesClassificados = novos !== null && recorrentes !== null ? novos + recorrentes : null;
       return {
         receita,
         pares,
         pedidos,
         ticket: pedidos && receita !== null ? receita / pedidos : null,
-        novos_pct: novos + recorrentes ? novos / (novos + recorrentes) : null,
+        novos,
+        recorrentes,
+        novos_pct: clientesClassificados ? novos / clientesClassificados : null,
         origem,
         day
       };
@@ -316,9 +335,8 @@
     const currentMaxIdx = Math.min(90, Math.max(0, todayIdx ?? 0));
     const acumuladoAtual = buildAggregate(closedRows(currentMaxIdx), 'pipeline_atual', currentMaxIdx);
 
-    const windows = { '15d': 15, '30d': 30, '60d': 60, '90d': 90 };
     const janelas = {};
-    Object.entries(windows).forEach(([key, days]) => {
+    Object.entries(WINDOW_DAYS).forEach(([key, days]) => {
       if (todayIdx === null || todayIdx < days - 1) {
         janelas[key] = null;
         return;
@@ -357,7 +375,9 @@
     });
 
     const hasRevenue = (key) => janelas[key]?.receita !== null && janelas[key]?.receita !== undefined;
+    const m15_7 = hasRevenue('15d') && hasRevenue('7d') && janelas['7d'].receita ? janelas['15d'].receita / janelas['7d'].receita : null;
     const m30 = hasRevenue('30d') && hasRevenue('15d') && janelas['15d'].receita ? janelas['30d'].receita / janelas['15d'].receita : null;
+    const m60_30 = hasRevenue('60d') && hasRevenue('30d') && janelas['30d'].receita ? janelas['60d'].receita / janelas['30d'].receita : null;
     const m90_15 = hasRevenue('90d') && hasRevenue('15d') && janelas['15d'].receita ? janelas['90d'].receita / janelas['15d'].receita : null;
     const m90_30 = hasRevenue('90d') && hasRevenue('30d') && janelas['30d'].receita ? janelas['90d'].receita / janelas['30d'].receita : null;
 
@@ -373,7 +393,7 @@
         pedidos: orderIds.size || week.pedidos
       })),
       cores: [...coresMap.values()],
-      multiplicadores: { m30_15: m30, m90_15, m90_30 },
+      multiplicadores: { m15_7, m30_15: m30, m60_30, m90_15, m90_30 },
       daily,
       acumulado_atual: acumuladoAtual,
       first_sale_date: firstSaleDate,
@@ -395,8 +415,8 @@
         day_zero_base: model.day_zero_base,
         data_oficial: model.data_oficial,
         gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(model.day_zero_base)) || 0),
-        janelas: { '15d': null, '30d': null, '60d': null, '90d': null },
-        multiplicadores: { m30_15: null, m90_15: null, m90_30: null },
+        janelas: emptyWindows(),
+        multiplicadores: { m15_7: null, m30_15: null, m60_30: null, m90_15: null, m90_30: null },
         semanas: [],
         cores: [],
         tamanhos: [],
@@ -438,6 +458,8 @@
     if (!launch) return { key: null, data: null };
     if (getWindow(launch, '30d')) return { key: '30d', data: getWindow(launch, '30d') };
     if (getWindow(launch, '15d')) return { key: '15d', data: getWindow(launch, '15d') };
+    if (getWindow(launch, '7d')) return { key: '7d', data: getWindow(launch, '7d') };
+    if (getWindow(launch, '60d')) return { key: '60d', data: getWindow(launch, '60d') };
     if (getWindow(launch, '90d')) return { key: '90d', data: getWindow(launch, '90d') };
     return { key: null, data: null };
   }
@@ -456,14 +478,14 @@
     const win = getWindow(launch, key);
     if (!win) return '—';
     if (win.origem === 'historico' || launch.status === 'historico') return badge('historico', 'Histórico');
-    const days = { '15d': 15, '30d': 30, '90d': 90 }[key] || 0;
+    const days = WINDOW_DAYS[key] || 0;
     const dCount = (launch.dPlus ?? 0) + 1;
     if (dCount < days) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`);
     return badge('pipeline', 'Pipeline');
   }
 
   function sourceBadge(launch) {
-    const hasAnyWindow = ['15d', '30d', '60d', '90d'].some((key) => Boolean(getWindow(launch, key)));
+    const hasAnyWindow = WINDOW_KEYS.some((key) => Boolean(getWindow(launch, key)));
     if (launch.isFuture) return badge('planejado', 'Planejado');
     if (launch.status === 'historico') return badge('historico', 'Histórico');
     if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`);
@@ -576,7 +598,13 @@
         renderAll();
       });
     });
-    warning.textContent = hasEnoughComparison() ? '' : 'Selecione pelo menos dois modelos para comparar.';
+    if (!selectedLaunches.length) {
+      warning.textContent = 'Nenhum modelo marcado; as análises usam o modelo principal.';
+    } else if (selectedLaunches.length === 1) {
+      warning.textContent = 'Com 1 modelo, as análises aparecem sem delta comparativo.';
+    } else {
+      warning.textContent = '';
+    }
   }
 
   function renderTopMeta() {
@@ -585,6 +613,32 @@
     $('model-count').textContent = state.launches.length;
     $('active-count').textContent = state.launches.filter((l) => l.isActive).length;
     $('planned-count').textContent = state.launches.filter((l) => l.status === 'planejado').length;
+  }
+
+  function renderSelectedHeader(selected) {
+    const firstSaleGap = selected?.first_sale_date
+      ? daysBetween(selected.d0, toDate(selected.first_sale_date))
+      : null;
+    const dLabel = selected.isFuture
+      ? `D${selected.dPlus}`
+      : `D+${Math.max(0, selected.dPlus ?? 0)}`;
+    const firstSaleLabel = selected.first_sale_date
+      ? `${fmtDate(selected.first_sale_date)}${firstSaleGap !== null ? ` · D+${Math.max(0, firstSaleGap)}` : ''}`
+      : '—';
+
+    const items = [
+      { label: 'Data oficial', value: fmtDate(selected.data_oficial) },
+      { label: 'D0 usado', value: fmtDate(selected.d0) },
+      { label: 'Primeira venda', value: firstSaleLabel },
+      { label: 'Posição hoje', value: dLabel }
+    ];
+
+    $('selected-dates').innerHTML = items.map((item) => `
+      <span class="selected-date-chip">
+        <span>${escapeHtml(item.label)}</span>
+        <strong>${escapeHtml(item.value)}</strong>
+      </span>
+    `).join('');
   }
 
   function renderMethodology(selected) {
@@ -697,7 +751,9 @@
       return;
     }
 
-    const closedWindow = bestWindow(selected);
+    const closedWindow = selected.isActive && selected.acumulado_atual
+      ? { key: null, data: null }
+      : bestWindow(selected);
     const isCurrentAccumulated = !closedWindow.data && Boolean(selected.acumulado_atual);
     const key = isCurrentAccumulated ? `D+${selected.acumulado_atual.day}` : closedWindow.key;
     const data = closedWindow.data || selected.acumulado_atual;
@@ -763,15 +819,18 @@
   function selectedCompareLaunches() {
     const allowed = comparableLaunches();
     const selectedIds = new Set(state.compareModelIds || []);
-    return allowed.filter((launch) => selectedIds.has(launch.modelo_id));
+    const selected = allowed.filter((launch) => selectedIds.has(launch.modelo_id));
+    if (selected.length) return selected;
+    const primary = allowed.find((launch) => launch.modelo_id === state.primaryModelId);
+    return primary ? [primary] : [];
   }
 
   function hasEnoughComparison() {
-    return selectedCompareLaunches().length >= 2;
+    return selectedCompareLaunches().length >= 1;
   }
 
   function comparisonEmptyMessage(colspan) {
-    return `<tr><td colspan="${colspan}" class="cell-muted">Selecione pelo menos dois modelos para comparar.</td></tr>`;
+    return `<tr><td colspan="${colspan}" class="cell-muted">Selecione ao menos um modelo para analisar.</td></tr>`;
   }
 
   function syncSelectionState() {
@@ -822,7 +881,7 @@
       return;
     }
     const launches = selectedCompareLaunches();
-    if (launches.length < 2) {
+    if (!launches.length) {
       $('dplus-table').innerHTML = comparisonEmptyMessage(6);
       return;
     }
@@ -852,16 +911,19 @@
 
   function renderRankings(selected) {
     const rankingDefs = [
+      { title: 'Faturamento 7d', get: (l) => getWindow(l, '7d')?.receita, fmt: fmtBRL },
       { title: 'Faturamento 15d', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL },
       { title: 'Faturamento 30d', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL },
+      { title: 'Faturamento 60d', get: (l) => getWindow(l, '60d')?.receita, fmt: fmtBRL },
+      { title: 'Faturamento 90d', get: (l) => getWindow(l, '90d')?.receita, fmt: fmtBRL },
       { title: 'Ticket 30d', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL },
       { title: 'Pares 30d', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum },
       { title: '% novos 30d', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct },
       { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL }
     ];
     const launches = selectedCompareLaunches();
-    if (launches.length < 2) {
-      $('ranking-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>Rankings usam somente os modelos marcados em Comparar com.</div></div>`;
+    if (!launches.length) {
+      $('ranking-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione ao menos um modelo.</strong>Rankings usam os modelos marcados em Comparar com.</div></div>`;
       return;
     }
     const selectedIncluded = launches.some((launch) => launch.modelo_id === selected.modelo_id);
@@ -899,13 +961,16 @@
       return;
     }
     const launches = selectedCompareLaunches();
-    if (launches.length < 2) {
-      $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>A média histórica usa os modelos marcados em Comparar com.</div></div>`;
+    if (!launches.length) {
+      $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione ao menos um modelo.</strong>A média histórica usa os modelos marcados em Comparar com.</div></div>`;
       return;
     }
+    const referencePool = launches.some((l) => l.status === 'historico')
+      ? launches
+      : comparableLaunches();
 
     const day = comparisonDay(selected);
-    const dailyRefs = launches.filter((l) => l.status === 'historico' && l.daily?.length);
+    const dailyRefs = referencePool.filter((l) => l.status === 'historico' && l.daily?.length);
     const selectedDaily = cumulativeAt(selected, day);
     let label = day !== null ? `D+${day}` : '—';
     let selectedValue = selectedDaily?.receita ?? null;
@@ -919,7 +984,7 @@
     if (avg === null || selectedValue === null) {
       const { key, data } = bestWindow(selected);
       const fallbackKey = key || '15d';
-      const refs = launches.filter((l) => l.status === 'historico' && getWindow(l, fallbackKey)?.receita);
+      const refs = referencePool.filter((l) => l.status === 'historico' && getWindow(l, fallbackKey)?.receita);
       label = fallbackKey;
       selectedValue = data?.receita ?? null;
       avg = refs.length ? refs.reduce((acc, launch) => acc + getWindow(launch, fallbackKey)?.receita, 0) / refs.length : null;
@@ -948,21 +1013,25 @@
 
   function renderComparison() {
     const launches = selectedCompareLaunches();
-    if (launches.length < 2) {
-      $('comparison-table').innerHTML = comparisonEmptyMessage(8);
+    if (!launches.length) {
+      $('comparison-table').innerHTML = comparisonEmptyMessage(10);
       return;
     }
 
     const rows = launches.map((launch) => {
+      const j7 = getWindow(launch, '7d');
       const j15 = getWindow(launch, '15d');
       const j30 = getWindow(launch, '30d');
+      const j60 = getWindow(launch, '60d');
       const j90 = getWindow(launch, '90d');
       const mult = launch.multiplicadores?.m90_30;
       return `
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
+          <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
+          <td>${fmtBRL(j60?.receita)}<div>${coverageBadge(launch, '60d')}</div></td>
           <td>${fmtBRL(j90?.receita)}<div>${coverageBadge(launch, '90d')}</div></td>
           <td class="num">${fmtBRL(j30?.ticket)}</td>
           <td class="num">${fmtPct(j30?.novos_pct, 1)}</td>
@@ -970,7 +1039,7 @@
           <td>${sourceBadge(launch)}</td>
         </tr>`;
     }).join('');
-    $('comparison-table').innerHTML = rows || `<tr><td colspan="8" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
+    $('comparison-table').innerHTML = rows || `<tr><td colspan="10" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
   }
 
   function renderCharts(selected) {
@@ -978,13 +1047,13 @@
     if (!window.Chart) return;
 
     const chartLaunches = selectedCompareLaunches();
-    const labels = ['15d', '30d', '90d'];
+    const labels = WINDOW_KEYS;
     const windowChartLaunches = chartLaunches.filter((launch) => labels.some((key) => Boolean(getWindow(launch, key))));
 
     createChart('chart-revenue', {
       type: 'bar',
       data: {
-        labels: labels.map((l) => l.replace('d', ' dias')),
+        labels: labels.map(windowLabel),
         datasets: windowChartLaunches.map((launch, index) => ({
           label: launch.modelo,
           data: labels.map((key) => getWindow(launch, key)?.receita ?? null),
@@ -1003,7 +1072,7 @@
     createChart('chart-pairs', {
       type: 'bar',
       data: {
-        labels: labels.map((l) => l.replace('d', ' dias')),
+        labels: labels.map(windowLabel),
         datasets: windowChartLaunches.map((launch, index) => ({
           label: launch.modelo,
           data: labels.map((key) => getWindow(launch, key)?.pares ?? null),
@@ -1019,10 +1088,15 @@
     createChart('chart-multipliers', {
       type: 'bar',
       data: {
-        labels: ['30÷15', '90÷15', '90÷30'],
+        labels: ['15÷7', '30÷15', '60÷30', '90÷30'],
         datasets: windowChartLaunches.map((launch, index) => ({
           label: launch.modelo,
-          data: [launch.multiplicadores?.m30_15 ?? null, launch.multiplicadores?.m90_15 ?? null, launch.multiplicadores?.m90_30 ?? null],
+          data: [
+            launch.multiplicadores?.m15_7 ?? null,
+            launch.multiplicadores?.m30_15 ?? null,
+            launch.multiplicadores?.m60_30 ?? null,
+            launch.multiplicadores?.m90_30 ?? null
+          ],
           backgroundColor: colorFor(launch.modelo_id, index),
           borderRadius: 4
         }))
@@ -1030,26 +1104,39 @@
       options: chartOptions({ scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => `${fmtNum(v, 1)}×` } } } })
     });
 
+    const mixWindowFor = (launch) => {
+      const keys = ['30d', '15d', '7d', '60d', '90d'];
+      const key = keys.find((windowKey) => getWindow(launch, windowKey));
+      if (key) return { key, data: getWindow(launch, key) };
+      if (launch.acumulado_atual) return { key: `D+${launch.acumulado_atual.day}`, data: launch.acumulado_atual };
+      return { key: '—', data: null };
+    };
+    const clientMixRows = chartLaunches.map((launch) => {
+      const { key, data } = mixWindowFor(launch);
+      return {
+        launch,
+        key,
+        data,
+        pct: data?.novos_pct ?? null,
+        novos: data?.novos ?? null,
+        recorrentes: data?.recorrentes ?? null
+      };
+    });
+
     createChart('chart-mix', {
       type: 'bar',
       data: {
-        labels: windowChartLaunches.map((l) => l.modelo),
+        labels: clientMixRows.map((row) => row.launch.modelo),
         datasets: [
           {
             label: 'Novos',
-            data: windowChartLaunches.map((l) => {
-              const pct = getWindow(l, '30d')?.novos_pct;
-              return pct == null ? null : pct * 100;
-            }),
+            data: clientMixRows.map((row) => row.pct == null ? null : row.pct * 100),
             backgroundColor: '#F07800',
             borderRadius: 4
           },
           {
             label: 'Recorrentes',
-            data: windowChartLaunches.map((l) => {
-              const pct = getWindow(l, '30d')?.novos_pct;
-              return pct == null ? null : (1 - pct) * 100;
-            }),
+            data: clientMixRows.map((row) => row.pct == null ? null : (1 - row.pct) * 100),
             backgroundColor: '#4C9F6A',
             borderRadius: 4
           }
@@ -1061,6 +1148,18 @@
         plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.x, 1)}%` } } }
       })
     });
+    $('client-mix-detail').innerHTML = clientMixRows.length ? `
+      <div class="client-mix-list">
+        ${clientMixRows.map((row) => {
+          const hasMix = row.pct !== null;
+          return `<div class="client-mix-row">
+            <span>${escapeHtml(row.launch.modelo)} · ${escapeHtml(row.key)}</span>
+            <strong>${hasMix ? `${fmtPct(row.pct, 1)} novos · ${fmtPct(1 - row.pct, 1)} recorrentes` : 'Novos/recorrentes —'}</strong>
+            <small>${hasMix ? `${fmtNum(row.novos)} novos · ${fmtNum(row.recorrentes)} recorrentes` : 'Classificação ainda não veio no JSON de vendas.'}</small>
+          </div>`;
+        }).join('')}
+      </div>
+    ` : '';
 
     const weekly = chartLaunches.find((l) => l.modelo_id === selected.modelo_id && l.semanas?.length) || chartLaunches.find((l) => l.semanas?.length);
     $('weekly-title').textContent = weekly ? `${weekly.modelo} — semana a semana` : 'Semana a semana';
@@ -1084,11 +1183,16 @@
     });
 
     const normalizedLabels = Array.from({ length: 91 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
+    const normalizedLaunches = [...chartLaunches].sort((a, b) => {
+      if (a.modelo_id === selected.modelo_id) return -1;
+      if (b.modelo_id === selected.modelo_id) return 1;
+      return a.order - b.order;
+    });
     createChart('chart-normalized', {
       type: 'line',
       data: {
         labels: normalizedLabels,
-        datasets: chartLaunches.map((launch, index) => {
+        datasets: normalizedLaunches.map((launch, index) => {
           const data = Array(91).fill(null);
           const hasDaily = Boolean(launch.daily?.length);
           if (hasDaily) {
@@ -1106,24 +1210,39 @@
             }
           } else {
             data[0] = 0;
-            const points = [
-              { day: 15, value: getWindow(launch, '15d')?.receita },
-              { day: 30, value: getWindow(launch, '30d')?.receita },
-              { day: 90, value: getWindow(launch, '90d')?.receita }
-            ];
+            const points = WINDOW_KEYS.map((key) => ({
+              day: WINDOW_DAYS[key],
+              value: getWindow(launch, key)?.receita
+            }));
             points.forEach((point) => {
               if (point.value !== null && point.value !== undefined) data[point.day] = point.value;
             });
           }
+          const validDataDays = data
+            .map((value, day) => value !== null && value !== undefined ? day : null)
+            .filter((day) => day !== null);
+          const lastDataDay = validDataDays.length ? Math.max(...validDataDays) : null;
+          const isSelected = launch.modelo_id === selected.modelo_id;
           return {
             label: hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
             data,
             borderColor: colorFor(launch.modelo_id, index),
             backgroundColor: fillFor(launch.modelo_id, index),
+            borderWidth: isSelected ? 3 : 2,
             borderDash: hasDaily ? [] : [6, 5],
-            pointRadius: hasDaily ? 1.8 : 4,
-            pointHoverRadius: 5,
-            tension: hasDaily ? 0.25 : 0,
+            fill: isSelected ? 'origin' : false,
+            pointRadius: (ctx) => {
+              const day = ctx.dataIndex;
+              if (data[day] === null || data[day] === undefined) return 0;
+              if (day === lastDataDay) return isSelected ? 4 : 3;
+              return MILESTONE_DAYS.includes(day) ? (isSelected ? 3 : 2) : 0;
+            },
+            pointHoverRadius: 6,
+            pointHitRadius: 10,
+            pointBackgroundColor: colorFor(launch.modelo_id, index),
+            pointBorderColor: '#1A1A1A',
+            pointBorderWidth: 1,
+            tension: hasDaily ? 0.32 : 0.12,
             spanGaps: !hasDaily,
             sourceLabel: hasDaily ? 'diário real' : 'histórico agregado'
           };
@@ -1143,9 +1262,16 @@
         scales: {
           x: {
             grid: { display: false },
-            ticks: { callback: (_, index) => index === 0 ? 'D0' : index % 15 === 0 ? `D+${index}` : '' }
+            ticks: {
+              autoSkip: false,
+              maxRotation: 0,
+              callback: (_, index) => MILESTONE_DAYS.includes(index) ? (index === 0 ? 'D0' : `D+${index}`) : ''
+            }
           },
-          y: { ticks: { callback: (v) => fmtBRL(v, true) } }
+          y: {
+            ticks: { callback: (v) => fmtBRL(v, true) },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
         }
       })
     });
@@ -1173,8 +1299,8 @@
 
   function renderColorMix() {
     const launches = selectedCompareLaunches();
-    if (launches.length < 2) {
-      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>O mix usa somente os modelos marcados em Comparar com.</div></div>`;
+    if (!launches.length) {
+      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione ao menos um modelo.</strong>O mix usa os modelos marcados em Comparar com.</div></div>`;
       return;
     }
 
@@ -1218,8 +1344,8 @@
   function renderSizeRanking() {
     const container = $('size-ranking');
     const launches = selectedCompareLaunches();
-    if (launches.length < 2) {
-      container.innerHTML = `<div class="empty-state"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>O ranking de tamanhos usa somente os modelos marcados em Comparar com.</div></div>`;
+    if (!launches.length) {
+      container.innerHTML = `<div class="empty-state"><div><strong>Selecione ao menos um modelo.</strong>O ranking de tamanhos usa os modelos marcados em Comparar com.</div></div>`;
       return;
     }
 
@@ -1280,11 +1406,11 @@
   }
 
   function renderCalendar(selected) {
-    const windows = [
-      { key: '15d', label: '15 dias', end: 14 },
-      { key: '30d', label: '30 dias', end: 29 },
-      { key: '90d', label: '90 dias', end: 89 }
-    ];
+    const windows = WINDOW_KEYS.map((key) => ({
+      key,
+      label: windowLabel(key),
+      end: (WINDOW_DAYS[key] || 0) - 1
+    }));
     $('calendar-grid').innerHTML = windows.map((win) => {
       const start = toDate(selected.d0);
       const end = addDays(selected.d0, win.end);
@@ -1321,8 +1447,10 @@
     if (!end || !d0) return '—';
     if (end < d0) return 'pre-d0';
     const days = Math.floor((end - d0) / 86400000) + 1;
+    if (days <= 7) return '7d';
     if (days <= 15) return '15d';
     if (days <= 30) return '30d';
+    if (days <= 60) return '60d';
     if (days <= 90) return '90d';
     return `${days}d`;
   }
@@ -1493,6 +1621,7 @@
     const selected = state.launches.find((l) => l.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
     $('selected-title').textContent = selected.modelo;
     $('selected-status').innerHTML = sourceBadge(selected);
+    renderSelectedHeader(selected);
     renderModelSelector();
     renderCompareSelector();
     renderTopMeta();

@@ -70,6 +70,7 @@
             <div class="section-kicker">01 · Estado do lançamento</div>
             <h2><span id="selected-title">—</span></h2>
             <p class="section-desc">KPIs calculados a partir da melhor janela disponível para o modelo selecionado.</p>
+            <div id="selected-dates" class="selected-dates"></div>
           </div>
           <div id="selected-status"></div>
         </div>
@@ -80,7 +81,7 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">02 · Comparativo por janela</div>
-            <h2>15d, 30d e 90d lado a lado</h2>
+            <h2>7d, 15d, 30d, 60d e 90d lado a lado</h2>
           </div>
         </div>
         <div class="table-wrap">
@@ -88,8 +89,10 @@
             <thead>
               <tr>
                 <th>Modelo</th>
+                <th>7d Fat.</th>
                 <th>15d Fat.</th>
                 <th>30d Fat.</th>
+                <th>60d Fat.</th>
                 <th>90d Fat.</th>
                 <th class="num">Ticket 30d</th>
                 <th class="num">% Novos 30d</th>
@@ -131,21 +134,22 @@
         <div class="grid grid-2">
           <div class="chart-card wide">
             <div class="chart-head">
-              <div><div class="chart-title">Faturamento acumulado</div><div class="chart-sub">R$ por janela</div></div>
+              <div><div class="chart-title">Faturamento acumulado</div><div class="chart-sub">R$ por janela: 7, 15, 30, 60 e 90 dias</div></div>
             </div>
             <div class="chart-canvas"><canvas id="chart-revenue"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title">Pares acumulados</div><div class="chart-sub">Unidades por janela</div></div></div>
+            <div class="chart-head"><div><div class="chart-title">Pares acumulados</div><div class="chart-sub">Unidades por janela: 7, 15, 30, 60 e 90 dias</div></div></div>
             <div class="chart-canvas"><canvas id="chart-pairs"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title">Multiplicadores</div><div class="chart-sub">30÷15, 90÷15, 90÷30</div></div></div>
+            <div class="chart-head"><div><div class="chart-title">Multiplicadores</div><div class="chart-sub">15÷7, 30÷15, 60÷30, 90÷30</div></div></div>
             <div class="chart-canvas"><canvas id="chart-multipliers"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title">Mix de clientes</div><div class="chart-sub">Novos vs recorrentes no 30d</div></div></div>
+            <div class="chart-head"><div><div class="chart-title">Mix de clientes</div><div class="chart-sub">Novos vs recorrentes na melhor janela disponível</div></div></div>
             <div class="chart-canvas"><canvas id="chart-mix"></canvas></div>
+            <div id="client-mix-detail" class="chart-note"></div>
           </div>
           <div class="chart-card">
             <div class="chart-head"><div><div class="chart-title" id="weekly-title">Semana a semana</div><div class="chart-sub">Faturamento + pedidos</div></div></div>
@@ -153,7 +157,7 @@
           </div>
           <div class="chart-card wide">
             <div class="chart-head"><div><div class="chart-title">Curva normalizada D0 → D90</div><div class="chart-sub">Faturamento acumulado por dia desde o lançamento</div></div></div>
-            <div class="chart-canvas"><canvas id="chart-normalized"></canvas></div>
+            <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
           </div>
         </div>
       </section>

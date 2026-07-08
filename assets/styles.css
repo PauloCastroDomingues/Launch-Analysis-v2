@@ -320,6 +320,33 @@ h2 {
   color: var(--txt-secondary);
   max-width: 720px;
 }
+.selected-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.selected-date-chip {
+  display: inline-grid;
+  gap: 2px;
+  min-width: 128px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.025);
+}
+.selected-date-chip span {
+  color: var(--txt-secondary);
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.selected-date-chip strong {
+  color: var(--txt-primary);
+  font-size: .78rem;
+  font-weight: 800;
+}
 
 .grid {
   display: grid;
@@ -475,6 +502,38 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 .chart-sub { color: var(--txt-secondary); font-size: 0.76rem; margin-top: 2px; }
 .chart-canvas { height: 260px; position: relative; }
 .chart-canvas.tall { height: 340px; }
+.chart-note {
+  margin-top: 10px;
+  color: var(--txt-secondary);
+  font-size: .74rem;
+}
+.client-mix-list {
+  display: grid;
+  gap: 6px;
+}
+.client-mix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: baseline;
+  padding-top: 7px;
+  border-top: 1px solid var(--border);
+}
+.client-mix-row span {
+  color: var(--txt-primary);
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-mix-row strong {
+  color: var(--txt-primary);
+  font-size: .76rem;
+}
+.client-mix-row small {
+  grid-column: 1 / -1;
+  color: var(--txt-muted);
+}
 .empty-state {
   min-height: 160px;
   display: grid;
