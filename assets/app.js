@@ -8,8 +8,9 @@
     'crm_disparos',
     'estoque',
     'calendario_br',
-    'manifest'
+    'auditoria_monochrome'
   ];
+  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_produtos_dia', 'auditoria_monochrome']);
 
   const CORES_MODELO = {
     gt: { line: '#F07800', fill: 'rgba(240,120,0,0.12)' },
@@ -119,20 +120,34 @@
     return acc;
   }, {});
 
+  const emptyDataFor = (name) => {
+    if (name === 'manifest') return {};
+    if (name === 'auditoria_monochrome') return null;
+    return [];
+  };
+
+  async function fetchDataFile(name, version, allowFallback = true) {
+    try {
+      const suffix = encodeURIComponent(version || String(Date.now()));
+      const res = await fetch(`data/${name}.json?v=${suffix}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`${name}: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (allowFallback && window.REISE_FALLBACK_DATA?.[name] !== undefined) {
+        return window.REISE_FALLBACK_DATA[name];
+      }
+      return emptyDataFor(name);
+    }
+  }
+
   async function loadData() {
     const out = {};
+    const manifest = await fetchDataFile('manifest', String(Date.now()), true);
+    const version = manifest?.generated_at || String(Date.now());
+    out.manifest = manifest || {};
+
     for (const name of DATA_FILES) {
-      try {
-        const res = await fetch(`data/${name}.json`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`${name}: ${res.status}`);
-        out[name] = await res.json();
-      } catch (err) {
-        if (window.REISE_FALLBACK_DATA?.[name] !== undefined) {
-          out[name] = window.REISE_FALLBACK_DATA[name];
-        } else {
-          out[name] = name === 'manifest' ? {} : [];
-        }
-      }
+      out[name] = await fetchDataFile(name, version, !NO_EMBEDDED_FALLBACK.has(name));
     }
     return out;
   }
@@ -308,7 +323,8 @@
       .map(({ orderIds, ...row }) => ({
         ...row,
         pedidos: orderIds.size || row.pedidos,
-        ticket: (orderIds.size || row.pedidos) ? row.receita / (orderIds.size || row.pedidos) : null
+        ticket: (orderIds.size || row.pedidos) ? row.receita / (orderIds.size || row.pedidos) : null,
+        preco_medio_par: row.pares ? row.receita / row.pares : null
       }));
 
     const buildAggregate = (filtered, origem, day = null) => {
@@ -326,6 +342,7 @@
         pares,
         pedidos,
         ticket: pedidos && receita !== null ? receita / pedidos : null,
+        preco_medio_par: pares && receita !== null ? receita / pares : null,
         novos,
         recorrentes,
         novos_pct: clientesClassificados ? novos / clientesClassificados : null,
@@ -506,6 +523,7 @@
       pares,
       pedidos,
       ticket: pedidos && receita !== null ? receita / pedidos : null,
+      preco_medio_par: pares && receita !== null ? receita / pares : null,
       novos,
       recorrentes,
       novos_pct: clientesClassificados ? novos / clientesClassificados : null,
@@ -653,6 +671,81 @@
     return Number(launch?.pipelineRowCount || 0) > 0;
   }
 
+  function exportTotalsForModel(modelId) {
+    const rows = (state.data?.lancamentos_produtos_dia || []).filter((row) => row.modelo_id === modelId);
+    const orderIds = new Set();
+    let pedidosFallback = 0;
+    let pares = 0;
+    let receita = 0;
+
+    rows.forEach((row) => {
+      if (row.source_order_id) orderIds.add(row.source_order_id);
+      else pedidosFallback += Number(row.pedidos || 0);
+      pares += Number(row.pares || 0);
+      receita += Number(row.receita || 0);
+    });
+
+    return {
+      pedidos: orderIds.size || pedidosFallback,
+      pares,
+      receita
+    };
+  }
+
+  function pctDiff(value, reference) {
+    const ref = Number(reference || 0);
+    const val = Number(value || 0);
+    if (!ref && !val) return 0;
+    if (!ref) return 1;
+    return Math.abs(val - ref) / Math.abs(ref);
+  }
+
+  function localMonochromeAuditQuality() {
+    const audit = state.data?.auditoria_monochrome;
+    const resumo = audit?.resumo;
+    if (!resumo) return null;
+
+    const exported = exportTotalsForModel('rs8_monochrome');
+    const pedidosAuditoria = Number(resumo.pedidos || 0);
+    const paresAuditoria = Number(resumo.pares_vendidos || 0);
+    const receitaAuditoria = Number(resumo.receita_liquida_itens || 0);
+    const diferencaPedidosPct = pctDiff(exported.pedidos, pedidosAuditoria);
+    const diferencaParesPct = pctDiff(exported.pares, paresAuditoria);
+    const diferencaReceitaPct = pctDiff(exported.receita, receitaAuditoria);
+    const status = Math.max(diferencaPedidosPct, diferencaParesPct, diferencaReceitaPct) > 0.01 ? 'divergente' : 'ok';
+
+    return {
+      status,
+      auditado: status === 'ok',
+      pedidos_auditoria: pedidosAuditoria,
+      pares_auditoria: paresAuditoria,
+      receita_auditoria: receitaAuditoria,
+      pedidos_exportados: exported.pedidos,
+      pares_exportados: exported.pares,
+      receita_exportada: exported.receita,
+      diferenca_pedidos_pct: diferencaPedidosPct,
+      diferenca_pares_pct: diferencaParesPct,
+      diferenca_receita_pct: diferencaReceitaPct,
+      linhas_suspeitas: (audit.linhas_suspeitas || []).length,
+      duplicidades: (audit.duplicidades || []).length
+    };
+  }
+
+  function auditQualityForLaunch(launch) {
+    if (launch?.modelo_id !== 'rs8_monochrome') return null;
+    return localMonochromeAuditQuality()
+      || state.data?.manifest?.data_quality?.rs8_monochrome
+      || null;
+  }
+
+  function auditBadgeForLaunch(launch) {
+    const quality = auditQualityForLaunch(launch);
+    if (!quality) return null;
+    if (quality.status === 'ok' && quality.auditado !== false) return badge('pipeline', 'Auditado');
+    if (quality.status === 'divergente') return badge('neg', 'Divergente');
+    return null;
+  }
+
   function numberOrNull(value) {
     if (value === null || value === undefined || value === '') return null;
     const num = Number(value);
@@ -671,6 +764,8 @@
   }
 
   function sourceBadge(launch) {
+    const auditBadge = auditBadgeForLaunch(launch);
+    if (auditBadge) return auditBadge;
     const hasAnyWindow = WINDOW_KEYS.some((key) => Boolean(getWindow(launch, key)));
     if (launch.isFuture) return badge('planejado', 'Planejado');
     if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico');
@@ -931,7 +1026,7 @@
             <div class="grid grid-3" style="margin-top:14px">
               <div><div class="metric-sub">Fat. 15d média</div><div class="metric-value">${fmtBRL(avg15)}</div></div>
               <div><div class="metric-sub">Fat. 30d média</div><div class="metric-value">${fmtBRL(avg30)}</div></div>
-              <div><div class="metric-sub">Ticket médio</div><div class="metric-value">${fmtBRL(avgTicket)}</div></div>
+              <div><div class="metric-sub">Ticket médio/pedido</div><div class="metric-value">${fmtBRL(avgTicket)}</div></div>
             </div>
             <p class="section-desc" style="margin-top:16px">O dashboard já calcula sazonalidade futura a partir de calendario_br.json. Depois do D0, os dados entram pelo pipeline.</p>
           </div>
@@ -951,11 +1046,16 @@
     const prevWin = previous && !isCurrentAccumulated ? getWindow(previous, key || '30d') : null;
     const delta = data?.receita && prevWin?.receita ? (data.receita / prevWin.receita) - 1 : null;
     const dataSub = isCurrentAccumulated ? badge('parcial', `Acumulado atual ${key}`) : coverageBadge(selected, key);
+    const auditQuality = auditQualityForLaunch(selected);
+    const auditWarning = auditQuality?.status === 'divergente'
+      ? `<div class="empty-state empty-state--danger"><div><strong>Os totais do dashboard não batem com a auditoria SSOT.</strong> Não usar este dado para decisão.</div></div>`
+      : '';
 
     const cards = [
       { label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${key || ''}`, value: fmtBRL(data?.receita), sub: dataSub },
       { label: 'Pedidos', value: fmtNum(data?.pedidos), sub: data?.pedidos ? `${fmtNum(data.pedidos)} pedidos` : 'Sem pedidos no JSON' },
-      { label: 'Ticket médio', value: fmtBRL(data?.ticket), sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${key}`) : '—' },
+      { label: 'Ticket médio/pedido', value: fmtBRL(data?.ticket), sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${key}`) : '—' },
+      { label: 'Preço médio/par', value: fmtBRL(data?.preco_medio_par), sub: data?.preco_medio_par ? `${fmtNum(data?.pares)} pares` : '—' },
       { label: '% Clientes novos', value: fmtPct(data?.novos_pct), sub: data?.novos_pct != null ? `${fmtPct(1 - data.novos_pct)} recorrentes` : '—' },
       { label: 'Pares vendidos', value: fmtNum(data?.pares), sub: data?.pares ? `${fmtNum(data.pares)} pares` : 'Sem pares no JSON' }
     ];
@@ -963,7 +1063,7 @@
     const empty = !data ? `<div class="empty-state"><div><strong>${selected.isActive && !hasPipelineRows(selected) ? 'Sem dados carregados no pipeline.' : 'Sem dados de venda para este lançamento.'}</strong> Verifique BigQuery, termos de busca e exportação do Apps Script. A tela não transforma ausência em zero.</div></div>` : '';
 
     container.innerHTML = `
-      <div class="grid grid-5">
+      <div class="grid grid-6">
         ${cards.map((card) => `
           <div class="card">
             <div class="metric-label">${escapeHtml(card.label)}</div>
@@ -971,6 +1071,7 @@
             <div class="metric-sub">${card.sub}</div>
           </div>`).join('')}
       </div>
+      ${auditWarning}
       ${empty}
       <div class="grid grid-2" style="margin-top:14px">
         <div class="card soft">
@@ -1059,6 +1160,7 @@
       pedidos,
       pares,
       ticket: pedidos ? receita / pedidos : null,
+      preco_medio_par: pares ? receita / pares : null,
       velocidade: receita / (day + 1)
     };
   }
@@ -1111,7 +1213,7 @@
       { title: 'Faturamento 30d', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL },
       { title: 'Faturamento 60d', get: (l) => getWindow(l, '60d')?.receita, fmt: fmtBRL },
       { title: 'Faturamento 90d', get: (l) => getWindow(l, '90d')?.receita, fmt: fmtBRL },
-      { title: 'Ticket 30d', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL },
+      { title: 'Ticket/pedido 30d', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL },
       { title: 'Pares 30d', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum },
       { title: '% novos 30d', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct },
       { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL }
@@ -1819,8 +1921,8 @@
     const global = [
       bestTicket ? {
         type: 'pos',
-        title: 'Maior ticket 30d',
-        copy: `${bestTicket.launch.modelo} lidera o ticket médio 30d entre modelos elegíveis, com ${fmtBRL(bestTicket.value)}.`
+        title: 'Maior ticket/pedido 30d',
+        copy: `${bestTicket.launch.modelo} lidera o ticket médio por pedido 30d entre modelos elegíveis, com ${fmtBRL(bestTicket.value)}.`
       } : null,
       activeLaunches.length ? {
         type: 'warn',

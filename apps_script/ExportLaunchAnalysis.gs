@@ -30,8 +30,27 @@ function exportarTudo() {
   Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${ativos.length} ativos com day_zero_base valido.`);
 
   const produtosDia = ativos.length ? consultarProdutosDia_(ativos) : [];
+  const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(ativos);
+  const dataQuality = {};
+  const warnings = [
+    'Filtros de data usam >= para incluir D0.',
+    'Dados ausentes devem permanecer null/—; nunca transformar em zero.',
+    'Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.',
+    'day_zero_base define o D0 analitico de cada modelo.'
+  ];
+
+  if (auditoriaMonochrome) {
+    dataQuality.rs8_monochrome = compararMonochromeExportAuditoria_(produtosDia, auditoriaMonochrome);
+    if (dataQuality.rs8_monochrome.status === 'divergente') {
+      const alerta = 'ALERTA: rs8_monochrome divergente entre lancamentos_produtos_dia.json e auditoria_monochrome.json.';
+      Logger.log(alerta);
+      warnings.push(alerta);
+    }
+  }
+
   logProdutosDiaExport_(ativos, produtosDia);
   escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
+  if (auditoriaMonochrome) escreverJsonGitHub_('auditoria_monochrome.json', auditoriaMonochrome);
 
   const estoqueStatus = exportarEstoqueSeDisponivel_(ativos);
   const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos);
@@ -45,10 +64,12 @@ function exportarTudo() {
     active_models: ativos.map(m => m.modelo_id),
     row_counts: {
       lancamentos_produtos_dia: produtosDia.length,
+      auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
       estoque: estoqueStatus.rows,
       midia_paga: midiaStatus.rows,
       crm_disparos: crmStatus.rows
     },
+    data_quality: dataQuality,
     export_status: {
       estoque: estoqueStatus.status,
       midia_paga: midiaStatus.status,
@@ -57,17 +78,13 @@ function exportarTudo() {
     files: [
       'lancamentos_modelos.json',
       'lancamentos_produtos_dia.json',
+      'auditoria_monochrome.json',
       'midia_paga.json',
       'crm_disparos.json',
       'estoque.json',
       'manifest.json'
     ],
-    warnings: [
-      'Filtros de data usam >= para incluir D0.',
-      'Dados ausentes devem permanecer null/—; nunca transformar em zero.',
-      'Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.',
-      'day_zero_base define o D0 analitico de cada modelo.'
-    ]
+    warnings
   };
 
   escreverJsonGitHub_('manifest.json', manifest);
@@ -88,6 +105,20 @@ function removerTriggers_(handler) {
   ScriptApp.getProjectTriggers().forEach(trigger => {
     if (trigger.getHandlerFunction() === handler) ScriptApp.deleteTrigger(trigger);
   });
+}
+
+function auditarVendasMonochrome() {
+  validarGithubConfig_();
+  const modelos = carregarModelos_();
+  const mono = modelos.find(isMonochromeModel_);
+  if (!mono || !dateOnly_(mono.day_zero_base)) {
+    throw new Error('rs8_monochrome nao encontrado em data/lancamentos_modelos.json com day_zero_base valido.');
+  }
+
+  const auditoria = consultarAuditoriaMonochrome_(mono);
+  escreverJsonGitHub_('auditoria_monochrome.json', auditoria);
+  Logger.log(`auditoria_monochrome.json exportado: ${JSON.stringify(auditoria.resumo)}`);
+  return auditoria;
 }
 
 function diagnosticarRs8Monochrome() {
@@ -610,7 +641,8 @@ WITH params AS (
     ) AS match_score
   FROM vendas v
   JOIN modelos_norm m
-    ON v.data >= m.d0 -- inclui D0
+    ON m.modelo_id != 'rs8_monochrome'
+   AND v.data >= m.d0 -- inclui D0
 ), match AS (
   SELECT
     c.modelo_id,
@@ -629,14 +661,87 @@ WITH params AS (
       NULLIF(c.variant_title, ''),
       NULLIF(REGEXP_EXTRACT(c.nome_produto, r'(?i)(?:cor|color)[: -]+([^|/,-]+)'), '')
     ) AS cor,
+    NULLIF(REGEXP_EXTRACT(c.match_text_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho,
     c.pares,
-    c.receita
+    c.receita,
+    c.match_text_norm,
+    c.modelo_id AS modelo_id_detectado
   FROM candidatos c
   WHERE c.match_score > 0
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY c.source_system, c.source_order_id, c.sku, c.nome_produto, c.variant_title
     ORDER BY c.match_score DESC, c.d0 DESC, c.modelo_id
   ) = 1
+), monochrome_item_source AS (
+  SELECT
+    'rs8_monochrome' AS modelo_id,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data,
+    'SSOT_CORE' AS source_system,
+    'ssot_core' AS origem,
+    CAST(o.order_name AS STRING) AS source_order_id,
+    CAST(o.order_sk AS STRING) AS order_sk,
+    NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(STRUCT(i.*)), '$.line_item_id') AS STRING)), '') AS line_item_id,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
+    CAST(NULL AS STRING) AS variant_title,
+    SAFE_CAST(i.quantity AS INT64) AS pares,
+    SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount - IFNULL(i.line_discount_amount, 0)) AS NUMERIC) AS receita,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS sku_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.item_name, ''), ' ', COALESCE(i.sku, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM \`reise-ssot.core.order_item\` i
+  JOIN \`reise-ssot.core.order\` o
+    ON o.order_sk = i.order_sk
+  JOIN modelos_norm m
+    ON m.modelo_id = 'rs8_monochrome'
+   AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
+  WHERE o.is_valid_order = TRUE
+    AND i.item_name IS NOT NULL
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+), monochrome_flags AS (
+  SELECT
+    *,
+    REGEXP_CONTAINS(item_name_norm, r'(^|[^a-z0-9])monochrome([^a-z0-9]|$)') AS has_title_match,
+    (
+      STARTS_WITH(sku_norm, 'rs8 avant mono')
+      OR STARTS_WITH(sku_norm, 'rs8 mono')
+      OR STARTS_WITH(sku_norm, 'rs8avantmono')
+    ) AS has_sku_match
+  FROM monochrome_item_source
+), monochrome_filtrado AS (
+  SELECT
+    *,
+    COALESCE(
+      NULLIF(line_item_id, ''),
+      TO_JSON_STRING(STRUCT(order_sk, sku, nome_produto, pares, receita))
+    ) AS dedupe_key
+  FROM monochrome_flags
+  WHERE has_title_match OR has_sku_match
+), monochrome_match AS (
+  SELECT
+    modelo_id,
+    data,
+    origem,
+    source_order_id,
+    COALESCE(sku, '') AS sku,
+    COALESCE(nome_produto, '') AS nome_produto,
+    variant_title,
+    'RS8 Avant Monochrome' AS sub_modelo,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho,
+    pares,
+    receita,
+    match_text_norm,
+    'rs8_monochrome' AS modelo_id_detectado
+  FROM monochrome_filtrado
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY dedupe_key
+    ORDER BY source_order_id, sku, nome_produto, pares, receita
+  ) = 1
+), match_unificado AS (
+  SELECT * FROM match
+  UNION ALL
+  SELECT * FROM monochrome_match
 )
 SELECT
   modelo_id,
@@ -648,16 +753,249 @@ SELECT
   variant_title,
   COALESCE(NULLIF(sub_modelo, ''), nome_produto) AS sub_modelo,
   NULLIF(cor, '') AS cor,
+  NULLIF(tamanho, '') AS tamanho,
   COUNT(DISTINCT source_order_id) AS pedidos,
   SUM(pares) AS pares,
   SUM(receita) AS receita,
   CAST(NULL AS INT64) AS novos,
-  CAST(NULL AS INT64) AS recorrentes
-FROM match
-GROUP BY 1,2,3,4,5,6,7,8,9
+  CAST(NULL AS INT64) AS recorrentes,
+  match_text_norm,
+  modelo_id_detectado
+FROM match_unificado
+GROUP BY 1,2,3,4,5,6,7,8,9,10,16,17
 ORDER BY modelo_id, data, source_order_id, sku`;
 
   return runBq_(query);
+}
+
+function consultarAuditoriaMonochromeSeAtivo_(modelos) {
+  const mono = modelos.find(isMonochromeModel_);
+  if (!mono) return null;
+  return consultarAuditoriaMonochrome_(mono);
+}
+
+function consultarAuditoriaMonochrome_(modelo) {
+  const d0 = sql_(modelo.day_zero_base);
+  const query = `
+WITH modelo AS (
+  SELECT DATE('${d0}') AS d0
+), base AS (
+  SELECT
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data_venda,
+    CAST(o.order_name AS STRING) AS pedido,
+    CAST(o.order_sk AS STRING) AS order_sk,
+    NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(STRUCT(i.*)), '$.line_item_id') AS STRING)), '') AS line_item_id,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS titulo_produto,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    SAFE_CAST(i.quantity AS INT64) AS quantidade,
+    SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount - IFNULL(i.line_discount_amount, 0)) AS NUMERIC) AS valor_liquido_item,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS sku_norm
+  FROM \`reise-ssot.core.order_item\` i
+  JOIN \`reise-ssot.core.order\` o
+    ON o.order_sk = i.order_sk
+  CROSS JOIN modelo m
+  WHERE o.is_valid_order = TRUE
+    AND i.item_name IS NOT NULL
+    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+), flags AS (
+  SELECT
+    *,
+    REGEXP_CONTAINS(item_name_norm, r'(^|[^a-z0-9])monochrome([^a-z0-9]|$)') AS has_title_match,
+    (
+      STARTS_WITH(sku_norm, 'rs8 avant mono')
+      OR STARTS_WITH(sku_norm, 'rs8 mono')
+      OR STARTS_WITH(sku_norm, 'rs8avantmono')
+    ) AS has_sku_match,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho
+  FROM base
+), classificadas AS (
+  SELECT
+    *,
+    COALESCE(
+      NULLIF(line_item_id, ''),
+      TO_JSON_STRING(STRUCT(order_sk, sku, titulo_produto, quantidade, valor_liquido_item))
+    ) AS dedupe_key
+  FROM flags
+  WHERE has_title_match OR has_sku_match
+), dedup AS (
+  SELECT *
+  FROM classificadas
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY dedupe_key
+    ORDER BY pedido, sku, titulo_produto, quantidade, valor_liquido_item
+  ) = 1
+), duplicidades AS (
+  SELECT
+    dedupe_key,
+    COUNT(*) AS linhas,
+    ARRAY_AGG(STRUCT(
+      pedido,
+      sku,
+      titulo_produto,
+      quantidade,
+      valor_liquido_item
+    ) ORDER BY pedido LIMIT 5) AS exemplos
+  FROM classificadas
+  GROUP BY dedupe_key
+  HAVING COUNT(*) > 1
+  ORDER BY linhas DESC
+  LIMIT 100
+), linhas_suspeitas AS (
+  SELECT
+    pedido,
+    sku,
+    titulo_produto,
+    quantidade,
+    valor_liquido_item,
+    item_name_norm,
+    sku_norm
+  FROM classificadas
+  WHERE NOT has_title_match
+    AND NOT has_sku_match
+  LIMIT 100
+)
+SELECT TO_JSON_STRING(STRUCT(
+  'rs8_monochrome' AS modelo_id,
+  'reise-ssot.core.order_item + core.order' AS fonte,
+  'item_name normalizado contem monochrome; SKU especifico permitido apenas para RS8-AVANT-MONO, RS8-MONO, RS8AVANTMONO' AS regra_match,
+  STRUCT(
+    CAST((SELECT d0 FROM modelo) AS STRING) AS inicio,
+    CAST(CURRENT_DATE('America/Sao_Paulo') AS STRING) AS fim
+  ) AS periodo,
+  (
+    SELECT AS STRUCT
+      CAST(MIN(data_venda) AS STRING) AS primeira_venda,
+      CAST(MAX(data_venda) AS STRING) AS ultima_venda,
+      COUNT(DISTINCT pedido) AS pedidos,
+      SUM(quantidade) AS pares_vendidos,
+      ROUND(SUM(valor_liquido_item), 2) AS receita_liquida_itens,
+      ROUND(SAFE_DIVIDE(SUM(valor_liquido_item), SUM(quantidade)), 2) AS preco_medio_liquido
+    FROM dedup
+  ) AS resumo,
+  ARRAY(
+    SELECT AS STRUCT
+      CAST(data_venda AS STRING) AS data,
+      COUNT(DISTINCT pedido) AS pedidos,
+      SUM(quantidade) AS pares_vendidos,
+      ROUND(SUM(valor_liquido_item), 2) AS receita_liquida_itens,
+      ROUND(SAFE_DIVIDE(SUM(valor_liquido_item), SUM(quantidade)), 2) AS preco_medio_liquido
+    FROM dedup
+    GROUP BY data_venda
+    ORDER BY data_venda
+  ) AS por_dia,
+  ARRAY(
+    SELECT AS STRUCT
+      titulo_produto,
+      sku,
+      COUNT(DISTINCT pedido) AS pedidos,
+      SUM(quantidade) AS pares_vendidos,
+      ROUND(SUM(valor_liquido_item), 2) AS receita_liquida_itens,
+      ROUND(SAFE_DIVIDE(SUM(valor_liquido_item), SUM(quantidade)), 2) AS preco_medio_liquido
+    FROM dedup
+    GROUP BY titulo_produto, sku
+    ORDER BY receita_liquida_itens DESC, pares_vendidos DESC
+    LIMIT 200
+  ) AS por_produto,
+  ARRAY(
+    SELECT AS STRUCT
+      COALESCE(cor, 'sem_cor') AS cor,
+      COUNT(DISTINCT pedido) AS pedidos,
+      SUM(quantidade) AS pares_vendidos,
+      ROUND(SUM(valor_liquido_item), 2) AS receita_liquida_itens
+    FROM dedup
+    GROUP BY cor
+    ORDER BY pares_vendidos DESC, receita_liquida_itens DESC
+  ) AS por_cor,
+  ARRAY(
+    SELECT AS STRUCT
+      COALESCE(tamanho, 'sem_tamanho') AS tamanho,
+      COUNT(DISTINCT pedido) AS pedidos,
+      SUM(quantidade) AS pares_vendidos,
+      ROUND(SUM(valor_liquido_item), 2) AS receita_liquida_itens
+    FROM dedup
+    GROUP BY tamanho
+    ORDER BY pares_vendidos DESC, receita_liquida_itens DESC
+  ) AS por_tamanho,
+  ARRAY(SELECT AS STRUCT * FROM duplicidades) AS duplicidades,
+  ARRAY(SELECT AS STRUCT * FROM linhas_suspeitas) AS linhas_suspeitas
+)) AS payload`;
+
+  const rows = runBq_(query);
+  if (!rows.length || !rows[0].payload) {
+    throw new Error('Auditoria Monochrome nao retornou payload do BigQuery.');
+  }
+
+  try {
+    return JSON.parse(rows[0].payload);
+  } catch (error) {
+    throw new Error(`Auditoria Monochrome retornou JSON invalido: ${error.message}`);
+  }
+}
+
+function compararMonochromeExportAuditoria_(produtosDia, auditoria) {
+  const rows = (produtosDia || []).filter(row => String(row.modelo_id || '') === 'rs8_monochrome');
+  const pedidosDistintos = {};
+  let pedidosSemId = 0;
+  let paresExportados = 0;
+  let receitaExportada = 0;
+
+  rows.forEach(row => {
+    const orderId = String(row.source_order_id || '').trim();
+    if (orderId) pedidosDistintos[orderId] = true;
+    else pedidosSemId += Number(row.pedidos || 0);
+    paresExportados += Number(row.pares || 0);
+    receitaExportada += Number(row.receita || 0);
+  });
+
+  const resumo = auditoria.resumo || {};
+  const pedidosAuditoria = Number(resumo.pedidos || 0);
+  const paresAuditoria = Number(resumo.pares_vendidos || 0);
+  const receitaAuditoria = Number(resumo.receita_liquida_itens || 0);
+  const pedidosExportados = Object.keys(pedidosDistintos).length || pedidosSemId;
+  const diferencaPedidosPct = pctDiff_(pedidosExportados, pedidosAuditoria);
+  const diferencaParesPct = pctDiff_(paresExportados, paresAuditoria);
+  const diferencaReceitaPct = pctDiff_(receitaExportada, receitaAuditoria);
+  const status = Math.max(diferencaPedidosPct, diferencaParesPct, diferencaReceitaPct) > 0.01
+    ? 'divergente'
+    : 'ok';
+
+  const quality = {
+    status,
+    auditado: status === 'ok',
+    pedidos_auditoria: pedidosAuditoria,
+    pares_auditoria: paresAuditoria,
+    receita_auditoria: round2_(receitaAuditoria),
+    pedidos_exportados: pedidosExportados,
+    pares_exportados: paresExportados,
+    receita_exportada: round2_(receitaExportada),
+    diferenca_pedidos_pct: round6_(diferencaPedidosPct),
+    diferenca_pares_pct: round6_(diferencaParesPct),
+    diferenca_receita_pct: round6_(diferencaReceitaPct),
+    linhas_suspeitas: (auditoria.linhas_suspeitas || []).length,
+    duplicidades: (auditoria.duplicidades || []).length
+  };
+
+  Logger.log(`data_quality.rs8_monochrome=${JSON.stringify(quality)}`);
+  return quality;
+}
+
+function pctDiff_(value, reference) {
+  const ref = Number(reference || 0);
+  const val = Number(value || 0);
+  if (!ref && !val) return 0;
+  if (!ref) return 1;
+  return Math.abs(val - ref) / Math.abs(ref);
+}
+
+function round2_(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function round6_(value) {
+  return Math.round(Number(value || 0) * 1000000) / 1000000;
 }
 
 function consultarEstoque_(modelos) {
@@ -896,6 +1234,10 @@ function validarGithubConfig_() {
 function ehModeloAtivoExportavel_(modelo) {
   return String(modelo.status || '').trim().toLowerCase() === 'ativo'
     && Boolean(dateOnly_(modelo.day_zero_base));
+}
+
+function isMonochromeModel_(modelo) {
+  return String(modelo && modelo.modelo_id || '') === 'rs8_monochrome';
 }
 
 function normalizeGitHubRepo_(value) {

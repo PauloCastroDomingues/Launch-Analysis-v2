@@ -43,8 +43,8 @@ window.REISE_FALLBACK_DATA = {
       "data_lancamento": "2026-06-25",
       "data_oficial": "2026-06-25",
       "day_zero_base": "2026-06-25",
-      "termos_busca": "RS8|Monochrome|Mono|RS8 Avant|RS8 Monochrome|RS8 Avant Monochrome",
-      "sku_prefixos": "RS8-AVANT-MONO,RS8-MONO,RS8AVANTMONO,RS8AVANT,MONO",
+      "termos_busca": "Monochrome|RS8 Monochrome|RS8 Avant Monochrome",
+      "sku_prefixos": "RS8-AVANT-MONO,RS8-MONO,RS8AVANTMONO",
       "status": "ativo",
       "observacao": "Em curso. Dados devem entrar via lancamentos_produtos_dia.json gerado pelo Apps Script/BigQuery."
     },

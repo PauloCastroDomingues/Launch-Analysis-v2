@@ -6,6 +6,7 @@
 -- 3) nao criar views/tabelas;
 -- 4) nao transformar dado ausente em zero;
 -- 5) unificar vendas Shopify + Shoppub, respeitando o corte de migracao.
+-- 6) rs8_monochrome usa fonte canonica core.order_item + core.order e match estrito.
 
 WITH params AS (
   SELECT TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
@@ -210,7 +211,8 @@ candidatos AS (
     ) AS match_score
   FROM vendas v
   JOIN modelos_norm m
-    ON v.data >= m.d0 -- inclui D0
+    ON m.modelo_id != 'rs8_monochrome'
+   AND v.data >= m.d0 -- inclui D0
 ),
 match AS (
   SELECT
@@ -230,14 +232,92 @@ match AS (
       NULLIF(c.variant_title, ''),
       NULLIF(REGEXP_EXTRACT(c.nome_produto, r'(?i)(?:cor|color)[: -]+([^|/,-]+)'), '')
     ) AS cor,
+    NULLIF(REGEXP_EXTRACT(c.match_text_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho,
     c.pares,
-    c.receita
+    c.receita,
+    c.match_text_norm,
+    c.modelo_id AS modelo_id_detectado
   FROM candidatos c
   WHERE c.match_score > 0
   QUALIFY ROW_NUMBER() OVER (
     PARTITION BY c.source_system, c.source_order_id, c.sku, c.nome_produto, c.variant_title
     ORDER BY c.match_score DESC, c.d0 DESC, c.modelo_id
   ) = 1
+),
+monochrome_item_source AS (
+  SELECT
+    'rs8_monochrome' AS modelo_id,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data,
+    'SSOT_CORE' AS source_system,
+    'ssot_core' AS origem,
+    CAST(o.order_name AS STRING) AS source_order_id,
+    CAST(o.order_sk AS STRING) AS order_sk,
+    NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(STRUCT(i.*)), '$.line_item_id') AS STRING)), '') AS line_item_id,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
+    CAST(NULL AS STRING) AS variant_title,
+    SAFE_CAST(i.quantity AS INT64) AS pares,
+    SAFE_CAST(COALESCE(i.line_net_amount, i.line_gross_amount - IFNULL(i.line_discount_amount, 0)) AS NUMERIC) AS receita,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS sku_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.item_name, ''), ' ', COALESCE(i.sku, '')), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM `reise-ssot.core.order_item` i
+  JOIN `reise-ssot.core.order` o
+    ON o.order_sk = i.order_sk
+  JOIN modelos_norm m
+    ON m.modelo_id = 'rs8_monochrome'
+   AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
+  WHERE o.is_valid_order = TRUE
+    AND i.item_name IS NOT NULL
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+),
+monochrome_flags AS (
+  SELECT
+    *,
+    REGEXP_CONTAINS(item_name_norm, r'(^|[^a-z0-9])monochrome([^a-z0-9]|$)') AS has_title_match,
+    (
+      STARTS_WITH(sku_norm, 'rs8 avant mono')
+      OR STARTS_WITH(sku_norm, 'rs8 mono')
+      OR STARTS_WITH(sku_norm, 'rs8avantmono')
+    ) AS has_sku_match
+  FROM monochrome_item_source
+),
+monochrome_filtrado AS (
+  SELECT
+    *,
+    COALESCE(
+      NULLIF(line_item_id, ''),
+      TO_JSON_STRING(STRUCT(order_sk, sku, nome_produto, pares, receita))
+    ) AS dedupe_key
+  FROM monochrome_flags
+  WHERE has_title_match OR has_sku_match
+),
+monochrome_match AS (
+  SELECT
+    modelo_id,
+    data,
+    origem,
+    source_order_id,
+    COALESCE(sku, '') AS sku,
+    COALESCE(nome_produto, '') AS nome_produto,
+    variant_title,
+    'RS8 Avant Monochrome' AS sub_modelo,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho,
+    pares,
+    receita,
+    match_text_norm,
+    'rs8_monochrome' AS modelo_id_detectado
+  FROM monochrome_filtrado
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY dedupe_key
+    ORDER BY source_order_id, sku, nome_produto, pares, receita
+  ) = 1
+),
+match_unificado AS (
+  SELECT * FROM match
+  UNION ALL
+  SELECT * FROM monochrome_match
 )
 SELECT
   modelo_id,
@@ -249,11 +329,14 @@ SELECT
   variant_title,
   COALESCE(NULLIF(sub_modelo, ''), nome_produto) AS sub_modelo,
   NULLIF(cor, '') AS cor,
+  NULLIF(tamanho, '') AS tamanho,
   COUNT(DISTINCT source_order_id) AS pedidos,
   SUM(pares) AS pares,
   SUM(receita) AS receita,
   CAST(NULL AS INT64) AS novos,
-  CAST(NULL AS INT64) AS recorrentes
-FROM match
-GROUP BY 1,2,3,4,5,6,7,8,9
+  CAST(NULL AS INT64) AS recorrentes,
+  match_text_norm,
+  modelo_id_detectado
+FROM match_unificado
+GROUP BY 1,2,3,4,5,6,7,8,9,10,16,17
 ORDER BY modelo_id, data, source_order_id, sku;
