@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-08T07:19:14-03:00",
+  "generated_at": "2026-07-08T11:13:06-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_shopify_shoppub",
@@ -7,7 +7,7 @@
     "rs8_monochrome"
   ],
   "row_counts": {
-    "lancamentos_produtos_dia": 316,
+    "lancamentos_produtos_dia": 1001,
     "estoque": 0,
     "midia_paga": "skipped",
     "crm_disparos": "skipped"
@@ -28,6 +28,7 @@
   "warnings": [
     "Filtros de data usam >= para incluir D0.",
     "Dados ausentes devem permanecer null/—; nunca transformar em zero.",
-    "GT deve usar day_zero_base 2025-02-11."
+    "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
+    "day_zero_base define o D0 analitico de cada modelo."
   ]
 }
