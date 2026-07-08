@@ -20,7 +20,6 @@
 
       <div class="nav-label">Navegação</div>
       <nav class="nav-list">
-        <a href="#metodologia"><span>Metodologia</span><span>00</span></a>
         <a href="#estado"><span>Estado</span><span>01</span></a>
         <a href="#comparativo"><span>Comparativo</span><span>02</span></a>
         <a href="#curvas"><span>Curvas</span><span>03</span></a>
@@ -53,19 +52,17 @@
         </div>
       </header>
 
-      <div id="model-selector" class="model-selector"></div>
-
-      <section id="metodologia">
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">00 · Metodologia</div>
-            <h2>Base, regras e origem do dado</h2>
-          </div>
+      <div class="selector-panel">
+        <div class="selector-block">
+          <div class="selector-title">Modelo principal</div>
+          <div id="model-selector" class="model-selector"></div>
         </div>
-        <div class="card">
-          <div id="methodology-list" class="method-list"></div>
+        <div class="selector-block">
+          <div class="selector-title">Comparar com</div>
+          <div id="compare-selector" class="compare-selector"></div>
+          <div id="compare-warning" class="compare-warning"></div>
         </div>
-      </section>
+      </div>
 
       <section id="estado">
         <div class="section-head">
@@ -155,7 +152,7 @@
             <div class="chart-canvas"><canvas id="chart-weekly"></canvas></div>
           </div>
           <div class="chart-card wide">
-            <div class="chart-head"><div><div class="chart-title">Curva normalizada D0 → D+90</div><div class="chart-sub">Faturamento acumulado; linhas pontilhadas usam pontos agregados</div></div></div>
+            <div class="chart-head"><div><div class="chart-title">Curva normalizada D0 → D90</div><div class="chart-sub">Faturamento acumulado por dia desde o lançamento</div></div></div>
             <div class="chart-canvas"><canvas id="chart-normalized"></canvas></div>
           </div>
         </div>
@@ -180,6 +177,8 @@
           </div>
         </div>
         <div id="color-mix" class="color-mix"></div>
+        <div class="chart-title" style="margin-top:18px;margin-bottom:10px">Tamanhos mais comprados</div>
+        <div id="size-ranking"></div>
       </section>
 
       <section id="calendario">
@@ -249,6 +248,16 @@
           </div>
         </div>
         <div id="insights-list" class="insights-list"></div>
+      </section>
+
+      <section id="metodologia" class="footer-methodology">
+        <details>
+          <summary>
+            <span>Metodologia e regras do dado</span>
+            <span>Base, origem e alertas tecnicos</span>
+          </summary>
+          <div id="methodology-list" class="method-list"></div>
+        </details>
       </section>
 
       <footer class="footer">

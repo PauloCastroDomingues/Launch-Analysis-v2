@@ -1,5 +1,5 @@
 (() => {
-  const TODAY = new Date('2026-07-07T12:00:00-03:00');
+  const TODAY = new Date('2026-07-08T12:00:00-03:00');
   const DATA_FILES = [
     'lancamentos_modelos',
     'lancamentos_historico',
@@ -23,7 +23,8 @@
   const state = {
     data: null,
     launches: [],
-    selectedId: 'phantom',
+    primaryModelId: 'phantom',
+    compareModelIds: [],
     charts: {}
   };
 
@@ -113,6 +114,136 @@
     return out;
   }
 
+  function isSizeToken(value) {
+    return /^(3[3-9]|4[0-8])$/.test(String(value || '').trim());
+  }
+
+  function tidyPart(value) {
+    return String(value || '')
+      .replace(/\s+/g, ' ')
+      .replace(/^[\s\-_/|,]+|[\s\-_/|,]+$/g, '')
+      .trim();
+  }
+
+  function normalizeText(value) {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[-_]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  const COLOR_DEFS = [
+    { label: 'All Black', norm: 'all black', end: /\s+all\s+black$/i },
+    { label: 'Off White', norm: 'off white', end: /\s+off\s+white$/i },
+    { label: 'Azul-marinho', norm: 'azul marinho', end: /\s+azul[-\s]+marinho$/i },
+    { label: 'Caqui', norm: 'caqui', end: /\s+caqui$/i },
+    { label: 'Cinza', norm: 'cinza', end: /\s+cinza$/i },
+    { label: 'Marrom', norm: 'marrom', end: /\s+marrom$/i },
+    { label: 'Preto', norm: 'preto', end: /\s+preto$/i },
+    { label: 'Branco', norm: 'branco', end: /\s+branco$/i },
+    { label: 'Camurca', norm: 'camurca', end: /\s+camur[cç]a$/i }
+  ];
+
+  const SKU_COLOR_CODES = {
+    AB: 'All Black',
+    CT: 'Caqui',
+    MC: 'Cinza',
+    CF: 'Marrom',
+    PT: 'Preto',
+    BC: 'Branco',
+    OW: 'Off White'
+  };
+
+  function stripTrailingSize(value) {
+    return tidyPart(value).replace(/\s*(?:-|\/|\|)?\s*(3[3-9]|4[0-8])\s*$/i, '').trim();
+  }
+
+  function colorFromSku(value) {
+    const parts = String(value || '').toUpperCase().split(/[-_]/).map(tidyPart).filter(Boolean);
+    for (const part of parts) {
+      if (SKU_COLOR_CODES[part]) return SKU_COLOR_CODES[part];
+    }
+    return null;
+  }
+
+  function colorFromText(value) {
+    const clean = stripTrailingSize(value);
+    const norm = normalizeText(clean);
+    const match = COLOR_DEFS.find((color) => norm === color.norm || norm.endsWith(` ${color.norm}`));
+    return match?.label || null;
+  }
+
+  function stripTrailingColor(value) {
+    let clean = stripTrailingSize(value);
+    COLOR_DEFS.forEach((color) => {
+      clean = clean.replace(color.end, '').trim();
+    });
+    return tidyPart(clean);
+  }
+
+  function extractSize(row) {
+    if (row.tamanho && isSizeToken(row.tamanho)) return String(row.tamanho).trim();
+    const fields = [row.variant_title, row.nome_produto, row.sku];
+    for (const field of fields) {
+      const text = String(field || '');
+      const match = text.match(/(?:^|[^0-9])(3[3-9]|4[0-8])(?:[^0-9]|$)/);
+      if (match) return match[1];
+    }
+    return 'Sem tamanho';
+  }
+
+  function looksLikeProductName(part) {
+    return /\b(rs[0-9]|avant|phantom|gt|knit|slip|easy|collection|monochrome|mono)\b/i.test(part);
+  }
+
+  function looksLikeSku(part) {
+    return /[A-Z]{2,}[-_][A-Z0-9]/i.test(part) || /^[A-Z0-9_-]{8,}$/i.test(part);
+  }
+
+  function extractColor(row) {
+    if (row.cor && !isSizeToken(row.cor)) return tidyPart(row.cor);
+
+    const explicitFields = [row.variant_title, row.nome_produto];
+    for (const field of explicitFields) {
+      const explicit = String(field || '').match(/(?:cor|color)\s*[:\-]\s*([^|/,\-]+)/i);
+      if (explicit) {
+        const color = tidyPart(explicit[1]);
+        if (color && !isSizeToken(color)) return color;
+      }
+    }
+
+    const parsedColor = [row.variant_title, row.nome_produto, row.sub_modelo]
+      .map(colorFromText)
+      .find(Boolean);
+    if (parsedColor) return parsedColor;
+
+    const skuColor = colorFromSku(row.sku);
+    if (skuColor) return skuColor;
+
+    const fields = [row.variant_title, row.nome_produto, row.sub_modelo, row.sku];
+    for (const field of fields) {
+      const parts = String(field || '')
+        .split(/\s+(?:-|\/|\|)\s+|[|/]/)
+        .map(tidyPart)
+        .filter(Boolean)
+        .filter((part) => !isSizeToken(part))
+        .filter((part) => !looksLikeProductName(part))
+        .filter((part) => !looksLikeSku(part));
+      if (parts.length) return parts[parts.length - 1];
+    }
+
+    return 'Sem cor';
+  }
+
+  function extractSubModel(row, model) {
+    const source = row.sub_modelo || row.product_title || row.nome_produto || model.modelo;
+    const clean = stripTrailingColor(source);
+    return clean || model.modelo;
+  }
+
   function aggregatePipeline(model, rows) {
     const modelRows = rows.filter((row) => row.modelo_id === model.modelo_id);
     if (!modelRows.length) return null;
@@ -157,18 +288,8 @@
         ticket: (orderIds.size || row.pedidos) ? row.receita / (orderIds.size || row.pedidos) : null
       }));
 
-    const windows = { '15d': 15, '30d': 30, '90d': 90 };
-    const janelas = {};
-    Object.entries(windows).forEach(([key, days]) => {
-      const maxIdx = Math.min(days - 1, todayIdx ?? days - 1);
-      const filtered = modelRows.filter((row) => {
-        const idx = dayIndex(model.day_zero_base, row.data);
-        return idx !== null && idx >= 0 && idx <= maxIdx;
-      });
-      if (!filtered.length) {
-        janelas[key] = null;
-        return;
-      }
+    const buildAggregate = (filtered, origem, day = null) => {
+      if (!filtered.length) return null;
       const receita = sumNullable(filtered, 'receita');
       const pares = sumNullable(filtered, 'pares');
       const pedidosSomados = sumNullable(filtered, 'pedidos') || 0;
@@ -176,14 +297,33 @@
       const pedidos = pedidosDistintos.size || pedidosSomados;
       const novos = filtered.reduce((acc, row) => acc + Number(row.novos || 0), 0);
       const recorrentes = filtered.reduce((acc, row) => acc + Number(row.recorrentes || 0), 0);
-      janelas[key] = {
+      return {
         receita,
         pares,
         pedidos,
         ticket: pedidos && receita !== null ? receita / pedidos : null,
         novos_pct: novos + recorrentes ? novos / (novos + recorrentes) : null,
-        origem: 'pipeline'
+        origem,
+        day
       };
+    };
+
+    const closedRows = (maxIdx) => modelRows.filter((row) => {
+      const idx = dayIndex(model.day_zero_base, row.data);
+      return idx !== null && idx >= 0 && idx <= maxIdx;
+    });
+
+    const currentMaxIdx = Math.min(90, Math.max(0, todayIdx ?? 0));
+    const acumuladoAtual = buildAggregate(closedRows(currentMaxIdx), 'pipeline_atual', currentMaxIdx);
+
+    const windows = { '15d': 15, '30d': 30, '60d': 60, '90d': 90 };
+    const janelas = {};
+    Object.entries(windows).forEach(([key, days]) => {
+      if (todayIdx === null || todayIdx < days - 1) {
+        janelas[key] = null;
+        return;
+      }
+      janelas[key] = buildAggregate(closedRows(days - 1), 'pipeline');
     });
 
     const semanasMap = new Map();
@@ -200,13 +340,20 @@
     });
 
     const coresMap = new Map();
+    const tamanhosMap = new Map();
     modelRows.forEach((row) => {
-      const sub = row.sub_modelo || row.modelo || model.modelo;
-      const cor = row.cor || 'Sem cor';
+      const sub = extractSubModel(row, model);
+      const cor = extractColor(row);
       const key = `${sub}::${cor}`;
       const current = coresMap.get(key) || { sub_modelo: sub, cor, pares: 0 };
       current.pares += Number(row.pares || 0);
       coresMap.set(key, current);
+
+      const tamanho = extractSize(row);
+      const sizeKey = `${model.modelo_id}::${tamanho}`;
+      const currentSize = tamanhosMap.get(sizeKey) || { tamanho, pares: 0 };
+      currentSize.pares += Number(row.pares || 0);
+      tamanhosMap.set(sizeKey, currentSize);
     });
 
     const hasRevenue = (key) => janelas[key]?.receita !== null && janelas[key]?.receita !== undefined;
@@ -228,9 +375,11 @@
       cores: [...coresMap.values()],
       multiplicadores: { m30_15: m30, m90_15, m90_30 },
       daily,
+      acumulado_atual: acumuladoAtual,
       first_sale_date: firstSaleDate,
       first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(model.day_zero_base, toDate(firstSaleDate)) || 0) : null,
-      origem: 'pipeline'
+      origem: 'pipeline',
+      tamanhos: [...tamanhosMap.values()]
     };
   }
 
@@ -246,11 +395,13 @@
         day_zero_base: model.day_zero_base,
         data_oficial: model.data_oficial,
         gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(model.day_zero_base)) || 0),
-        janelas: { '15d': null, '30d': null, '90d': null },
+        janelas: { '15d': null, '30d': null, '60d': null, '90d': null },
         multiplicadores: { m30_15: null, m90_15: null, m90_30: null },
         semanas: [],
         cores: [],
+        tamanhos: [],
         daily: [],
+        acumulado_atual: null,
         first_sale_date: null,
         first_sale_gap_dias: null,
         origem: model.status === 'planejado' ? 'planejado' : 'pipeline'
@@ -268,6 +419,8 @@
         dPlus,
         pipelineRowCount: pipelineRows.length,
         daily: metrics.daily || [],
+        tamanhos: metrics.tamanhos || [],
+        acumulado_atual: metrics.acumulado_atual || null,
         first_sale_date: metrics.first_sale_date || (metrics.origem === 'historico' ? metrics.day_zero_base : null),
         first_sale_gap_dias: metrics.first_sale_gap_dias ?? (metrics.origem === 'historico' ? Math.max(0, daysBetween(metrics.data_oficial, toDate(metrics.day_zero_base)) || 0) : null),
         isFuture,
@@ -310,9 +463,10 @@
   }
 
   function sourceBadge(launch) {
-    const hasAnyWindow = ['15d', '30d', '90d'].some((key) => Boolean(getWindow(launch, key)));
+    const hasAnyWindow = ['15d', '30d', '60d', '90d'].some((key) => Boolean(getWindow(launch, key)));
     if (launch.isFuture) return badge('planejado', 'Planejado');
     if (launch.status === 'historico') return badge('historico', 'Histórico');
+    if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`);
     if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`);
     if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline D+${Math.max(0, launch.dPlus)}`);
     return badge('parcial', 'Sem dados');
@@ -368,11 +522,10 @@
 
   function renderModelSelector() {
     const wrap = $('model-selector');
-    wrap.innerHTML = state.launches.map((launch) => {
+    wrap.innerHTML = comparableLaunches().map((launch) => {
       const cls = ['model-pill'];
-      if (launch.modelo_id === state.selectedId) cls.push('active');
-      if (launch.isFuture) cls.push('planned');
-      const status = launch.isFuture ? '⏱' : launch.isActive ? '●' : '';
+      if (launch.modelo_id === state.primaryModelId) cls.push('active');
+      const status = launch.isActive ? '●' : '';
       return `<button class="${cls.join(' ')}" data-model="${launch.modelo_id}">
         <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
         ${escapeHtml(launch.modelo)} ${status}
@@ -380,10 +533,50 @@
     }).join('');
     wrap.querySelectorAll('button').forEach((btn) => {
       btn.addEventListener('click', () => {
-        state.selectedId = btn.dataset.model;
+        state.primaryModelId = btn.dataset.model;
         renderAll();
       });
     });
+  }
+
+  function renderCompareSelector() {
+    const wrap = $('compare-selector');
+    const warning = $('compare-warning');
+    const selected = new Set(state.compareModelIds || []);
+    const launches = comparableLaunches();
+    const selectedLaunches = launches.filter((launch) => selected.has(launch.modelo_id));
+    const label = selectedLaunches.length === launches.length
+      ? 'Todos os modelos'
+      : selectedLaunches.length
+        ? `${selectedLaunches.length} modelos selecionados`
+        : 'Nenhum modelo selecionado';
+    wrap.innerHTML = `
+      <details class="compare-dropdown">
+        <summary>
+          <span>${escapeHtml(label)}</span>
+          <span class="compare-dropdown-count">${fmtNum(selectedLaunches.length)} de ${fmtNum(launches.length)}</span>
+        </summary>
+        <div class="compare-menu">
+          ${launches.map((launch) => {
+            const active = selected.has(launch.modelo_id);
+            return `<label class="compare-option ${active ? 'active' : ''}">
+              <input type="checkbox" value="${launch.modelo_id}" ${active ? 'checked' : ''}>
+              <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
+              <span>${escapeHtml(launch.modelo)}</span>
+            </label>`;
+          }).join('')}
+        </div>
+      </details>`;
+    wrap.querySelectorAll('input').forEach((input) => {
+      input.addEventListener('change', () => {
+        const ids = new Set(state.compareModelIds || []);
+        if (input.checked) ids.add(input.value);
+        else ids.delete(input.value);
+        state.compareModelIds = [...ids];
+        renderAll();
+      });
+    });
+    warning.textContent = hasEnoughComparison() ? '' : 'Selecione pelo menos dois modelos para comparar.';
   }
 
   function renderTopMeta() {
@@ -391,7 +584,7 @@
     $('last-update').textContent = manifest.generated_at ? fmtDate(manifest.generated_at.slice(0, 10)) : '—';
     $('model-count').textContent = state.launches.length;
     $('active-count').textContent = state.launches.filter((l) => l.isActive).length;
-    $('planned-count').textContent = state.launches.filter((l) => l.isFuture).length;
+    $('planned-count').textContent = state.launches.filter((l) => l.status === 'planejado').length;
   }
 
   function renderMethodology(selected) {
@@ -504,16 +697,21 @@
       return;
     }
 
-    const { key, data } = bestWindow(selected);
-    const velocity = data?.receita && key ? data.receita / Number(key.replace('d', '')) : null;
+    const closedWindow = bestWindow(selected);
+    const isCurrentAccumulated = !closedWindow.data && Boolean(selected.acumulado_atual);
+    const key = isCurrentAccumulated ? `D+${selected.acumulado_atual.day}` : closedWindow.key;
+    const data = closedWindow.data || selected.acumulado_atual;
+    const windowDays = isCurrentAccumulated ? (selected.acumulado_atual.day + 1) : Number(String(key || '').replace('d', ''));
+    const velocity = data?.receita && windowDays ? data.receita / windowDays : null;
     const previous = previousLaunch(selected);
-    const prevWin = previous ? getWindow(previous, key || '30d') : null;
+    const prevWin = previous && !isCurrentAccumulated ? getWindow(previous, key || '30d') : null;
     const delta = data?.receita && prevWin?.receita ? (data.receita / prevWin.receita) - 1 : null;
+    const dataSub = isCurrentAccumulated ? badge('parcial', `Acumulado atual ${key}`) : coverageBadge(selected, key);
 
     const cards = [
-      { label: `Faturamento ${key || ''}`, value: fmtBRL(data?.receita), sub: coverageBadge(selected, key) },
+      { label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${key || ''}`, value: fmtBRL(data?.receita), sub: dataSub },
       { label: 'Pedidos', value: fmtNum(data?.pedidos), sub: data?.pedidos ? `${fmtNum(data.pedidos)} pedidos` : 'Sem pedidos no JSON' },
-      { label: 'Ticket médio', value: fmtBRL(data?.ticket), sub: data?.ticket ? `Janela ${key}` : '—' },
+      { label: 'Ticket médio', value: fmtBRL(data?.ticket), sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${key}`) : '—' },
       { label: '% Clientes novos', value: fmtPct(data?.novos_pct), sub: data?.novos_pct != null ? `${fmtPct(1 - data.novos_pct)} recorrentes` : '—' },
       { label: 'Pares vendidos', value: fmtNum(data?.pares), sub: data?.pares ? `${fmtNum(data.pares)} pares` : 'Sem pares no JSON' }
     ];
@@ -534,12 +732,12 @@
         <div class="card soft">
           <div class="metric-label">Velocidade diária</div>
           <div class="metric-value">${fmtBRL(velocity)}</div>
-          <div class="metric-sub">R$/dia na janela ${key || '—'}</div>
+          <div class="metric-sub">${isCurrentAccumulated ? `R$/dia no acumulado ${key}` : `R$/dia na janela ${key || '—'}`}</div>
         </div>
         <div class="card soft">
           <div class="metric-label">Comparativo anterior</div>
           <div class="metric-value">${delta === null ? '—' : `<span class="delta ${delta >= 0 ? 'delta--pos' : 'delta--neg'}">${delta >= 0 ? '▲' : '▼'} ${fmtPct(Math.abs(delta))}</span>`}</div>
-          <div class="metric-sub">vs ${previous ? escapeHtml(previous.modelo) : 'modelo anterior'} na mesma janela</div>
+          <div class="metric-sub">${isCurrentAccumulated ? 'Disponível quando uma janela fechar.' : `vs ${previous ? escapeHtml(previous.modelo) : 'modelo anterior'} na mesma janela`}</div>
         </div>
       </div>`;
   }
@@ -554,8 +752,38 @@
     return before[before.length - 1] || hist[hist.length - 1] || null;
   }
 
+  function isPlannedLaunch(launch) {
+    return launch?.status === 'planejado' || launch?.isFuture;
+  }
+
   function comparableLaunches() {
-    return state.launches.filter((launch) => !launch.isFuture && launch.status !== 'planejado');
+    return state.launches.filter((launch) => !isPlannedLaunch(launch));
+  }
+
+  function selectedCompareLaunches() {
+    const allowed = comparableLaunches();
+    const selectedIds = new Set(state.compareModelIds || []);
+    return allowed.filter((launch) => selectedIds.has(launch.modelo_id));
+  }
+
+  function hasEnoughComparison() {
+    return selectedCompareLaunches().length >= 2;
+  }
+
+  function comparisonEmptyMessage(colspan) {
+    return `<tr><td colspan="${colspan}" class="cell-muted">Selecione pelo menos dois modelos para comparar.</td></tr>`;
+  }
+
+  function syncSelectionState() {
+    const comparable = comparableLaunches();
+    if (!comparable.length) return;
+
+    if (!comparable.some((launch) => launch.modelo_id === state.primaryModelId)) {
+      state.primaryModelId = comparable.find((launch) => launch.modelo_id === 'phantom')?.modelo_id || comparable[0].modelo_id;
+    }
+
+    const allowedIds = new Set(comparable.map((launch) => launch.modelo_id));
+    state.compareModelIds = (state.compareModelIds || []).filter((id) => allowedIds.has(id));
   }
 
   function comparisonDay(selected) {
@@ -593,8 +821,13 @@
       $('dplus-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: comparativo D+n fica fora da análise até D0 e dados reais.</td></tr>`;
       return;
     }
+    const launches = selectedCompareLaunches();
+    if (launches.length < 2) {
+      $('dplus-table').innerHTML = comparisonEmptyMessage(6);
+      return;
+    }
 
-    const rows = comparableLaunches().map((launch) => {
+    const rows = launches.map((launch) => {
       const data = cumulativeAt(launch, day);
       return `
         <tr>
@@ -626,16 +859,23 @@
       { title: '% novos 30d', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct },
       { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL }
     ];
+    const launches = selectedCompareLaunches();
+    if (launches.length < 2) {
+      $('ranking-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>Rankings usam somente os modelos marcados em Comparar com.</div></div>`;
+      return;
+    }
+    const selectedIncluded = launches.some((launch) => launch.modelo_id === selected.modelo_id);
 
     $('ranking-grid').innerHTML = rankingDefs.map((def) => {
       const selectedValue = def.get(selected);
-      const rows = comparableLaunches()
+      const rows = launches
         .map((launch) => ({ launch, value: def.get(launch) }))
         .filter((row) => row.value !== null && row.value !== undefined)
         .sort((a, b) => b.value - a.value);
 
       return `<div class="card">
         <div class="chart-title" style="margin-bottom:10px">${escapeHtml(def.title)}</div>
+        ${selectedIncluded ? '' : `<div class="metric-sub" style="margin-bottom:8px">Delta contra ${escapeHtml(selected.modelo)}, que não está na seleção.</div>`}
         <div class="table-wrap">
           <table style="min-width:420px">
             <tbody>
@@ -658,9 +898,14 @@
       $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Lançamento planejado.</strong>Comparativo contra média histórica fica fora da análise até D0 e dados reais.</div></div>`;
       return;
     }
+    const launches = selectedCompareLaunches();
+    if (launches.length < 2) {
+      $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>A média histórica usa os modelos marcados em Comparar com.</div></div>`;
+      return;
+    }
 
     const day = comparisonDay(selected);
-    const dailyRefs = comparableLaunches().filter((l) => l.status === 'historico' && l.daily?.length);
+    const dailyRefs = launches.filter((l) => l.status === 'historico' && l.daily?.length);
     const selectedDaily = cumulativeAt(selected, day);
     let label = day !== null ? `D+${day}` : '—';
     let selectedValue = selectedDaily?.receita ?? null;
@@ -674,7 +919,7 @@
     if (avg === null || selectedValue === null) {
       const { key, data } = bestWindow(selected);
       const fallbackKey = key || '15d';
-      const refs = comparableLaunches().filter((l) => l.status === 'historico' && getWindow(l, fallbackKey)?.receita);
+      const refs = launches.filter((l) => l.status === 'historico' && getWindow(l, fallbackKey)?.receita);
       label = fallbackKey;
       selectedValue = data?.receita ?? null;
       avg = refs.length ? refs.reduce((acc, launch) => acc + getWindow(launch, fallbackKey)?.receita, 0) / refs.length : null;
@@ -702,7 +947,13 @@
   }
 
   function renderComparison() {
-    const rows = comparableLaunches().map((launch) => {
+    const launches = selectedCompareLaunches();
+    if (launches.length < 2) {
+      $('comparison-table').innerHTML = comparisonEmptyMessage(8);
+      return;
+    }
+
+    const rows = launches.map((launch) => {
       const j15 = getWindow(launch, '15d');
       const j30 = getWindow(launch, '30d');
       const j90 = getWindow(launch, '90d');
@@ -726,14 +977,15 @@
     destroyCharts();
     if (!window.Chart) return;
 
-    const chartLaunches = comparableLaunches();
+    const chartLaunches = selectedCompareLaunches();
     const labels = ['15d', '30d', '90d'];
+    const windowChartLaunches = chartLaunches.filter((launch) => labels.some((key) => Boolean(getWindow(launch, key))));
 
     createChart('chart-revenue', {
       type: 'bar',
       data: {
         labels: labels.map((l) => l.replace('d', ' dias')),
-        datasets: chartLaunches.map((launch, index) => ({
+        datasets: windowChartLaunches.map((launch, index) => ({
           label: launch.modelo,
           data: labels.map((key) => getWindow(launch, key)?.receita ?? null),
           backgroundColor: colorFor(launch.modelo_id, index),
@@ -752,7 +1004,7 @@
       type: 'bar',
       data: {
         labels: labels.map((l) => l.replace('d', ' dias')),
-        datasets: chartLaunches.map((launch, index) => ({
+        datasets: windowChartLaunches.map((launch, index) => ({
           label: launch.modelo,
           data: labels.map((key) => getWindow(launch, key)?.pares ?? null),
           backgroundColor: fillFor(launch.modelo_id, index),
@@ -768,7 +1020,7 @@
       type: 'bar',
       data: {
         labels: ['30÷15', '90÷15', '90÷30'],
-        datasets: chartLaunches.map((launch, index) => ({
+        datasets: windowChartLaunches.map((launch, index) => ({
           label: launch.modelo,
           data: [launch.multiplicadores?.m30_15 ?? null, launch.multiplicadores?.m90_15 ?? null, launch.multiplicadores?.m90_30 ?? null],
           backgroundColor: colorFor(launch.modelo_id, index),
@@ -781,11 +1033,11 @@
     createChart('chart-mix', {
       type: 'bar',
       data: {
-        labels: chartLaunches.map((l) => l.modelo),
+        labels: windowChartLaunches.map((l) => l.modelo),
         datasets: [
           {
             label: 'Novos',
-            data: chartLaunches.map((l) => {
+            data: windowChartLaunches.map((l) => {
               const pct = getWindow(l, '30d')?.novos_pct;
               return pct == null ? null : pct * 100;
             }),
@@ -794,7 +1046,7 @@
           },
           {
             label: 'Recorrentes',
-            data: chartLaunches.map((l) => {
+            data: windowChartLaunches.map((l) => {
               const pct = getWindow(l, '30d')?.novos_pct;
               return pct == null ? null : (1 - pct) * 100;
             }),
@@ -810,7 +1062,7 @@
       })
     });
 
-    const weekly = selected.semanas?.length ? selected : chartLaunches.find((l) => l.semanas?.length);
+    const weekly = chartLaunches.find((l) => l.modelo_id === selected.modelo_id && l.semanas?.length) || chartLaunches.find((l) => l.semanas?.length);
     $('weekly-title').textContent = weekly ? `${weekly.modelo} — semana a semana` : 'Semana a semana';
     createChart('chart-weekly', {
       type: 'bar',
@@ -831,7 +1083,7 @@
       })
     });
 
-    const normalizedLabels = Array.from({ length: 91 }, (_, day) => `D+${day}`);
+    const normalizedLabels = Array.from({ length: 91 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
     createChart('chart-normalized', {
       type: 'line',
       data: {
@@ -840,13 +1092,20 @@
           const data = Array(91).fill(null);
           const hasDaily = Boolean(launch.daily?.length);
           if (hasDaily) {
-            let running = 0;
+            const byDay = new Map();
             launch.daily.forEach((row) => {
               if (row.day < 0 || row.day > 90) return;
-              running += Number(row.receita || 0);
-              data[row.day] = running;
+              byDay.set(row.day, (byDay.get(row.day) || 0) + Number(row.receita || 0));
             });
+            let running = 0;
+            const validDays = launch.daily.map((row) => row.day).filter((day) => day >= 0 && day <= 90);
+            const maxDailyDay = validDays.length ? Math.min(90, Math.max(...validDays)) : 0;
+            for (let day = 0; day <= maxDailyDay; day += 1) {
+              running += byDay.get(day) || 0;
+              data[day] = running;
+            }
           } else {
+            data[0] = 0;
             const points = [
               { day: 15, value: getWindow(launch, '15d')?.receita },
               { day: 30, value: getWindow(launch, '30d')?.receita },
@@ -865,19 +1124,26 @@
             pointRadius: hasDaily ? 1.8 : 4,
             pointHoverRadius: 5,
             tension: hasDaily ? 0.25 : 0,
-            spanGaps: !hasDaily
+            spanGaps: !hasDaily,
+            sourceLabel: hasDaily ? 'diário real' : 'histórico agregado'
           };
         })
       },
       options: chartOptions({
         plugins: {
           legend: { position: 'bottom' },
-          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}` } }
+          tooltip: {
+            callbacks: {
+              title: (items) => `${items[0].dataset.label} · ${items[0].label}`,
+              label: (ctx) => `Receita acumulada: ${fmtBRL(ctx.parsed.y)}`,
+              afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}`
+            }
+          }
         },
         scales: {
           x: {
             grid: { display: false },
-            ticks: { callback: (_, index) => index % 15 === 0 ? `D+${index}` : '' }
+            ticks: { callback: (_, index) => index === 0 ? 'D0' : index % 15 === 0 ? `D+${index}` : '' }
           },
           y: { ticks: { callback: (v) => fmtBRL(v, true) } }
         }
@@ -905,30 +1171,112 @@
     }).join('');
   }
 
-  function renderColorMix(selected) {
-    const rows = selected.cores || [];
+  function renderColorMix() {
+    const launches = selectedCompareLaunches();
+    if (launches.length < 2) {
+      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>O mix usa somente os modelos marcados em Comparar com.</div></div>`;
+      return;
+    }
+
+    const rows = launches.flatMap((launch) => (launch.cores || []).map((row) => ({
+      ...row,
+      modelo_id: launch.modelo_id,
+      modelo: launch.modelo,
+      sub_modelo: row.sub_modelo || launch.modelo,
+      cor: row.cor || 'Sem cor'
+    })));
+
     if (!rows.length) {
       $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Sem mix de cores.</strong>Dados entram pelo histórico estático ou pelo pipeline de venda por SKU.</div></div>`;
       return;
     }
+
     const grouped = rows.reduce((acc, row) => {
-      (acc[row.sub_modelo] ||= []).push(row);
+      const key = `${row.modelo}::${row.sub_modelo}`;
+      (acc[key] ||= { modelo: row.modelo, sub_modelo: row.sub_modelo, rows: [] }).rows.push(row);
       return acc;
     }, {});
-    $('color-mix').innerHTML = Object.entries(grouped).map(([sub, items]) => {
-      const max = Math.max(...items.map((i) => i.pares || 0));
+
+    $('color-mix').innerHTML = Object.values(grouped).map((group) => {
+      const total = group.rows.reduce((acc, item) => acc + Number(item.pares || 0), 0);
+      const max = Math.max(...group.rows.map((i) => i.pares || 0));
       return `<div class="color-card">
-        <div class="color-title">${escapeHtml(sub)}</div>
-        ${items.sort((a,b) => b.pares - a.pares).map((item, idx) => {
-          const pct = max ? (item.pares / max) * 100 : 0;
+        <div class="color-title">${escapeHtml(group.modelo)} · ${escapeHtml(group.sub_modelo)}</div>
+        ${group.rows.sort((a,b) => b.pares - a.pares).map((item, idx) => {
+          const pctMax = max ? (item.pares / max) * 100 : 0;
+          const pctTotal = total ? item.pares / total : null;
           return `<div class="color-row">
             <div class="color-label" title="${escapeHtml(item.cor)}">${escapeHtml(item.cor)}</div>
-            <div class="bar-track"><div class="bar-fill ${idx ? 'secondary' : ''}" style="width:${pct}%"></div></div>
-            <div class="color-value">${fmtNum(item.pares)}</div>
+            <div class="bar-track"><div class="bar-fill ${idx ? 'secondary' : ''}" style="width:${pctMax}%"></div></div>
+            <div class="color-value">${fmtNum(item.pares)} · ${fmtPct(pctTotal, 0)}</div>
           </div>`;
         }).join('')}
       </div>`;
     }).join('');
+  }
+
+  function renderSizeRanking() {
+    const container = $('size-ranking');
+    const launches = selectedCompareLaunches();
+    if (launches.length < 2) {
+      container.innerHTML = `<div class="empty-state"><div><strong>Selecione pelo menos dois modelos para comparar.</strong>O ranking de tamanhos usa somente os modelos marcados em Comparar com.</div></div>`;
+      return;
+    }
+
+    const rows = launches.flatMap((launch) => (launch.tamanhos || []).map((row) => ({
+      modelo: launch.modelo,
+      tamanho: row.tamanho || 'Sem tamanho',
+      pares: Number(row.pares || 0)
+    })));
+
+    if (!rows.length) {
+      container.innerHTML = `<div class="empty-state"><div><strong>Sem tamanhos disponíveis.</strong>Quando o pipeline trouxer tamanho, variant_title ou SKU compatível, o ranking aparece aqui.</div></div>`;
+      return;
+    }
+
+    const groupSizes = (items) => {
+      const map = new Map();
+      items.forEach((row) => {
+        const key = row.tamanho || 'Sem tamanho';
+        map.set(key, (map.get(key) || 0) + Number(row.pares || 0));
+      });
+      const total = [...map.values()].reduce((acc, value) => acc + value, 0);
+      return [...map.entries()]
+        .map(([tamanho, pares]) => ({ tamanho, pares, pct: total ? pares / total : null }))
+        .sort((a, b) => b.pares - a.pares);
+    };
+
+    const tableRows = (items) => items.map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(row.tamanho)}</td>
+        <td class="num">${fmtNum(row.pares)}</td>
+        <td class="num">${fmtPct(row.pct, 1)}</td>
+      </tr>`).join('');
+
+    const geral = groupSizes(rows);
+    const byModel = launches.map((launch) => {
+      const modelRows = rows.filter((row) => row.modelo === launch.modelo);
+      return { launch, rows: groupSizes(modelRows).slice(0, 8) };
+    }).filter((group) => group.rows.length);
+
+    container.innerHTML = `
+      <div class="size-ranking-grid">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Tamanho</th><th class="num">Pares vendidos</th><th class="num">% do total</th></tr></thead>
+            <tbody>${tableRows(geral)}</tbody>
+          </table>
+        </div>
+        <div class="size-model-grid">
+          ${byModel.map((group) => `<div class="table-wrap">
+            <table>
+              <thead><tr><th colspan="4">${escapeHtml(group.launch.modelo)}</th></tr></thead>
+              <tbody>${tableRows(group.rows)}</tbody>
+            </table>
+          </div>`).join('')}
+        </div>
+      </div>`;
   }
 
   function renderCalendar(selected) {
@@ -1078,13 +1426,17 @@
   }
 
   function renderProjection(selected) {
-    const scenarios = projectionScenarios(selected);
-    if (!scenarios || selected.isFuture || selected.status === 'planejado') {
+    const projectionLaunches = selectedCompareLaunches();
+    const projectionBase = projectionLaunches.find((launch) => launch.modelo_id === selected.modelo_id)
+      || projectionLaunches.find((launch) => getWindow(launch, '30d') || getWindow(launch, '15d'));
+    const scenarios = projectionBase ? projectionScenarios(projectionBase) : null;
+    if (!scenarios || !projectionBase || projectionBase.isFuture || projectionBase.status === 'planejado') {
       $('projection-content').innerHTML = `<div class="empty-state"><div><strong>Sem dados suficientes para projeção.</strong>A seção aparece quando o modelo tem ao menos 15 dias de venda registrados.</div></div>`;
       return;
     }
 
     $('projection-content').innerHTML = `
+      <div class="metric-sub" style="margin-bottom:10px">Base da projeção: <strong>${escapeHtml(projectionBase.modelo)}</strong></div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
           <div class="scenario-label">${escapeHtml(s.label)}</div>
@@ -1137,10 +1489,12 @@
   }
 
   function renderAll() {
-    const selected = state.launches.find((l) => l.modelo_id === state.selectedId) || state.launches[0];
+    syncSelectionState();
+    const selected = state.launches.find((l) => l.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
     $('selected-title').textContent = selected.modelo;
     $('selected-status').innerHTML = sourceBadge(selected);
     renderModelSelector();
+    renderCompareSelector();
     renderTopMeta();
     renderMethodology(selected);
     renderState(selected);
@@ -1150,7 +1504,8 @@
     renderRankings(selected);
     renderCharts(selected);
     renderStock(selected);
-    renderColorMix(selected);
+    renderColorMix();
+    renderSizeRanking();
     renderCalendar(selected);
     renderActions(selected);
     renderProjection(selected);
@@ -1161,8 +1516,10 @@
     configureChartDefaults();
     state.data = await loadData();
     state.launches = buildLaunches(state.data);
-    const preferred = state.launches.find((l) => l.modelo_id === 'phantom') || state.launches.find((l) => l.isActive) || state.launches[0];
-    state.selectedId = preferred?.modelo_id;
+    const comparable = comparableLaunches();
+    const preferred = comparable.find((l) => l.modelo_id === 'phantom') || comparable.find((l) => l.isActive) || comparable[0] || state.launches[0];
+    state.primaryModelId = preferred?.modelo_id;
+    state.compareModelIds = comparable.map((launch) => launch.modelo_id);
     renderAll();
   }
 
