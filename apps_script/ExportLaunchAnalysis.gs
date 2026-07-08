@@ -17,7 +17,7 @@
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
   bqLocation: 'southamerica-east1',
-  githubRepo: getProp_('GITHUB_REPO', ''),
+  githubRepo: normalizeGitHubRepo_(getProp_('GITHUB_REPO', '')),
   githubBranch: getProp_('GITHUB_BRANCH', 'main'),
   dataPath: getProp_('DATA_PATH', 'data'),
   timeZone: 'America/Sao_Paulo'
@@ -65,7 +65,8 @@ function exportarTudo() {
     warnings: [
       'Filtros de data usam >= para incluir D0.',
       'Dados ausentes devem permanecer null/—; nunca transformar em zero.',
-      'GT deve usar day_zero_base 2025-02-11.'
+      'Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.',
+      'day_zero_base define o D0 analitico de cada modelo.'
     ]
   };
 
@@ -418,7 +419,7 @@ function consultarProdutosDia_(modelos) {
   const modelosSql = modelos.map(m => {
     const termosRegex = termosRegex_(m);
     const skuPrefixos = skuPrefixos_(m);
-    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base || m.data_lancamento)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
 
   const query = `
@@ -887,11 +888,39 @@ function validarGithubConfig_() {
   if (missing.length) {
     throw new Error(`Exportacao interrompida antes de consultar o BigQuery: configure ${missing.join(', ')} nas Script Properties. Sem GITHUB_TOKEN e GITHUB_REPO, o Apps Script nao consegue ler data/lancamentos_modelos.json no GitHub.`);
   }
+  if (!/^[^\/\s]+\/[^\/\s]+$/.test(CONFIG.githubRepo)) {
+    throw new Error(`Exportacao interrompida antes de consultar o BigQuery: GITHUB_REPO invalido (${CONFIG.githubRepo}). Use "PauloCastroDomingues/Launch-Analysis-v2" ou a URL do repositorio GitHub.`);
+  }
 }
 
 function ehModeloAtivoExportavel_(modelo) {
   return String(modelo.status || '').trim().toLowerCase() === 'ativo'
     && Boolean(dateOnly_(modelo.day_zero_base));
+}
+
+function normalizeGitHubRepo_(value) {
+  const clean = String(value || '')
+    .trim()
+    .replace(/^https?:\/\/github\.com\//i, '')
+    .replace(/^git@github\.com:/i, '')
+    .replace(/\.git$/i, '')
+    .replace(/^\/+|\/+$/g, '');
+  const parts = clean.split('/').filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+  return clean;
+}
+
+function githubHeaders_(token) {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function githubRequestContext_(path) {
+  return `repo=${CONFIG.githubRepo}; branch=${CONFIG.githubBranch}; path=${path}`;
 }
 
 function carregarModelos_() {
@@ -936,16 +965,31 @@ function lerJsonGitHub_(path) {
 
   const repoPath = githubDataPath_(path);
   const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${repoPath}`;
-  const response = UrlFetchApp.fetch(`${api}?ref=${CONFIG.githubBranch}`, {
+  const url = `${api}?ref=${encodeURIComponent(CONFIG.githubBranch)}`;
+  let response = UrlFetchApp.fetch(url, {
     method: 'get',
-    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' },
+    headers: githubHeaders_(token),
     muteHttpExceptions: true
   });
 
-  const code = response.getResponseCode();
-  const body = response.getContentText();
+  let code = response.getResponseCode();
+  let body = response.getContentText();
+  if ([401, 403, 404].includes(code)) {
+    const publicResponse = UrlFetchApp.fetch(url, {
+      method: 'get',
+      headers: githubHeaders_(''),
+      muteHttpExceptions: true
+    });
+    if (publicResponse.getResponseCode() === 200) {
+      Logger.log(`Aviso GitHub: leitura autenticada falhou com HTTP ${code}, mas leitura publica funcionou. O GITHUB_TOKEN provavelmente nao tem acesso/Contents ao repositorio configurado. ${githubRequestContext_(repoPath)}`);
+      response = publicResponse;
+      code = 200;
+      body = response.getContentText();
+    }
+  }
+
   if (code !== 200) {
-    throw new Error(`Nao consegui ler ${repoPath} no GitHub. HTTP ${code}: ${body.slice(0, 300)}`);
+    throw new Error(`Nao consegui ler ${repoPath} no GitHub. HTTP ${code}: ${body.slice(0, 300)}. Contexto: ${githubRequestContext_(repoPath)}. Verifique se GITHUB_REPO esta como PauloCastroDomingues/Launch-Analysis-v2, GITHUB_BRANCH como main e se o token tem acesso ao repositorio com Contents read/write.`);
   }
 
   let metadata;
@@ -1147,27 +1191,35 @@ function skuPrefixos_(model) {
 function escreverJsonGitHub_(fileName, payload) {
   validarGithubConfig_();
   const token = getProp_('GITHUB_TOKEN', '');
-  const path = `${CONFIG.dataPath}/${fileName}`;
+  const path = githubDataPath_(fileName);
   const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${path}`;
   const current = UrlFetchApp.fetch(`${api}?ref=${CONFIG.githubBranch}`, {
     method: 'get',
-    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' },
+    headers: githubHeaders_(token),
     muteHttpExceptions: true
   });
   const currentJson = current.getResponseCode() === 200 ? JSON.parse(current.getContentText()) : null;
-  const body = {
+  if (current.getResponseCode() !== 200) {
+    Logger.log(`Aviso GitHub: nao consegui obter SHA atual de ${path}. HTTP ${current.getResponseCode()}: ${current.getContentText().slice(0, 300)}. ${githubRequestContext_(path)}`);
+  }
+
+  const requestBody = {
     message: `chore(data): update ${fileName}`,
     branch: CONFIG.githubBranch,
     content: Utilities.base64Encode(JSON.stringify(payload, null, 2), Utilities.Charset.UTF_8),
     sha: currentJson && currentJson.sha ? currentJson.sha : undefined
   };
-  UrlFetchApp.fetch(api, {
+  const response = UrlFetchApp.fetch(api, {
     method: 'put',
     contentType: 'application/json',
-    headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github+json' },
-    payload: JSON.stringify(body),
-    muteHttpExceptions: false
+    headers: githubHeaders_(token),
+    payload: JSON.stringify(requestBody),
+    muteHttpExceptions: true
   });
+  const code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error(`Nao consegui escrever ${path} no GitHub. HTTP ${code}: ${response.getContentText().slice(0, 400)}. Contexto: ${githubRequestContext_(path)}. Verifique se o GITHUB_TOKEN tem acesso ao repo e permissao Contents: Read and write.`);
+  }
 }
 
 function normalizeCell_(value) {
