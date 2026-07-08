@@ -14,6 +14,7 @@ Ele roda na Vercel, lê JSONs da pasta `/data` via `fetch` e não depende de bac
 - `sql/lancamentos_produtos_dia.sql`: query-base do pipeline de vendas por lançamento.
 - `sql/diagnostico_monochrome.sql`: query de diagnóstico filtrado para produtos RS8/Avant/Mono vendidos desde o D0 do Monochrome.
 - `sql/diagnostico_monochrome_amplo.sql`: diagnóstico amplo, sem filtro de nome/SKU, para descobrir como o produto foi cadastrado de verdade.
+- `sql/auditoria_historico_gt_avant.sql`: query de auditoria para recalcular GT e Avant no SSOT usando apenas pedidos validos.
 - `vercel.json`: configuração simples para deploy estático.
 
 ## Estrutura
@@ -40,6 +41,7 @@ reise-launch-dashboard-v2/
     ├── diagnostico_monochrome.sql
     ├── diagnostico_monochrome_amplo.sql
     ├── diagnostico_rs8_monochrome.sql
+    ├── auditoria_historico_gt_avant.sql
     └── lancamentos_produtos_dia.sql
 ```
 
@@ -90,6 +92,7 @@ As vendas vêm do BigQuery/SSOT e precisam unificar Shopify + Shoppub.
 Regras fixas:
 
 - Usar `reise-ssot.mart_shared.orders_all_valid_no_migracao` como base de pedidos válidos.
+- Para recalcular benchmarks historicos de GT e Avant, usar `sql/auditoria_historico_gt_avant.sql`, baseada em `reise-ssot.core.order_item` + `reise-ssot.core.order` com `o.is_valid_order = TRUE`.
 - Usar Shopify para pedidos a partir de `2025-07-10 05:00:00` BRT.
 - Usar Shoppub para histórico até `2025-07-10 05:00:00` BRT.
 - Sempre filtrar lançamento com `v.data >= m.d0` para incluir o D0.
@@ -169,8 +172,9 @@ O bloco de metodologia também mostra `Data oficial`, `Day zero usado`, `Primeir
 ## Regras preservadas
 
 - Filtro de data usa `>=` para incluir D0.
-- GT usa `day_zero_base: 2025-02-11`.
-- Avant 90d sempre carrega aviso de Black Friday/Natal.
+- GT historico usa `day_zero_base: 2025-12-17`, primeira venda valida encontrada na auditoria SSOT.
+- Avant historico usa `day_zero_base: 2025-12-14`, primeira venda valida encontrada na auditoria SSOT.
+- Mix por cor e novos/recorrentes de GT/Avant continuam pendentes de auditoria SSOT propria.
 - Dado ausente aparece como `—` e vai para gráficos como `null`, nunca como `0`.
 - Novos lançamentos entram via `data/lancamentos_modelos.json`, sem alteração no front.
 - Cores dos modelos são fixas no mapa `CORES_MODELO`; Chart.js não escolhe cores automaticamente.

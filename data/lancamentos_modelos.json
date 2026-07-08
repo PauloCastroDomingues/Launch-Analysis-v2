@@ -5,11 +5,11 @@
     "linha": "GT Collection",
     "data_lancamento": "2024-10-18",
     "data_oficial": "2024-10-18",
-    "day_zero_base": "2025-02-11",
+    "day_zero_base": "2025-12-17",
     "termos_busca": "GT Collection|RS6 GT|KNIT GT|911 GT",
     "sku_prefixos": "RS6-GT,KNIT-GT,911-GT",
     "status": "historico",
-    "observacao": "Histórico com gap de 116 dias entre D0 oficial e primeira venda disponível na base. Usar day_zero_base para análises."
+    "observacao": "Historico recalculado pelo SSOT (core.order_item + core.order) usando o.is_valid_order = TRUE. D0 analitico = primeira venda valida encontrada: 2025-12-17."
   },
   {
     "modelo_id": "avant",
@@ -17,11 +17,11 @@
     "linha": "Avant",
     "data_lancamento": "2025-10-02",
     "data_oficial": "2025-10-02",
-    "day_zero_base": "2025-10-02",
+    "day_zero_base": "2025-12-14",
     "termos_busca": "Avant|RS8 Avant|RS6 Avant|RS7 Avant",
     "sku_prefixos": "RS8-AVANT,RS6-AVANT,RS7-AVANT",
     "status": "historico",
-    "observacao": "Histórico completo. Janela 90d inflada por Black Friday, Cyber Monday e Natal."
+    "observacao": "Historico recalculado pelo SSOT (core.order_item + core.order) usando o.is_valid_order = TRUE. D0 analitico = primeira venda valida encontrada: 2025-12-14."
   },
   {
     "modelo_id": "phantom",

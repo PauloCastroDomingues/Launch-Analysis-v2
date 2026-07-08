@@ -2,39 +2,62 @@
   {
     "modelo_id": "gt",
     "modelo": "GT Collection",
-    "day_zero_base": "2025-02-11",
+    "day_zero_base": "2025-12-17",
     "data_oficial": "2024-10-18",
-    "gap_dias": 116,
+    "gap_dias": 425,
     "janelas": {
+      "7d": {
+        "receita": 97125,
+        "pares": 125,
+        "pedidos": 105,
+        "ticket": 925,
+        "preco_medio_par": 777,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
+      },
       "15d": {
-        "receita": 122401,
-        "pares": 186,
-        "pedidos": 120,
-        "ticket": 1020,
-        "novos_pct": 0.47,
-        "origem": "historico"
+        "receita": 131257,
+        "pares": 169,
+        "pedidos": 142,
+        "ticket": 924.35,
+        "preco_medio_par": 776.67,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
       },
       "30d": {
-        "receita": 183232,
-        "pares": 272,
-        "pedidos": 201,
-        "ticket": 912,
-        "novos_pct": 0.51,
-        "origem": "historico"
+        "receita": 302197,
+        "pares": 391,
+        "pedidos": 247,
+        "ticket": 1223.47,
+        "preco_medio_par": 772.88,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
+      },
+      "60d": {
+        "receita": 574639,
+        "pares": 749,
+        "pedidos": 500,
+        "ticket": 1149.28,
+        "preco_medio_par": 767.21,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
       },
       "90d": {
-        "receita": 889939,
-        "pares": 1300,
-        "pedidos": 1011,
-        "ticket": 880,
-        "novos_pct": 0.6,
-        "origem": "historico"
+        "receita": 938191.5,
+        "pares": 1222,
+        "pedidos": 878,
+        "ticket": 1068.56,
+        "preco_medio_par": 767.75,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
       }
     },
     "multiplicadores": {
-      "m30_15": 1.5,
-      "m90_15": 7.27,
-      "m90_30": 4.86
+      "m15_7": 1.35,
+      "m30_15": 2.3,
+      "m60_30": 1.9,
+      "m90_15": 7.15,
+      "m90_30": 3.1
     },
     "cores": [
       {
@@ -84,46 +107,72 @@
       }
     ],
     "insights": [
-      "Usar GT apenas como referência de curva; abertura real está incompleta pelo gap de 116 dias.",
-      "Multiplicador 90÷30 de 4,86× é útil como cenário otimista, mas precisa de ressalva."
-    ]
+      "Janelas recalculadas pelo SSOT com pedidos validos (core.order_item + core.order; o.is_valid_order = TRUE).",
+      "D0 analitico ajustado para a primeira venda valida encontrada: 2025-12-17.",
+      "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio."
+    ],
+    "first_sale_date": "2025-12-17",
+    "first_sale_gap_dias": 0
   },
   {
     "modelo_id": "avant",
     "modelo": "Avant",
-    "day_zero_base": "2025-10-02",
+    "day_zero_base": "2025-12-14",
     "data_oficial": "2025-10-02",
-    "gap_dias": 0,
+    "gap_dias": 73,
     "janelas": {
+      "7d": {
+        "receita": 112226,
+        "pares": 212,
+        "pedidos": 172,
+        "ticket": 652.48,
+        "preco_medio_par": 529.37,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
+      },
       "15d": {
-        "receita": 168020,
-        "pares": 282,
-        "pedidos": 234,
-        "ticket": 718,
-        "novos_pct": 0.58,
-        "origem": "historico"
+        "receita": 179208,
+        "pares": 336,
+        "pedidos": 269,
+        "ticket": 666.2,
+        "preco_medio_par": 533.36,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
       },
       "30d": {
-        "receita": 418050,
-        "pares": 705,
-        "pedidos": 569,
-        "ticket": 735,
-        "novos_pct": 0.61,
-        "origem": "historico"
+        "receita": 430225,
+        "pares": 805,
+        "pedidos": 481,
+        "ticket": 894.44,
+        "preco_medio_par": 534.44,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
+      },
+      "60d": {
+        "receita": 1141861,
+        "pares": 2113,
+        "pedidos": 1405,
+        "ticket": 812.71,
+        "preco_medio_par": 540.4,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
       },
       "90d": {
-        "receita": 1077654,
-        "pares": 1930,
-        "pedidos": 1551,
-        "ticket": 695,
-        "novos_pct": 0.71,
-        "origem": "historico"
+        "receita": 2189551.37,
+        "pares": 3911,
+        "pedidos": 2735,
+        "ticket": 800.57,
+        "preco_medio_par": 559.84,
+        "novos_pct": null,
+        "origem": "ssot_pedidos_validos"
       }
     },
     "multiplicadores": {
-      "m30_15": 2.49,
-      "m90_15": 6.41,
-      "m90_30": 2.58
+      "m15_7": 1.6,
+      "m30_15": 2.4,
+      "m60_30": 2.65,
+      "m90_15": 12.22,
+      "m90_30": 5.09
     },
     "cores": [
       {
@@ -173,9 +222,12 @@
       }
     ],
     "insights": [
-      "Janela 90d foi favorecida por Black Friday, Cyber Monday e Natal.",
-      "Usar multiplicador 90÷30 como referência conservadora, não como verdade absoluta."
-    ]
+      "Janelas recalculadas pelo SSOT com pedidos validos (core.order_item + core.order; o.is_valid_order = TRUE).",
+      "D0 analitico ajustado para a primeira venda valida encontrada: 2025-12-14.",
+      "Novos/recorrentes e mix por cor ainda precisam de auditoria propria antes de uso decisorio."
+    ],
+    "first_sale_date": "2025-12-14",
+    "first_sale_gap_dias": 0
   },
   {
     "modelo_id": "phantom",
