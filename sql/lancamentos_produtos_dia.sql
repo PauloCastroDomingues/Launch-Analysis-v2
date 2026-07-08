@@ -252,7 +252,7 @@ monochrome_item_source AS (
     'ssot_core' AS origem,
     CAST(o.order_name AS STRING) AS source_order_id,
     CAST(o.order_sk AS STRING) AS order_sk,
-    NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(STRUCT(i.*)), '$.line_item_id') AS STRING)), '') AS line_item_id,
+    NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), '') AS line_item_id,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
     CAST(NULL AS STRING) AS variant_title,
