@@ -34,7 +34,7 @@
   const state = {
     data: null,
     launches: [],
-    primaryModelId: 'phantom',
+    primaryModelId: null,
     compareModelIds: [],
     charts: {}
   };
@@ -70,7 +70,9 @@
   const toDate = (iso) => {
     if (!iso) return null;
     const [y, m, d] = iso.split('-').map(Number);
-    return new Date(y, m - 1, d, 12, 0, 0);
+    if ([y, m, d].some(Number.isNaN)) return null;
+    const date = new Date(y, m - 1, d, 12, 0, 0);
+    return Number.isNaN(date.getTime()) ? null : date;
   };
 
   const toIsoDate = (date) => {
@@ -107,6 +109,11 @@
   const colorFor = (id, index = 0) => CORES_MODELO[id]?.line || CORES_MODELO._fallback[index % CORES_MODELO._fallback.length];
   const fillFor = (id, index = 0) => CORES_MODELO[id]?.fill || `${CORES_MODELO._fallback[index % CORES_MODELO._fallback.length]}33`;
   const windowLabel = (key) => WINDOW_LABELS[key] || key;
+  const normalizedStatus = (value) => String(value || '').trim().toLowerCase();
+  const hasValidDayZero = (model) => Boolean(toDate(model?.day_zero_base || model?.d0));
+  const isEligibleStatus = (status) => ['historico', 'ativo'].includes(normalizedStatus(status));
+  const isHistoricalLaunch = (launch) => launch?.isEligible && normalizedStatus(launch.status) === 'historico';
+  const isPlannedStatus = (status) => normalizedStatus(status) === 'planejado';
   const emptyWindows = () => WINDOW_KEYS.reduce((acc, key) => {
     acc[key] = null;
     return acc;
@@ -403,13 +410,186 @@
     };
   }
 
+  function sumNullableRows(rows, field) {
+    return rows.some((row) => row[field] !== null && row[field] !== undefined)
+      ? rows.reduce((acc, row) => acc + Number(row[field] || 0), 0)
+      : null;
+  }
+
+  function hasWindowValue(win, field = 'receita') {
+    return win?.[field] !== null && win?.[field] !== undefined;
+  }
+
+  function cumulativePointsFromWindows(metrics) {
+    return WINDOW_KEYS
+      .map((key) => {
+        const win = metrics.janelas?.[key];
+        if (!win || !hasWindowValue(win, 'receita')) return null;
+        return {
+          key,
+          day: WINDOW_DAYS[key] - 1,
+          receita: numberOrNull(win.receita),
+          pares: numberOrNull(win.pares),
+          pedidos: numberOrNull(win.pedidos),
+          novos: numberOrNull(win.novos),
+          recorrentes: numberOrNull(win.recorrentes)
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.day - b.day);
+  }
+
+  function spreadDelta(startValue, endValue, steps) {
+    if (startValue === null || startValue === undefined || endValue === null || endValue === undefined || !steps) return null;
+    return (Number(endValue) - Number(startValue)) / steps;
+  }
+
+  function backfillDailyFromWindows(metrics) {
+    const points = cumulativePointsFromWindows(metrics);
+    if (!points.length) return [];
+
+    const daily = [];
+    let previous = {
+      day: -1,
+      receita: 0,
+      pares: 0,
+      pedidos: 0,
+      novos: null,
+      recorrentes: null
+    };
+
+    points.forEach((point) => {
+      const steps = point.day - previous.day;
+      if (steps <= 0) {
+        previous = point;
+        return;
+      }
+
+      const increments = {
+        receita: spreadDelta(previous.receita, point.receita, steps),
+        pares: spreadDelta(previous.pares, point.pares, steps),
+        pedidos: spreadDelta(previous.pedidos, point.pedidos, steps),
+        novos: spreadDelta(previous.novos, point.novos, steps),
+        recorrentes: spreadDelta(previous.recorrentes, point.recorrentes, steps)
+      };
+
+      for (let day = previous.day + 1; day <= point.day; day += 1) {
+        daily.push({
+          day,
+          receita: increments.receita,
+          pares: increments.pares,
+          pedidos: increments.pedidos,
+          novos: increments.novos,
+          recorrentes: increments.recorrentes,
+          estimated: true
+        });
+      }
+      previous = point;
+    });
+
+    return daily.filter((row) => row.day >= 0 && row.day <= 90);
+  }
+
+  function aggregateDailyWindow(daily, day, origem) {
+    const rows = daily.filter((row) => row.day >= 0 && row.day <= day);
+    if (!rows.length) return null;
+
+    const receita = sumNullableRows(rows, 'receita');
+    const pares = sumNullableRows(rows, 'pares');
+    const pedidos = sumNullableRows(rows, 'pedidos');
+    const novos = sumNullableRows(rows, 'novos');
+    const recorrentes = sumNullableRows(rows, 'recorrentes');
+    const clientesClassificados = novos !== null && recorrentes !== null ? novos + recorrentes : null;
+
+    return {
+      receita,
+      pares,
+      pedidos,
+      ticket: pedidos && receita !== null ? receita / pedidos : null,
+      novos,
+      recorrentes,
+      novos_pct: clientesClassificados ? novos / clientesClassificados : null,
+      origem,
+      day
+    };
+  }
+
+  function weeklyFromDaily(daily) {
+    const weeks = new Map();
+    daily.forEach((row) => {
+      if (row.day < 0 || row.day > 90) return;
+      const week = Math.floor(row.day / 7) + 1;
+      const key = `Sem ${week}`;
+      const current = weeks.get(key) || { label: key, receita: 0, pedidos: 0 };
+      current.receita += Number(row.receita || 0);
+      current.pedidos += Number(row.pedidos || 0);
+      weeks.set(key, current);
+    });
+    return [...weeks.values()];
+  }
+
+  function calculateMultipliers(janelas, previous = {}) {
+    const ratio = (later, earlier) => {
+      const laterValue = janelas?.[later]?.receita;
+      const earlierValue = janelas?.[earlier]?.receita;
+      return laterValue !== null && laterValue !== undefined && earlierValue ? laterValue / earlierValue : null;
+    };
+    return {
+      ...previous,
+      m15_7: ratio('15d', '7d') ?? previous.m15_7 ?? null,
+      m30_15: ratio('30d', '15d') ?? previous.m30_15 ?? null,
+      m60_30: ratio('60d', '30d') ?? previous.m60_30 ?? null,
+      m90_15: ratio('90d', '15d') ?? previous.m90_15 ?? null,
+      m90_30: ratio('90d', '30d') ?? previous.m90_30 ?? null
+    };
+  }
+
+  function completeEligibleMetrics(model, metrics, eligible) {
+    const completed = {
+      ...metrics,
+      janelas: { ...emptyWindows(), ...(metrics.janelas || {}) },
+      multiplicadores: { m15_7: null, m30_15: null, m60_30: null, m90_15: null, m90_30: null, ...(metrics.multiplicadores || {}) },
+      semanas: metrics.semanas || [],
+      daily: metrics.daily || [],
+      daily_source: metrics.daily_source || null
+    };
+
+    if (!eligible) return completed;
+
+    if (!completed.daily.length) {
+      const backfilled = backfillDailyFromWindows(completed);
+      if (backfilled.length) {
+        completed.daily = backfilled;
+        completed.daily_source = 'historico_backfill';
+      }
+    }
+
+    if (completed.daily.length) {
+      const maxDailyDay = Math.max(...completed.daily.map((row) => row.day).filter((day) => day >= 0 && day <= 90));
+      WINDOW_KEYS.forEach((key) => {
+        const windowDay = WINDOW_DAYS[key] - 1;
+        if (!hasWindowValue(completed.janelas[key], 'receita') && maxDailyDay >= windowDay) {
+          const origem = completed.daily_source === 'historico_backfill' ? 'historico_backfill' : completed.origem;
+          completed.janelas[key] = aggregateDailyWindow(completed.daily, windowDay, origem || 'pipeline');
+        }
+      });
+
+      if (!completed.semanas.length) {
+        completed.semanas = weeklyFromDaily(completed.daily);
+      }
+    }
+
+    completed.multiplicadores = calculateMultipliers(completed.janelas, completed.multiplicadores);
+    return completed;
+  }
+
   function buildLaunches(data) {
     const histById = new Map(data.lancamentos_historico.map((item) => [item.modelo_id, item]));
     return data.lancamentos_modelos.map((model, idx) => {
       const hist = histById.get(model.modelo_id);
       const pipelineRows = (data.lancamentos_produtos_dia || []).filter((row) => row.modelo_id === model.modelo_id);
       const pipeline = aggregatePipeline(model, data.lancamentos_produtos_dia || []);
-      const metrics = pipeline || hist || {
+      const rawMetrics = pipeline || hist || {
         modelo_id: model.modelo_id,
         modelo: model.modelo,
         day_zero_base: model.day_zero_base,
@@ -424,13 +604,17 @@
         acumulado_atual: null,
         first_sale_date: null,
         first_sale_gap_dias: null,
-        origem: model.status === 'planejado' ? 'planejado' : 'pipeline'
+        origem: isPlannedStatus(model.status) ? 'planejado' : 'pipeline'
       };
       const d0 = model.day_zero_base || model.data_lancamento;
-      const dPlus = daysBetween(d0, TODAY);
-      const isFuture = toDate(d0) > TODAY;
-      const isActive = !isFuture && dPlus < 90 && model.status !== 'historico';
-      const isHistorical = model.status === 'historico' || (dPlus >= 90 && model.status !== 'planejado');
+      const d0Date = toDate(d0);
+      const dPlus = d0Date ? daysBetween(d0, TODAY) : null;
+      const isFuture = d0Date ? d0Date > TODAY : true;
+      const status = normalizedStatus(model.status);
+      const isEligible = isEligibleStatus(status) && hasValidDayZero(model) && !isFuture;
+      const metrics = completeEligibleMetrics(model, rawMetrics, isEligible);
+      const isActive = status === 'ativo' && !isFuture;
+      const isHistorical = status === 'historico';
       return {
         ...model,
         ...metrics,
@@ -445,7 +629,8 @@
         first_sale_gap_dias: metrics.first_sale_gap_dias ?? (metrics.origem === 'historico' ? Math.max(0, daysBetween(metrics.data_oficial, toDate(metrics.day_zero_base)) || 0) : null),
         isFuture,
         isActive,
-        isHistorical
+        isHistorical,
+        isEligible
       };
     });
   }
@@ -477,7 +662,8 @@
   function coverageBadge(launch, key) {
     const win = getWindow(launch, key);
     if (!win) return '—';
-    if (win.origem === 'historico' || launch.status === 'historico') return badge('historico', 'Histórico');
+    if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.');
+    if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico');
     const days = WINDOW_DAYS[key] || 0;
     const dCount = (launch.dPlus ?? 0) + 1;
     if (dCount < days) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`);
@@ -487,7 +673,7 @@
   function sourceBadge(launch) {
     const hasAnyWindow = WINDOW_KEYS.some((key) => Boolean(getWindow(launch, key)));
     if (launch.isFuture) return badge('planejado', 'Planejado');
-    if (launch.status === 'historico') return badge('historico', 'Histórico');
+    if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico');
     if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`);
     if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`);
     if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline D+${Math.max(0, launch.dPlus)}`);
@@ -612,7 +798,7 @@
     $('last-update').textContent = manifest.generated_at ? fmtDate(manifest.generated_at.slice(0, 10)) : '—';
     $('model-count').textContent = state.launches.length;
     $('active-count').textContent = state.launches.filter((l) => l.isActive).length;
-    $('planned-count').textContent = state.launches.filter((l) => l.status === 'planejado').length;
+    $('planned-count').textContent = state.launches.filter((l) => isPlannedStatus(l.status)).length;
   }
 
   function renderSelectedHeader(selected) {
@@ -692,24 +878,26 @@
       });
     }
 
-    if (selected?.modelo_id === 'gt') {
+    if (selected?.gap_dias > 0) {
       rows.push({
-        title: 'GT Collection',
-        copy: 'Usa day_zero_base 11/02/2025 por gap de 116 dias contra o lançamento oficial. Comparação de abertura exige ressalva.',
-        badge: badge('parcial', 'Gap 116d')
+        title: 'Gap entre datas',
+        copy: 'Este modelo tem diferença entre data oficial e day_zero_base. A leitura de abertura deve usar o D0 base informado no cadastro.',
+        badge: badge('parcial', `Gap ${fmtNum(selected.gap_dias)}d`)
       });
     }
-    if (selected?.modelo_id === 'avant') {
+
+    if (selected?.observacao) {
       rows.push({
-        title: 'Avant 90d',
-        copy: 'Janela 90d passa por Black Friday, Cyber Monday e Natal. Multiplicador final fica inflado.',
-        badge: badge('parcial', 'Sazonalidade')
+        title: 'Observação do cadastro',
+        copy: selected.observacao,
+        badge: badge('parcial', 'Modelo')
       });
     }
-    if (selected?.modelo_id === 'rs8_monochrome') {
+
+    if (selected?.isActive) {
       rows.push({
-        title: 'RS8 Monochrome',
-        copy: 'Modelo em curso. Se aparecer zerado, a correção deve acontecer no JSON de pipeline, não no front.',
+        title: 'Modelo ativo',
+        copy: 'Modelo em curso. Se aparecer sem vendas, a correção deve acontecer no pipeline/JSON, não no front.',
         badge: badge('parcial', `D+${Math.max(0, selected.dPlus)}`)
       });
     }
@@ -727,7 +915,7 @@
     const container = $('launch-state');
     if (selected.isFuture) {
       const diff = Math.max(0, daysBetween(new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12).toISOString().slice(0,10), toDate(selected.d0)) || 0);
-      const hist = state.launches.filter((l) => l.status === 'historico');
+      const hist = state.launches.filter(isHistoricalLaunch);
       const avg15 = hist.reduce((a, l) => a + (getWindow(l, '15d')?.receita || 0), 0) / hist.length;
       const avg30 = hist.reduce((a, l) => a + (getWindow(l, '30d')?.receita || 0), 0) / hist.length;
       const avgTicket = hist.reduce((a, l) => a + (getWindow(l, '30d')?.ticket || 0), 0) / hist.length;
@@ -800,7 +988,7 @@
 
   function previousLaunch(selected) {
     const hist = state.launches
-      .filter((l) => l.modelo_id !== selected.modelo_id && !l.isFuture)
+      .filter((l) => l.modelo_id !== selected.modelo_id && isEligibleLaunch(l))
       .sort((a, b) => toDate(a.d0) - toDate(b.d0));
     const idx = hist.findIndex((l) => toDate(l.d0) > toDate(selected.d0));
     if (idx > 0) return hist[idx - 1];
@@ -808,12 +996,19 @@
     return before[before.length - 1] || hist[hist.length - 1] || null;
   }
 
-  function isPlannedLaunch(launch) {
-    return launch?.status === 'planejado' || launch?.isFuture;
+  function isEligibleLaunch(launch) {
+    return Boolean(launch?.isEligible);
   }
 
   function comparableLaunches() {
-    return state.launches.filter((launch) => !isPlannedLaunch(launch));
+    return state.launches.filter(isEligibleLaunch);
+  }
+
+  function defaultComparableLaunch(launches = comparableLaunches()) {
+    return [...launches].sort((a, b) => {
+      if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+      return (toDate(b.d0)?.getTime() || 0) - (toDate(a.d0)?.getTime() || 0);
+    })[0] || state.launches[0] || null;
   }
 
   function selectedCompareLaunches() {
@@ -838,7 +1033,7 @@
     if (!comparable.length) return;
 
     if (!comparable.some((launch) => launch.modelo_id === state.primaryModelId)) {
-      state.primaryModelId = comparable.find((launch) => launch.modelo_id === 'phantom')?.modelo_id || comparable[0].modelo_id;
+      state.primaryModelId = defaultComparableLaunch(comparable)?.modelo_id || comparable[0].modelo_id;
     }
 
     const allowedIds = new Set(comparable.map((launch) => launch.modelo_id));
@@ -965,12 +1160,12 @@
       $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Selecione ao menos um modelo.</strong>A média histórica usa os modelos marcados em Comparar com.</div></div>`;
       return;
     }
-    const referencePool = launches.some((l) => l.status === 'historico')
+    const referencePool = launches.some(isHistoricalLaunch)
       ? launches
       : comparableLaunches();
 
     const day = comparisonDay(selected);
-    const dailyRefs = referencePool.filter((l) => l.status === 'historico' && l.daily?.length);
+    const dailyRefs = referencePool.filter((l) => isHistoricalLaunch(l) && l.daily?.length);
     const selectedDaily = cumulativeAt(selected, day);
     let label = day !== null ? `D+${day}` : '—';
     let selectedValue = selectedDaily?.receita ?? null;
@@ -984,7 +1179,7 @@
     if (avg === null || selectedValue === null) {
       const { key, data } = bestWindow(selected);
       const fallbackKey = key || '15d';
-      const refs = referencePool.filter((l) => l.status === 'historico' && getWindow(l, fallbackKey)?.receita);
+      const refs = referencePool.filter((l) => isHistoricalLaunch(l) && getWindow(l, fallbackKey)?.receita);
       label = fallbackKey;
       selectedValue = data?.receita ?? null;
       avg = refs.length ? refs.reduce((acc, launch) => acc + getWindow(launch, fallbackKey)?.receita, 0) / refs.length : null;
@@ -1168,7 +1363,7 @@
       data: {
         labels: weekly?.semanas?.map((w) => w.label) || [],
         datasets: [
-          { label: 'Faturamento', data: weekly?.semanas?.map((w) => w.receita) || [], backgroundColor: colorFor(weekly?.modelo_id || 'phantom'), yAxisID: 'y', borderRadius: 4 },
+          { label: 'Faturamento', data: weekly?.semanas?.map((w) => w.receita) || [], backgroundColor: colorFor(weekly?.modelo_id || selected.modelo_id), yAxisID: 'y', borderRadius: 4 },
           { label: 'Pedidos', type: 'line', data: weekly?.semanas?.map((w) => w.pedidos) || [], borderColor: '#E0B84C', backgroundColor: '#E0B84C', yAxisID: 'y1', tension: 0.35, pointRadius: 4 }
         ]
       },
@@ -1195,6 +1390,7 @@
         datasets: normalizedLaunches.map((launch, index) => {
           const data = Array(91).fill(null);
           const hasDaily = Boolean(launch.daily?.length);
+          const isBackfilled = launch.daily_source === 'historico_backfill';
           if (hasDaily) {
             const byDay = new Map();
             launch.daily.forEach((row) => {
@@ -1224,12 +1420,12 @@
           const lastDataDay = validDataDays.length ? Math.max(...validDataDays) : null;
           const isSelected = launch.modelo_id === selected.modelo_id;
           return {
-            label: hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
+            label: isBackfilled ? `${launch.modelo} · backfill` : hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
             data,
             borderColor: colorFor(launch.modelo_id, index),
             backgroundColor: fillFor(launch.modelo_id, index),
             borderWidth: isSelected ? 3 : 2,
-            borderDash: hasDaily ? [] : [6, 5],
+            borderDash: isBackfilled ? [4, 4] : hasDaily ? [] : [6, 5],
             fill: isSelected ? 'origin' : false,
             pointRadius: (ctx) => {
               const day = ctx.dataIndex;
@@ -1244,7 +1440,7 @@
             pointBorderWidth: 1,
             tension: hasDaily ? 0.32 : 0.12,
             spanGaps: !hasDaily,
-            sourceLabel: hasDaily ? 'diário real' : 'histórico agregado'
+            sourceLabel: isBackfilled ? 'backfill diário a partir das janelas acumuladas' : hasDaily ? 'diário real' : 'histórico agregado'
           };
         })
       },
@@ -1504,7 +1700,7 @@
   }
 
   function renderActions(selected) {
-    if (selected.isFuture || selected.status === 'planejado') {
+    if (selected.isFuture || isPlannedStatus(selected.status)) {
       $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
       return;
@@ -1538,18 +1734,30 @@
   }
 
   function projectionScenarios(selected) {
-    const hist = state.launches.filter((l) => l.status === 'historico' && l.multiplicadores?.m90_30);
-    const refAvant = state.launches.find((l) => l.modelo_id === 'avant')?.multiplicadores?.m90_30 ?? 2.58;
-    const refGt = state.launches.find((l) => l.modelo_id === 'gt')?.multiplicadores?.m90_30 ?? 4.86;
-    const avg = hist.length ? hist.reduce((acc, l) => acc + l.multiplicadores.m90_30, 0) / hist.length : 3.72;
+    const hist = comparableLaunches()
+      .filter((l) => isHistoricalLaunch(l) && l.multiplicadores?.m90_30)
+      .filter((l) => l.modelo_id !== selected.modelo_id);
+    const fallbackHist = comparableLaunches().filter((l) => isHistoricalLaunch(l) && l.multiplicadores?.m90_30);
+    const refs = hist.length ? hist : fallbackHist;
+    if (!refs.length) return null;
+
+    const multipliers = refs
+      .map((l) => l.multiplicadores.m90_30)
+      .filter((value) => value !== null && value !== undefined)
+      .sort((a, b) => a - b);
+    if (!multipliers.length) return null;
+
+    const conservative = multipliers[0];
+    const optimistic = multipliers[multipliers.length - 1];
+    const avg = multipliers.reduce((acc, value) => acc + value, 0) / multipliers.length;
     const baseWindow = getWindow(selected, '30d') || getWindow(selected, '15d');
     if (!baseWindow?.receita) return null;
     const factorBase = getWindow(selected, '30d') ? baseWindow.receita : baseWindow.receita * 2;
     const ticketPar = baseWindow.pares ? baseWindow.receita / baseWindow.pares : null;
     return [
-      { name: 'Conservador', label: `Avant ${fmtNum(refAvant, 2)}×`, mult: refAvant, value: factorBase * refAvant },
+      { name: 'Conservador', label: `Menor histórico ${fmtNum(conservative, 2)}×`, mult: conservative, value: factorBase * conservative },
       { name: 'Base ★', label: `Média ${fmtNum(avg, 2)}×`, mult: avg, value: factorBase * avg, base: true },
-      { name: 'Otimista', label: `GT ${fmtNum(refGt, 2)}×`, mult: refGt, value: factorBase * refGt }
+      { name: 'Otimista', label: `Maior histórico ${fmtNum(optimistic, 2)}×`, mult: optimistic, value: factorBase * optimistic }
     ].map((s) => ({ ...s, pairs: ticketPar ? s.value / ticketPar : null }));
   }
 
@@ -1558,7 +1766,7 @@
     const projectionBase = projectionLaunches.find((launch) => launch.modelo_id === selected.modelo_id)
       || projectionLaunches.find((launch) => getWindow(launch, '30d') || getWindow(launch, '15d'));
     const scenarios = projectionBase ? projectionScenarios(projectionBase) : null;
-    if (!scenarios || !projectionBase || projectionBase.isFuture || projectionBase.status === 'planejado') {
+    if (!scenarios || !projectionBase || projectionBase.isFuture || isPlannedStatus(projectionBase.status)) {
       $('projection-content').innerHTML = `<div class="empty-state"><div><strong>Sem dados suficientes para projeção.</strong>A seção aparece quando o modelo tem ao menos 15 dias de venda registrados.</div></div>`;
       return;
     }
@@ -1575,7 +1783,7 @@
       </div>
       <div class="card warning" style="margin-top:14px">
         <div class="metric-label">Aviso fixo</div>
-        <p class="section-desc">Avant 90d foi inflado por Black Friday/Natal. O multiplicador conservador pode estar subestimado para uma curva sem BF/Natal, mas deve continuar sinalizado.</p>
+        <p class="section-desc">Cenários usam multiplicadores 90÷30 dos modelos históricos elegíveis. Leia como referência de amplitude, não como previsão automática.</p>
       </div>`;
 
     createChart('chart-projection', {
@@ -1599,13 +1807,42 @@
   }
 
   function renderInsights(selected) {
+    const eligible = comparableLaunches();
+    const bestTicket = eligible
+      .map((launch) => ({ launch, value: getWindow(launch, '30d')?.ticket }))
+      .filter((row) => row.value !== null && row.value !== undefined)
+      .sort((a, b) => b.value - a.value)[0];
+    const activeLaunches = eligible.filter((launch) => launch.isActive);
+    const backfilled = eligible.filter((launch) => launch.daily_source === 'historico_backfill');
+    const noPipelineRows = eligible.filter((launch) => launch.isActive && !hasPipelineRows(launch));
+
     const global = [
-      { type: 'pos', title: 'Phantom abre com maior ticket médio das três linhas', copy: 'R$ 961 no 30d, contra R$ 735 no Avant e R$ 912 no GT. O posicionamento premium se sustenta na abertura.' },
-      { type: 'warn', title: 'Avant precisa de ressalva na curva 90d', copy: 'Black Friday, Cyber Monday e Natal entram na janela e inflam o resultado. Use como referência, não como verdade limpa.' },
-      { type: 'neg', title: 'GT não deve comparar abertura com Phantom/Avant', copy: 'O gap de 116 dias deixa a primeira venda disponível longe do D0 oficial. Serve melhor como curva histórica, não como lançamento limpo.' },
-      { type: 'warn', title: 'CRM Phantom precisa revisão', copy: 'O histórico antigo mostra 8 de 10 disparos sem retorno. O dashboard mantém o alerta para orientar timing, segmentação e copy.' },
-      { type: 'pos', title: 'Novo lançamento sem código novo', copy: 'RS8 Avant Monochrome e Dia dos Pais entram pela planilha/JSON. O front só lê os dados.' }
-    ];
+      bestTicket ? {
+        type: 'pos',
+        title: 'Maior ticket 30d',
+        copy: `${bestTicket.launch.modelo} lidera o ticket médio 30d entre modelos elegíveis, com ${fmtBRL(bestTicket.value)}.`
+      } : null,
+      activeLaunches.length ? {
+        type: 'warn',
+        title: 'Modelo ativo em curso',
+        copy: `${activeLaunches.map((launch) => launch.modelo).join(', ')} ainda deve ser lido por D+n e janelas fechadas, sem transformar ausência em zero.`
+      } : null,
+      backfilled.length ? {
+        type: 'warn',
+        title: 'Backfill diário aplicado',
+        copy: `${backfilled.length} modelo(s) histórico(s) sem diário real receberam backfill a partir das janelas acumuladas para curva e semana a semana.`
+      } : null,
+      noPipelineRows.length ? {
+        type: 'neg',
+        title: 'Pipeline sem linha para ativo',
+        copy: `${noPipelineRows.map((launch) => launch.modelo).join(', ')} está ativo, mas sem linhas no JSON de vendas. Verifique BigQuery, match e exportação.`
+      } : null,
+      {
+        type: 'pos',
+        title: 'Cadastro sem código novo',
+        copy: 'Qualquer modelo com status historico ou ativo e day_zero_base válido entra automaticamente nas janelas, curvas e rankings.'
+      }
+    ].filter(Boolean);
     const modelInsights = (selected.insights || []).map((copy) => ({ type: 'warn', title: selected.modelo, copy }));
     const list = [...global, ...modelInsights].slice(0, 8);
     $('insights-list').innerHTML = list.map((item, idx) => `
@@ -1646,7 +1883,7 @@
     state.data = await loadData();
     state.launches = buildLaunches(state.data);
     const comparable = comparableLaunches();
-    const preferred = comparable.find((l) => l.modelo_id === 'phantom') || comparable.find((l) => l.isActive) || comparable[0] || state.launches[0];
+    const preferred = defaultComparableLaunch(comparable);
     state.primaryModelId = preferred?.modelo_id;
     state.compareModelIds = comparable.map((launch) => launch.modelo_id);
     renderAll();

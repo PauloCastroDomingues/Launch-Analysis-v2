@@ -12,11 +12,26 @@ WITH params AS (
 ),
 modelos AS (
   -- Preenchido pelo Apps Script a partir de data/lancamentos_modelos.json no GitHub.
-  -- Exemplo para diagnostico local:
+  -- Exemplo generico para diagnostico local:
   SELECT
-    'rs8_monochrome' AS modelo_id,
-    'RS8 Avant Monochrome' AS modelo,
-    DATE('2026-06-25') AS d0
+    'modelo_exemplo' AS modelo_id,
+    'Modelo Exemplo' AS modelo,
+    DATE('2026-01-01') AS d0,
+    'Modelo Exemplo|Linha Exemplo' AS termos_busca,
+    'MODELO-EXEMPLO,LINHA-EXEMPLO' AS sku_prefixos
+),
+modelos_norm AS (
+  SELECT
+    *,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(COALESCE(NULLIF(termos_busca, ''), modelo), NFD),
+      r'\p{M}', ''
+    ), r'[^a-z0-9|]+', ' ')) AS termos_norm,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(REPLACE(IFNULL(sku_prefixos, ''), ',', '|'), NFD),
+      r'\p{M}', ''
+    ), r'[^a-z0-9|]+', ' ')) AS sku_prefixos_norm
+  FROM modelos
 ),
 pedidos_validos AS (
   SELECT
@@ -26,7 +41,7 @@ pedidos_validos AS (
     DATE(o.paid_at, 'America/Sao_Paulo') AS data
   FROM `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
   CROSS JOIN params p
-  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos)
+  WHERE DATE(o.paid_at, 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos_norm)
     AND (
       (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
       OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
@@ -171,38 +186,35 @@ vendas AS (
   WHERE i.pares IS NOT NULL
     AND i.pares > 0
 ),
-classificado AS (
+candidatos AS (
   SELECT
     v.*,
-    CASE
-      WHEN
-        REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])(monochrome)([^a-z0-9]|$)')
-        OR (
-          REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])mono([^a-z0-9]|$)')
-          AND REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])(rs8|avant)([^a-z0-9]|$)')
-        )
-        OR REGEXP_CONTAINS(v.sku_norm, r'(mono|monochrome)')
-      THEN 'rs8_monochrome'
-
-      WHEN REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])phantom([^a-z0-9]|$)')
-        OR REGEXP_CONTAINS(v.sku_norm, r'phantom')
-      THEN 'phantom'
-
-      WHEN REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])gt([^a-z0-9]|$)')
-        OR REGEXP_CONTAINS(v.sku_norm, r'(^|[^a-z0-9])gt([^a-z0-9]|$)')
-      THEN 'gt'
-
-      WHEN REGEXP_CONTAINS(v.match_text_norm, r'(^|[^a-z0-9])avant([^a-z0-9]|$)')
-        OR REGEXP_CONTAINS(v.sku_norm, r'avant')
-      THEN 'avant'
-
-      ELSE NULL
-    END AS modelo_id_detectado
+    m.modelo_id,
+    m.d0,
+    GREATEST(
+      IFNULL((
+        SELECT MAX(LENGTH(TRIM(term)))
+        FROM UNNEST(SPLIT(IFNULL(m.termos_norm, ''), '|')) AS term
+        WHERE TRIM(term) != ''
+          AND REGEXP_CONTAINS(
+            v.match_text_norm,
+            CONCAT(r'(^|[^a-z0-9])', REGEXP_REPLACE(TRIM(term), r'\s+', r'\\s+'), r'([^a-z0-9]|$)')
+          )
+      ), 0),
+      IFNULL((
+        SELECT MAX(1000 + LENGTH(TRIM(prefixo)))
+        FROM UNNEST(SPLIT(IFNULL(m.sku_prefixos_norm, ''), '|')) AS prefixo
+        WHERE TRIM(prefixo) != ''
+          AND STARTS_WITH(v.sku_norm, TRIM(prefixo))
+      ), 0)
+    ) AS match_score
   FROM vendas v
+  JOIN modelos_norm m
+    ON v.data >= m.d0 -- inclui D0
 ),
 match AS (
   SELECT
-    m.modelo_id,
+    c.modelo_id,
     c.data,
     c.origem,
     c.source_order_id,
@@ -220,10 +232,12 @@ match AS (
     ) AS cor,
     c.pares,
     c.receita
-  FROM classificado c
-  JOIN modelos m
-    ON c.data >= m.d0 -- inclui D0
-   AND c.modelo_id_detectado = m.modelo_id
+  FROM candidatos c
+  WHERE c.match_score > 0
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY c.source_system, c.source_order_id, c.sku, c.nome_produto, c.variant_title
+    ORDER BY c.match_score DESC, c.d0 DESC, c.modelo_id
+  ) = 1
 )
 SELECT
   modelo_id,
