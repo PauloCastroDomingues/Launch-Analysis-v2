@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-08T17:15:29-03:00",
+  "generated_at": "2026-07-08T17:26:28-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_shopify_shoppub",
@@ -10,7 +10,7 @@
     "lancamentos_produtos_dia": 330,
     "auditoria_monochrome": 1,
     "estoque": 0,
-    "midia_paga": "skipped",
+    "midia_paga": 19,
     "crm_disparos": "skipped"
   },
   "data_quality": {
@@ -32,7 +32,7 @@
   },
   "export_status": {
     "estoque": "exported",
-    "midia_paga": "skipped",
+    "midia_paga": "exported",
     "crm_disparos": "skipped"
   },
   "files": [
