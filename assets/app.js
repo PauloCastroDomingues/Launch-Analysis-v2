@@ -1,5 +1,4 @@
 (() => {
-  const TODAY = new Date('2026-07-08T12:00:00-03:00');
   const DATA_FILES = [
     'lancamentos_modelos',
     'lancamentos_historico',
@@ -24,11 +23,11 @@
   const WINDOW_DAYS = { '7d': 7, '15d': 15, '30d': 30, '60d': 60, '90d': 90 };
   const WINDOW_KEYS = Object.keys(WINDOW_DAYS);
   const WINDOW_LABELS = {
-    '7d': '7 dias',
-    '15d': '15 dias',
-    '30d': '30 dias',
-    '60d': '60 dias',
-    '90d': '90 dias'
+    '7d': 'D+7',
+    '15d': 'D+15',
+    '30d': 'D+30',
+    '60d': 'D+60',
+    '90d': 'D+90'
   };
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
 
@@ -37,6 +36,7 @@
     launches: [],
     primaryModelId: null,
     compareModelIds: [],
+    snapshotClock: null,
     charts: {}
   };
 
@@ -84,6 +84,41 @@
     return `${y}-${m}-${d}`;
   };
 
+  const dateOnlyFromDate = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  };
+
+  const snapshotClockFallback = () => {
+    const date = dateOnlyFromDate(new Date());
+    return { date, iso: toIsoDate(date), source: 'browser' };
+  };
+
+  const snapshotClockFromManifest = (manifest) => {
+    const iso = String(manifest?.generated_at || '').slice(0, 10);
+    const date = toDate(iso);
+    return date ? { date, iso: toIsoDate(date), source: 'manifest' } : null;
+  };
+
+  const snapshotClockFromRows = (rows) => {
+    const dates = (rows || [])
+      .map((row) => String(row.data || '').slice(0, 10))
+      .filter(Boolean)
+      .sort();
+    const iso = dates.length ? dates[dates.length - 1] : null;
+    const date = toDate(iso);
+    return date ? { date, iso: toIsoDate(date), source: 'lancamentos_produtos_dia' } : null;
+  };
+
+  const deriveSnapshotClock = (data) => (
+    snapshotClockFromManifest(data?.manifest)
+    || snapshotClockFromRows(data?.lancamentos_produtos_dia)
+    || snapshotClockFallback()
+  );
+
+  const snapshotDate = () => state.snapshotClock?.date || snapshotClockFallback().date;
+  const snapshotIso = () => state.snapshotClock?.iso || toIsoDate(snapshotDate());
+
   const daysBetween = (startIso, endDate) => {
     const start = toDate(startIso);
     if (!start || !endDate) return null;
@@ -91,6 +126,11 @@
   };
 
   const dayIndex = (startIso, dateIso) => daysBetween(startIso, toDate(dateIso));
+  const windowEndDay = (key) => WINDOW_DAYS[key] ?? null;
+  const windowSpanDays = (key) => {
+    const endDay = windowEndDay(key);
+    return endDay === null ? null : endDay + 1;
+  };
 
   const addDays = (iso, days) => {
     const d = toDate(iso);
@@ -292,7 +332,7 @@
         : null
     );
 
-    const todayIdx = daysBetween(model.day_zero_base, TODAY);
+    const todayIdx = daysBetween(model.day_zero_base, snapshotDate());
     const firstSaleDate = modelRows
       .map((row) => row.data)
       .filter(Boolean)
@@ -360,12 +400,13 @@
     const acumuladoAtual = buildAggregate(closedRows(currentMaxIdx), 'pipeline_atual', currentMaxIdx);
 
     const janelas = {};
-    Object.entries(WINDOW_DAYS).forEach(([key, days]) => {
-      if (todayIdx === null || todayIdx < days - 1) {
+    WINDOW_KEYS.forEach((key) => {
+      const endDay = windowEndDay(key);
+      if (todayIdx === null || endDay === null || todayIdx < endDay) {
         janelas[key] = null;
         return;
       }
-      janelas[key] = buildAggregate(closedRows(days - 1), 'pipeline');
+      janelas[key] = buildAggregate(closedRows(endDay), 'pipeline');
     });
 
     const semanasMap = new Map();
@@ -444,7 +485,7 @@
         if (!win || !hasWindowValue(win, 'receita')) return null;
         return {
           key,
-          day: WINDOW_DAYS[key] - 1,
+          day: windowEndDay(key),
           receita: numberOrNull(win.receita),
           pares: numberOrNull(win.pares),
           pedidos: numberOrNull(win.pedidos),
@@ -585,7 +626,7 @@
     if (completed.daily.length) {
       const maxDailyDay = Math.max(...completed.daily.map((row) => row.day).filter((day) => day >= 0 && day <= 90));
       WINDOW_KEYS.forEach((key) => {
-        const windowDay = WINDOW_DAYS[key] - 1;
+        const windowDay = windowEndDay(key);
         if (!hasWindowValue(completed.janelas[key], 'receita') && maxDailyDay >= windowDay) {
           const origem = completed.daily_source === 'historico_backfill' ? 'historico_backfill' : completed.origem;
           completed.janelas[key] = aggregateDailyWindow(completed.daily, windowDay, origem || 'pipeline');
@@ -626,8 +667,8 @@
       };
       const d0 = model.day_zero_base || model.data_lancamento;
       const d0Date = toDate(d0);
-      const dPlus = d0Date ? daysBetween(d0, TODAY) : null;
-      const isFuture = d0Date ? d0Date > TODAY : true;
+      const dPlus = d0Date ? daysBetween(d0, snapshotDate()) : null;
+      const isFuture = d0Date ? d0Date > snapshotDate() : true;
       const status = normalizedStatus(model.status);
       const isEligible = isEligibleStatus(status) && hasValidDayZero(model) && !isFuture;
       const metrics = completeEligibleMetrics(model, rawMetrics, isEligible);
@@ -766,9 +807,8 @@
     if (!win) return '—';
     if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.');
     if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico');
-    const days = WINDOW_DAYS[key] || 0;
-    const dCount = (launch.dPlus ?? 0) + 1;
-    if (dCount < days) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`);
+    const endDay = windowEndDay(key);
+    if (endDay !== null && (launch.dPlus ?? 0) < endDay) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`);
     return badge('pipeline', 'Pipeline');
   }
 
@@ -1026,7 +1066,7 @@
       { label: 'Data oficial', value: fmtDate(selected.data_oficial) },
       { label: 'D0 usado', value: fmtDate(selected.d0) },
       { label: 'Primeira venda', value: firstSaleLabel },
-      { label: 'Posição hoje', value: dLabel }
+      { label: 'Posição snapshot', value: dLabel }
     ];
 
     $('selected-dates').innerHTML = items.map((item) => `
@@ -1053,6 +1093,11 @@
         title: 'SSOT',
         copy: 'Vendas vêm do BigQuery/SSOT unificando Shopify + Shoppub em southamerica-east1. A query usa D0 inclusivo com filtro >=.',
         badge: badge('pipeline', 'BigQuery')
+      },
+      {
+        title: 'Relógio analítico',
+        copy: `D+ e janelas fechadas usam a data do snapshot (${fmtDate(snapshotIso())}), derivada de manifest.generated_at.`,
+        badge: badge('pipeline', 'Snapshot')
       },
       {
         title: 'Dado ausente',
@@ -1124,7 +1169,7 @@
   function renderState(selected) {
     const container = $('launch-state');
     if (selected.isFuture) {
-      const diff = Math.max(0, daysBetween(new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate(), 12).toISOString().slice(0,10), toDate(selected.d0)) || 0);
+      const diff = Math.max(0, daysBetween(snapshotIso(), toDate(selected.d0)) || 0);
       const hist = state.launches.filter(isHistoricalLaunch);
       const avg15 = hist.reduce((a, l) => a + (getWindow(l, '15d')?.receita || 0), 0) / hist.length;
       const avg30 = hist.reduce((a, l) => a + (getWindow(l, '30d')?.receita || 0), 0) / hist.length;
@@ -1155,7 +1200,7 @@
     const isCurrentAccumulated = !closedWindow.data && Boolean(selected.acumulado_atual);
     const key = isCurrentAccumulated ? `D+${selected.acumulado_atual.day}` : closedWindow.key;
     const data = closedWindow.data || selected.acumulado_atual;
-    const windowDays = isCurrentAccumulated ? (selected.acumulado_atual.day + 1) : Number(String(key || '').replace('d', ''));
+    const windowDays = isCurrentAccumulated ? (selected.acumulado_atual.day + 1) : windowSpanDays(key);
     const velocity = data?.receita && windowDays ? data.receita / windowDays : null;
     const previous = previousLaunch(selected);
     const prevWin = previous && !isCurrentAccumulated ? getWindow(previous, key || '30d') : null;
@@ -1283,7 +1328,7 @@
   function windowVelocity(launch) {
     const { key, data } = bestWindow(launch);
     if (!key || !data?.receita) return null;
-    return data.receita / Number(key.replace('d', ''));
+    return data.receita / windowSpanDays(key);
   }
 
   function renderDplusComparison(selected) {
@@ -1915,7 +1960,7 @@
     const windows = WINDOW_KEYS.map((key) => ({
       key,
       label: windowLabel(key),
-      end: (WINDOW_DAYS[key] || 0) - 1
+      end: windowEndDay(key) || 0
     }));
     const analyses = windows.map((win) => {
       const events = seasonalEventsFor(selected, win.end);
@@ -1938,8 +1983,8 @@
     const observedEvents = ninety.events.filter((event) => event.observed);
     const futureEvents = ninety.events.filter((event) => !event.observed);
     const summaryRead = ninety.events.length
-      ? `${observedEvents.length} evento(s) ja observado(s) e ${futureEvents.length} evento(s) futuro(s) dentro de 90 dias.`
-      : 'Nenhum evento cadastrado entre D0 e D+89.';
+      ? `${observedEvents.length} evento(s) ja observado(s) e ${futureEvents.length} evento(s) futuro(s) ate D+90.`
+      : 'Nenhum evento cadastrado entre D0 e D+90.';
 
     $('calendar-grid').innerHTML = `
       <div class="calendar-summary calendar-summary--${ninety.cls}">
@@ -2457,6 +2502,7 @@
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();
+    state.snapshotClock = deriveSnapshotClock(state.data);
     state.launches = buildLaunches(state.data);
     const comparable = comparableLaunches();
     const preferred = defaultComparableLaunch(comparable);

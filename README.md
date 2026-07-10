@@ -12,21 +12,21 @@ Snapshot versionado em `data/manifest.json`:
 
 | Item | Status |
 | --- | --- |
-| Última geração | `2026-07-08T15:42:10-03:00` |
+| Última geração | `2026-07-10T09:22:05-03:00` |
 | Modelo ativo | `rs8_monochrome` |
-| Linhas em `lancamentos_produtos_dia.json` | `324` |
+| Linhas em `lancamentos_produtos_dia.json` | `359` |
 | Auditoria Monochrome | `ok` |
 | Estoque | exportado, `0` linhas |
-| Mídia paga | `skipped` sem `MIDIA_SPREADSHEET_ID` |
-| CRM | `skipped` sem `MIDIA_SPREADSHEET_ID` |
+| Mídia paga | exportado, `11` linhas |
+| CRM | exportado, `23` linhas |
 
 Auditoria atual do RS8 Avant Monochrome:
 
 | Métrica | Valor |
 | --- | ---: |
-| Pedidos auditados | 253 |
-| Pares auditados | 324 |
-| Receita auditada | 232956 |
+| Pedidos auditados | 281 |
+| Pares auditados | 359 |
+| Receita auditada | 258121 |
 | Diferença pedidos/exportado | 0 |
 | Diferença pares/exportado | 0 |
 | Diferença receita/exportado | 0 |
@@ -183,6 +183,8 @@ Funções principais:
 - Dado ausente permanece `null` no JSON e aparece como `—` na interface.
 - Nunca transformar ausência em `0`.
 - Filtros de data usam inclusão do D0.
+- O relógio analítico do front usa `manifest.generated_at`; se o manifest estiver ausente, usa a maior data de `lancamentos_produtos_dia.json` antes de cair na data do navegador.
+- Janelas `7d`, `15d`, `30d`, `60d` e `90d` significam D+N inclusivo: D0 até D+N.
 - `day_zero_base` é o D0 analítico usado pelo dashboard.
 - Modelos exportáveis pelo Apps Script precisam estar com `status = ativo` e `day_zero_base` válido.
 - Histórico (`status = historico`) entra como benchmark estático em `lancamentos_historico.json`.
