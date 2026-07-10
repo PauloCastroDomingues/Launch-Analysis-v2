@@ -7,19 +7,20 @@
 -- 4) nao transformar dado ausente em zero;
 -- 5) unificar vendas Shopify + Shoppub, respeitando o corte de migracao.
 -- 6) rs8_monochrome usa fonte canonica core.order_item + core.order e match estrito.
+-- 7) clientes novos/recorrentes usam customer_key segura; ausencia fica null.
 
 WITH params AS (
   SELECT TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt
 ),
 modelos AS (
-  -- Preenchido pelo Apps Script a partir de data/lancamentos_modelos.json no GitHub.
-  -- Exemplo generico para diagnostico local:
+  -- O Apps Script preenche este CTE dinamicamente a partir de data/lancamentos_modelos.json.
+  -- Para diagnostico direto no BigQuery, mantemos aqui o modelo ativo do snapshot atual.
   SELECT
-    'modelo_exemplo' AS modelo_id,
-    'Modelo Exemplo' AS modelo,
-    DATE('2026-01-01') AS d0,
-    'Modelo Exemplo|Linha Exemplo' AS termos_busca,
-    'MODELO-EXEMPLO,LINHA-EXEMPLO' AS sku_prefixos
+    'rs8_monochrome' AS modelo_id,
+    'RS8 Avant Monochrome' AS modelo,
+    DATE('2026-06-25') AS d0,
+    'Monochrome|RS8 Monochrome|RS8 Avant Monochrome' AS termos_busca,
+    'RS8-AVANT-MONO|RS8-MONO|RS8AVANTMONO' AS sku_prefixos
 ),
 modelos_norm AS (
   SELECT
@@ -47,6 +48,83 @@ pedidos_validos AS (
       (UPPER(o.source_system) = 'SHOPPUB' AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt)
       OR (UPPER(o.source_system) = 'SHOPIFY' AND o.paid_at >= p.cutoff_brt)
     )
+),
+customer_orders_source AS (
+  SELECT
+    'SHOPPUB' AS source_system,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    CAST(o.order_name AS STRING) AS order_name,
+    COALESCE(o.paid_at, o.created_at) AS order_ts,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data,
+    NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '') AS email_norm,
+    NULLIF(REGEXP_REPLACE(COALESCE(CAST(o.customer_phone_digits AS STRING), ''), r'\D', ''), '') AS phone_norm
+  FROM `reise-ssot.stg.shoppub_orders_tbl` o
+  CROSS JOIN params p
+  WHERE o.is_valid_order_calc = TRUE
+    AND COALESCE(o.created_at, o.paid_at) <= p.cutoff_brt
+
+  UNION ALL
+
+  SELECT
+    'SHOPIFY' AS source_system,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
+    CAST(o.order_name AS STRING) AS order_name,
+    COALESCE(o.paid_at, o.created_at) AS order_ts,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data,
+    NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '') AS email_norm,
+    NULLIF(REGEXP_REPLACE(COALESCE(CAST(o.customer_phone AS STRING), ''), r'\D', ''), '') AS phone_norm
+  FROM `reise-ssot.core.order` o
+  CROSS JOIN params p
+  WHERE o.is_valid_order = TRUE
+    AND o.paid_at >= p.cutoff_brt
+),
+customer_orders AS (
+  SELECT
+    source_system,
+    source_order_id,
+    order_name,
+    order_ts,
+    data,
+    CASE
+      WHEN REGEXP_CONTAINS(email_norm, r'^[^@\s]+@[^@\s]+\.[^@\s]+$') THEN CONCAT('email:', email_norm)
+      WHEN LENGTH(phone_norm) BETWEEN 8 AND 15 THEN CONCAT('phone:', phone_norm)
+      ELSE NULL
+    END AS customer_key
+  FROM customer_orders_source
+  WHERE order_ts IS NOT NULL
+),
+customer_orders_com_primeira AS (
+  SELECT
+    *,
+    MIN(order_ts) OVER (PARTITION BY customer_key) AS primeira_compra_ts
+  FROM customer_orders
+  WHERE customer_key IS NOT NULL
+),
+customer_orders_classificados AS (
+  SELECT
+    *,
+    CASE
+      WHEN primeira_compra_ts < order_ts THEN 'recorrente'
+      ELSE 'novo'
+    END AS cliente_tipo
+  FROM customer_orders_com_primeira
+),
+customer_orders_by_source AS (
+  SELECT *
+  FROM customer_orders_classificados
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY source_system, source_order_id
+    ORDER BY order_ts, order_name
+  ) = 1
+),
+customer_orders_by_order_name AS (
+  SELECT *
+  FROM customer_orders_classificados
+  WHERE order_name IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY source_system, order_name
+    ORDER BY order_ts, source_order_id
+  ) = 1
 ),
 shopify_items AS (
   SELECT
@@ -165,6 +243,8 @@ vendas AS (
     p.source_system,
     LOWER(p.source_system) AS origem,
     p.source_order_id,
+    co.customer_key,
+    co.cliente_tipo,
     COALESCE(i.sku, '') AS sku,
     COALESCE(i.nome_produto, i.product_title, '') AS nome_produto,
     COALESCE(i.product_title, i.nome_produto, '') AS product_title,
@@ -184,6 +264,9 @@ vendas AS (
   JOIN itens_unificados i
     ON i.source_order_id = p.source_order_id
    AND i.source_system = p.source_system
+  LEFT JOIN customer_orders_by_source co
+    ON co.source_system = p.source_system
+   AND co.source_order_id = p.source_order_id
   WHERE i.pares IS NOT NULL
     AND i.pares > 0
 ),
@@ -220,6 +303,8 @@ match AS (
     c.data,
     c.origem,
     c.source_order_id,
+    c.customer_key,
+    c.cliente_tipo,
     c.sku,
     c.nome_produto,
     c.variant_title,
@@ -252,6 +337,10 @@ monochrome_item_source AS (
     'ssot_core' AS origem,
     CAST(o.order_name AS STRING) AS source_order_id,
     CAST(o.order_sk AS STRING) AS order_sk,
+    NULLIF(TRIM(CAST(o.customer_email AS STRING)), '') AS customer_email,
+    NULLIF(TRIM(CAST(o.customer_phone AS STRING)), '') AS customer_phone,
+    co.customer_key,
+    co.cliente_tipo,
     NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), '') AS line_item_id,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS nome_produto,
@@ -267,6 +356,9 @@ monochrome_item_source AS (
   JOIN modelos_norm m
     ON m.modelo_id = 'rs8_monochrome'
    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
+  LEFT JOIN customer_orders_by_order_name co
+    ON co.source_system = 'SHOPIFY'
+   AND co.order_name = CAST(o.order_name AS STRING)
   WHERE o.is_valid_order = TRUE
     AND i.item_name IS NOT NULL
     AND SAFE_CAST(i.quantity AS INT64) > 0
@@ -298,6 +390,8 @@ monochrome_match AS (
     data,
     origem,
     source_order_id,
+    customer_key,
+    cliente_tipo,
     COALESCE(sku, '') AS sku,
     COALESCE(nome_produto, '') AS nome_produto,
     variant_title,
@@ -318,6 +412,20 @@ match_unificado AS (
   SELECT * FROM match
   UNION ALL
   SELECT * FROM monochrome_match
+),
+match_unificado_classificado AS (
+  SELECT
+    *,
+    ROW_NUMBER() OVER (
+      PARTITION BY
+        modelo_id,
+        COALESCE(
+          source_order_id,
+          CONCAT('__sem_pedido__', origem, '|', CAST(data AS STRING), '|', sku, '|', nome_produto, '|', IFNULL(variant_title, ''))
+        )
+      ORDER BY data, sku, nome_produto, IFNULL(variant_title, ''), match_text_norm
+    ) AS cliente_row_num
+  FROM match_unificado
 )
 SELECT
   modelo_id,
@@ -333,10 +441,16 @@ SELECT
   COUNT(DISTINCT source_order_id) AS pedidos,
   SUM(pares) AS pares,
   SUM(receita) AS receita,
-  CAST(NULL AS INT64) AS novos,
-  CAST(NULL AS INT64) AS recorrentes,
+  CASE
+    WHEN COUNTIF(cliente_row_num = 1 AND cliente_tipo IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNTIF(cliente_row_num = 1 AND cliente_tipo = 'novo')
+  END AS novos,
+  CASE
+    WHEN COUNTIF(cliente_row_num = 1 AND cliente_tipo IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNTIF(cliente_row_num = 1 AND cliente_tipo = 'recorrente')
+  END AS recorrentes,
   match_text_norm,
   modelo_id_detectado
-FROM match_unificado
+FROM match_unificado_classificado
 GROUP BY 1,2,3,4,5,6,7,8,9,10,16,17
 ORDER BY modelo_id, data, source_order_id, sku;

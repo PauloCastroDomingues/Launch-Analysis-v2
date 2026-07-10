@@ -13,3 +13,4 @@
 11. `first_sale_date` é diagnóstico de qualidade de match/exportação. O front não troca automaticamente o D0 do Monochrome por essa data.
 12. O relógio analítico do front vem de `manifest.generated_at`; se o manifest estiver ausente, usa a maior data em `lancamentos_produtos_dia.json` e só então a data do navegador como fallback.
 13. As janelas `7d`, `15d`, `30d`, `60d` e `90d` representam marcos D+N inclusivos, ou seja, acumulam de D0 até D+N para manter paridade com as auditorias SQL.
+14. Clientes novos/recorrentes no pipeline ativo são classificados por `customer_key` segura (`email:` normalizado ou `phone:` normalizado). Pedidos sem chave confiável permanecem `null`, e pedidos com múltiplas linhas contam cliente apenas uma vez por `modelo_id + source_order_id`.

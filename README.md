@@ -204,6 +204,24 @@ sub_modelo | cor | tamanho | pedidos | pares | receita | novos | recorrentes
 match_text_norm | modelo_id_detectado
 ```
 
+### Regra de clientes novos/recorrentes
+
+No pipeline ativo (`lancamentos_produtos_dia.json`), `novos` e `recorrentes` são classificados no BigQuery a partir de uma `customer_key` segura:
+
+- usa `customer_email` normalizado quando existir e parecer válido;
+- senão usa telefone normalizado apenas quando tiver entre 8 e 15 dígitos;
+- se email e telefone não forem confiáveis, mantém `novos` e `recorrentes` como `null`.
+
+A primeira compra válida daquela `customer_key` no SSOT define a classificação:
+
+- `novo`: não existe compra válida anterior ao pedido;
+- `recorrente`: existe compra válida anterior ao pedido;
+- `null`: pedido sem `customer_key` confiável.
+
+Para evitar dupla contagem em pedidos com mais de uma linha/SKU, a contagem de cliente é gravada em apenas uma linha por `modelo_id + source_order_id`. As demais linhas do mesmo pedido permanecem `null` em `novos` e `recorrentes`; ausência não vira zero.
+
+O cálculo preserva a transição Shoppub → Shopify: Shoppub entra até `2025-07-10 05:00:00` BRT e Shopify entra a partir desse corte. O Monochrome usa `customer_email` e `customer_phone` de `reise-ssot.core.order`.
+
 O Monochrome usa uma regra especial de auditoria baseada em `reise-ssot.core.order_item + core.order`, com match por:
 
 - `item_name` normalizado contendo `monochrome`;
@@ -341,7 +359,7 @@ O bloco de metodologia mostra `Data oficial`, `Day zero usado`, `Primeira venda 
 
 ## Pendências Conhecidas
 
-- `novos` e `recorrentes` ainda ficam `null` quando não houver auditoria segura.
+- `novos` e `recorrentes` do pipeline ativo ficam `null` somente quando não houver `customer_key` confiável.
 - `novos_pct` de GT/Avant está `null` nos benchmarks recalculados.
 - Mix por cor de GT/Avant ainda precisa de auditoria SSOT própria antes de uso decisório.
 - `estoque.json` está exportado, mas o snapshot atual tem `0` linhas.
