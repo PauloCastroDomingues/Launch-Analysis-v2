@@ -1810,18 +1810,22 @@
         investimento: 0,
         receita_atribuida: 0,
         pedidos: 0,
+        count: 0,
         aggregate: true
       };
       current.investimento += row.investimento || 0;
       current.receita_atribuida += row.receita_atribuida || 0;
       current.pedidos += row.pedidos || 0;
+      current.count += 1;
       groups.set(key, current);
     });
-    return [...groups.values()].map((row) => ({
-      ...row,
-      roas: row.investimento ? row.receita_atribuida / row.investimento : null,
-      cpa: row.pedidos ? row.investimento / row.pedidos : null
-    }));
+    return [...groups.values()]
+      .filter((row) => row.count > 1)
+      .map(({ count, ...row }) => ({
+        ...row,
+        roas: row.investimento ? row.receita_atribuida / row.investimento : null,
+        cpa: row.pedidos ? row.investimento / row.pedidos : null
+      }));
   }
 
   function mediaValue(value, formatter) {
