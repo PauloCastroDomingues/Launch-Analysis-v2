@@ -1831,7 +1831,7 @@
   function renderActions(selected) {
     if (selected.isFuture || isPlannedStatus(selected.status)) {
       $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
-      $('crm-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
+      $('crm-table').innerHTML = `<tr><td colspan="7" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
       return;
     }
 
@@ -1856,12 +1856,13 @@
     $('crm-table').innerHTML = crmRows.length ? crmRows.map((row) => `
       <tr>
         <td>${fmtDate(row.data_disparo)}</td>
+        <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${fmtBRL(row.receita_linha)}</td>
         <td class="num">${row.receita_dia == null ? '—' : fmtBRL(row.receita_dia)}</td>
         <td class="num">${row.roas_proxy == null ? '—' : `${fmtNum(row.roas_proxy, 2)}×`}</td>
         <td>${roasBadge(row.roas_proxy)}</td>
-      </tr>`).join('') : `<tr><td colspan="6" class="cell-muted">Sem disparos de CRM cadastrados para este modelo.</td></tr>`;
+      </tr>`).join('') : `<tr><td colspan="7" class="cell-muted">Sem disparos de CRM cadastrados para este modelo.</td></tr>`;
   }
 
   function projectionScenarios(selected) {
