@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-10T09:22:05-03:00",
+  "generated_at": "2026-07-10T15:24:55-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_shopify_shoppub",
@@ -7,22 +7,22 @@
     "rs8_monochrome"
   ],
   "row_counts": {
-    "lancamentos_produtos_dia": 359,
+    "lancamentos_produtos_dia": 362,
     "auditoria_monochrome": 1,
     "estoque": 0,
-    "midia_paga": 11,
+    "midia_paga": 17,
     "crm_disparos": 23
   },
   "data_quality": {
     "rs8_monochrome": {
       "status": "ok",
       "auditado": true,
-      "pedidos_auditoria": 281,
-      "pares_auditoria": 359,
-      "receita_auditoria": 258121,
-      "pedidos_exportados": 281,
-      "pares_exportados": 359,
-      "receita_exportada": 258121,
+      "pedidos_auditoria": 284,
+      "pares_auditoria": 362,
+      "receita_auditoria": 260278,
+      "pedidos_exportados": 284,
+      "pares_exportados": 362,
+      "receita_exportada": 260278,
       "diferenca_pedidos_pct": 0,
       "diferenca_pares_pct": 0,
       "diferenca_receita_pct": 0,
