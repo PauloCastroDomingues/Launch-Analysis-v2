@@ -9,7 +9,8 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
+    <aside id="nav-drawer" class="sidebar nav-drawer" aria-label="Navegacao" aria-hidden="true" tabindex="-1" inert>
+      <button id="nav-drawer-close" class="nav-drawer-close" type="button" aria-label="Fechar navegacao">&times;</button>
       <div class="brand">
         <div class="logo-mark">R</div>
         <div>
@@ -37,7 +38,15 @@
       </div>
     </aside>
 
+    <div id="drawer-overlay" class="drawer-overlay" hidden></div>
+
     <main class="main">
+      <div class="main-toolbar">
+        <button id="nav-drawer-toggle" class="nav-drawer-toggle" type="button" aria-controls="nav-drawer" aria-expanded="false">
+          <span class="drawer-icon" aria-hidden="true"></span>
+          <span>Menu</span>
+        </button>
+      </div>
       <header class="topbar">
         <div>
           <div class="eyebrow">Dashboard interno · Produto / Growth / CRM</div>
@@ -54,11 +63,17 @@
 
       <div class="selector-panel">
         <div class="selector-block">
-          <div class="selector-title">Modelo principal</div>
+          <div class="selector-title selector-title-row">
+            <span>Modelo principal</span>
+            <button class="help-button" type="button" data-tooltip="Define o lancamento em foco nos KPIs, estoque, calendario, acoes e projecao." aria-label="Ajuda sobre modelo principal">?</button>
+          </div>
           <div id="model-selector" class="model-selector"></div>
         </div>
         <div class="selector-block">
-          <div class="selector-title">Comparar com</div>
+          <div class="selector-title selector-title-row">
+            <span>Comparar com</span>
+            <button class="help-button" type="button" data-tooltip="Escolhe quais modelos entram nas tabelas, curvas, rankings e cenarios comparativos." aria-label="Ajuda sobre comparativo">?</button>
+          </div>
           <div id="compare-selector" class="compare-selector"></div>
           <div id="compare-warning" class="compare-warning"></div>
         </div>
@@ -68,7 +83,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">01 · Estado do lançamento</div>
-            <h2><span id="selected-title">—</span></h2>
+            <div class="section-title-row">
+              <h2><span id="selected-title">—</span></h2>
+              <button class="help-button" type="button" data-tooltip="Resume o lancamento principal com janelas disponiveis, velocidade, mix de clientes e sinais de leitura." aria-label="Ajuda sobre estado do lancamento">?</button>
+            </div>
             <p class="section-desc">KPIs calculados a partir da melhor janela disponível para o modelo selecionado.</p>
             <div id="selected-dates" class="selected-dates"></div>
           </div>
@@ -81,7 +99,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">02 · Comparativo por janela</div>
-            <h2>7d, 15d, 30d, 60d e 90d lado a lado</h2>
+            <div class="section-title-row">
+              <h2>7d, 15d, 30d, 60d e 90d lado a lado</h2>
+              <button class="help-button" type="button" data-tooltip="Compara as mesmas janelas de lancamento entre os modelos selecionados, mantendo null quando a janela ainda nao fechou." aria-label="Ajuda sobre comparativo por janela">?</button>
+            </div>
           </div>
         </div>
         <div class="table-wrap">
@@ -128,7 +149,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">03 · Curvas de aceleração</div>
-            <h2>Receita, pares, mix e rampa semanal</h2>
+            <div class="section-title-row">
+              <h2>Receita, pares, mix e rampa semanal</h2>
+              <button class="help-button" type="button" data-tooltip="Mostra a progressao acumulada e semanal para entender ritmo, sustentacao e diferencas entre modelos." aria-label="Ajuda sobre curvas de aceleracao">?</button>
+            </div>
           </div>
         </div>
         <div class="grid grid-2">
@@ -166,7 +190,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">04 · Estoque</div>
-            <h2>Cobertura por sub-modelo e cor</h2>
+            <div class="section-title-row">
+              <h2>Cobertura por sub-modelo e cor</h2>
+              <button class="help-button" type="button" data-tooltip="Cruza estoque atual com velocidade de venda quando disponivel para indicar risco de ruptura." aria-label="Ajuda sobre estoque">?</button>
+            </div>
             <p class="section-desc">Alerta quando cobertura estimada fica abaixo de 15 dias.</p>
           </div>
         </div>
@@ -177,7 +204,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">05 · Mix de cores</div>
-            <h2>Ranking normalizado por sub-modelo</h2>
+            <div class="section-title-row">
+              <h2>Ranking normalizado por sub-modelo</h2>
+              <button class="help-button" type="button" data-tooltip="Organiza cores e tamanhos mais vendidos por modelo para apoiar reposicao, compra e leitura de demanda." aria-label="Ajuda sobre mix de cores">?</button>
+            </div>
           </div>
         </div>
         <div id="color-mix" class="color-mix"></div>
@@ -189,7 +219,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">06 · Calendário sazonal</div>
-            <h2>Promotores, ofensores e neutros por janela</h2>
+            <div class="section-title-row">
+              <h2>Promotores, ofensores e neutros por janela</h2>
+              <button class="help-button" type="button" data-tooltip="Marca eventos de calendario que podem distorcer leitura de venda, positiva ou negativamente." aria-label="Ajuda sobre calendario sazonal">?</button>
+            </div>
           </div>
         </div>
         <div id="calendar-grid" class="calendar-grid"></div>
@@ -199,7 +232,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">07 · Ações comerciais</div>
-            <h2>Mídia paga e CRM</h2>
+            <div class="section-title-row">
+              <h2>Mídia paga e CRM</h2>
+              <button class="help-button" type="button" data-tooltip="Mostra investimento, receita atribuida ou proxy e status operacional das campanhas e disparos cadastrados." aria-label="Ajuda sobre acoes comerciais">?</button>
+            </div>
             <p class="section-desc">ROAS de mídia vem de midia_paga.json. CRM usa proxy e deve ser lido como apoio, não atribuição direta.</p>
           </div>
         </div>
@@ -234,7 +270,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">08 · Projeção de cenários</div>
-            <h2>Estimativa de 90 dias</h2>
+            <div class="section-title-row">
+              <h2>Estimativa de 90 dias</h2>
+              <button class="help-button" type="button" data-tooltip="Projeta amplitude de 90 dias usando multiplicadores historicos dos modelos comparados, nao uma previsao automatica." aria-label="Ajuda sobre projecao">?</button>
+            </div>
           </div>
         </div>
         <div id="projection-content"></div>
@@ -248,7 +287,10 @@
         <div class="section-head">
           <div>
             <div class="section-kicker">09 · Insights</div>
-            <h2>Leituras e recomendações</h2>
+            <div class="section-title-row">
+              <h2>Leituras e recomendações</h2>
+              <button class="help-button" type="button" data-tooltip="Lista alertas e leituras automaticas geradas a partir dos dados carregados e do modelo em foco." aria-label="Ajuda sobre insights">?</button>
+            </div>
           </div>
         </div>
         <div id="insights-list" class="insights-list"></div>

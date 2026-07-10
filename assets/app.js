@@ -832,6 +832,103 @@
     return state.charts[id];
   }
 
+  function configureDrawer() {
+    const drawer = $('nav-drawer');
+    const overlay = $('drawer-overlay');
+    const toggle = $('nav-drawer-toggle');
+    const close = $('nav-drawer-close');
+    if (!drawer || !overlay || !toggle || !close) return;
+
+    const setOpen = (open) => {
+      document.body.classList.toggle('drawer-open', open);
+      overlay.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      drawer.setAttribute('aria-hidden', String(!open));
+      if (open) drawer.removeAttribute('inert');
+      else drawer.setAttribute('inert', '');
+      if (open) drawer.focus({ preventScroll: true });
+    };
+
+    toggle.addEventListener('click', () => setOpen(!document.body.classList.contains('drawer-open')));
+    close.addEventListener('click', () => setOpen(false));
+    overlay.addEventListener('click', () => setOpen(false));
+    drawer.querySelectorAll('.nav-list a').forEach((link) => {
+      link.addEventListener('click', () => setOpen(false));
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    });
+  }
+
+  function configureTooltips() {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'app-tooltip';
+    tooltip.hidden = true;
+    document.body.appendChild(tooltip);
+    let activeTarget = null;
+
+    const targetFrom = (node) => node?.closest?.('[data-tooltip]');
+    const positionTooltip = (target) => {
+      if (!target || tooltip.hidden) return;
+      const gap = 10;
+      const margin = 12;
+      const rect = target.getBoundingClientRect();
+      const tip = tooltip.getBoundingClientRect();
+      let left = rect.left + (rect.width / 2) - (tip.width / 2);
+      let top = rect.bottom + gap;
+
+      if (top + tip.height > window.innerHeight - margin) {
+        top = rect.top - tip.height - gap;
+      }
+      left = Math.max(margin, Math.min(left, window.innerWidth - tip.width - margin));
+      top = Math.max(margin, Math.min(top, window.innerHeight - tip.height - margin));
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    };
+
+    const show = (target) => {
+      const text = target?.dataset?.tooltip;
+      if (!text) return;
+      activeTarget = target;
+      tooltip.textContent = text;
+      tooltip.hidden = false;
+      requestAnimationFrame(() => positionTooltip(target));
+    };
+
+    const hide = () => {
+      activeTarget = null;
+      tooltip.hidden = true;
+    };
+
+    document.addEventListener('pointerover', (event) => {
+      const target = targetFrom(event.target);
+      if (target) show(target);
+    });
+    document.addEventListener('pointerout', (event) => {
+      const target = targetFrom(event.target);
+      const next = event.relatedTarget;
+      if (target && !(next instanceof Node && target.contains(next))) hide();
+    });
+    document.addEventListener('focusin', (event) => {
+      const target = targetFrom(event.target);
+      if (target) show(target);
+    });
+    document.addEventListener('focusout', (event) => {
+      if (targetFrom(event.target)) hide();
+    });
+    document.addEventListener('click', (event) => {
+      const target = targetFrom(event.target);
+      if (!target) {
+        hide();
+        return;
+      }
+      event.preventDefault();
+      show(target);
+    });
+    window.addEventListener('resize', () => positionTooltip(activeTarget));
+    window.addEventListener('scroll', () => positionTooltip(activeTarget), true);
+  }
+
   function renderModelSelector() {
     const wrap = $('model-selector');
     wrap.innerHTML = comparableLaunches().map((launch) => {
@@ -863,22 +960,31 @@
         ? `${selectedLaunches.length} modelos selecionados`
         : 'Nenhum modelo selecionado';
     wrap.innerHTML = `
-      <details class="compare-dropdown">
-        <summary>
-          <span>${escapeHtml(label)}</span>
-          <span class="compare-dropdown-count">${fmtNum(selectedLaunches.length)} de ${fmtNum(launches.length)}</span>
-        </summary>
-        <div class="compare-menu">
-          ${launches.map((launch) => {
-            const active = selected.has(launch.modelo_id);
-            return `<label class="compare-option ${active ? 'active' : ''}">
-              <input type="checkbox" value="${launch.modelo_id}" ${active ? 'checked' : ''}>
-              <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
-              <span>${escapeHtml(launch.modelo)}</span>
-            </label>`;
-          }).join('')}
+      <div class="compare-toolbar">
+        <div class="compare-summary">${escapeHtml(label)} - ${fmtNum(selectedLaunches.length)} de ${fmtNum(launches.length)}</div>
+        <div class="compare-actions">
+          <button class="compare-action" type="button" data-compare-action="all">Todos</button>
+          <button class="compare-action" type="button" data-compare-action="none">Limpar</button>
         </div>
-      </details>`;
+      </div>
+      <div class="compare-chip-grid">
+        ${launches.map((launch) => {
+          const active = selected.has(launch.modelo_id);
+          return `<label class="compare-chip ${active ? 'active' : ''}" title="${escapeHtml(launch.modelo)}">
+            <input type="checkbox" value="${launch.modelo_id}" ${active ? 'checked' : ''}>
+            <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
+            <span>${escapeHtml(launch.modelo)}</span>
+          </label>`;
+        }).join('')}
+      </div>`;
+    wrap.querySelectorAll('[data-compare-action]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.compareModelIds = button.dataset.compareAction === 'all'
+          ? launches.map((launch) => launch.modelo_id)
+          : [];
+        renderAll();
+      });
+    });
     wrap.querySelectorAll('input').forEach((input) => {
       input.addEventListener('change', () => {
         const ids = new Set(state.compareModelIds || []);
@@ -2015,6 +2121,8 @@
   }
 
   async function init() {
+    configureDrawer();
+    configureTooltips();
     configureChartDefaults();
     state.data = await loadData();
     state.launches = buildLaunches(state.data);
