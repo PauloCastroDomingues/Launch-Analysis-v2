@@ -145,7 +145,13 @@
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
 
-  const badge = (type, label) => `<span class="badge badge--${type}">${escapeHtml(label)}</span>`;
+  const tooltipAttr = (text) => escapeHtml(String(text || '').replace(/\s+/g, ' ').trim());
+  const tip = (text, label = 'i') => text
+    ? `<button class="help-button help-button--mini" type="button" data-tooltip="${tooltipAttr(text)}" aria-label="Ajuda analitica">${escapeHtml(label)}</button>`
+    : '';
+  const labelTip = (label, text) => `<span class="label-with-tip"><span>${escapeHtml(label)}</span>${tip(text)}</span>`;
+  const thTip = (label, text, cls = '') => `<th${cls ? ` class="${cls}"` : ''}>${labelTip(label, text)}</th>`;
+  const badge = (type, label, text = '') => `<span class="badge badge--${type}"${text ? ` tabindex="0" data-tooltip="${tooltipAttr(text)}"` : ''}>${escapeHtml(label)}</span>`;
 
   const colorFor = (id, index = 0) => CORES_MODELO[id]?.line || CORES_MODELO._fallback[index % CORES_MODELO._fallback.length];
   const fillFor = (id, index = 0) => CORES_MODELO[id]?.fill || `${CORES_MODELO._fallback[index % CORES_MODELO._fallback.length]}33`;
@@ -782,8 +788,8 @@
   function auditBadgeForLaunch(launch) {
     const quality = auditQualityForLaunch(launch);
     if (!quality) return null;
-    if (quality.status === 'ok' && quality.auditado !== false) return badge('pipeline', 'Auditado');
-    if (quality.status === 'divergente') return badge('neg', 'Divergente');
+    if (quality.status === 'ok' && quality.auditado !== false) return badge('pipeline', 'Auditado', 'Auditoria independente do SSOT bateu com o export do dashboard em pedidos, pares e receita. Use como dado real auditado.');
+    if (quality.status === 'divergente') return badge('neg', 'Divergente', 'A auditoria independente nao bate com o JSON exportado. Nao use esta leitura para decisao antes de investigar pedidos, pares e receita.');
     return null;
   }
 
@@ -805,23 +811,23 @@
   function coverageBadge(launch, key) {
     const win = getWindow(launch, key);
     if (!win) return '—';
-    if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.');
-    if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico');
+    if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.', 'Historico agregado foi distribuido entre marcos para permitir curva visual. Nao e dado diario real.');
+    if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Benchmark estatico vindo de data/lancamentos_historico.json. Use para comparacao, nao como pipeline em tempo real.');
     const endDay = windowEndDay(key);
-    if (endDay !== null && (launch.dPlus ?? 0) < endDay) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`);
-    return badge('pipeline', 'Pipeline');
+    if (endDay !== null && (launch.dPlus ?? 0) < endDay) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`, `Janela ${windowLabel(key)} ainda nao fechou no snapshot. O acumulado atual vai ate D+${Math.max(0, launch.dPlus ?? 0)}.`);
+    return badge('pipeline', 'Pipeline', `Janela ${windowLabel(key)} fechada com dados reais do pipeline de vendas exportado pelo Apps Script.`);
   }
 
   function sourceBadge(launch) {
     const auditBadge = auditBadgeForLaunch(launch);
     if (auditBadge) return auditBadge;
     const hasAnyWindow = WINDOW_KEYS.some((key) => Boolean(getWindow(launch, key)));
-    if (launch.isFuture) return badge('planejado', 'Planejado');
-    if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico');
-    if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`);
-    if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`);
-    if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline D+${Math.max(0, launch.dPlus)}`);
-    return badge('parcial', 'Sem dados');
+    if (launch.isFuture) return badge('planejado', 'Planejado', 'Modelo com D0 futuro no snapshot. Fica fora de vendas, midia, CRM e projecao ate entrar dado real.');
+    if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Modelo usado como benchmark historico, com dados agregados em JSON versionado.');
+    if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`, 'Ha linhas reais no pipeline, mas nenhuma janela D+N fechada ainda.');
+    if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`, 'Nao ha janela fechada nem acumulado suficiente no JSON. Ausencia permanece vazia, nao vira zero.');
+    if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline D+${Math.max(0, launch.dPlus)}`, 'Dados reais vindos de lancamentos_produtos_dia.json, gerado pelo Apps Script a partir do SSOT.');
+    return badge('parcial', 'Sem dados', 'Fonte insuficiente para classificar a leitura.');
   }
 
   function configureChartDefaults() {
@@ -1212,12 +1218,42 @@
       : '';
 
     const cards = [
-      { label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${key || ''}`, value: fmtBRL(data?.receita), sub: dataSub },
-      { label: 'Pedidos', value: fmtNum(data?.pedidos), sub: data?.pedidos ? `${fmtNum(data.pedidos)} pedidos` : 'Sem pedidos no JSON' },
-      { label: 'Ticket médio/pedido', value: fmtBRL(data?.ticket), sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${key}`) : '—' },
-      { label: 'Preço médio/par', value: fmtBRL(data?.preco_medio_par), sub: data?.preco_medio_par ? `${fmtNum(data?.pares)} pares` : '—' },
-      { label: '% Clientes novos', value: fmtPct(data?.novos_pct), sub: data?.novos_pct != null ? `${fmtPct(1 - data.novos_pct)} recorrentes` : '—' },
-      { label: 'Pares vendidos', value: fmtNum(data?.pares), sub: data?.pares ? `${fmtNum(data.pares)} pares` : 'Sem pares no JSON' }
+      {
+        label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${key || ''}`,
+        value: fmtBRL(data?.receita),
+        sub: dataSub,
+        tooltip: `Soma da receita liquida dos itens do modelo. Periodo: ${isCurrentAccumulated ? `D0 ate ${key}` : `janela ${key}`}. Fonte: ${isCurrentAccumulated ? 'acumulado real do pipeline' : 'janela fechada/historica disponivel'}.`
+      },
+      {
+        label: 'Pedidos',
+        value: fmtNum(data?.pedidos),
+        sub: data?.pedidos ? `${fmtNum(data.pedidos)} pedidos` : 'Sem pedidos no JSON',
+        tooltip: 'Quantidade de pedidos distintos na janela. Quando existe source_order_id, o dashboard conta pedidos unicos; se nao existir, usa o campo pedidos do JSON.'
+      },
+      {
+        label: 'Ticket médio/pedido',
+        value: fmtBRL(data?.ticket),
+        sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${key}`) : '—',
+        tooltip: 'Formula: receita liquida / pedidos. Ajuda a separar crescimento por volume de pedidos de crescimento por valor medio.'
+      },
+      {
+        label: 'Preço médio/par',
+        value: fmtBRL(data?.preco_medio_par),
+        sub: data?.preco_medio_par ? `${fmtNum(data?.pares)} pares` : '—',
+        tooltip: 'Formula: receita liquida / pares vendidos. Use para comparar mix de produto/desconto; nao substitui preco cheio.'
+      },
+      {
+        label: '% Clientes novos',
+        value: fmtPct(data?.novos_pct),
+        sub: data?.novos_pct != null ? `${fmtPct(1 - data.novos_pct)} recorrentes` : '—',
+        tooltip: 'Formula: novos / (novos + recorrentes). Fica vazio quando a classificacao de cliente nao veio auditada no JSON; ausencia nao vira zero.'
+      },
+      {
+        label: 'Pares vendidos',
+        value: fmtNum(data?.pares),
+        sub: data?.pares ? `${fmtNum(data.pares)} pares` : 'Sem pares no JSON',
+        tooltip: 'Soma das quantidades vendidas dos itens classificados no modelo. Fonte: pipeline ou historico agregado, conforme o badge.'
+      }
     ];
 
     const empty = !data ? `<div class="empty-state"><div><strong>${selected.isActive && !hasPipelineRows(selected) ? 'Sem dados carregados no pipeline.' : 'Sem dados de venda para este lançamento.'}</strong> Verifique BigQuery, termos de busca e exportação do Apps Script. A tela não transforma ausência em zero.</div></div>` : '';
@@ -1226,7 +1262,7 @@
       <div class="grid grid-6">
         ${cards.map((card) => `
           <div class="card">
-            <div class="metric-label">${escapeHtml(card.label)}</div>
+            <div class="metric-label">${labelTip(card.label, card.tooltip)}</div>
             <div class="metric-value">${card.value}</div>
             <div class="metric-sub">${card.sub}</div>
           </div>`).join('')}
@@ -1235,12 +1271,12 @@
       ${empty}
       <div class="grid grid-2" style="margin-top:14px">
         <div class="card soft">
-          <div class="metric-label">Velocidade diária</div>
+          <div class="metric-label">${labelTip('Velocidade diária', 'Formula: receita / numero de dias considerados. Em acumulado atual usa D0 ate D+n; em janela fechada usa D0 ate o marco D+N inclusivo.')}</div>
           <div class="metric-value">${fmtBRL(velocity)}</div>
           <div class="metric-sub">${isCurrentAccumulated ? `R$/dia no acumulado ${key}` : `R$/dia na janela ${key || '—'}`}</div>
         </div>
         <div class="card soft">
-          <div class="metric-label">Comparativo anterior</div>
+          <div class="metric-label">${labelTip('Comparativo anterior', 'Delta percentual contra o modelo anterior elegivel na mesma janela. Fica vazio quando a janela ainda nao fechou ou o comparavel nao tem dado.')}</div>
           <div class="metric-value">${delta === null ? '—' : `<span class="delta ${delta >= 0 ? 'delta--pos' : 'delta--neg'}">${delta >= 0 ? '▲' : '▼'} ${fmtPct(Math.abs(delta))}</span>`}</div>
           <div class="metric-sub">${isCurrentAccumulated ? 'Disponível quando uma janela fechar.' : `vs ${previous ? escapeHtml(previous.modelo) : 'modelo anterior'} na mesma janela`}</div>
         </div>
@@ -1368,15 +1404,15 @@
 
   function renderRankings(selected) {
     const rankingDefs = [
-      { title: 'Faturamento 7d', get: (l) => getWindow(l, '7d')?.receita, fmt: fmtBRL },
-      { title: 'Faturamento 15d', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL },
-      { title: 'Faturamento 30d', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL },
-      { title: 'Faturamento 60d', get: (l) => getWindow(l, '60d')?.receita, fmt: fmtBRL },
-      { title: 'Faturamento 90d', get: (l) => getWindow(l, '90d')?.receita, fmt: fmtBRL },
-      { title: 'Ticket/pedido 30d', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL },
-      { title: 'Pares 30d', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum },
-      { title: '% novos 30d', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct },
-      { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL }
+      { title: 'Faturamento D+7', get: (l) => getWindow(l, '7d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+7. So entra quem tem a janela fechada ou historico cadastrado.' },
+      { title: 'Faturamento D+15', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+15. Para ativos, depende do snapshot ja ter alcancado D+15.' },
+      { title: 'Faturamento D+30', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+30. Nulos indicam janela ainda nao fechada ou dado ausente.' },
+      { title: 'Faturamento D+60', get: (l) => getWindow(l, '60d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+60. Use com cuidado se poucos modelos tiverem essa janela.' },
+      { title: 'Faturamento D+90', get: (l) => getWindow(l, '90d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+90. E o marco mais completo, mas pode excluir modelos em curso.' },
+      { title: 'Ticket/pedido D+30', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL, tooltip: 'Formula: receita D+30 / pedidos D+30. Ajuda a avaliar valor medio por pedido, nao volume total.' },
+      { title: 'Pares D+30', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum, tooltip: 'Quantidade de pares vendidos de D0 ate D+30. Compara volume fisico, independente de preco.' },
+      { title: '% novos D+30', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct, tooltip: 'Formula: novos / (novos + recorrentes) no D+30. Fica vazio quando nao ha classificacao auditada.' },
+      { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL, tooltip: 'Formula: receita da melhor janela fechada / quantidade de dias inclusivos da janela. Serve para comparar ritmo, nao tamanho final.' }
     ];
     const launches = selectedCompareLaunches();
     if (!launches.length) {
@@ -1393,7 +1429,7 @@
         .sort((a, b) => b.value - a.value);
 
       return `<div class="card">
-        <div class="chart-title" style="margin-bottom:10px">${escapeHtml(def.title)}</div>
+        <div class="chart-title chart-title--with-tip" style="margin-bottom:10px">${labelTip(def.title, def.tooltip)}</div>
         ${selectedIncluded ? '' : `<div class="metric-sub" style="margin-bottom:8px">Delta contra ${escapeHtml(selected.modelo)}, que não está na seleção.</div>`}
         <div class="table-wrap">
           <table style="min-width:420px">
@@ -1452,17 +1488,17 @@
 
     $('historical-average').innerHTML = `
       <div class="card">
-        <div class="metric-label">Modelo selecionado</div>
+        <div class="metric-label">${labelTip('Modelo selecionado', `Receita do modelo em foco no mesmo marco usado para comparar: ${label}. Se houver dado diario, usa acumulado ate D+n; caso contrario usa a melhor janela fechada.`)}</div>
         <div class="metric-value">${fmtBRL(selectedValue)}</div>
         <div class="metric-sub">${escapeHtml(selected.modelo)} · ${escapeHtml(label)}</div>
       </div>
       <div class="card">
-        <div class="metric-label">Média histórica</div>
+        <div class="metric-label">${labelTip('Média histórica', 'Media simples dos modelos historicos elegiveis na mesma janela ou D+n. Historico agregado nao vira curva diaria inventada quando nao ha base segura.')}</div>
         <div class="metric-value">${fmtBRL(avg)}</div>
         <div class="metric-sub">Históricos disponíveis · ${escapeHtml(label)}</div>
       </div>
       <div class="card">
-        <div class="metric-label">Diferença vs média</div>
+        <div class="metric-label">${labelTip('Diferença vs média', 'Formula: receita do modelo selecionado menos media historica. Percentual = diferenca / media historica.')}</div>
         <div class="metric-value">${diff === null ? '—' : metricDelta(selectedValue, avg, fmtBRL)}</div>
         <div class="metric-sub">${pct === null ? '—' : fmtPct(pct)}</div>
       </div>`;
@@ -1521,7 +1557,15 @@
         }))
       },
       options: chartOptions({
-        plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}` } } },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
+              afterLabel: (ctx) => `Janela ${ctx.label}: D0 ate ${ctx.label}. Fonte: JSON de vendas ou historico versionado.`
+            }
+          }
+        },
         scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtBRL(v, true) } } }
       })
     });
@@ -1539,7 +1583,17 @@
           borderRadius: 4
         }))
       },
-      options: chartOptions({ scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtNum(v) } } } })
+      options: chartOptions({
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)} pares`,
+              afterLabel: (ctx) => `Soma de pares vendidos de D0 ate ${ctx.label}. Nulo significa janela ausente, nao zero.`
+            }
+          }
+        },
+        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtNum(v) } } }
+      })
     });
 
     createChart('chart-multipliers', {
@@ -1558,7 +1612,17 @@
           borderRadius: 4
         }))
       },
-      options: chartOptions({ scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => `${fmtNum(v, 1)}×` } } } })
+      options: chartOptions({
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y, 2)}x`,
+              afterLabel: () => 'Formula: janela maior / janela anterior. Ex.: 30÷15 = receita D+30 / receita D+15.'
+            }
+          }
+        },
+        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => `${fmtNum(v, 1)}×` } } }
+      })
     });
 
     const mixWindowFor = (launch) => {
@@ -1602,7 +1666,14 @@
       options: chartOptions({
         indexAxis: 'y',
         scales: { x: { stacked: true, ticks: { callback: (v) => `${v}%` }, max: 100 }, y: { stacked: true, grid: { display: false } } },
-        plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.x, 1)}%` } } }
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.x, 1)}%`,
+              afterLabel: () => 'Fonte: campos novos/recorrentes do JSON. Quando ausentes, a barra fica vazia.'
+            }
+          }
+        }
       })
     });
     $('client-mix-detail').innerHTML = clientMixRows.length ? `
@@ -1635,7 +1706,14 @@
           y: { position: 'left', ticks: { callback: (v) => fmtBRL(v, true) } },
           y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: (v) => fmtNum(v) } }
         },
-        plugins: { tooltip: { callbacks: { label: (ctx) => ctx.dataset.label === 'Faturamento' ? `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}` : `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)}` } } }
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ctx.dataset.label === 'Faturamento' ? `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}` : `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)}`,
+              afterLabel: (ctx) => `Agrupamento semanal desde D0. ${ctx.dataset.label === 'Faturamento' ? 'Receita acumulada na semana.' : 'Pedidos da semana.'}`
+            }
+          }
+        }
       })
     });
 
@@ -1713,7 +1791,7 @@
             callbacks: {
               title: (items) => `${items[0].dataset.label} · ${items[0].label}`,
               label: (ctx) => `Receita acumulada: ${fmtBRL(ctx.parsed.y)}`,
-              afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}`
+              afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}. A curva e acumulada desde D0; linhas tracejadas indicam agregado/backfill.`
             }
           }
         },
@@ -1745,11 +1823,11 @@
       const coverage = row.cobertura_dias ?? (row.vendas_d30 ? row.estoque_atual / (row.vendas_d30 / 30) : null);
       const low = coverage !== null && coverage < 15;
       return `<div class="stock-card ${low ? 'low' : ''}">
-        <div class="stock-title">${escapeHtml(row.sub_modelo || selected.modelo)}</div>
+        <div class="stock-title">${escapeHtml(row.sub_modelo || selected.modelo)} ${tip('Fonte: data/estoque.json exportado pelo Apps Script quando a tabela de inventario estiver disponivel. Cobertura = estoque atual / media diaria de vendas D-30 quando vendas_d30 existir.')}</div>
         <div class="stock-sub">${escapeHtml(row.cor || 'Sem cor')}</div>
-        <div class="stock-row"><span>Estoque atual</span><span>${fmtNum(row.estoque_atual)}</span></div>
-        <div class="stock-row"><span>Vendas D-30</span><span>${fmtNum(row.vendas_d30)}</span></div>
-        <div class="stock-row"><span>Cobertura</span><span>${coverage === null ? '—' : `${fmtNum(coverage, 0)} dias`}</span></div>
+        <div class="stock-row"><span>${labelTip('Estoque atual', 'Quantidade disponivel no snapshot de estoque. Se vazio, nao inferir ruptura nem disponibilidade.')}</span><span>${fmtNum(row.estoque_atual)}</span></div>
+        <div class="stock-row"><span>${labelTip('Vendas D-30', 'Pares vendidos nos ultimos 30 dias quando essa leitura vier no JSON de estoque. Pode ficar nulo no snapshot atual.')}</span><span>${fmtNum(row.vendas_d30)}</span></div>
+        <div class="stock-row"><span>${labelTip('Cobertura', 'Formula: estoque atual / (vendas D-30 / 30). Abaixo de 15 dias vira alerta; sem vendas D-30 permanece vazio.')}</span><span>${coverage === null ? '—' : `${fmtNum(coverage, 0)} dias`}</span></div>
         ${low ? `<div style="margin-top:10px">${badge('neg', 'Cobertura baixa')}</div>` : ''}
       </div>`;
     }).join('');
@@ -1785,14 +1863,14 @@
       const total = group.rows.reduce((acc, item) => acc + Number(item.pares || 0), 0);
       const max = Math.max(...group.rows.map((i) => i.pares || 0));
       return `<div class="color-card">
-        <div class="color-title">${escapeHtml(group.modelo)} · ${escapeHtml(group.sub_modelo)}</div>
+        <div class="color-title">${escapeHtml(group.modelo)} · ${escapeHtml(group.sub_modelo)} ${tip('Mix por cor calculado por pares vendidos dentro do modelo/sub-modelo. Em historicos, depende do cadastro agregado; em pipeline, vem da classificacao de item/SKU.')}</div>
         ${group.rows.sort((a,b) => b.pares - a.pares).map((item, idx) => {
           const pctMax = max ? (item.pares / max) * 100 : 0;
           const pctTotal = total ? item.pares / total : null;
           return `<div class="color-row">
             <div class="color-label" title="${escapeHtml(item.cor)}">${escapeHtml(item.cor)}</div>
             <div class="bar-track"><div class="bar-fill ${idx ? 'secondary' : ''}" style="width:${pctMax}%"></div></div>
-            <div class="color-value">${fmtNum(item.pares)} · ${fmtPct(pctTotal, 0)}</div>
+            <div class="color-value" tabindex="0" data-tooltip="${tooltipAttr('Percentual = pares da cor / pares totais do sub-modelo. Barra visual e normalizada pelo maior volume do grupo.')}">${fmtNum(item.pares)} · ${fmtPct(pctTotal, 0)}</div>
           </div>`;
         }).join('')}
       </div>`;
@@ -1848,14 +1926,17 @@
       <div class="size-ranking-grid">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>Tamanho</th><th class="num">Pares vendidos</th><th class="num">% do total</th></tr></thead>
+            <thead><tr>${thTip('#', 'Posicao no ranking do conjunto selecionado.')} ${thTip('Tamanho', 'Tamanho extraido de SKU, nome do item ou variant_title quando disponivel.')} ${thTip('Pares vendidos', 'Soma de pares classificados naquele tamanho.', 'num')} ${thTip('% do total', 'Formula: pares do tamanho / pares totais com tamanho no grupo.', 'num')}</tr></thead>
             <tbody>${tableRows(geral)}</tbody>
           </table>
         </div>
         <div class="size-model-grid">
           ${byModel.map((group) => `<div class="table-wrap">
             <table>
-              <thead><tr><th colspan="4">${escapeHtml(group.launch.modelo)}</th></tr></thead>
+              <thead>
+                <tr><th colspan="4">${escapeHtml(group.launch.modelo)} ${tip('Top tamanhos dentro deste modelo. Percentuais usam apenas pares classificados para o proprio modelo.')}</th></tr>
+                <tr>${thTip('#', 'Posicao no ranking do modelo.')} ${thTip('Tamanho', 'Tamanho detectado no item/SKU.')} ${thTip('Pares vendidos', 'Soma de pares daquele tamanho no modelo.', 'num')} ${thTip('% do total', 'Formula: pares do tamanho / pares totais do modelo com tamanho.', 'num')}</tr>
+              </thead>
               <tbody>${tableRows(group.rows)}</tbody>
             </table>
           </div>`).join('')}
@@ -1989,15 +2070,15 @@
     $('calendar-grid').innerHTML = `
       <div class="calendar-summary calendar-summary--${ninety.cls}">
         <div>
-          <div class="metric-label">Saldo sazonal 90d</div>
+          <div class="metric-label">${labelTip('Saldo sazonal D+90', 'Soma ponderada dos eventos no calendario entre D0 e D+90. Promotor soma, ofensor subtrai e neutro vale 0; peso forte=3, medio=2, baixo=1.')}</div>
           <div class="seasonal-score seasonal-score--${ninety.cls}">${escapeHtml(seasonalScoreLabel(ninety.score, ninety.events))}</div>
           <div class="metric-sub">${escapeHtml(summaryRead)}</div>
         </div>
         <div class="seasonal-stat-grid">
-          <div><span>Promotores</span><strong>${fmtNum(ninety.counts.promotores)}</strong></div>
-          <div><span>Ofensores</span><strong>${fmtNum(ninety.counts.ofensores)}</strong></div>
-          <div><span>Neutros</span><strong>${fmtNum(ninety.counts.neutros)}</strong></div>
-          <div><span>Mais forte</span><strong>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</strong></div>
+          <div><span>${labelTip('Promotores', 'Eventos esperados como vento a favor de venda ou atencao comercial.')}</span><strong>${fmtNum(ninety.counts.promotores)}</strong></div>
+          <div><span>${labelTip('Ofensores', 'Eventos que podem reduzir comparabilidade ou pressionar performance relativa.')}</span><strong>${fmtNum(ninety.counts.ofensores)}</strong></div>
+          <div><span>${labelTip('Neutros', 'Eventos cadastrados como contexto sem direcao clara de impacto.')}</span><strong>${fmtNum(ninety.counts.neutros)}</strong></div>
+          <div><span>${labelTip('Mais forte', 'Evento com maior peso absoluto dentro de D+90.')}</span><strong>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</strong></div>
         </div>
       </div>
       ${analyses.map((win) => `<div class="calendar-card calendar-card--${win.cls}">
@@ -2021,8 +2102,8 @@
             <div>
               <div class="event-name">
                 ${escapeHtml(event.nome)}
-                <span class="event-pill event-pill--${meta.cls}">${escapeHtml(meta.label)} ${escapeHtml(seasonalWeightLabel(event.peso))}</span>
-                <span class="event-state">${event.observed ? 'observado' : 'futuro'}</span>
+                <span class="event-pill event-pill--${meta.cls}" tabindex="0" data-tooltip="${tooltipAttr(`Tipo ${meta.label}; peso ${seasonalWeightLabel(event.peso)}. Impacto no saldo: ${impact}.`)}">${escapeHtml(meta.label)} ${escapeHtml(seasonalWeightLabel(event.peso))}</span>
+                <span class="event-state" tabindex="0" data-tooltip="${tooltipAttr(event.observed ? 'Evento ja entrou no acumulado observado do snapshot.' : 'Evento esta dentro da janela, mas ainda nao ocorreu no acumulado atual.')}">${event.observed ? 'observado' : 'futuro'}</span>
               </div>
               <div class="event-meta">${fmtDate(event.data)} · D+${fmtNum(event.day)} · impacto ${escapeHtml(impact)} · ${escapeHtml(event.phase)}</div>
               ${event.observacao ? `<div class="event-copy">${escapeHtml(event.observacao)}</div>` : ''}
@@ -2033,10 +2114,10 @@
   }
 
   function roasBadge(value) {
-    if (value === null || value === undefined) return badge('parcial', '—');
-    if (value < 1) return badge('neg', 'Crítico');
-    if (value < 3) return badge('parcial', 'Atenção');
-    return badge('pipeline', 'Eficiente');
+    if (value === null || value === undefined) return badge('parcial', '—', 'Sem investimento, receita ou pedidos suficientes para calcular o indicador.');
+    if (value < 1) return badge('neg', 'Crítico', 'ROAS abaixo de 1x: a receita atribuida/proxy e menor que o investimento informado.');
+    if (value < 3) return badge('parcial', 'Atenção', 'ROAS entre 1x e 3x: leitura intermediaria; confira se a receita e atribuida real ou proxy.');
+    return badge('pipeline', 'Eficiente', 'ROAS acima de 3x: a receita atribuida/proxy supera o investimento com folga.');
   }
 
   function inferMediaWindow(row, launch) {
@@ -2215,19 +2296,19 @@
         <table>
           <thead>
             <tr>
-              <th>Modelo</th>
-              <th>Janela base</th>
-              <th class="num">Receita modelo</th>
-              <th class="num">Invest. midia</th>
-              <th class="num">ROAS midia</th>
-              <th class="num">CPA midia</th>
-              <th class="num">Invest. CRM</th>
-              <th class="num">Disparos</th>
-              <th class="num">ROAS CRM</th>
-              <th class="num">CPA CRM</th>
-              <th class="num">Invest. total</th>
-              <th class="num">Receita comercial</th>
-              <th class="num">ROAS comercial</th>
+              ${thTip('Modelo', 'Modelo comparado na frente comercial.')}
+              ${thTip('Janela base', 'Janela usada para contextualizar a receita do modelo: acumulado D+n para ativo ou melhor janela fechada/historica.')}
+              ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou historico versionado.', 'num')}
+              ${thTip('Invest. midia', 'Soma do investimento informado nas campanhas de midia paga cadastradas na planilha.', 'num')}
+              ${thTip('ROAS midia', 'Formula: receita atribuida/base de midia / investimento de midia. Pode ser proxy quando nao houver receita_atribuida.', 'num')}
+              ${thTip('CPA midia', 'Formula: investimento de midia / pedidos atribuidos. Fica vazio sem pedidos.', 'num')}
+              ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
+              ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
+              ${thTip('ROAS CRM', 'Formula proxy: receita_base de CRM / investimento de CRM. Leia como indicio, nao atribuicao causal.', 'num')}
+              ${thTip('CPA CRM', 'Formula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
+              ${thTip('Invest. total', 'Soma de investimento de midia paga e CRM.', 'num')}
+              ${thTip('Receita comercial', 'Soma de receita atribuida/base de midia e receita_base de CRM. Pode misturar real e proxy.', 'num')}
+              ${thTip('ROAS comercial', 'Formula: receita comercial / investimento total. Indicador agregado, sensivel a proxies e lacunas.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -2394,14 +2475,14 @@
       <div class="metric-sub" style="margin-bottom:10px">Base da projeção: <strong>${escapeHtml(projectionBase.modelo)}</strong></div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
-          <div class="scenario-label">${escapeHtml(s.label)}</div>
+          <div class="scenario-label">${escapeHtml(s.label)} ${tip(`Formula: base 30d estimada x multiplicador ${fmtNum(s.mult, 2)}. Se o modelo so tem D+15, a base 30d e aproximada dobrando D+15, conforme decisao documentada.`)}</div>
           <div class="scenario-name">${escapeHtml(s.name)}</div>
           <div class="scenario-value">${fmtBRL(s.value)}</div>
-          <div class="scenario-pairs">≈ ${fmtNum(s.pairs)} pares</div>
+          <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr('Pares estimados = faturamento do cenario / preco medio por par da janela base. E aproximacao, nao forecast operacional.')}">≈ ${fmtNum(s.pairs)} pares</div>
         </div>`).join('')}
       </div>
       <div class="card warning" style="margin-top:14px">
-        <div class="metric-label">Aviso fixo</div>
+        <div class="metric-label">${labelTip('Aviso fixo', 'A projecao nao usa modelo estatistico externo. Ela aplica multiplicadores historicos para dar amplitude conservadora/base/otimista.')}</div>
         <p class="section-desc">Cenários usam multiplicadores 90÷30 dos modelos históricos elegíveis. Leia como referência de amplitude, não como previsão automática.</p>
       </div>`;
 
@@ -2419,7 +2500,15 @@
         }]
       },
       options: chartOptions({
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmtBRL(ctx.parsed.y) } } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => fmtBRL(ctx.parsed.y),
+              afterLabel: (ctx) => `Cenario ${ctx.label}: base 30d x multiplicador historico. Nao e previsao automatica.`
+            }
+          }
+        },
         scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtBRL(v, true) } } }
       })
     });

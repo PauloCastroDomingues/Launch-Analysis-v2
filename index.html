@@ -65,14 +65,14 @@
         <div class="selector-block">
           <div class="selector-title selector-title-row">
             <span>Modelo principal</span>
-            <button class="help-button" type="button" data-tooltip="Define o lancamento em foco nos KPIs, estoque, calendario, acoes e projecao." aria-label="Ajuda sobre modelo principal">?</button>
+            <button class="help-button" type="button" data-tooltip="Define o modelo em foco. Afeta KPIs, D+n, estoque, calendario, acoes comerciais e projecao. Modelos planejados entram no seletor, mas ficam fora de venda ate o D0." aria-label="Ajuda sobre modelo principal">?</button>
           </div>
           <div id="model-selector" class="model-selector"></div>
         </div>
         <div class="selector-block">
           <div class="selector-title selector-title-row">
             <span>Comparar com</span>
-            <button class="help-button" type="button" data-tooltip="Escolhe quais modelos entram nas tabelas, curvas, rankings e cenarios comparativos." aria-label="Ajuda sobre comparativo">?</button>
+            <button class="help-button" type="button" data-tooltip="Escolhe o universo comparativo. Tabelas, rankings, curvas, comerciais e projecoes usam estes modelos; dados ausentes permanecem vazios, nao viram zero." aria-label="Ajuda sobre comparativo">?</button>
           </div>
           <div id="compare-selector" class="compare-selector"></div>
           <div id="compare-warning" class="compare-warning"></div>
@@ -85,7 +85,7 @@
             <div class="section-kicker">01 · Estado do lançamento</div>
             <div class="section-title-row">
               <h2><span id="selected-title">—</span></h2>
-              <button class="help-button" type="button" data-tooltip="Resume o lancamento principal com janelas disponiveis, velocidade, mix de clientes e sinais de leitura." aria-label="Ajuda sobre estado do lancamento">?</button>
+              <button class="help-button" type="button" data-tooltip="Resume o modelo principal. Mostra receita, pedidos, ticket, preco por par, clientes e pares na melhor janela disponivel ou no acumulado D+n real. Fonte: JSONs versionados do dashboard." aria-label="Ajuda sobre estado do lancamento">?</button>
             </div>
             <p class="section-desc">KPIs calculados a partir da melhor janela disponível para o modelo selecionado.</p>
             <div id="selected-dates" class="selected-dates"></div>
@@ -101,7 +101,7 @@
             <div class="section-kicker">02 · Comparativo por janela</div>
             <div class="section-title-row">
               <h2>7d, 15d, 30d, 60d e 90d lado a lado</h2>
-              <button class="help-button" type="button" data-tooltip="Compara as mesmas janelas de lancamento entre os modelos selecionados, mantendo null quando a janela ainda nao fechou." aria-label="Ajuda sobre comparativo por janela">?</button>
+              <button class="help-button" type="button" data-tooltip="Compara janelas D+N inclusivas: D0 ate D+7, D+15, D+30, D+60 e D+90. Historico vem de JSON agregado; ativo vem do pipeline exportado. Janela nao fechada fica vazia." aria-label="Ajuda sobre comparativo por janela">?</button>
             </div>
           </div>
         </div>
@@ -109,39 +109,45 @@
           <table>
             <thead>
               <tr>
-                <th>Modelo</th>
-                <th>7d Fat.</th>
-                <th>15d Fat.</th>
-                <th>30d Fat.</th>
-                <th>60d Fat.</th>
-                <th>90d Fat.</th>
-                <th class="num">Ticket/pedido 30d</th>
-                <th class="num">% Novos 30d</th>
-                <th class="num">Mult. 90÷30</th>
-                <th>Fonte</th>
+                <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo comparado e D0 analitico usado para alinhar as janelas." aria-label="Ajuda sobre modelo">i</button></span></th>
+                <th><span class="th-label">D+7 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+7. Nulo significa janela ausente ou ainda aberta." aria-label="Ajuda sobre D+7">i</button></span></th>
+                <th><span class="th-label">D+15 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+15. Para ativos depende do snapshot ja ter chegado a D+15." aria-label="Ajuda sobre D+15">i</button></span></th>
+                <th><span class="th-label">D+30 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+30. E a principal janela de comparacao comercial." aria-label="Ajuda sobre D+30">i</button></span></th>
+                <th><span class="th-label">D+60 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+60. Use quando todos os comparados tiverem essa janela." aria-label="Ajuda sobre D+60">i</button></span></th>
+                <th><span class="th-label">D+90 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+90. Marco de consolidacao; modelos recentes podem ficar vazios." aria-label="Ajuda sobre D+90">i</button></span></th>
+                <th class="num"><span class="th-label">Ticket/pedido D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita D+30 / pedidos D+30. Mede valor medio por pedido, nao volume." aria-label="Ajuda sobre ticket">i</button></span></th>
+                <th class="num"><span class="th-label">% Novos D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Formula: novos / (novos + recorrentes) no D+30. Fica vazio sem classificacao auditada." aria-label="Ajuda sobre novos">i</button></span></th>
+                <th class="num"><span class="th-label">Mult. 90÷30 <button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita D+90 / receita D+30. Indica quanto a cauda pos-30d expandiu o lancamento." aria-label="Ajuda sobre multiplicador">i</button></span></th>
+                <th><span class="th-label">Fonte <button class="help-button help-button--mini" type="button" data-tooltip="Mostra se o dado e historico, pipeline real, parcial, estimado ou auditado." aria-label="Ajuda sobre fonte">i</button></span></th>
               </tr>
             </thead>
             <tbody id="comparison-table"></tbody>
           </table>
         </div>
         <div id="historical-average" class="grid grid-3" style="margin-top:14px"></div>
-        <div class="chart-title" style="margin-top:18px;margin-bottom:10px">Comparativo D+n real</div>
+        <div class="chart-title chart-title--with-tip" style="margin-top:18px;margin-bottom:10px">
+          <span>Comparativo D+n real</span>
+          <button class="help-button help-button--mini" type="button" data-tooltip="Compara cada modelo ate o mesmo D+n do modelo principal no snapshot. Formula: acumulado real de D0 ate min(D+n do foco, limite da janela disponivel). Historicos sem curva diaria usam marcos cadastrados; ativos usam pipeline." aria-label="Ajuda sobre comparativo D+n">i</button>
+        </div>
         <div class="table-wrap" style="margin-top:14px">
           <table>
             <thead>
               <tr>
-                <th>Modelo</th>
-                <th class="num">Fat. até D+n</th>
-                <th class="num">Pedidos</th>
-                <th class="num">Pares</th>
-                <th class="num">Ticket/pedido</th>
-                <th class="num">Velocidade</th>
+                <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo alinhado ao mesmo relogio D+n do modelo principal. Modelos planejados ficam fora desta leitura." aria-label="Ajuda sobre modelo D+n">i</button></span></th>
+                <th class="num"><span class="th-label">Fat. até D+n <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada ate o D+n comparavel. Fonte: pipeline real para ativos ou historico versionado para benchmarks." aria-label="Ajuda sobre faturamento D+n">i</button></span></th>
+                <th class="num"><span class="th-label">Pedidos <button class="help-button help-button--mini" type="button" data-tooltip="Pedidos distintos acumulados ate D+n. Quando o identificador de pedido nao existe, usa o agregado cadastrado." aria-label="Ajuda sobre pedidos D+n">i</button></span></th>
+                <th class="num"><span class="th-label">Pares <button class="help-button help-button--mini" type="button" data-tooltip="Soma de pares vendidos ate D+n para o modelo classificado. Pode ficar vazio se a fonte historica nao trouxe pares nesse marco." aria-label="Ajuda sobre pares D+n">i</button></span></th>
+                <th class="num"><span class="th-label">Ticket/pedido <button class="help-button help-button--mini" type="button" data-tooltip="Formula: faturamento ate D+n / pedidos ate D+n. Ajuda a comparar valor medio sem confundir com volume." aria-label="Ajuda sobre ticket D+n">i</button></span></th>
+                <th class="num"><span class="th-label">Velocidade <button class="help-button help-button--mini" type="button" data-tooltip="Formula: faturamento acumulado / dias observados. Leitura de ritmo medio, nao previsao; sensivel a gaps historicos." aria-label="Ajuda sobre velocidade D+n">i</button></span></th>
               </tr>
             </thead>
             <tbody id="dplus-table"></tbody>
           </table>
         </div>
-        <div class="chart-title" style="margin-top:18px;margin-bottom:10px">Ranking de lançamentos</div>
+        <div class="chart-title chart-title--with-tip" style="margin-top:18px;margin-bottom:10px">
+          <span>Ranking de lançamentos</span>
+          <button class="help-button help-button--mini" type="button" data-tooltip="Ordena os modelos por faturamento nos marcos D+7, D+15, D+30, D+60 e D+90. Janela ausente nao entra como zero; ela aparece vazia ou fica fora do ranking daquele marco." aria-label="Ajuda sobre ranking de lancamentos">i</button>
+        </div>
         <div id="ranking-grid" class="grid grid-3" style="margin-top:14px"></div>
       </section>
 
@@ -151,36 +157,36 @@
             <div class="section-kicker">03 · Curvas de aceleração</div>
             <div class="section-title-row">
               <h2>Receita, pares, mix e rampa semanal</h2>
-              <button class="help-button" type="button" data-tooltip="Mostra a progressao acumulada e semanal para entender ritmo, sustentacao e diferencas entre modelos." aria-label="Ajuda sobre curvas de aceleracao">?</button>
+              <button class="help-button" type="button" data-tooltip="Mostra progressao acumulada, pares, multiplicadores, mix e rampa semanal. Fonte: janelas calculadas no front a partir de data/*.json; dados ausentes permanecem nulos." aria-label="Ajuda sobre curvas de aceleracao">?</button>
             </div>
           </div>
         </div>
         <div class="grid grid-2">
           <div class="chart-card wide">
             <div class="chart-head">
-              <div><div class="chart-title">Faturamento acumulado</div><div class="chart-sub">R$ por janela: D+7, D+15, D+30, D+60 e D+90</div></div>
+              <div><div class="chart-title chart-title--with-tip"><span>Faturamento acumulado</span><button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada por janela D+N. Formula: soma de receita dos itens classificados no modelo ate cada marco. Dado pode ser historico, pipeline real ou parcial conforme badge." aria-label="Ajuda sobre grafico de faturamento">i</button></div><div class="chart-sub">R$ por janela: D+7, D+15, D+30, D+60 e D+90</div></div>
             </div>
             <div class="chart-canvas"><canvas id="chart-revenue"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title">Pares acumulados</div><div class="chart-sub">Unidades por janela: D+7, D+15, D+30, D+60 e D+90</div></div></div>
+            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Pares acumulados</span><button class="help-button help-button--mini" type="button" data-tooltip="Soma de quantidades vendidas por janela. Interpreta demanda fisica, mas depende da classificacao correta de SKU/nome do produto." aria-label="Ajuda sobre pares acumulados">i</button></div><div class="chart-sub">Unidades por janela: D+7, D+15, D+30, D+60 e D+90</div></div></div>
             <div class="chart-canvas"><canvas id="chart-pairs"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title">Multiplicadores</div><div class="chart-sub">15÷7, 30÷15, 60÷30, 90÷30</div></div></div>
+            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Multiplicadores</span><button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita do marco maior / receita do marco menor. Mostra aceleracao ou cauda do lancamento; exige os dois marcos disponiveis." aria-label="Ajuda sobre multiplicadores">i</button></div><div class="chart-sub">15÷7, 30÷15, 60÷30, 90÷30</div></div></div>
             <div class="chart-canvas"><canvas id="chart-multipliers"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title">Mix de clientes</div><div class="chart-sub">Novos vs recorrentes na melhor janela disponível</div></div></div>
+            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Mix de clientes</span><button class="help-button help-button--mini" type="button" data-tooltip="Percentual de novos e recorrentes na melhor janela disponivel. Fica vazio quando a fonte nao traz novos/recorrentes auditados." aria-label="Ajuda sobre mix de clientes">i</button></div><div class="chart-sub">Novos vs recorrentes na melhor janela disponível</div></div></div>
             <div class="chart-canvas"><canvas id="chart-mix"></canvas></div>
             <div id="client-mix-detail" class="chart-note"></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title" id="weekly-title">Semana a semana</div><div class="chart-sub">Faturamento + pedidos</div></div></div>
+            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span id="weekly-title">Semana a semana</span><button class="help-button help-button--mini" type="button" data-tooltip="Agrupa vendas reais por semana relativa ao D0 do modelo em foco. Fonte principal: lancamentos_produtos_dia.json; historicos agregados podem nao ter granularidade semanal." aria-label="Ajuda sobre semana a semana">i</button></div><div class="chart-sub">Faturamento + pedidos</div></div></div>
             <div class="chart-canvas"><canvas id="chart-weekly"></canvas></div>
           </div>
           <div class="chart-card wide">
-            <div class="chart-head"><div><div class="chart-title">Curva normalizada D0 → D90</div><div class="chart-sub">Faturamento acumulado por dia desde o lançamento</div></div></div>
+            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Curva normalizada D0 → D90</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa. Ativos mostram somente dias ja observados no snapshot; historicos usam os dados disponiveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div><div class="chart-sub">Faturamento acumulado por dia desde o lançamento</div></div></div>
             <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
           </div>
         </div>
@@ -192,7 +198,7 @@
             <div class="section-kicker">04 · Estoque</div>
             <div class="section-title-row">
               <h2>Cobertura por sub-modelo e cor</h2>
-              <button class="help-button" type="button" data-tooltip="Cruza estoque atual com velocidade de venda quando disponivel para indicar risco de ruptura." aria-label="Ajuda sobre estoque">?</button>
+              <button class="help-button" type="button" data-tooltip="Cruza estoque atual por SKU/sub-modelo/cor com velocidade de venda quando disponivel. Cobertura = estoque atual / vendas medias por dia. Sem vendas D-30, cobertura fica vazia." aria-label="Ajuda sobre estoque">?</button>
             </div>
             <p class="section-desc">Alerta quando cobertura estimada fica abaixo de 15 dias.</p>
           </div>
@@ -206,12 +212,15 @@
             <div class="section-kicker">05 · Mix de cores</div>
             <div class="section-title-row">
               <h2>Ranking normalizado por sub-modelo</h2>
-              <button class="help-button" type="button" data-tooltip="Organiza cores e tamanhos mais vendidos por modelo para apoiar reposicao, compra e leitura de demanda." aria-label="Ajuda sobre mix de cores">?</button>
+              <button class="help-button" type="button" data-tooltip="Organiza cores e tamanhos detectados por SKU, nome ou variante. Percentuais sao relativos ao total classificado; itens sem cor/tamanho ficam limitados pela qualidade do texto de origem." aria-label="Ajuda sobre mix de cores">?</button>
             </div>
           </div>
         </div>
         <div id="color-mix" class="color-mix"></div>
-        <div class="chart-title" style="margin-top:18px;margin-bottom:10px">Tamanhos mais comprados</div>
+        <div class="chart-title chart-title--with-tip" style="margin-top:18px;margin-bottom:10px">
+          <span>Tamanhos mais comprados</span>
+          <button class="help-button help-button--mini" type="button" data-tooltip="Ranking de tamanhos extraidos de SKU, nome do produto ou variante. Formula do percentual: pares do tamanho / pares totais com tamanho detectado." aria-label="Ajuda sobre tamanhos">i</button>
+        </div>
         <div id="size-ranking"></div>
       </section>
 
@@ -221,7 +230,7 @@
             <div class="section-kicker">06 · Calendário sazonal</div>
             <div class="section-title-row">
               <h2>Promotores, ofensores e neutros por janela</h2>
-              <button class="help-button" type="button" data-tooltip="Resume saldo sazonal por janela, separando eventos promotores, ofensores, neutros, futuros e ja observados no acumulado." aria-label="Ajuda sobre calendario sazonal">?</button>
+              <button class="help-button" type="button" data-tooltip="Classifica eventos de calendario por janela relativa ao D0. Promotor soma impacto positivo, ofensor soma negativo e neutro apenas contextualiza. Eventos futuros dentro da janela ainda nao explicam o realizado." aria-label="Ajuda sobre calendario sazonal">?</button>
             </div>
           </div>
         </div>
@@ -234,7 +243,7 @@
             <div class="section-kicker">07 · Ações comerciais</div>
             <div class="section-title-row">
               <h2>Mídia paga e CRM</h2>
-              <button class="help-button" type="button" data-tooltip="Compara investimento, receita base/atribuida, ROAS proxy, CPA e disparos dos modelos marcados em Comparar com." aria-label="Ajuda sobre acoes comerciais">?</button>
+              <button class="help-button" type="button" data-tooltip="Compara frentes comerciais por modelo: investimento, receita atribuida/base, ROAS, CPA e disparos. Midia pode misturar atribuicao real e proxy; CRM e leitura proxy salvo campo explicito da planilha." aria-label="Ajuda sobre acoes comerciais">?</button>
             </div>
             <p class="section-desc">A leitura usa os modelos marcados em Comparar com. Quando mídia não tiver receita_atribuida, o ROAS é proxy pela receita da janela equivalente.</p>
           </div>
@@ -242,22 +251,48 @@
         <div id="actions-comparison" class="actions-comparison"></div>
         <div class="actions-grid">
           <div class="card">
-            <div class="chart-title" style="margin-bottom:12px">Mídia paga</div>
+            <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
+              <span>Mídia paga</span>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/midia_paga.json, exportado da planilha configurada no Apps Script. ROAS usa receita_atribuida quando existe; caso contrario pode usar receita base da janela equivalente como proxy." aria-label="Ajuda sobre midia paga">i</button>
+            </div>
             <div class="table-wrap">
               <table style="min-width:960px">
                 <thead>
-                  <tr><th>Modelo</th><th>Campanha</th><th>Janela</th><th>Canal</th><th class="num">Invest.</th><th class="num">Receita base</th><th class="num">ROAS proxy</th><th class="num">CPA</th><th>Status</th></tr>
+                  <tr>
+                    <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo vinculado pela coluna modelo_id da planilha de midia." aria-label="Ajuda sobre modelo midia">i</button></span></th>
+                    <th><span class="th-label">Campanha <button class="help-button help-button--mini" type="button" data-tooltip="Nome da campanha informada na planilha. Mantido como texto operacional, sem inferencia automatica." aria-label="Ajuda sobre campanha">i</button></span></th>
+                    <th><span class="th-label">Janela <button class="help-button help-button--mini" type="button" data-tooltip="Janela informada ou inferida pelo Apps Script a partir de data_inicio/data_fim vs D0: pre-D0, 15d, 30d, 90d etc." aria-label="Ajuda sobre janela midia">i</button></span></th>
+                    <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal/canalizador declarado na planilha, como Facebook ADS, Google ADS ou outro." aria-label="Ajuda sobre canal midia">i</button></span></th>
+                    <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Investimento cadastrado. Fonte: planilha; o dashboard nao recalcula gasto de plataformas." aria-label="Ajuda sobre investimento midia">i</button></span></th>
+                    <th class="num"><span class="th-label">Receita base <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuida informada ou receita de referencia da janela. Pode ser dado real atribuido ou proxy conforme cadastro." aria-label="Ajuda sobre receita midia">i</button></span></th>
+                    <th class="num"><span class="th-label">ROAS proxy <button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita base / investimento. Quando a receita nao e atribuida pela plataforma, leia como proxy de eficiencia, nao causalidade." aria-label="Ajuda sobre ROAS midia">i</button></span></th>
+                    <th class="num"><span class="th-label">CPA <button class="help-button help-button--mini" type="button" data-tooltip="Formula: investimento / pedidos atribuidos. Fica vazio sem pedidos cadastrados para a campanha." aria-label="Ajuda sobre CPA midia">i</button></span></th>
+                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Classificacao operacional derivada do ROAS ou informada no cadastro. Serve para leitura rapida, nao substitui auditoria." aria-label="Ajuda sobre status midia">i</button></span></th>
+                  </tr>
                 </thead>
                 <tbody id="media-table"></tbody>
               </table>
             </div>
           </div>
           <div class="card">
-            <div class="chart-title" style="margin-bottom:12px">CRM / disparos</div>
+            <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
+              <span>CRM / disparos</span>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/crm_disparos.json, exportado da planilha. O campo Disparo preserva o nome da acao. ROAS CRM e proxy e depende de receita_linha ou receita_dia cadastrada." aria-label="Ajuda sobre CRM">i</button>
+            </div>
             <div class="table-wrap">
               <table style="min-width:960px">
                 <thead>
-                  <tr><th>Modelo</th><th>Data</th><th>Disparo</th><th>Canal</th><th class="num">Invest.</th><th class="num">Receita linha</th><th class="num">Receita dia</th><th class="num">ROAS proxy</th><th>Status</th></tr>
+                  <tr>
+                    <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo vinculado pelo modelo_id do disparo." aria-label="Ajuda sobre modelo CRM">i</button></span></th>
+                    <th><span class="th-label">Data <button class="help-button help-button--mini" type="button" data-tooltip="Data do disparo cadastrada na planilha, em calendario civil." aria-label="Ajuda sobre data CRM">i</button></span></th>
+                    <th><span class="th-label">Disparo <button class="help-button help-button--mini" type="button" data-tooltip="Nome da campanha/disparo de CRM. Campo operacional para rastrear a acao." aria-label="Ajuda sobre disparo CRM">i</button></span></th>
+                    <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal de CRM informado: email, WhatsApp, SMS, push ou outro." aria-label="Ajuda sobre canal CRM">i</button></span></th>
+                    <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Custo/investimento do disparo quando informado. Pode ser nulo para canais sem custo direto registrado." aria-label="Ajuda sobre investimento CRM">i</button></span></th>
+                    <th class="num"><span class="th-label">Receita linha <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuida ou observada para a linha do disparo. Fonte: planilha; nao e recalculada pelo front." aria-label="Ajuda sobre receita linha">i</button></span></th>
+                    <th class="num"><span class="th-label">Receita dia <button class="help-button help-button--mini" type="button" data-tooltip="Receita do dia usada como fallback/proxy quando a receita da linha nao existe." aria-label="Ajuda sobre receita dia">i</button></span></th>
+                    <th class="num"><span class="th-label">ROAS proxy <button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita CRM base / investimento CRM. E proxy comercial; nao prova causalidade do disparo." aria-label="Ajuda sobre ROAS CRM">i</button></span></th>
+                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Leitura operacional do resultado do disparo, com base no ROAS proxy ou status cadastrado." aria-label="Ajuda sobre status CRM">i</button></span></th>
+                  </tr>
                 </thead>
                 <tbody id="crm-table"></tbody>
               </table>
@@ -273,13 +308,13 @@
             <div class="section-kicker">08 · Projeção de cenários</div>
             <div class="section-title-row">
               <h2>Estimativa de 90 dias</h2>
-              <button class="help-button" type="button" data-tooltip="Projeta amplitude de 90 dias usando multiplicadores historicos dos modelos comparados, nao uma previsao automatica." aria-label="Ajuda sobre projecao">?</button>
+              <button class="help-button" type="button" data-tooltip="Projeta amplitude de D+90 usando multiplicadores historicos dos modelos comparados e a janela base do modelo em foco. E estimativa de sensibilidade, nao forecast fechado." aria-label="Ajuda sobre projecao">?</button>
             </div>
           </div>
         </div>
         <div id="projection-content"></div>
         <div class="chart-card" style="margin-top:14px">
-          <div class="chart-head"><div><div class="chart-title">Cenários</div><div class="chart-sub">Conservador, base e otimista</div></div></div>
+          <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Cenários</span><button class="help-button help-button--mini" type="button" data-tooltip="Conservador, base e otimista aplicam multiplicadores diferentes sobre a receita atual/base. Pares estimados usam preco medio por par, portanto sao aproximacao." aria-label="Ajuda sobre cenarios">i</button></div><div class="chart-sub">Conservador, base e otimista</div></div></div>
           <div class="chart-canvas"><canvas id="chart-projection"></canvas></div>
         </div>
       </section>
@@ -290,7 +325,7 @@
             <div class="section-kicker">09 · Insights</div>
             <div class="section-title-row">
               <h2>Leituras e recomendações</h2>
-              <button class="help-button" type="button" data-tooltip="Lista alertas e leituras automaticas geradas a partir dos dados carregados e do modelo em foco." aria-label="Ajuda sobre insights">?</button>
+              <button class="help-button" type="button" data-tooltip="Lista leituras automaticas a partir dos JSONs carregados: dados ausentes, performance, estoque, sazonalidade e qualidade. Use como triagem; decisoes finais dependem de auditoria da fonte." aria-label="Ajuda sobre insights">?</button>
             </div>
           </div>
         </div>

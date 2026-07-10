@@ -508,6 +508,16 @@ section {
   font-size: .75rem;
   font-weight: 900;
   line-height: 1;
+  cursor: help;
+}
+.help-button--mini {
+  width: 18px;
+  height: 18px;
+  font-size: .58rem;
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.055);
+  color: rgba(255,255,255,.56);
+  transform: translateY(-1px);
 }
 .help-button:hover,
 .help-button:focus-visible {
@@ -515,11 +525,20 @@ section {
   border-color: var(--orange);
   outline: none;
 }
+[data-tooltip] {
+  cursor: help;
+}
+[data-tooltip]:focus-visible {
+  outline: 1px solid var(--orange);
+  outline-offset: 3px;
+}
 .app-tooltip {
   position: fixed;
-  z-index: 120;
-  max-width: min(340px, calc(100vw - 24px));
-  padding: 10px 12px;
+  z-index: 220;
+  max-width: min(380px, calc(100vw - 24px));
+  max-height: min(360px, calc(100vh - 24px));
+  overflow: auto;
+  padding: 11px 13px;
   border: 1px solid var(--border-2);
   border-radius: 8px;
   background: #111;
@@ -528,6 +547,7 @@ section {
   font-size: .78rem;
   line-height: 1.38;
   pointer-events: none;
+  overflow-wrap: anywhere;
 }
 .app-tooltip[hidden] {
   display: none;
@@ -610,6 +630,29 @@ h2 {
   letter-spacing: 0.08em;
   color: var(--txt-secondary);
 }
+.label-with-tip,
+.th-label,
+.chart-title--with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  vertical-align: middle;
+}
+.label-with-tip > span,
+.th-label {
+  min-width: 0;
+}
+.metric-label .label-with-tip,
+.metric-sub .label-with-tip {
+  align-items: baseline;
+}
+.chart-title--with-tip {
+  gap: 8px;
+}
+.chart-title--with-tip .help-button--mini {
+  transform: none;
+}
 .metric-value {
   margin-top: 8px;
   font-size: clamp(1.6rem, 3vw, 2.4rem);
@@ -635,6 +678,9 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
+}
+.badge[data-tooltip]:focus-visible {
+  outline-offset: 2px;
 }
 .badge--historico { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.62); }
 .badge--parcial { background: rgba(232,160,32,0.18); color: #E8A020; }
@@ -719,6 +765,13 @@ th {
   letter-spacing: 0.08em;
   font-weight: 800;
   border-bottom: 1px solid var(--border);
+}
+th .th-label {
+  max-width: 190px;
+}
+th.num .th-label {
+  justify-content: flex-end;
+  margin-left: auto;
 }
 td {
   padding: 11px 12px;
