@@ -1868,18 +1868,43 @@
     return `${days}d`;
   }
 
+  function normalizeWindowKey(value) {
+    const key = String(value || '').trim().toLowerCase();
+    return WINDOW_KEYS.includes(key) ? key : null;
+  }
+
+  function mediaRevenueBase(row, launch) {
+    const attributed = numberOrNull(row.receita_atribuida);
+    if (attributed !== null) return { value: attributed, source: 'atribuida' };
+
+    const key = normalizeWindowKey(row.janela);
+    const win = key ? getWindow(launch, key) : null;
+    if (win?.receita !== null && win?.receita !== undefined) {
+      return { value: Number(win.receita), source: key };
+    }
+
+    if (launch.acumulado_atual?.receita !== null && launch.acumulado_atual?.receita !== undefined) {
+      return { value: Number(launch.acumulado_atual.receita), source: 'D+n' };
+    }
+
+    return { value: null, source: null };
+  }
+
   function normalizeMediaRow(row, launch) {
     const investimento = numberOrNull(row.investimento);
-    const receita = numberOrNull(row.receita_atribuida);
+    const receitaBase = mediaRevenueBase(row, launch);
     const pedidos = numberOrNull(row.pedidos);
-    const roas = numberOrNull(row.roas) ?? (investimento && receita !== null ? receita / investimento : null);
+    const roas = numberOrNull(row.roas) ?? (investimento && receitaBase.value !== null ? receitaBase.value / investimento : null);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
     return {
+      modelo_id: launch.modelo_id,
+      modelo: launch.modelo,
       campanha: row.campanha || 'Campanha sem nome',
       janela: inferMediaWindow(row, launch),
       canal: row.canal || '—',
       investimento,
-      receita_atribuida: receita,
+      receita_atribuida: receitaBase.value,
+      receita_source: receitaBase.source,
       pedidos,
       roas,
       cpa,
@@ -1891,14 +1916,16 @@
     const investimento = numberOrNull(row.investimento);
     const receitaLinha = numberOrNull(row.receita_linha);
     const receitaDia = numberOrNull(row.receita_dia);
+    const receitaBase = receitaDia ?? receitaLinha;
     const pedidos = numberOrNull(row.pedidos);
-    const roas = numberOrNull(row.roas_proxy) ?? (investimento && receitaLinha !== null ? receitaLinha / investimento : null);
+    const roas = numberOrNull(row.roas_proxy) ?? (investimento && receitaBase !== null ? receitaBase / investimento : null);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
     return {
       ...row,
       investimento,
       receita_linha: receitaLinha,
       receita_dia: receitaDia,
+      receita_base: receitaBase,
       pedidos,
       roas_proxy: roas,
       cpa
@@ -1938,6 +1965,107 @@
     return value === null || value === undefined ? '—' : formatter(value);
   }
 
+  function roasValue(value) {
+    return value === null || value === undefined ? '&mdash;' : `${fmtNum(value, 2)}&times;`;
+  }
+
+  function sumKnown(rows, field) {
+    const values = rows
+      .map((row) => numberOrNull(row[field]))
+      .filter((value) => value !== null && value !== undefined);
+    return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
+  }
+
+  function sumValues(...values) {
+    const known = values.filter((value) => value !== null && value !== undefined);
+    return known.length ? known.reduce((acc, value) => acc + Number(value || 0), 0) : null;
+  }
+
+  function ratioOrNull(numerator, denominator) {
+    return denominator ? Number(numerator || 0) / denominator : null;
+  }
+
+  function commercialSummaryFor(launch, mediaRows, crmRows) {
+    const best = bestWindow(launch);
+    const receitaModelo = launch.acumulado_atual?.receita ?? best.data?.receita ?? null;
+    const janelaModelo = launch.acumulado_atual?.receita !== null && launch.acumulado_atual?.receita !== undefined
+      ? `D+${Math.max(0, launch.dPlus ?? 0)}`
+      : best.key ? windowLabel(best.key) : '&mdash;';
+
+    const mediaInvestimento = sumKnown(mediaRows, 'investimento');
+    const mediaReceita = sumKnown(mediaRows, 'receita_atribuida');
+    const mediaPedidos = sumKnown(mediaRows, 'pedidos');
+    const crmInvestimento = sumKnown(crmRows, 'investimento');
+    const crmReceita = sumKnown(crmRows, 'receita_base');
+    const crmPedidos = sumKnown(crmRows, 'pedidos');
+    const crmDisparos = crmRows.length;
+    const investimentoTotal = sumValues(mediaInvestimento, crmInvestimento);
+    const receitaComercial = sumValues(mediaReceita, crmReceita);
+
+    return {
+      launch,
+      janelaModelo,
+      receitaModelo,
+      mediaInvestimento,
+      mediaReceita,
+      mediaPedidos,
+      mediaRoas: ratioOrNull(mediaReceita, mediaInvestimento),
+      mediaCpa: ratioOrNull(mediaInvestimento, mediaPedidos),
+      crmInvestimento,
+      crmReceita,
+      crmPedidos,
+      crmDisparos,
+      crmRoas: ratioOrNull(crmReceita, crmInvestimento),
+      crmCpa: ratioOrNull(crmInvestimento, crmPedidos),
+      investimentoTotal,
+      receitaComercial,
+      roasComercial: ratioOrNull(receitaComercial, investimentoTotal)
+    };
+  }
+
+  function renderActionsComparison(summaries) {
+    $('actions-comparison').innerHTML = summaries.length ? `
+      <div class="table-wrap commercial-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Modelo</th>
+              <th>Janela base</th>
+              <th class="num">Receita modelo</th>
+              <th class="num">Invest. midia</th>
+              <th class="num">ROAS midia</th>
+              <th class="num">CPA midia</th>
+              <th class="num">Invest. CRM</th>
+              <th class="num">Disparos</th>
+              <th class="num">ROAS CRM</th>
+              <th class="num">CPA CRM</th>
+              <th class="num">Invest. total</th>
+              <th class="num">Receita comercial</th>
+              <th class="num">ROAS comercial</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${summaries.map((row) => `
+              <tr>
+                <td class="model-name">${escapeHtml(row.launch.modelo)}</td>
+                <td>${escapeHtml(row.janelaModelo)}</td>
+                <td class="num">${mediaValue(row.receitaModelo, fmtBRL)}</td>
+                <td class="num">${mediaValue(row.mediaInvestimento, fmtBRL)}</td>
+                <td class="num">${roasValue(row.mediaRoas)}</td>
+                <td class="num">${mediaValue(row.mediaCpa, fmtBRL)}</td>
+                <td class="num">${mediaValue(row.crmInvestimento, fmtBRL)}</td>
+                <td class="num">${fmtNum(row.crmDisparos)}</td>
+                <td class="num">${roasValue(row.crmRoas)}</td>
+                <td class="num">${mediaValue(row.crmCpa, fmtBRL)}</td>
+                <td class="num">${mediaValue(row.investimentoTotal, fmtBRL)}</td>
+                <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}</td>
+                <td class="num">${roasValue(row.roasComercial)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : `<div class="empty-state"><div><strong>Selecione ao menos um modelo.</strong>A frente comercial usa os modelos marcados em Comparar com.</div></div>`;
+  }
+
   function renderActions(selected) {
     if (selected.isFuture || isPlannedStatus(selected.status)) {
       $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
@@ -1955,7 +2083,7 @@
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}</td>
-        <td class="num">${row.roas == null ? '—' : `${fmtNum(row.roas, 2)}×`}</td>
+        <td class="num">${roasValue(row.roas)}</td>
         <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
         <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
@@ -1969,10 +2097,73 @@
         <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${fmtBRL(row.receita_linha)}</td>
-        <td class="num">${row.receita_dia == null ? '—' : fmtBRL(row.receita_dia)}</td>
-        <td class="num">${row.roas_proxy == null ? '—' : `${fmtNum(row.roas_proxy, 2)}×`}</td>
+        <td class="num">${mediaValue(row.receita_dia, fmtBRL)}</td>
+        <td class="num">${roasValue(row.roas_proxy)}</td>
         <td>${roasBadge(row.roas_proxy)}</td>
       </tr>`).join('') : `<tr><td colspan="7" class="cell-muted">Sem disparos de CRM cadastrados para este modelo.</td></tr>`;
+  }
+
+  function renderActionsComparative() {
+    const launches = selectedCompareLaunches().filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
+    if (!launches.length) {
+      renderActionsComparison([]);
+      $('media-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar midia paga.</td></tr>`;
+      $('crm-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar CRM.</td></tr>`;
+      return;
+    }
+
+    const mediaByModel = new Map();
+    const crmByModel = new Map();
+    const detailedRows = launches.flatMap((launch) => {
+      const rows = (state.data.midia_paga || [])
+        .filter((row) => row.modelo_id === launch.modelo_id)
+        .map((row) => normalizeMediaRow(row, launch));
+      mediaByModel.set(launch.modelo_id, rows);
+      return rows;
+    });
+    const crmRowsAll = launches.flatMap((launch) => {
+      const rows = (state.data.crm_disparos || [])
+        .filter((row) => row.modelo_id === launch.modelo_id)
+        .map((row) => ({ ...normalizeCrmRow(row), modelo_id: launch.modelo_id, modelo: launch.modelo }));
+      crmByModel.set(launch.modelo_id, rows);
+      return rows;
+    });
+
+    renderActionsComparison(launches.map((launch) => commercialSummaryFor(
+      launch,
+      mediaByModel.get(launch.modelo_id) || [],
+      crmByModel.get(launch.modelo_id) || []
+    )));
+
+    const displayRows = detailedRows
+      .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.janela).localeCompare(String(b.janela)) || a.campanha.localeCompare(b.campanha));
+    $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
+      <tr>
+        <td class="model-name">${escapeHtml(row.modelo)}</td>
+        <td>${escapeHtml(row.campanha)}</td>
+        <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}</td>
+        <td>${escapeHtml(row.canal)}</td>
+        <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
+        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}</td>
+        <td class="num">${roasValue(row.roas)}</td>
+        <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
+        <td>${roasBadge(row.roas)}</td>
+      </tr>`).join('') : `<tr><td colspan="9" class="cell-muted">Sem midia paga cadastrada para os modelos selecionados.</td></tr>`;
+
+    const crmRows = crmRowsAll
+      .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.data_disparo || '').localeCompare(String(b.data_disparo || '')));
+    $('crm-table').innerHTML = crmRows.length ? crmRows.map((row) => `
+      <tr>
+        <td class="model-name">${escapeHtml(row.modelo)}</td>
+        <td>${fmtDate(row.data_disparo)}</td>
+        <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}</td>
+        <td>${escapeHtml(row.canal)}</td>
+        <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
+        <td class="num">${fmtBRL(row.receita_linha)}</td>
+        <td class="num">${mediaValue(row.receita_dia, fmtBRL)}</td>
+        <td class="num">${roasValue(row.roas_proxy)}</td>
+        <td>${roasBadge(row.roas_proxy)}</td>
+      </tr>`).join('') : `<tr><td colspan="9" class="cell-muted">Sem disparos de CRM cadastrados para os modelos selecionados.</td></tr>`;
   }
 
   function projectionScenarios(selected) {
@@ -2115,7 +2306,7 @@
     renderColorMix();
     renderSizeRanking();
     renderCalendar(selected);
-    renderActions(selected);
+    renderActionsComparative();
     renderProjection(selected);
     renderInsights(selected);
   }

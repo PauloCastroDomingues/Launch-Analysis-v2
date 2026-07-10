@@ -234,18 +234,19 @@
             <div class="section-kicker">07 · Ações comerciais</div>
             <div class="section-title-row">
               <h2>Mídia paga e CRM</h2>
-              <button class="help-button" type="button" data-tooltip="Mostra investimento, receita atribuida ou proxy e status operacional das campanhas e disparos cadastrados." aria-label="Ajuda sobre acoes comerciais">?</button>
+              <button class="help-button" type="button" data-tooltip="Compara investimento, receita base/atribuida, ROAS proxy, CPA e disparos dos modelos marcados em Comparar com." aria-label="Ajuda sobre acoes comerciais">?</button>
             </div>
-            <p class="section-desc">ROAS de mídia vem de midia_paga.json. CRM usa proxy e deve ser lido como apoio, não atribuição direta.</p>
+            <p class="section-desc">A leitura usa os modelos marcados em Comparar com. Quando mídia não tiver receita_atribuida, o ROAS é proxy pela receita da janela equivalente.</p>
           </div>
         </div>
+        <div id="actions-comparison" class="actions-comparison"></div>
         <div class="actions-grid">
           <div class="card">
             <div class="chart-title" style="margin-bottom:12px">Mídia paga</div>
             <div class="table-wrap">
-              <table style="min-width:760px">
+              <table style="min-width:960px">
                 <thead>
-                  <tr><th>Campanha</th><th>Janela</th><th>Canal</th><th class="num">Invest.</th><th class="num">Receita</th><th class="num">ROAS</th><th class="num">CPA</th><th>Status</th></tr>
+                  <tr><th>Modelo</th><th>Campanha</th><th>Janela</th><th>Canal</th><th class="num">Invest.</th><th class="num">Receita base</th><th class="num">ROAS proxy</th><th class="num">CPA</th><th>Status</th></tr>
                 </thead>
                 <tbody id="media-table"></tbody>
               </table>
@@ -254,9 +255,9 @@
           <div class="card">
             <div class="chart-title" style="margin-bottom:12px">CRM / disparos</div>
             <div class="table-wrap">
-              <table style="min-width:760px">
+              <table style="min-width:960px">
                 <thead>
-                  <tr><th>Data</th><th>Disparo</th><th>Canal</th><th class="num">Receita linha</th><th class="num">Receita dia</th><th class="num">ROAS proxy</th><th>Status</th></tr>
+                  <tr><th>Modelo</th><th>Data</th><th>Disparo</th><th>Canal</th><th class="num">Invest.</th><th class="num">Receita linha</th><th class="num">Receita dia</th><th class="num">ROAS proxy</th><th>Status</th></tr>
                 </thead>
                 <tbody id="crm-table"></tbody>
               </table>
