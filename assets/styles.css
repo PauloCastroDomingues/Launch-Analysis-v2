@@ -833,14 +833,130 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 .size-model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 
 .calendar-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.calendar-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-.calendar-title { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-weight: 800; margin-bottom: 12px; }
-.event { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.calendar-summary {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr);
+  gap: 18px;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.calendar-summary--pos { border-color: rgba(76,175,125,.32); }
+.calendar-summary--neg { border-color: rgba(224,82,82,.38); }
+.calendar-summary--neu { border-color: rgba(255,255,255,.14); }
+.calendar-summary--clean { border-style: dashed; }
+.seasonal-score {
+  margin-top: 8px;
+  font-size: 1.75rem;
+  line-height: 1;
+  font-weight: 900;
+}
+.seasonal-score--pos { color: var(--positive); }
+.seasonal-score--neg { color: var(--negative); }
+.seasonal-score--neu,
+.seasonal-score--clean { color: var(--txt-primary); }
+.seasonal-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.seasonal-stat-grid div {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255,255,255,.025);
+  padding: 10px;
+}
+.seasonal-stat-grid span {
+  display: block;
+  color: var(--txt-secondary);
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.seasonal-stat-grid strong {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.calendar-card--pos { border-color: rgba(76,175,125,.3); }
+.calendar-card--neg { border-color: rgba(224,82,82,.36); }
+.calendar-card--clean { border-style: dashed; }
+.calendar-title { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; font-weight: 800; margin-bottom: 12px; }
+.calendar-title span:first-child { display: grid; gap: 3px; }
+.calendar-title small { color: var(--txt-secondary); font-size: .68rem; font-weight: 800; }
+.seasonal-window-status {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+  margin-bottom: 2px;
+}
+.seasonal-window-status p {
+  margin: 8px 0 0;
+  color: var(--txt-secondary);
+  font-size: .78rem;
+}
+.seasonal-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.seasonal-counts span,
+.event-pill,
+.event-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background: rgba(255,255,255,.06);
+  color: var(--txt-secondary);
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.event { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--border); }
+.event-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  background: rgba(255,255,255,.06);
+}
 .event-icon.pos { color: var(--positive); }
 .event-icon.neg { color: var(--negative); }
 .event-icon.neu { color: var(--txt-muted); }
-.event-name { font-weight: 800; }
-.event-meta { color: var(--txt-secondary); font-size: .76rem; }
+.event-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 800;
+}
+.event-pill--pos { background: rgba(76,175,125,.16); color: var(--positive); }
+.event-pill--neg { background: rgba(224,82,82,.16); color: var(--negative); }
+.event-pill--neu { background: rgba(255,255,255,.07); color: var(--txt-secondary); }
+.event-state { background: rgba(240,120,0,.12); color: var(--orange); }
+.event-meta { color: var(--txt-secondary); font-size: .76rem; margin-top: 3px; }
+.event-copy { color: rgba(255,255,255,.64); font-size: .76rem; margin-top: 4px; }
+.seasonal-empty { min-height: 118px; margin-top: 10px; }
 
 .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
@@ -931,6 +1047,8 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   .compare-chip { width: 100%; min-width: 0; }
   .compare-chip span:last-child { white-space: normal; overflow-wrap: anywhere; }
   .model-pill { max-width: 100%; white-space: normal; }
+  .calendar-summary { grid-template-columns: 1fr; }
+  .seasonal-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-6, .grid-5, .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .future-box, .size-ranking-grid, .size-model-grid { grid-template-columns: 1fr; }
   .method-item { grid-template-columns: 1fr; gap: 5px; }
   .insight { grid-template-columns: 1fr; }

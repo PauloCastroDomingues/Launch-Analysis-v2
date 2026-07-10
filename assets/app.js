@@ -1818,32 +1818,173 @@
       </div>`;
   }
 
+  function seasonalWeight(peso) {
+    const key = normalizeText(peso);
+    if (key === 'forte') return 3;
+    if (key === 'medio') return 2;
+    if (key === 'baixo') return 1;
+    return 1;
+  }
+
+  function seasonalMeta(tipo) {
+    const key = normalizeText(tipo);
+    if (key === 'promotor') return { cls: 'pos', icon: '+', label: 'Promotor', sign: 1 };
+    if (key === 'ofensor') return { cls: 'neg', icon: '-', label: 'Ofensor', sign: -1 };
+    return { cls: 'neu', icon: '0', label: 'Neutro', sign: 0 };
+  }
+
+  function seasonalImpact(event) {
+    const meta = seasonalMeta(event.tipo);
+    return meta.sign * seasonalWeight(event.peso);
+  }
+
+  function seasonalWeightLabel(peso) {
+    const key = normalizeText(peso);
+    if (key === 'forte') return 'forte';
+    if (key === 'medio') return 'medio';
+    if (key === 'baixo') return 'baixo';
+    return 'baixo';
+  }
+
+  function seasonalPhase(day, end) {
+    if (end <= 0) return 'D0';
+    const pct = day / end;
+    if (pct < 0.34) return 'inicio da janela';
+    if (pct < 0.67) return 'meio da janela';
+    return 'fim da janela';
+  }
+
+  function seasonalEventsFor(selected, endDay) {
+    const start = toDate(selected.d0);
+    const end = addDays(selected.d0, endDay);
+    const observedCutoff = selected.isFuture
+      ? -1
+      : Math.max(0, Math.min(90, selected.dPlus ?? endDay));
+
+    return (state.data.calendario_br || [])
+      .map((event) => {
+        const date = toDate(event.data);
+        const day = dayIndex(selected.d0, event.data);
+        return {
+          ...event,
+          date,
+          day,
+          score: seasonalImpact(event),
+          observed: day !== null && day <= observedCutoff,
+          phase: day === null ? 'fora da janela' : seasonalPhase(day, endDay)
+        };
+      })
+      .filter((event) => event.date && event.date >= start && event.date <= end)
+      .sort((a, b) => a.day - b.day || String(a.nome).localeCompare(String(b.nome)));
+  }
+
+  function seasonalCounts(events) {
+    return events.reduce((acc, event) => {
+      const key = normalizeText(event.tipo);
+      if (key === 'promotor') acc.promotores += 1;
+      else if (key === 'ofensor') acc.ofensores += 1;
+      else acc.neutros += 1;
+      return acc;
+    }, { promotores: 0, ofensores: 0, neutros: 0 });
+  }
+
+  function seasonalClass(score, events) {
+    if (!events.length) return 'clean';
+    if (score > 0) return 'pos';
+    if (score < 0) return 'neg';
+    return 'neu';
+  }
+
+  function seasonalScoreLabel(score, events) {
+    if (!events.length) return 'Limpa';
+    if (score > 0) return `Favoravel +${score}`;
+    if (score < 0) return `Risco ${score}`;
+    return 'Neutra 0';
+  }
+
+  function seasonalRead(events, score, observedScore) {
+    if (!events.length) return 'Sem promotor, ofensor ou neutro cadastrado para esta janela.';
+    const futureCount = events.filter((event) => !event.observed).length;
+    if (score > 0 && observedScore <= 0 && futureCount) return 'Impulso positivo esta dentro da janela, mas ainda nao entrou no acumulado atual.';
+    if (score > 0) return 'Promotores superam ofensores; compare esta janela com cautela porque existe vento a favor.';
+    if (score < 0) return 'Ofensores pesam mais que promotores; queda relativa pode ser efeito de calendario.';
+    return 'Eventos sem direcao clara; use como contexto, nao como explicacao principal.';
+  }
+
   function renderCalendar(selected) {
     const windows = WINDOW_KEYS.map((key) => ({
       key,
       label: windowLabel(key),
       end: (WINDOW_DAYS[key] || 0) - 1
     }));
-    $('calendar-grid').innerHTML = windows.map((win) => {
-      const start = toDate(selected.d0);
-      const end = addDays(selected.d0, win.end);
-      const events = (state.data.calendario_br || []).filter((event) => {
-        const date = toDate(event.data);
-        return date >= start && date <= end;
-      });
-      return `<div class="calendar-card">
-        <div class="calendar-title"><span>${win.label}</span>${coverageBadge(selected, win.key)}</div>
-        ${events.length ? events.map((event) => {
-          const cls = event.tipo === 'promotor' ? 'pos' : event.tipo === 'ofensor' ? 'neg' : 'neu';
-          const icon = event.tipo === 'promotor' ? '▲' : event.tipo === 'ofensor' ? '▼' : '○';
-          const d = dayIndex(selected.d0, event.data);
-          return `<div class="event">
-            <div class="event-icon ${cls}">${icon}</div>
-            <div><div class="event-name">${escapeHtml(event.nome)}</div><div class="event-meta">${fmtDate(event.data)} · D+${d} · ${escapeHtml(event.observacao || '')}</div></div>
+    const analyses = windows.map((win) => {
+      const events = seasonalEventsFor(selected, win.end);
+      const counts = seasonalCounts(events);
+      const score = events.reduce((acc, event) => acc + event.score, 0);
+      const observedScore = events.filter((event) => event.observed).reduce((acc, event) => acc + event.score, 0);
+      return {
+        ...win,
+        events,
+        counts,
+        score,
+        observedScore,
+        cls: seasonalClass(score, events),
+        scoreLabel: seasonalScoreLabel(score, events),
+        read: seasonalRead(events, score, observedScore)
+      };
+    });
+    const ninety = analyses[analyses.length - 1] || { events: [], counts: seasonalCounts([]), score: 0, observedScore: 0, cls: 'clean' };
+    const strongest = [...ninety.events].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
+    const observedEvents = ninety.events.filter((event) => event.observed);
+    const futureEvents = ninety.events.filter((event) => !event.observed);
+    const summaryRead = ninety.events.length
+      ? `${observedEvents.length} evento(s) ja observado(s) e ${futureEvents.length} evento(s) futuro(s) dentro de 90 dias.`
+      : 'Nenhum evento cadastrado entre D0 e D+89.';
+
+    $('calendar-grid').innerHTML = `
+      <div class="calendar-summary calendar-summary--${ninety.cls}">
+        <div>
+          <div class="metric-label">Saldo sazonal 90d</div>
+          <div class="seasonal-score seasonal-score--${ninety.cls}">${escapeHtml(seasonalScoreLabel(ninety.score, ninety.events))}</div>
+          <div class="metric-sub">${escapeHtml(summaryRead)}</div>
+        </div>
+        <div class="seasonal-stat-grid">
+          <div><span>Promotores</span><strong>${fmtNum(ninety.counts.promotores)}</strong></div>
+          <div><span>Ofensores</span><strong>${fmtNum(ninety.counts.ofensores)}</strong></div>
+          <div><span>Neutros</span><strong>${fmtNum(ninety.counts.neutros)}</strong></div>
+          <div><span>Mais forte</span><strong>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</strong></div>
+        </div>
+      </div>
+      ${analyses.map((win) => `<div class="calendar-card calendar-card--${win.cls}">
+        <div class="calendar-title">
+          <span>${win.label}<small>${escapeHtml(win.scoreLabel)}</small></span>
+          ${coverageBadge(selected, win.key)}
+        </div>
+        <div class="seasonal-window-status">
+          <div class="seasonal-counts">
+            <span>+${fmtNum(win.counts.promotores)} promotor</span>
+            <span>-${fmtNum(win.counts.ofensores)} ofensor</span>
+            <span>${fmtNum(win.counts.neutros)} neutro</span>
+          </div>
+          <p>${escapeHtml(win.read)}</p>
+        </div>
+        ${win.events.length ? win.events.map((event) => {
+          const meta = seasonalMeta(event.tipo);
+          const impact = event.score > 0 ? `+${event.score}` : String(event.score);
+          return `<div class="event event--${meta.cls}">
+            <div class="event-icon ${meta.cls}">${meta.icon}</div>
+            <div>
+              <div class="event-name">
+                ${escapeHtml(event.nome)}
+                <span class="event-pill event-pill--${meta.cls}">${escapeHtml(meta.label)} ${escapeHtml(seasonalWeightLabel(event.peso))}</span>
+                <span class="event-state">${event.observed ? 'observado' : 'futuro'}</span>
+              </div>
+              <div class="event-meta">${fmtDate(event.data)} · D+${fmtNum(event.day)} · impacto ${escapeHtml(impact)} · ${escapeHtml(event.phase)}</div>
+              ${event.observacao ? `<div class="event-copy">${escapeHtml(event.observacao)}</div>` : ''}
+            </div>
           </div>`;
-        }).join('') : `<div class="empty-state" style="min-height:120px"><div><strong>Sem evento relevante.</strong>Janela limpa no calendário.</div></div>`}
-      </div>`;
-    }).join('');
+        }).join('') : `<div class="empty-state seasonal-empty"><div><strong>Janela limpa.</strong>Sem evento cadastrado entre D0 e D+${fmtNum(win.end)}.</div></div>`}
+      </div>`).join('')}`;
   }
 
   function roasBadge(value) {
