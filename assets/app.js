@@ -249,23 +249,114 @@
     OW: 'Off White'
   };
 
+  const UNKNOWN_COLOR_LABEL = 'Cor n\u00e3o identificada';
+  const UNKNOWN_COLOR_NORMS = new Set([
+    '',
+    'sem cor',
+    'sem cor definida',
+    'sem identificacao',
+    'cor nao identificada',
+    'nao identificado',
+    'nao identificada'
+  ]);
+
+  const NORMALIZED_COLOR_DEFS = [
+    { label: 'All Black', norm: 'all black', aliases: ['all black'] },
+    { label: 'Off White', norm: 'off white', aliases: ['off white', 'offwhite'] },
+    { label: 'Azul-marinho', norm: 'azul marinho', aliases: ['azul marinho', 'marinho'] },
+    { label: 'Caqui', norm: 'caqui', aliases: ['caqui'] },
+    { label: 'Cinza', norm: 'cinza', aliases: ['cinza'] },
+    { label: 'Marrom', norm: 'marrom', aliases: ['marrom'] },
+    { label: 'Preto', norm: 'preto', aliases: ['preto', 'preta'] },
+    { label: 'Branco', norm: 'branco', aliases: ['branco', 'branca'] },
+    { label: 'Oliva', norm: 'oliva', aliases: ['oliva'] },
+    { label: 'Camur\u00e7a', norm: 'camurca', aliases: ['camurca'] }
+  ];
+
+  const NORMALIZED_COLOR_ALIASES = new Map();
+  NORMALIZED_COLOR_DEFS.forEach((color) => {
+    [color.norm, ...(color.aliases || [])].forEach((alias) => NORMALIZED_COLOR_ALIASES.set(alias, color.label));
+  });
+
+  const NORMALIZED_SKU_COLOR_CODES = {
+    OW: 'Off White',
+    B: 'Branco',
+    BC: 'Branco',
+    P: 'Preto',
+    PT: 'Preto',
+    AB: 'All Black',
+    M: 'Marrom',
+    MR: 'Azul-marinho',
+    C: 'Cinza',
+    O: 'Oliva'
+  };
+
+  const MONOCHROME_SKU_COLOR_CODES = {
+    AB: 'All Black',
+    MC: 'Cinza',
+    CT: 'Caqui',
+    CF: 'Marrom'
+  };
+
   function stripTrailingSize(value) {
     return tidyPart(value).replace(/\s*(?:-|\/|\|)?\s*(3[3-9]|4[0-8])\s*$/i, '').trim();
   }
 
-  function colorFromSku(value) {
-    const parts = String(value || '').toUpperCase().split(/[-_]/).map(tidyPart).filter(Boolean);
-    for (const part of parts) {
-      if (SKU_COLOR_CODES[part]) return SKU_COLOR_CODES[part];
+  function isUnknownColor(value) {
+    return UNKNOWN_COLOR_NORMS.has(normalizeText(value));
+  }
+
+  function colorFromCode(value, modelId = '') {
+    const code = normalizeText(value).replace(/\s+/g, '').toUpperCase();
+    if (!code || isSizeToken(code)) return null;
+    if (String(modelId || '') === 'rs8_monochrome' && MONOCHROME_SKU_COLOR_CODES[code]) {
+      return MONOCHROME_SKU_COLOR_CODES[code];
     }
+    return NORMALIZED_SKU_COLOR_CODES[code] || null;
+  }
+
+  function colorFromSku(value, modelId = '') {
+    const raw = String(value || '').toUpperCase();
+    if (!raw) return null;
+
+    const compact = raw.replace(/[^A-Z0-9]/g, '');
+    const monoCompact = compact.match(/RS8AVANT(AB|MC|CT|CF)(?:\d{2}|$)/);
+    if (monoCompact) return MONOCHROME_SKU_COLOR_CODES[monoCompact[1]];
+
+    const tokens = raw.split(/[^A-Z0-9]+/).map(tidyPart).filter(Boolean);
+    for (const token of tokens) {
+      const monoColor = String(modelId || '') === 'rs8_monochrome' ? MONOCHROME_SKU_COLOR_CODES[token] : null;
+      if (monoColor) return monoColor;
+      const color = colorFromCode(token, modelId);
+      if (color) return color;
+    }
+
     return null;
   }
 
   function colorFromText(value) {
     const clean = stripTrailingSize(value);
     const norm = normalizeText(clean);
-    const match = COLOR_DEFS.find((color) => norm === color.norm || norm.endsWith(` ${color.norm}`));
+    if (!norm || isUnknownColor(norm)) return null;
+
+    const exact = NORMALIZED_COLOR_ALIASES.get(norm);
+    if (exact) return exact;
+
+    const padded = ` ${norm} `;
+    const match = NORMALIZED_COLOR_DEFS.find((color) => (
+      [color.norm, ...(color.aliases || [])].some((alias) => padded.includes(` ${alias} `))
+    ));
     return match?.label || null;
+  }
+
+  function normalizeColorValue(value, modelId = '', allowCode = false) {
+    const clean = tidyPart(value);
+    if (!clean || isSizeToken(clean) || isUnknownColor(clean)) return null;
+    if (allowCode) {
+      const coded = colorFromCode(clean, modelId);
+      if (coded) return coded;
+    }
+    return colorFromText(clean);
   }
 
   function stripTrailingColor(value) {
@@ -295,15 +386,21 @@
     return /[A-Z]{2,}[-_][A-Z0-9]/i.test(part) || /^[A-Z0-9_-]{8,}$/i.test(part);
   }
 
-  function extractColor(row) {
-    if (row.cor && !isSizeToken(row.cor)) return tidyPart(row.cor);
+  function extractColor(row, model = {}) {
+    const modelId = row.modelo_id || model.modelo_id || '';
+
+    const skuColor = colorFromSku(row.sku, modelId);
+    if (skuColor) return skuColor;
+
+    const storedColor = normalizeColorValue(row.cor, modelId, true);
+    if (storedColor) return storedColor;
 
     const explicitFields = [row.variant_title, row.nome_produto];
     for (const field of explicitFields) {
       const explicit = String(field || '').match(/(?:cor|color)\s*[:\-]\s*([^|/,\-]+)/i);
       if (explicit) {
-        const color = tidyPart(explicit[1]);
-        if (color && !isSizeToken(color)) return color;
+        const color = normalizeColorValue(explicit[1], modelId, true);
+        if (color) return color;
       }
     }
 
@@ -311,9 +408,6 @@
       .map(colorFromText)
       .find(Boolean);
     if (parsedColor) return parsedColor;
-
-    const skuColor = colorFromSku(row.sku);
-    if (skuColor) return skuColor;
 
     const fields = [row.variant_title, row.nome_produto, row.sub_modelo, row.sku];
     for (const field of fields) {
@@ -324,10 +418,11 @@
         .filter((part) => !isSizeToken(part))
         .filter((part) => !looksLikeProductName(part))
         .filter((part) => !looksLikeSku(part));
-      if (parts.length) return parts[parts.length - 1];
+      const fallbackColor = parts.map((part) => normalizeColorValue(part, modelId, true)).find(Boolean);
+      if (fallbackColor) return fallbackColor;
     }
 
-    return 'Sem cor';
+    return UNKNOWN_COLOR_LABEL;
   }
 
   function extractSubModel(row, model) {
@@ -464,11 +559,29 @@
     const coresMap = new Map();
     const tamanhosMap = new Map();
     modelRows.forEach((row) => {
-      const sub = extractSubModel(row, model);
-      const cor = extractColor(row);
-      const key = `${sub}::${cor}`;
-      const current = coresMap.get(key) || { sub_modelo: sub, cor, pares: 0 };
+      const cor = extractColor(row, model);
+      const key = `${model.modelo_id}::${cor}`;
+      const current = coresMap.get(key) || {
+        modelo_id: model.modelo_id,
+        modelo: model.modelo,
+        cor,
+        pares: 0,
+        receita_bruta: 0,
+        receita_liquida: 0,
+        hasReceitaLiquida: false,
+        pedidos: 0,
+        orderIds: new Set()
+      };
       current.pares += Number(row.pares || 0);
+      current.receita_bruta += receitaBrutaRow(row);
+      const receitaLiquida = receitaLiquidaRow(row);
+      if (receitaLiquida !== null) {
+        current.receita_liquida += receitaLiquida;
+        current.hasReceitaLiquida = true;
+      }
+      const orderId = pedidoId(row);
+      if (orderId) current.orderIds.add(orderId);
+      else current.pedidos += Number(row.pedidos_validos ?? row.pedidos ?? 0);
       coresMap.set(key, current);
 
       const tamanho = extractSize(row);
@@ -496,7 +609,12 @@
         ...week,
         pedidos: orderIds.size || week.pedidos
       })),
-      cores: [...coresMap.values()],
+      cores: [...coresMap.values()].map(({ orderIds, hasReceitaLiquida, ...color }) => ({
+        ...color,
+        pedidos: orderIds.size || color.pedidos,
+        receita_bruta: Math.round(color.receita_bruta * 100) / 100,
+        receita_liquida: hasReceitaLiquida ? Math.round(color.receita_liquida * 100) / 100 : null
+      })),
       multiplicadores: { m15_7, m30_15: m30, m60_30, m90_15, m90_30 },
       daily,
       acumulado_atual: acumuladoAtual,
@@ -1933,39 +2051,68 @@
       return;
     }
 
-    const rows = launches.flatMap((launch) => (launch.cores || []).map((row) => ({
-      ...row,
-      modelo_id: launch.modelo_id,
-      modelo: launch.modelo,
-      sub_modelo: row.sub_modelo || launch.modelo,
-      cor: row.cor || 'Sem cor'
-    })));
+    const cards = launches.map((launch) => {
+      const colorsMap = new Map();
+      (launch.cores || []).forEach((row) => {
+        const cor = extractColor({ ...row, modelo_id: launch.modelo_id }, launch);
+        const current = colorsMap.get(cor) || {
+          modelo_id: launch.modelo_id,
+          modelo: launch.modelo,
+          cor,
+          pares: 0,
+          receita_bruta: 0,
+          receita_liquida: 0,
+          hasReceitaLiquida: false,
+          pedidos: 0
+        };
+        current.pares += Number(row.pares || 0);
+        current.receita_bruta += Number((row.receita_bruta ?? row.receita) || 0);
+        if (row.receita_liquida !== null && row.receita_liquida !== undefined) {
+          current.receita_liquida += Number(row.receita_liquida || 0);
+          current.hasReceitaLiquida = true;
+        }
+        current.pedidos += Number(row.pedidos || 0);
+        colorsMap.set(cor, current);
+      });
 
-    if (!rows.length) {
-      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Sem mix de cores.</strong>Dados entram pelo histórico estático ou pelo pipeline de venda por SKU.</div></div>`;
+      const allColors = [...colorsMap.values()];
+      const validColors = allColors.filter((row) => !isUnknownColor(row.cor));
+      const rankedSource = validColors.length ? validColors : allColors;
+      const ranked = rankedSource
+        .sort((a, b) => {
+          const unknownDelta = Number(isUnknownColor(a.cor)) - Number(isUnknownColor(b.cor));
+          if (unknownDelta) return unknownDelta;
+          return Number(b.pares || 0) - Number(a.pares || 0) || String(a.cor).localeCompare(String(b.cor), 'pt-BR');
+        });
+      const total = rankedSource.reduce((acc, item) => acc + Number(item.pares || 0), 0);
+      const max = ranked[0]?.pares || 0;
+      return {
+        launch,
+        total,
+        max,
+        rows: ranked.slice(0, 3)
+      };
+    });
+
+    if (!cards.some((card) => card.rows.length)) {
+      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Sem mix de cores.</strong>Dados entram pelo historico estatico ou pelo pipeline de venda por SKU.</div></div>`;
       return;
     }
 
-    const grouped = rows.reduce((acc, row) => {
-      const key = `${row.modelo}::${row.sub_modelo}`;
-      (acc[key] ||= { modelo: row.modelo, sub_modelo: row.sub_modelo, rows: [] }).rows.push(row);
-      return acc;
-    }, {});
-
-    $('color-mix').innerHTML = Object.values(grouped).map((group) => {
-      const total = group.rows.reduce((acc, item) => acc + Number(item.pares || 0), 0);
-      const max = Math.max(...group.rows.map((i) => i.pares || 0));
+    $('color-mix').innerHTML = cards.map((card) => {
+      const { launch, total, max, rows } = card;
       return `<div class="color-card">
-        <div class="color-title">${escapeHtml(group.modelo)} · ${escapeHtml(group.sub_modelo)} ${tip('Mix por cor calculado por pares vendidos dentro do modelo/sub-modelo. Em historicos, depende do cadastro agregado; em pipeline, vem da classificacao de item/SKU.')}</div>
-        ${group.rows.sort((a,b) => b.pares - a.pares).map((item, idx) => {
+        <div class="color-title">${escapeHtml(launch.modelo)} ${tip('Top 3 cores por modelo. As cores sao normalizadas por SKU, nome e campo de cor; sem cor so aparece quando nao ha outra cor valida.')}</div>
+        ${rows.length ? rows.map((item, idx) => {
           const pctMax = max ? (item.pares / max) * 100 : 0;
           const pctTotal = total ? item.pares / total : null;
+          const colorLabel = isUnknownColor(item.cor) ? UNKNOWN_COLOR_LABEL : item.cor;
           return `<div class="color-row">
-            <div class="color-label" title="${escapeHtml(item.cor)}">${escapeHtml(item.cor)}</div>
+            <div class="color-label" title="${escapeHtml(colorLabel)}">${escapeHtml(colorLabel)}</div>
             <div class="bar-track"><div class="bar-fill ${idx ? 'secondary' : ''}" style="width:${pctMax}%"></div></div>
-            <div class="color-value" tabindex="0" data-tooltip="${tooltipAttr('Percentual = pares da cor / pares totais do sub-modelo. Barra visual e normalizada pelo maior volume do grupo.')}">${fmtNum(item.pares)} · ${fmtPct(pctTotal, 0)}</div>
+            <div class="color-value" tabindex="0" data-tooltip="${tooltipAttr('Percentual = pares da cor / pares totais com cor valida no modelo. Barra visual normalizada pela maior cor do modelo.')}">${fmtNum(item.pares)} pares &middot; ${fmtPct(pctTotal, 0)}</div>
           </div>`;
-        }).join('')}
+        }).join('') : '<div class="color-empty">Sem cores classificadas.</div>'}
       </div>`;
     }).join('');
   }
