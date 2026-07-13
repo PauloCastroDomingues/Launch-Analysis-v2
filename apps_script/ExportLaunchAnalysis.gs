@@ -37,7 +37,8 @@ function exportarTudo() {
     'Filtros de data usam >= para incluir D0.',
     'Dados ausentes devem permanecer null/—; nunca transformar em zero.',
     'Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.',
-    'day_zero_base define o D0 analitico de cada modelo.'
+    'day_zero_base define o D0 analitico de cada modelo.',
+    'Vendas de modelos usam somente pedidos validos do SSOT: Shopify com is_valid_order TRUE, Shoppub com is_valid_order_calc TRUE e pedidos_validos unificado.'
   ];
 
   if (auditoriaMonochrome) {
@@ -1595,7 +1596,7 @@ function normalizeMidiaPaga_(rows, modelos) {
       investimento,
       receita_atribuida: receita,
       pedidos,
-      roas: numberOrNull_(row.roas) ?? (investimento && receita !== null ? receita / investimento : null),
+      roas: roasOrNull_(row.roas),
       cpa: numberOrNull_(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null),
       observacao: row.observacao || null,
       status: row.status || null
@@ -1614,7 +1615,7 @@ function normalizeCrmDisparos_(rows) {
     receita_linha: numberOrNull_(row.receita_linha),
     receita_dia: numberOrNull_(row.receita_dia),
     pedidos: numberOrNull_(row.pedidos),
-    roas_proxy: numberOrNull_(row.roas_proxy),
+    roas: roasOrNull_(row.roas),
     cpa: numberOrNull_(row.cpa),
     observacao: row.observacao || null,
     status: row.status || null
@@ -1654,6 +1655,17 @@ function numberOrNull_(value) {
     : cleaned.replace(/,/g, '');
   const parsed = Number(normalized);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function roasOrNull_(value) {
+  const parsed = numberOrNull_(value);
+  if (parsed === null) return null;
+  const text = String(value || '').trim().toLowerCase();
+  const explicitlyPercent = text.includes('%');
+  if (explicitlyPercent || parsed > 100) {
+    return round6_(parsed / 100);
+  }
+  return parsed;
 }
 
 function termosRegex_(model) {

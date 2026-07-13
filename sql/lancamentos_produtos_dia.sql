@@ -8,6 +8,7 @@
 -- 5) unificar vendas Shopify + Shoppub, respeitando o corte de migracao.
 -- 6) rs8_monochrome usa fonte canonica core.order_item + core.order e match estrito.
 -- 7) clientes novos/recorrentes usam customer_key segura; ausencia fica null.
+-- 8) toda venda de modelo precisa vir de pedido valido no SSOT.
 
 WITH params AS (
   SELECT TIMESTAMP('2025-07-10 05:00:00', 'America/Sao_Paulo') AS cutoff_brt

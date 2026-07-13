@@ -51,6 +51,7 @@ GT e Avant foram recalculados a partir da query canônica `sql/auditoria_histori
 
 Regra central:
 
+- Toda venda usada no dashboard precisa vir de pedido válido no SSOT; pedido inválido, cancelado ou fora da regra de validade não entra em vendas de modelo.
 - Shopify: `reise-ssot.core.order_item` + `reise-ssot.core.order` com `o.is_valid_order = TRUE`.
 - Shoppub: `reise-ssot.stg.shoppub_orders_tbl` com `is_valid_order_calc = TRUE`.
 - Pedido distinto: `CONCAT(origem, '|', pedido_id)`.
@@ -250,6 +251,8 @@ O dashboard deve puxar vendas desde `2026-06-25`. Se aparecer sem dados, revisar
 
 A mídia paga é preenchida manualmente na aba `midia_paga` de uma planilha opcional. CRM manual usa a aba `crm_disparos`.
 
+Os campos de `investimento` vêm exclusivamente dessas abas da planilha configurada em `MIDIA_SPREADSHEET_ID`. O dashboard não busca gasto em Meta Ads, Google Ads ou BigQuery e não recalcula investimento automaticamente.
+
 Para exportar essas abas, configure:
 
 ```txt
@@ -263,10 +266,20 @@ modelo_id | campanha | canal | data_inicio | data_fim | janela | investimento
 receita_atribuida | pedidos | roas | cpa | observacao | status
 ```
 
+Colunas aceitas para `crm_disparos`:
+
+```txt
+modelo_id | modelo | data_disparo | campanha | canal | investimento
+receita_linha | receita_dia | pedidos | roas | cpa | observacao | status
+```
+
 Regras:
 
 - `campanha` é obrigatório.
 - `investimento` deve ser o valor real informado por campanha.
+- `roas` deve vir informado na planilha em escala de multiplicador (`6,48` = `6,48x`); o front não calcula ROAS usando receita da janela, receita_linha ou receita_dia.
+- Se `roas` vier como percentual/texto (`647,8%`) ou como número acima de `100`, o exportador/front normalizam por `/100` para evitar confusão de escala percentual vs. multiplicador.
+- `receita_atribuida`, `receita_linha` e `receita_dia` são contexto/atribuição cadastrada e não substituem o campo `roas`.
 - `janela` pode ser preenchida manualmente.
 - Se `janela` vier vazia, o Apps Script calcula pela relação entre `data_inicio`/`data_fim` e o D0 do modelo.
 - Se a planilha não estiver configurada, o exportador não apaga os arquivos atuais.

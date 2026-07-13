@@ -64,14 +64,21 @@
       <div class="selector-panel">
         <div class="selector-block">
           <div class="selector-title selector-title-row">
-            <span>Modelo principal</span>
+            <span>Foco da análise</span>
             <button class="help-button" type="button" data-tooltip="Define o modelo em foco. Afeta KPIs, D+n, estoque, calendario, acoes comerciais e projecao. Modelos planejados entram no seletor, mas ficam fora de venda ate o D0." aria-label="Ajuda sobre modelo principal">?</button>
           </div>
           <div id="model-selector" class="model-selector"></div>
         </div>
         <div class="selector-block">
           <div class="selector-title selector-title-row">
-            <span>Comparar com</span>
+            <span>Período</span>
+            <button class="help-button" type="button" data-tooltip="Define a janela principal dos KPIs do estado do lançamento. Total dias usa o acumulado atual quando existir; nos historicos usa a melhor janela disponivel." aria-label="Ajuda sobre periodo">?</button>
+          </div>
+          <div id="period-selector" class="period-selector"></div>
+        </div>
+        <div class="selector-block">
+          <div class="selector-title selector-title-row">
+            <span>Universo comparativo</span>
             <button class="help-button" type="button" data-tooltip="Escolhe o universo comparativo. Tabelas, rankings, curvas, comerciais e projecoes usam estes modelos; dados ausentes permanecem vazios, nao viram zero." aria-label="Ajuda sobre comparativo">?</button>
           </div>
           <div id="compare-selector" class="compare-selector"></div>
@@ -85,9 +92,9 @@
             <div class="section-kicker">01 · Estado do lançamento</div>
             <div class="section-title-row">
               <h2><span id="selected-title">—</span></h2>
-              <button class="help-button" type="button" data-tooltip="Resume o modelo principal. Mostra receita, pedidos, ticket, preco por par, clientes e pares na melhor janela disponivel ou no acumulado D+n real. Fonte: JSONs versionados do dashboard." aria-label="Ajuda sobre estado do lancamento">?</button>
+              <button class="help-button" type="button" data-tooltip="Resume o modelo em foco no periodo escolhido. Mostra receita, pedidos, ticket, preco por par, clientes e pares quando a janela existe no JSON. Total dias usa acumulado D+n real ou melhor janela historica disponivel." aria-label="Ajuda sobre estado do lancamento">?</button>
             </div>
-            <p class="section-desc">KPIs calculados a partir da melhor janela disponível para o modelo selecionado.</p>
+            <p class="section-desc">KPIs calculados pelo período escolhido na barra de análise. Total dias usa o acumulado atual ou a melhor janela disponível.</p>
             <div id="selected-dates" class="selected-dates"></div>
           </div>
           <div id="selected-status"></div>
@@ -243,9 +250,9 @@
             <div class="section-kicker">07 · Ações comerciais</div>
             <div class="section-title-row">
               <h2>Mídia paga e CRM</h2>
-              <button class="help-button" type="button" data-tooltip="Compara frentes comerciais por modelo: investimento, receita atribuida/base, ROAS, CPA e disparos. Midia pode misturar atribuicao real e proxy; CRM e leitura proxy salvo campo explicito da planilha." aria-label="Ajuda sobre acoes comerciais">?</button>
+              <button class="help-button" type="button" data-tooltip="Compara frentes comerciais por modelo: investimento, receita informada, ROAS, CPA e disparos. Investimento e ROAS vêm das abas midia_paga e crm_disparos exportadas pelo Apps Script." aria-label="Ajuda sobre acoes comerciais">?</button>
             </div>
-            <p class="section-desc">A leitura usa os modelos marcados em Comparar com. Quando mídia não tiver receita_atribuida, o ROAS é proxy pela receita da janela equivalente.</p>
+            <p class="section-desc">A leitura usa os modelos marcados em Comparar com. O dashboard não recalcula ROAS automaticamente: sem ROAS cadastrado na planilha, o indicador fica vazio.</p>
           </div>
         </div>
         <div id="actions-comparison" class="actions-comparison"></div>
@@ -253,7 +260,7 @@
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
               <span>Mídia paga</span>
-              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/midia_paga.json, exportado da planilha configurada no Apps Script. ROAS usa receita_atribuida quando existe; caso contrario pode usar receita base da janela equivalente como proxy." aria-label="Ajuda sobre midia paga">i</button>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/midia_paga.json, exportado da planilha configurada no Apps Script. Investimento e ROAS são informados na planilha; o front não recalcula gasto nem ROAS de plataformas." aria-label="Ajuda sobre midia paga">i</button>
             </div>
             <div class="table-wrap">
               <table style="min-width:960px">
@@ -264,8 +271,8 @@
                     <th><span class="th-label">Janela <button class="help-button help-button--mini" type="button" data-tooltip="Janela informada ou inferida pelo Apps Script a partir de data_inicio/data_fim vs D0: pre-D0, 15d, 30d, 90d etc." aria-label="Ajuda sobre janela midia">i</button></span></th>
                     <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal/canalizador declarado na planilha, como Facebook ADS, Google ADS ou outro." aria-label="Ajuda sobre canal midia">i</button></span></th>
                     <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Investimento cadastrado. Fonte: planilha; o dashboard nao recalcula gasto de plataformas." aria-label="Ajuda sobre investimento midia">i</button></span></th>
-                    <th class="num"><span class="th-label">Receita base <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuida informada ou receita de referencia da janela. Pode ser dado real atribuido ou proxy conforme cadastro." aria-label="Ajuda sobre receita midia">i</button></span></th>
-                    <th class="num"><span class="th-label">ROAS proxy <button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita base / investimento. Quando a receita nao e atribuida pela plataforma, leia como proxy de eficiencia, nao causalidade." aria-label="Ajuda sobre ROAS midia">i</button></span></th>
+                    <th class="num"><span class="th-label">Receita atribuída <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuida informada na planilha. Se nao houver atribuicao cadastrada, permanece vazio e nao vira base automatica de ROAS." aria-label="Ajuda sobre receita midia">i</button></span></th>
+                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS informado na coluna roas da planilha em multiplicador: 6,48 = 6,48x. Percentuais ou valores acima de 100 sao normalizados para evitar confusao de escala." aria-label="Ajuda sobre ROAS midia">i</button></span></th>
                     <th class="num"><span class="th-label">CPA <button class="help-button help-button--mini" type="button" data-tooltip="Formula: investimento / pedidos atribuidos. Fica vazio sem pedidos cadastrados para a campanha." aria-label="Ajuda sobre CPA midia">i</button></span></th>
                     <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Classificacao operacional derivada do ROAS ou informada no cadastro. Serve para leitura rapida, nao substitui auditoria." aria-label="Ajuda sobre status midia">i</button></span></th>
                   </tr>
@@ -277,7 +284,7 @@
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
               <span>CRM / disparos</span>
-              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/crm_disparos.json, exportado da planilha. O campo Disparo preserva o nome da acao. ROAS CRM e proxy e depende de receita_linha ou receita_dia cadastrada." aria-label="Ajuda sobre CRM">i</button>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/crm_disparos.json, exportado da planilha. O campo Disparo preserva o nome da acao. ROAS CRM vem da coluna roas; receita_linha e receita_dia sao contexto." aria-label="Ajuda sobre CRM">i</button>
             </div>
             <div class="table-wrap">
               <table style="min-width:960px">
@@ -289,15 +296,15 @@
                     <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal de CRM informado: email, WhatsApp, SMS, push ou outro." aria-label="Ajuda sobre canal CRM">i</button></span></th>
                     <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Custo/investimento do disparo quando informado. Pode ser nulo para canais sem custo direto registrado." aria-label="Ajuda sobre investimento CRM">i</button></span></th>
                     <th class="num"><span class="th-label">Receita linha <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuida ou observada para a linha do disparo. Fonte: planilha; nao e recalculada pelo front." aria-label="Ajuda sobre receita linha">i</button></span></th>
-                    <th class="num"><span class="th-label">Receita dia <button class="help-button help-button--mini" type="button" data-tooltip="Receita do dia usada como fallback/proxy quando a receita da linha nao existe." aria-label="Ajuda sobre receita dia">i</button></span></th>
-                    <th class="num"><span class="th-label">ROAS proxy <button class="help-button help-button--mini" type="button" data-tooltip="Formula: receita CRM base / investimento CRM. E proxy comercial; nao prova causalidade do disparo." aria-label="Ajuda sobre ROAS CRM">i</button></span></th>
-                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Leitura operacional do resultado do disparo, com base no ROAS proxy ou status cadastrado." aria-label="Ajuda sobre status CRM">i</button></span></th>
+                    <th class="num"><span class="th-label">Receita dia <button class="help-button help-button--mini" type="button" data-tooltip="Receita do dia informada na planilha para contexto do disparo. Nao substitui o campo roas." aria-label="Ajuda sobre receita dia">i</button></span></th>
+                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS informado na coluna roas da planilha de CRM em multiplicador: 6,48 = 6,48x. Percentuais ou valores acima de 100 sao normalizados para evitar confusao de escala." aria-label="Ajuda sobre ROAS CRM">i</button></span></th>
+                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Leitura operacional do resultado do disparo, com base no status cadastrado ou no ROAS informado." aria-label="Ajuda sobre status CRM">i</button></span></th>
                   </tr>
                 </thead>
                 <tbody id="crm-table"></tbody>
               </table>
             </div>
-            <p class="metric-sub">ROAS CRM = proxy. Quando não houver receita_dia, usa a leitura cadastrada na planilha.</p>
+            <p class="metric-sub">Investimento e ROAS vêm da planilha. Receita linha/dia é contexto, não base automática de ROAS.</p>
           </div>
         </div>
       </section>

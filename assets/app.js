@@ -29,6 +29,13 @@
     '60d': 'D+60',
     '90d': 'D+90'
   };
+  const ANALYSIS_PERIODS = [
+    { key: '7d', label: '7 dias' },
+    { key: '15d', label: '15 dias' },
+    { key: '30d', label: '30 dias' },
+    { key: '60d', label: '60 dias' },
+    { key: 'total', label: 'Total dias' }
+  ];
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
 
   const state = {
@@ -36,6 +43,7 @@
     launches: [],
     primaryModelId: null,
     compareModelIds: [],
+    analysisPeriodKey: 'total',
     snapshotClock: null,
     charts: {}
   };
@@ -714,6 +722,38 @@
     return { key: null, data: null };
   }
 
+  function selectedAnalysisWindow(launch) {
+    const period = state.analysisPeriodKey || 'total';
+    if (!launch) {
+      return { key: null, data: null, isCurrentAccumulated: false, label: '—' };
+    }
+
+    if (period === 'total') {
+      if (launch.acumulado_atual) {
+        const day = Math.max(0, launch.acumulado_atual.day ?? 0);
+        return {
+          key: `D+${day}`,
+          data: launch.acumulado_atual,
+          isCurrentAccumulated: true,
+          label: `D+${day}`
+        };
+      }
+      const best = bestWindow(launch);
+      return {
+        ...best,
+        isCurrentAccumulated: false,
+        label: best.key ? windowLabel(best.key) : '—'
+      };
+    }
+
+    return {
+      key: period,
+      data: getWindow(launch, period),
+      isCurrentAccumulated: false,
+      label: windowLabel(period)
+    };
+  }
+
   function hasPipelineRows(launch) {
     return Number(launch?.pipelineRowCount || 0) > 0;
   }
@@ -806,6 +846,17 @@
       : cleaned.replace(/,/g, '');
     const num = Number(normalized);
     return Number.isNaN(num) ? null : num;
+  }
+
+  function roasNumberOrNull(value) {
+    const parsed = numberOrNull(value);
+    if (parsed === null) return null;
+    const text = String(value || '').trim().toLowerCase();
+    const explicitlyPercent = text.includes('%');
+    if (explicitlyPercent || parsed > 100) {
+      return Number((parsed / 100).toFixed(6));
+    }
+    return parsed;
   }
 
   function coverageBadge(launch, key) {
@@ -977,20 +1028,31 @@
 
   function renderModelSelector() {
     const wrap = $('model-selector');
-    wrap.innerHTML = comparableLaunches().map((launch) => {
-      const cls = ['model-pill'];
-      if (launch.modelo_id === state.primaryModelId) cls.push('active');
-      const status = launch.isActive ? '●' : '';
-      return `<button class="${cls.join(' ')}" data-model="${launch.modelo_id}">
-        <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
-        ${escapeHtml(launch.modelo)} ${status}
-      </button>`;
-    }).join('');
-    wrap.querySelectorAll('button').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        state.primaryModelId = btn.dataset.model;
-        renderAll();
-      });
+    const launches = comparableLaunches();
+    wrap.innerHTML = `
+      <select class="model-select" aria-label="Modelo em foco">
+        ${launches.map((launch) => {
+          const status = launch.isActive ? ' · ativo' : isPlannedStatus(launch.status) ? ' · planejado' : '';
+          return `<option value="${launch.modelo_id}" ${launch.modelo_id === state.primaryModelId ? 'selected' : ''}>${escapeHtml(launch.modelo)}${escapeHtml(status)}</option>`;
+        }).join('')}
+      </select>`;
+    wrap.querySelector('select')?.addEventListener('change', (event) => {
+      state.primaryModelId = event.target.value;
+      renderAll();
+    });
+  }
+
+  function renderPeriodSelector() {
+    const wrap = $('period-selector');
+    wrap.innerHTML = `
+      <select class="period-select" aria-label="Periodo principal da analise">
+        ${ANALYSIS_PERIODS.map((period) => (
+          `<option value="${period.key}" ${period.key === state.analysisPeriodKey ? 'selected' : ''}>${escapeHtml(period.label)}</option>`
+        )).join('')}
+      </select>`;
+    wrap.querySelector('select')?.addEventListener('change', (event) => {
+      state.analysisPeriodKey = event.target.value;
+      renderAll();
     });
   }
 
@@ -1006,23 +1068,29 @@
         ? `${selectedLaunches.length} modelos selecionados`
         : 'Nenhum modelo selecionado';
     wrap.innerHTML = `
-      <div class="compare-toolbar">
-        <div class="compare-summary">${escapeHtml(label)} - ${fmtNum(selectedLaunches.length)} de ${fmtNum(launches.length)}</div>
-        <div class="compare-actions">
-          <button class="compare-action" type="button" data-compare-action="all">Todos</button>
-          <button class="compare-action" type="button" data-compare-action="none">Limpar</button>
+      <details class="compare-dropdown">
+        <summary>
+          <span>${escapeHtml(label)}</span>
+          <span class="compare-dropdown-count">${fmtNum(selectedLaunches.length)} de ${fmtNum(launches.length)}</span>
+        </summary>
+        <div class="compare-menu">
+          <div class="compare-toolbar">
+            <div class="compare-summary">Modelos usados em rankings, curvas, comerciais e projeção.</div>
+            <div class="compare-actions">
+              <button class="compare-action" type="button" data-compare-action="all">Todos</button>
+              <button class="compare-action" type="button" data-compare-action="none">Limpar</button>
+            </div>
+          </div>
+          ${launches.map((launch) => {
+            const active = selected.has(launch.modelo_id);
+            return `<label class="compare-option ${active ? 'active' : ''}" title="${escapeHtml(launch.modelo)}">
+              <input type="checkbox" value="${launch.modelo_id}" ${active ? 'checked' : ''}>
+              <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
+              <span>${escapeHtml(launch.modelo)}</span>
+            </label>`;
+          }).join('')}
         </div>
-      </div>
-      <div class="compare-chip-grid">
-        ${launches.map((launch) => {
-          const active = selected.has(launch.modelo_id);
-          return `<label class="compare-chip ${active ? 'active' : ''}" title="${escapeHtml(launch.modelo)}">
-            <input type="checkbox" value="${launch.modelo_id}" ${active ? 'checked' : ''}>
-            <span class="dot" style="color:${colorFor(launch.modelo_id, launch.order)}"></span>
-            <span>${escapeHtml(launch.modelo)}</span>
-          </label>`;
-        }).join('')}
-      </div>`;
+      </details>`;
     wrap.querySelectorAll('[data-compare-action]').forEach((button) => {
       button.addEventListener('click', () => {
         state.compareModelIds = button.dataset.compareAction === 'all'
@@ -1067,12 +1135,14 @@
     const firstSaleLabel = selected.first_sale_date
       ? `${fmtDate(selected.first_sale_date)}${firstSaleGap !== null ? ` · D+${Math.max(0, firstSaleGap)}` : ''}`
       : '—';
+    const selectedWindow = selectedAnalysisWindow(selected);
 
     const items = [
       { label: 'Data oficial', value: fmtDate(selected.data_oficial) },
       { label: 'D0 usado', value: fmtDate(selected.d0) },
       { label: 'Primeira venda', value: firstSaleLabel },
-      { label: 'Posição snapshot', value: dLabel }
+      { label: 'Posição snapshot', value: dLabel },
+      { label: 'Janela KPI', value: selectedWindow.isCurrentAccumulated ? `Total até ${selectedWindow.label}` : selectedWindow.label }
     ];
 
     $('selected-dates').innerHTML = items.map((item) => `
@@ -1200,13 +1270,10 @@
       return;
     }
 
-    const closedWindow = selected.isActive && selected.acumulado_atual
-      ? { key: null, data: null }
-      : bestWindow(selected);
-    const isCurrentAccumulated = !closedWindow.data && Boolean(selected.acumulado_atual);
-    const key = isCurrentAccumulated ? `D+${selected.acumulado_atual.day}` : closedWindow.key;
-    const data = closedWindow.data || selected.acumulado_atual;
-    const windowDays = isCurrentAccumulated ? (selected.acumulado_atual.day + 1) : windowSpanDays(key);
+    const selectedWindow = selectedAnalysisWindow(selected);
+    const { key, data, isCurrentAccumulated } = selectedWindow;
+    const periodLabel = selectedWindow.label || key || '—';
+    const windowDays = isCurrentAccumulated ? ((selected.acumulado_atual?.day ?? 0) + 1) : windowSpanDays(key);
     const velocity = data?.receita && windowDays ? data.receita / windowDays : null;
     const previous = previousLaunch(selected);
     const prevWin = previous && !isCurrentAccumulated ? getWindow(previous, key || '30d') : null;
@@ -1219,10 +1286,10 @@
 
     const cards = [
       {
-        label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${key || ''}`,
+        label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${periodLabel}`,
         value: fmtBRL(data?.receita),
         sub: dataSub,
-        tooltip: `Soma da receita liquida dos itens do modelo. Periodo: ${isCurrentAccumulated ? `D0 ate ${key}` : `janela ${key}`}. Fonte: ${isCurrentAccumulated ? 'acumulado real do pipeline' : 'janela fechada/historica disponivel'}.`
+        tooltip: `Soma da receita liquida dos itens do modelo. Periodo: ${isCurrentAccumulated ? `D0 ate ${key}` : `janela ${periodLabel}`}. Fonte: ${isCurrentAccumulated ? 'acumulado real do pipeline' : 'janela selecionada quando disponivel no JSON'}.`
       },
       {
         label: 'Pedidos',
@@ -1233,7 +1300,7 @@
       {
         label: 'Ticket médio/pedido',
         value: fmtBRL(data?.ticket),
-        sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${key}`) : '—',
+        sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${periodLabel}`) : '—',
         tooltip: 'Formula: receita liquida / pedidos. Ajuda a separar crescimento por volume de pedidos de crescimento por valor medio.'
       },
       {
@@ -1256,7 +1323,7 @@
       }
     ];
 
-    const empty = !data ? `<div class="empty-state"><div><strong>${selected.isActive && !hasPipelineRows(selected) ? 'Sem dados carregados no pipeline.' : 'Sem dados de venda para este lançamento.'}</strong> Verifique BigQuery, termos de busca e exportação do Apps Script. A tela não transforma ausência em zero.</div></div>` : '';
+    const empty = !data ? `<div class="empty-state"><div><strong>${selected.isActive && !hasPipelineRows(selected) ? 'Sem dados carregados no pipeline.' : `Sem dados de venda para ${periodLabel}.`}</strong> Verifique BigQuery, termos de busca e exportação do Apps Script. A tela não transforma ausência em zero.</div></div>` : '';
 
     container.innerHTML = `
       <div class="grid grid-6">
@@ -1273,7 +1340,7 @@
         <div class="card soft">
           <div class="metric-label">${labelTip('Velocidade diária', 'Formula: receita / numero de dias considerados. Em acumulado atual usa D0 ate D+n; em janela fechada usa D0 ate o marco D+N inclusivo.')}</div>
           <div class="metric-value">${fmtBRL(velocity)}</div>
-          <div class="metric-sub">${isCurrentAccumulated ? `R$/dia no acumulado ${key}` : `R$/dia na janela ${key || '—'}`}</div>
+          <div class="metric-sub">${isCurrentAccumulated ? `R$/dia no acumulado ${key}` : `R$/dia na janela ${periodLabel}`}</div>
         </div>
         <div class="card soft">
           <div class="metric-label">${labelTip('Comparativo anterior', 'Delta percentual contra o modelo anterior elegivel na mesma janela. Fica vazio quando a janela ainda nao fechou ou o comparavel nao tem dado.')}</div>
@@ -2114,10 +2181,10 @@
   }
 
   function roasBadge(value) {
-    if (value === null || value === undefined) return badge('parcial', '—', 'Sem investimento, receita ou pedidos suficientes para calcular o indicador.');
-    if (value < 1) return badge('neg', 'Crítico', 'ROAS abaixo de 1x: a receita atribuida/proxy e menor que o investimento informado.');
-    if (value < 3) return badge('parcial', 'Atenção', 'ROAS entre 1x e 3x: leitura intermediaria; confira se a receita e atribuida real ou proxy.');
-    return badge('pipeline', 'Eficiente', 'ROAS acima de 3x: a receita atribuida/proxy supera o investimento com folga.');
+    if (value === null || value === undefined) return badge('parcial', '—', 'Sem ROAS cadastrado na planilha para esta linha.');
+    if (value < 1) return badge('neg', 'Crítico', 'ROAS abaixo de 1x: a receita atribuida/informada e menor que o investimento informado.');
+    if (value < 3) return badge('parcial', 'Atenção', 'ROAS entre 1x e 3x: leitura intermediaria; confira atribuicao, janela e custo cadastrado.');
+    return badge('pipeline', 'Eficiente', 'ROAS acima de 3x: a receita atribuida/informada supera o investimento com folga.');
   }
 
   function inferMediaWindow(row, launch) {
@@ -2135,33 +2202,21 @@
     return `${days}d`;
   }
 
-  function normalizeWindowKey(value) {
-    const key = String(value || '').trim().toLowerCase();
-    return WINDOW_KEYS.includes(key) ? key : null;
+  function rowRoas(row) {
+    return roasNumberOrNull(row.roas);
   }
 
-  function mediaRevenueBase(row, launch) {
+  function mediaRevenueBase(row) {
     const attributed = numberOrNull(row.receita_atribuida);
     if (attributed !== null) return { value: attributed, source: 'atribuida' };
-
-    const key = normalizeWindowKey(row.janela);
-    const win = key ? getWindow(launch, key) : null;
-    if (win?.receita !== null && win?.receita !== undefined) {
-      return { value: Number(win.receita), source: key };
-    }
-
-    if (launch.acumulado_atual?.receita !== null && launch.acumulado_atual?.receita !== undefined) {
-      return { value: Number(launch.acumulado_atual.receita), source: 'D+n' };
-    }
-
     return { value: null, source: null };
   }
 
   function normalizeMediaRow(row, launch) {
     const investimento = numberOrNull(row.investimento);
-    const receitaBase = mediaRevenueBase(row, launch);
+    const receitaBase = mediaRevenueBase(row);
     const pedidos = numberOrNull(row.pedidos);
-    const roas = numberOrNull(row.roas) ?? (investimento && receitaBase.value !== null ? receitaBase.value / investimento : null);
+    const roas = rowRoas(row);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
     return {
       modelo_id: launch.modelo_id,
@@ -2185,7 +2240,7 @@
     const receitaDia = numberOrNull(row.receita_dia);
     const receitaBase = receitaDia ?? receitaLinha;
     const pedidos = numberOrNull(row.pedidos);
-    const roas = numberOrNull(row.roas_proxy) ?? (investimento && receitaBase !== null ? receitaBase / investimento : null);
+    const roas = rowRoas(row);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
     return {
       ...row,
@@ -2194,9 +2249,29 @@
       receita_dia: receitaDia,
       receita_base: receitaBase,
       pedidos,
-      roas_proxy: roas,
+      roas,
       cpa
     };
+  }
+
+  function weightedRoas(rows) {
+    const weighted = rows
+      .map((row) => ({
+        roas: rowRoas(row),
+        investimento: numberOrNull(row.investimento)
+      }))
+      .filter((row) => row.roas !== null && row.investimento !== null && row.investimento > 0);
+
+    if (weighted.length) {
+      const investimento = weighted.reduce((acc, row) => acc + row.investimento, 0);
+      return investimento ? weighted.reduce((acc, row) => acc + row.roas * row.investimento, 0) / investimento : null;
+    }
+
+    const values = rows
+      .map((row) => rowRoas(row))
+      .filter((value) => value !== null && value !== undefined);
+
+    return values.length ? values.reduce((acc, value) => acc + value, 0) / values.length : null;
   }
 
   function aggregateMediaRows(rows) {
@@ -2210,20 +2285,26 @@
         investimento: 0,
         receita_atribuida: 0,
         pedidos: 0,
+        roas_weighted: 0,
+        roas_investimento: 0,
         count: 0,
         aggregate: true
       };
       current.investimento += row.investimento || 0;
       current.receita_atribuida += row.receita_atribuida || 0;
       current.pedidos += row.pedidos || 0;
+      if (row.roas !== null && row.roas !== undefined && row.investimento) {
+        current.roas_weighted += row.roas * row.investimento;
+        current.roas_investimento += row.investimento;
+      }
       current.count += 1;
       groups.set(key, current);
     });
     return [...groups.values()]
       .filter((row) => row.count > 1)
-      .map(({ count, ...row }) => ({
+      .map(({ count, roas_weighted, roas_investimento, ...row }) => ({
         ...row,
-        roas: row.investimento ? row.receita_atribuida / row.investimento : null,
+        roas: roas_investimento ? roas_weighted / roas_investimento : null,
         cpa: row.pedidos ? row.investimento / row.pedidos : null
       }));
   }
@@ -2276,17 +2357,17 @@
       mediaInvestimento,
       mediaReceita,
       mediaPedidos,
-      mediaRoas: ratioOrNull(mediaReceita, mediaInvestimento),
+      mediaRoas: weightedRoas(mediaRows),
       mediaCpa: ratioOrNull(mediaInvestimento, mediaPedidos),
       crmInvestimento,
       crmReceita,
       crmPedidos,
       crmDisparos,
-      crmRoas: ratioOrNull(crmReceita, crmInvestimento),
+      crmRoas: weightedRoas(crmRows),
       crmCpa: ratioOrNull(crmInvestimento, crmPedidos),
       investimentoTotal,
       receitaComercial,
-      roasComercial: ratioOrNull(receitaComercial, investimentoTotal)
+      roasComercial: weightedRoas([...mediaRows, ...crmRows])
     };
   }
 
@@ -2300,15 +2381,15 @@
               ${thTip('Janela base', 'Janela usada para contextualizar a receita do modelo: acumulado D+n para ativo ou melhor janela fechada/historica.')}
               ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou historico versionado.', 'num')}
               ${thTip('Invest. midia', 'Soma do investimento informado nas campanhas de midia paga cadastradas na planilha.', 'num')}
-              ${thTip('ROAS midia', 'Formula: receita atribuida/base de midia / investimento de midia. Pode ser proxy quando nao houver receita_atribuida.', 'num')}
+              ${thTip('ROAS midia', 'ROAS informado na planilha de midia. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
               ${thTip('CPA midia', 'Formula: investimento de midia / pedidos atribuidos. Fica vazio sem pedidos.', 'num')}
               ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
               ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
-              ${thTip('ROAS CRM', 'Formula proxy: receita_base de CRM / investimento de CRM. Leia como indicio, nao atribuicao causal.', 'num')}
+              ${thTip('ROAS CRM', 'ROAS informado na planilha de CRM. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
               ${thTip('CPA CRM', 'Formula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
               ${thTip('Invest. total', 'Soma de investimento de midia paga e CRM.', 'num')}
-              ${thTip('Receita comercial', 'Soma de receita atribuida/base de midia e receita_base de CRM. Pode misturar real e proxy.', 'num')}
-              ${thTip('ROAS comercial', 'Formula: receita comercial / investimento total. Indicador agregado, sensivel a proxies e lacunas.', 'num')}
+              ${thTip('Receita comercial', 'Soma das receitas informadas nas planilhas de midia e CRM. Nao substitui ROAS quando o campo roas nao estiver cadastrado.', 'num')}
+              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS cadastrado.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -2365,8 +2446,8 @@
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${fmtBRL(row.receita_linha)}</td>
         <td class="num">${mediaValue(row.receita_dia, fmtBRL)}</td>
-        <td class="num">${roasValue(row.roas_proxy)}</td>
-        <td>${roasBadge(row.roas_proxy)}</td>
+        <td class="num">${roasValue(row.roas)}</td>
+        <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="7" class="cell-muted">Sem disparos de CRM cadastrados para este modelo.</td></tr>`;
   }
 
@@ -2428,8 +2509,8 @@
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td class="num">${fmtBRL(row.receita_linha)}</td>
         <td class="num">${mediaValue(row.receita_dia, fmtBRL)}</td>
-        <td class="num">${roasValue(row.roas_proxy)}</td>
-        <td>${roasBadge(row.roas_proxy)}</td>
+        <td class="num">${roasValue(row.roas)}</td>
+        <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="9" class="cell-muted">Sem disparos de CRM cadastrados para os modelos selecionados.</td></tr>`;
   }
 
@@ -2568,6 +2649,7 @@
     $('selected-status').innerHTML = sourceBadge(selected);
     renderSelectedHeader(selected);
     renderModelSelector();
+    renderPeriodSelector();
     renderCompareSelector();
     renderTopMeta();
     renderMethodology(selected);
