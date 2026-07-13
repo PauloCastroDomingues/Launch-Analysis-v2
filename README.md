@@ -135,7 +135,7 @@ reise-launch-dashboard-v2/
 | `apps_script/ExportLaunchAnalysis.gs` | Exportador BigQuery/GitHub e auditorias. |
 | `data/lancamentos_modelos.json` | Cadastro e D0 dos modelos. |
 | `data/lancamentos_historico.json` | Benchmarks históricos agregados. |
-| `data/lancamentos_produtos_dia.json` | Vendas reais por item/dia do lançamento ativo. |
+| `data/lancamentos_produtos_dia.json` | Vendas reais por item/dia dos modelos exportáveis. |
 | `data/auditoria_monochrome.json` | Auditoria independente do Monochrome. |
 | `data/manifest.json` | Snapshot da última exportação e `data_quality`. |
 | `sql/auditoria_historico_gt_avant.sql` | Auditoria correta para GT e Avant. |
@@ -186,15 +186,15 @@ Funções principais:
 - O relógio analítico do front usa `manifest.generated_at`; se o manifest estiver ausente, usa a maior data de `lancamentos_produtos_dia.json` antes de cair na data do navegador.
 - Janelas `7d`, `15d`, `30d`, `60d` e `90d` significam D+N inclusivo: D0 até D+N.
 - `day_zero_base` é o D0 analítico usado pelo dashboard.
-- Modelos exportáveis pelo Apps Script precisam estar com `status = ativo` e `day_zero_base` válido.
-- Histórico (`status = historico`) entra como benchmark estático em `lancamentos_historico.json`.
+- Modelos exportáveis pelo Apps Script precisam estar com `status = historico` ou `status = ativo` e `day_zero_base` válido.
+- Histórico (`status = historico`) também entra como benchmark estático em `lancamentos_historico.json`, mas pode ser reexportado no pipeline diário quando precisa de granularidade por pedido/item.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries em `southamerica-east1`.
 - Não criar views ou tabelas no BigQuery para este dashboard.
 
-## Pipeline de Vendas Ativo
+## Pipeline de Vendas por Modelo
 
-Para o lançamento ativo, o Apps Script usa `consultarProdutosDia_()` e grava `data/lancamentos_produtos_dia.json`.
+Para modelos com `status = historico` ou `status = ativo`, o Apps Script usa `consultarProdutosDia_()` e grava `data/lancamentos_produtos_dia.json`.
 
 Saída esperada por linha:
 
@@ -206,7 +206,7 @@ match_text_norm | modelo_id_detectado
 
 ### Regra de clientes novos/recorrentes
 
-No pipeline ativo (`lancamentos_produtos_dia.json`), `novos` e `recorrentes` são classificados no BigQuery a partir de uma `customer_key` segura:
+No pipeline de vendas (`lancamentos_produtos_dia.json`), `novos` e `recorrentes` são classificados no BigQuery a partir de uma `customer_key` segura:
 
 - usa `customer_email` normalizado quando existir e parecer válido;
 - senão usa telefone normalizado apenas quando tiver entre 8 e 15 dígitos;
@@ -217,6 +217,8 @@ A primeira compra válida daquela `customer_key` no SSOT define a classificaçã
 - `novo`: não existe compra válida anterior ao pedido;
 - `recorrente`: existe compra válida anterior ao pedido;
 - `null`: pedido sem `customer_key` confiável.
+
+O vínculo entre venda e cliente tenta casar o pedido por `source_order_id` e por `order_name`, com e sem `#`, porque históricos como GT e Avant podem vir com referência de pedido diferente da fonte usada para cliente.
 
 Para evitar dupla contagem em pedidos com mais de uma linha/SKU, a contagem de cliente é gravada em apenas uma linha por `modelo_id + source_order_id`. As demais linhas do mesmo pedido permanecem `null` em `novos` e `recorrentes`; ausência não vira zero.
 
@@ -359,7 +361,7 @@ O bloco de metodologia mostra `Data oficial`, `Day zero usado`, `Primeira venda 
 
 ## Pendências Conhecidas
 
-- `novos` e `recorrentes` do pipeline ativo ficam `null` somente quando não houver `customer_key` confiável.
+- `novos` e `recorrentes` do pipeline exportável ficam `null` somente quando não houver `customer_key` confiável.
 - `novos_pct` de GT/Avant está `null` nos benchmarks recalculados.
 - Mix por cor de GT/Avant ainda precisa de auditoria SSOT própria antes de uso decisório.
 - `estoque.json` está exportado, mas o snapshot atual tem `0` linhas.

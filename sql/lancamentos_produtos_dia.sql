@@ -14,7 +14,34 @@ WITH params AS (
 ),
 modelos AS (
   -- O Apps Script preenche este CTE dinamicamente a partir de data/lancamentos_modelos.json.
-  -- Para diagnostico direto no BigQuery, mantemos aqui o modelo ativo do snapshot atual.
+  -- Para diagnostico direto no BigQuery, mantemos aqui os modelos exportaveis do snapshot atual.
+  SELECT
+    'gt' AS modelo_id,
+    'GT Collection' AS modelo,
+    DATE('2025-12-17') AS d0,
+    'GT Collection|RS6 GT|KNIT GT|911 GT' AS termos_busca,
+    'RS6-GT|KNIT-GT|911-GT' AS sku_prefixos
+
+  UNION ALL
+
+  SELECT
+    'avant' AS modelo_id,
+    'Avant' AS modelo,
+    DATE('2025-12-14') AS d0,
+    'Avant|RS8 Avant|RS6 Avant|RS7 Avant' AS termos_busca,
+    'RS8-AVANT|RS6-AVANT|RS7-AVANT' AS sku_prefixos
+
+  UNION ALL
+
+  SELECT
+    'phantom' AS modelo_id,
+    'Phantom' AS modelo,
+    DATE('2026-04-16') AS d0,
+    'Phantom|Phantom Slip|Phantom Easy|Phantom Knit' AS termos_busca,
+    'PHANTOM-SLIP|PHANTOM-EASY|PHANTOM-KNIT' AS sku_prefixos
+
+  UNION ALL
+
   SELECT
     'rs8_monochrome' AS modelo_id,
     'RS8 Avant Monochrome' AS modelo,
@@ -37,7 +64,7 @@ modelos_norm AS (
 ),
 pedidos_validos AS (
   SELECT
-    o.source_order_id,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
     UPPER(o.source_system) AS source_system,
     o.paid_at,
     DATE(o.paid_at, 'America/Sao_Paulo') AS data
@@ -109,21 +136,27 @@ customer_orders_classificados AS (
     END AS cliente_tipo
   FROM customer_orders_com_primeira
 ),
-customer_orders_by_source AS (
-  SELECT *
-  FROM customer_orders_classificados
+customer_orders_by_order_ref AS (
+  SELECT
+    source_system,
+    LOWER(TRIM(order_ref)) AS order_ref,
+    source_order_id,
+    order_name,
+    order_ts,
+    customer_key,
+    cliente_tipo
+  FROM customer_orders_classificados,
+  UNNEST([
+    source_order_id,
+    order_name,
+    REGEXP_REPLACE(order_name, r'^#', ''),
+    IF(source_order_id IS NULL, NULL, CONCAT('#', source_order_id))
+  ]) AS order_ref
+  WHERE order_ref IS NOT NULL
+    AND TRIM(order_ref) != ''
   QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY source_system, source_order_id
-    ORDER BY order_ts, order_name
-  ) = 1
-),
-customer_orders_by_order_name AS (
-  SELECT *
-  FROM customer_orders_classificados
-  WHERE order_name IS NOT NULL
-  QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY source_system, order_name
-    ORDER BY order_ts, source_order_id
+    PARTITION BY source_system, LOWER(TRIM(order_ref))
+    ORDER BY order_ts, source_order_id, order_name
   ) = 1
 ),
 shopify_items AS (
@@ -264,9 +297,9 @@ vendas AS (
   JOIN itens_unificados i
     ON i.source_order_id = p.source_order_id
    AND i.source_system = p.source_system
-  LEFT JOIN customer_orders_by_source co
+  LEFT JOIN customer_orders_by_order_ref co
     ON co.source_system = p.source_system
-   AND co.source_order_id = p.source_order_id
+   AND co.order_ref = LOWER(TRIM(CAST(p.source_order_id AS STRING)))
   WHERE i.pares IS NOT NULL
     AND i.pares > 0
 ),
@@ -356,9 +389,9 @@ monochrome_item_source AS (
   JOIN modelos_norm m
     ON m.modelo_id = 'rs8_monochrome'
    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
-  LEFT JOIN customer_orders_by_order_name co
+  LEFT JOIN customer_orders_by_order_ref co
     ON co.source_system = 'SHOPIFY'
-   AND co.order_name = CAST(o.order_name AS STRING)
+   AND co.order_ref = LOWER(TRIM(CAST(o.order_name AS STRING)))
   WHERE o.is_valid_order = TRUE
     AND i.item_name IS NOT NULL
     AND SAFE_CAST(i.quantity AS INT64) > 0

@@ -26,11 +26,12 @@ const CONFIG = {
 function exportarTudo() {
   validarGithubConfig_();
   const modelos = carregarModelos_();
-  const ativos = modelos.filter(ehModeloAtivoExportavel_);
-  Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${ativos.length} ativos com day_zero_base valido.`);
+  const exportaveis = modelos.filter(ehModeloExportavel_);
+  const ativos = modelos.filter(ehModeloAtivo_);
+  Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${exportaveis.length} exportaveis com status historico/ativo e day_zero_base valido.`);
 
-  const produtosDia = ativos.length ? consultarProdutosDia_(ativos) : [];
-  const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(ativos);
+  const produtosDia = exportaveis.length ? consultarProdutosDia_(exportaveis) : [];
+  const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(exportaveis);
   const dataQuality = {};
   const warnings = [
     'Filtros de data usam >= para incluir D0.',
@@ -48,11 +49,11 @@ function exportarTudo() {
     }
   }
 
-  logProdutosDiaExport_(ativos, produtosDia);
+  logProdutosDiaExport_(exportaveis, produtosDia);
   escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
   if (auditoriaMonochrome) escreverJsonGitHub_('auditoria_monochrome.json', auditoriaMonochrome);
 
-  const estoqueStatus = exportarEstoqueSeDisponivel_(ativos);
+  const estoqueStatus = exportarEstoqueSeDisponivel_(exportaveis);
   const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos);
   const crmStatus = exportarCrmSeConfigurado_();
 
@@ -62,6 +63,7 @@ function exportarTudo() {
     model_source: 'github_json',
     sales_source: 'bigquery_ssot_shopify_shoppub',
     active_models: ativos.map(m => m.modelo_id),
+    exported_models: exportaveis.map(m => m.modelo_id),
     row_counts: {
       lancamentos_produtos_dia: produtosDia.length,
       auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
@@ -472,7 +474,7 @@ WITH params AS (
   FROM modelos
 ), pedidos_validos AS (
   SELECT
-    o.source_order_id,
+    CAST(o.source_order_id AS STRING) AS source_order_id,
     UPPER(o.source_system) AS source_system,
     o.paid_at,
     DATE(o.paid_at, 'America/Sao_Paulo') AS data
@@ -539,20 +541,27 @@ WITH params AS (
       ELSE 'novo'
     END AS cliente_tipo
   FROM customer_orders_com_primeira
-), customer_orders_by_source AS (
-  SELECT *
-  FROM customer_orders_classificados
+), customer_orders_by_order_ref AS (
+  SELECT
+    source_system,
+    LOWER(TRIM(order_ref)) AS order_ref,
+    source_order_id,
+    order_name,
+    order_ts,
+    customer_key,
+    cliente_tipo
+  FROM customer_orders_classificados,
+  UNNEST([
+    source_order_id,
+    order_name,
+    REGEXP_REPLACE(order_name, r'^#', ''),
+    IF(source_order_id IS NULL, NULL, CONCAT('#', source_order_id))
+  ]) AS order_ref
+  WHERE order_ref IS NOT NULL
+    AND TRIM(order_ref) != ''
   QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY source_system, source_order_id
-    ORDER BY order_ts, order_name
-  ) = 1
-), customer_orders_by_order_name AS (
-  SELECT *
-  FROM customer_orders_classificados
-  WHERE order_name IS NOT NULL
-  QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY source_system, order_name
-    ORDER BY order_ts, source_order_id
+    PARTITION BY source_system, LOWER(TRIM(order_ref))
+    ORDER BY order_ts, source_order_id, order_name
   ) = 1
 ), shopify_items AS (
   SELECT
@@ -688,9 +697,9 @@ WITH params AS (
   JOIN itens_unificados i
     ON i.source_order_id = p.source_order_id
    AND i.source_system = p.source_system
-  LEFT JOIN customer_orders_by_source co
+  LEFT JOIN customer_orders_by_order_ref co
     ON co.source_system = p.source_system
-   AND co.source_order_id = p.source_order_id
+   AND co.order_ref = LOWER(TRIM(CAST(p.source_order_id AS STRING)))
   WHERE i.pares IS NOT NULL
     AND i.pares > 0
 ), candidatos AS (
@@ -777,9 +786,9 @@ WITH params AS (
   JOIN modelos_norm m
     ON m.modelo_id = 'rs8_monochrome'
    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
-  LEFT JOIN customer_orders_by_order_name co
+  LEFT JOIN customer_orders_by_order_ref co
     ON co.source_system = 'SHOPIFY'
-   AND co.order_name = CAST(o.order_name AS STRING)
+   AND co.order_ref = LOWER(TRIM(CAST(o.order_name AS STRING)))
   WHERE o.is_valid_order = TRUE
     AND i.item_name IS NOT NULL
     AND SAFE_CAST(i.quantity AS INT64) > 0
@@ -1337,7 +1346,13 @@ function validarGithubConfig_() {
   }
 }
 
-function ehModeloAtivoExportavel_(modelo) {
+function ehModeloExportavel_(modelo) {
+  const status = String(modelo.status || '').trim().toLowerCase();
+  return ['historico', 'ativo'].includes(status)
+    && Boolean(dateOnly_(modelo.day_zero_base));
+}
+
+function ehModeloAtivo_(modelo) {
   return String(modelo.status || '').trim().toLowerCase() === 'ativo'
     && Boolean(dateOnly_(modelo.day_zero_base));
 }
