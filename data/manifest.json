@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-13T11:01:25-03:00",
+  "generated_at": "2026-07-13T14:36:52-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
-  "sales_source": "bigquery_ssot_shopify_shoppub",
+  "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
   "active_models": [
     "rs8_monochrome"
   ],
@@ -13,7 +13,7 @@
     "rs8_monochrome"
   ],
   "row_counts": {
-    "lancamentos_produtos_dia": 17857,
+    "lancamentos_produtos_dia": 6838,
     "auditoria_monochrome": 1,
     "estoque": 0,
     "midia_paga": 17,
@@ -23,12 +23,12 @@
     "rs8_monochrome": {
       "status": "ok",
       "auditado": true,
-      "pedidos_auditoria": 329,
-      "pares_auditoria": 442,
-      "receita_auditoria": 317798,
-      "pedidos_exportados": 329,
-      "pares_exportados": 442,
-      "receita_exportada": 317798,
+      "pedidos_auditoria": 335,
+      "pares_auditoria": 449,
+      "receita_auditoria": 322831,
+      "pedidos_exportados": 335,
+      "pares_exportados": 449,
+      "receita_exportada": 322831,
       "diferenca_pedidos_pct": 0,
       "diferenca_pares_pct": 0,
       "diferenca_receita_pct": 0,
@@ -55,6 +55,6 @@
     "Dados ausentes devem permanecer null/—; nunca transformar em zero.",
     "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
     "day_zero_base define o D0 analitico de cada modelo.",
-    "Vendas de modelos usam somente pedidos validos do SSOT: Shopify com is_valid_order TRUE, Shoppub com is_valid_order_calc TRUE e pedidos_validos unificado."
+    "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard."
   ]
 }
