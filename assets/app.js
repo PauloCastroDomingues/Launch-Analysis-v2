@@ -345,6 +345,18 @@
         ? items.reduce((acc, row) => acc + Number(row[field] || 0), 0)
         : null
     );
+    const pedidoId = (row) => row.order_sk || row.source_order_id || null;
+    const receitaBrutaRow = (row) => Number((row.receita_bruta ?? row.receita) || 0);
+    const receitaLiquidaRow = (row) => (
+      row.receita_liquida !== null && row.receita_liquida !== undefined
+        ? Number(row.receita_liquida || 0)
+        : null
+    );
+    const descontoRow = (row) => (
+      row.desconto !== null && row.desconto !== undefined
+        ? Number(row.desconto || 0)
+        : null
+    );
 
     const todayIdx = daysBetween(model.day_zero_base, snapshotDate());
     const firstSaleDate = modelRows
@@ -365,10 +377,11 @@
         pedidos: 0,
         orderIds: new Set()
       };
-      current.receita += Number(row.receita || 0);
+      current.receita += receitaBrutaRow(row);
       current.pares += Number(row.pares || 0);
-      if (row.source_order_id) current.orderIds.add(row.source_order_id);
-      else current.pedidos += Number(row.pedidos || 0);
+      const orderId = pedidoId(row);
+      if (orderId) current.orderIds.add(orderId);
+      else current.pedidos += Number(row.pedidos_validos ?? row.pedidos ?? 0);
       dailyMap.set(row.data, current);
     });
 
@@ -383,16 +396,27 @@
 
     const buildAggregate = (filtered, origem, day = null) => {
       if (!filtered.length) return null;
-      const receita = sumNullable(filtered, 'receita');
+      const receita = filtered.some((row) => row.receita_bruta !== null && row.receita_bruta !== undefined)
+        ? filtered.reduce((acc, row) => acc + receitaBrutaRow(row), 0)
+        : sumNullable(filtered, 'receita');
+      const receitaLiquida = filtered.some((row) => row.receita_liquida !== null && row.receita_liquida !== undefined)
+        ? filtered.reduce((acc, row) => acc + (receitaLiquidaRow(row) ?? 0), 0)
+        : null;
+      const desconto = filtered.some((row) => row.desconto !== null && row.desconto !== undefined)
+        ? filtered.reduce((acc, row) => acc + (descontoRow(row) ?? 0), 0)
+        : null;
       const pares = sumNullable(filtered, 'pares');
-      const pedidosSomados = sumNullable(filtered, 'pedidos') || 0;
-      const pedidosDistintos = new Set(filtered.map((row) => row.source_order_id).filter(Boolean));
+      const pedidosSomados = sumNullable(filtered, 'pedidos_validos') ?? sumNullable(filtered, 'pedidos') ?? 0;
+      const pedidosDistintos = new Set(filtered.map(pedidoId).filter(Boolean));
       const pedidos = pedidosDistintos.size || pedidosSomados;
       const novos = sumNullable(filtered, 'novos');
       const recorrentes = sumNullable(filtered, 'recorrentes');
       const clientesClassificados = novos !== null && recorrentes !== null ? novos + recorrentes : null;
       return {
         receita,
+        receita_bruta: receita,
+        receita_liquida: receitaLiquida,
+        desconto,
         pares,
         pedidos,
         ticket: pedidos && receita !== null ? receita / pedidos : null,
@@ -430,9 +454,10 @@
       const week = Math.floor(idx / 7) + 1;
       const key = `Sem ${week}`;
       const current = semanasMap.get(key) || { label: key, receita: 0, pedidos: 0, orderIds: new Set() };
-      current.receita += Number(row.receita || 0);
-      if (row.source_order_id) current.orderIds.add(row.source_order_id);
-      else current.pedidos += Number(row.pedidos || 0);
+      current.receita += receitaBrutaRow(row);
+      const orderId = pedidoId(row);
+      if (orderId) current.orderIds.add(orderId);
+      else current.pedidos += Number(row.pedidos_validos ?? row.pedidos ?? 0);
       semanasMap.set(key, current);
     });
 
@@ -766,10 +791,11 @@
     let receita = 0;
 
     rows.forEach((row) => {
-      if (row.source_order_id) orderIds.add(row.source_order_id);
-      else pedidosFallback += Number(row.pedidos || 0);
+      const orderId = row.order_sk || row.source_order_id;
+      if (orderId) orderIds.add(orderId);
+      else pedidosFallback += Number(row.pedidos_validos ?? row.pedidos ?? 0);
       pares += Number(row.pares || 0);
-      receita += Number(row.receita || 0);
+      receita += Number((row.receita_bruta ?? row.receita) || 0);
     });
 
     return {
@@ -795,7 +821,7 @@
     const exported = exportTotalsForModel('rs8_monochrome');
     const pedidosAuditoria = Number(resumo.pedidos || 0);
     const paresAuditoria = Number(resumo.pares_vendidos || 0);
-    const receitaAuditoria = Number(resumo.receita_liquida_itens || 0);
+    const receitaAuditoria = Number((resumo.receita_bruta_itens ?? resumo.receita_liquida_itens) || 0);
     const diferencaPedidosPct = pctDiff(exported.pedidos, pedidosAuditoria);
     const diferencaParesPct = pctDiff(exported.pares, paresAuditoria);
     const diferencaReceitaPct = pctDiff(exported.receita, receitaAuditoria);
@@ -1289,7 +1315,7 @@
         label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${periodLabel}`,
         value: fmtBRL(data?.receita),
         sub: dataSub,
-        tooltip: `Soma da receita liquida dos itens do modelo. Periodo: ${isCurrentAccumulated ? `D0 ate ${key}` : `janela ${periodLabel}`}. Fonte: ${isCurrentAccumulated ? 'acumulado real do pipeline' : 'janela selecionada quando disponivel no JSON'}.`
+        tooltip: `Soma da receita bruta dos itens do modelo quando receita_bruta existe no JSON; em JSON antigo usa o campo receita. Periodo: ${isCurrentAccumulated ? `D0 ate ${key}` : `janela ${periodLabel}`}. Nao inclui itens fora do modelo no mesmo pedido.`
       },
       {
         label: 'Pedidos',
@@ -1301,13 +1327,13 @@
         label: 'Ticket médio/pedido',
         value: fmtBRL(data?.ticket),
         sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${periodLabel}`) : '—',
-        tooltip: 'Formula: receita liquida / pedidos. Ajuda a separar crescimento por volume de pedidos de crescimento por valor medio.'
+        tooltip: 'Formula: faturamento do modelo / pedidos validos com itens do modelo. Usa a mesma base de receita exibida no card de faturamento.'
       },
       {
         label: 'Preço médio/par',
         value: fmtBRL(data?.preco_medio_par),
         sub: data?.preco_medio_par ? `${fmtNum(data?.pares)} pares` : '—',
-        tooltip: 'Formula: receita liquida / pares vendidos. Use para comparar mix de produto/desconto; nao substitui preco cheio.'
+        tooltip: 'Formula: faturamento do modelo / pares vendidos do modelo. Nao usa total do carrinho e nao substitui preco cheio.'
       },
       {
         label: '% Clientes novos',

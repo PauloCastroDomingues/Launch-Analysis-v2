@@ -118,6 +118,7 @@ reise-launch-dashboard-v2/
 │   └── decisions.md
 ├── sql/
 │   ├── auditoria_historico_gt_avant.sql
+│   ├── auditoria_lancamentos_ssot.sql
 │   ├── diagnostico_monochrome.sql
 │   ├── diagnostico_monochrome_amplo.sql
 │   ├── diagnostico_rs8_monochrome.sql
@@ -140,6 +141,7 @@ reise-launch-dashboard-v2/
 | `data/auditoria_monochrome.json` | Auditoria independente do Monochrome. |
 | `data/manifest.json` | Snapshot da última exportação e `data_quality`. |
 | `sql/auditoria_historico_gt_avant.sql` | Auditoria correta para GT e Avant. |
+| `sql/auditoria_lancamentos_ssot.sql` | Auditoria canônica para todos os modelos usando `fct_order_item`, `order_sk`, pedidos válidos e receita bruta/líquida. |
 | `sql/lancamentos_produtos_dia.sql` | Query-base do pipeline de vendas por lançamento. |
 | `sql/diagnostico_monochrome*.sql` | Diagnóstico de cadastro/match do Monochrome. |
 
@@ -200,30 +202,46 @@ Para modelos com `status = historico` ou `status = ativo`, o Apps Script usa `co
 Saída esperada por linha:
 
 ```txt
-modelo_id | data | source_order_id | origem | sku | nome_produto | variant_title
-sub_modelo | cor | tamanho | pedidos | pares | receita | novos | recorrentes
-match_text_norm | modelo_id_detectado
+modelo_id | data | source_order_id | order_sk | origem | sku | nome_produto
+variant_title | sub_modelo | cor | tamanho | pedidos | pedidos_validos | pares
+receita | receita_bruta | desconto | receita_liquida | novos | recorrentes
+match_text_norm | modelo_id_detectado | d0 | dia_desde_d0 | flags_qualidade | fonte
 ```
+
+### Regra canônica de venda SSOT
+
+A camada nova de vendas por lançamento usa `reise-ssot.mart_shared.fct_order_item` como fonte preferencial. O filtro de pedido válido é `i.is_valid_order = TRUE` e a contagem de pedidos é sempre `COUNT(DISTINCT order_sk)`.
+
+O campo `receita` permanece no JSON por compatibilidade com o frontend, mas representa `receita_bruta`.
+
+```txt
+receita_bruta = line_gross_amount
+desconto = IFNULL(line_discount_amount, 0)
+receita_liquida = line_gross_amount - desconto
+ticket = receita_bruta / pedidos_validos
+preco_medio_par = receita_bruta / pares
+```
+
+Receita de mídia/CRM não substitui receita SSOT do lançamento. Planilhas externas entram apenas como contexto comercial, investimento, ROAS informado e CPA.
 
 ### Regra de clientes novos/recorrentes
 
 No pipeline de vendas (`lancamentos_produtos_dia.json`), `novos` e `recorrentes` são classificados no BigQuery a partir de uma `customer_key` segura:
 
-- usa `customer_email` normalizado quando existir e parecer válido;
+- usa `customer_sk` quando existir no item válido do SSOT;
+- senão usa `customer_email` normalizado quando existir e parecer válido;
 - senão usa telefone normalizado apenas quando tiver entre 8 e 15 dígitos;
-- se email e telefone não forem confiáveis, mantém `novos` e `recorrentes` como `null`.
+- se nenhuma chave for confiável, mantém `novos` e `recorrentes` como `null`.
 
-A primeira compra válida daquela `customer_key` no SSOT define a classificação:
+A primeira compra válida daquela `customer_key` no histórico completo de `fct_order_item`, até o fim da janela exportada, define a classificação:
 
 - `novo`: não existe compra válida anterior ao pedido;
 - `recorrente`: existe compra válida anterior ao pedido;
 - `null`: pedido sem `customer_key` confiável.
 
-O vínculo entre venda e cliente tenta casar o pedido por `source_order_id` e por `order_name`, com e sem `#`, porque históricos como GT e Avant podem vir com referência de pedido diferente da fonte usada para cliente.
+Para evitar dupla contagem em pedidos com mais de uma linha/SKU, a contagem de cliente é gravada em apenas uma linha por `modelo_id + order_sk`. As demais linhas do mesmo pedido permanecem `null` em `novos` e `recorrentes`; ausência não vira zero.
 
-Para evitar dupla contagem em pedidos com mais de uma linha/SKU, a contagem de cliente é gravada em apenas uma linha por `modelo_id + source_order_id`. As demais linhas do mesmo pedido permanecem `null` em `novos` e `recorrentes`; ausência não vira zero.
-
-O cálculo preserva a transição Shoppub → Shopify: Shoppub entra até `2025-07-10 05:00:00` BRT e Shopify entra a partir desse corte. O Monochrome usa `customer_email` e `customer_phone` de `reise-ssot.core.order`.
+Como a camada canônica usa `fct_order_item` já filtrada por `i.is_valid_order = TRUE`, a regra de validade de pedido fica concentrada no SSOT e não depende de joins auxiliares no frontend.
 
 O Monochrome usa uma regra especial de auditoria baseada em `reise-ssot.core.order_item + core.order`, com match por:
 
@@ -318,11 +336,17 @@ Fluxo normal:
 
 Para recalcular GT/Avant:
 
-1. Rodar `sql/auditoria_historico_gt_avant.sql` no BigQuery.
+1. Rodar `sql/auditoria_lancamentos_ssot.sql` no BigQuery com `modelo_filtro = 'gt'` ou `modelo_filtro = 'avant'`.
 2. Comparar D0, pedidos, pares, receita, ticket e origem por janela.
 3. Atualizar `data/lancamentos_historico.json`.
 4. Sincronizar `assets/embedded-data.js`.
 5. Documentar alterações no README quando a regra mudar.
+
+Para auditar todos os modelos exportáveis:
+
+1. Rodar `sql/auditoria_lancamentos_ssot.sql` em `southamerica-east1`.
+2. Conferir `resumo_janelas`, `diario_acumulado`, `por_sku`, `duplicidades`, `conflitos_classificacao` e `itens_nao_classificados`.
+3. Comparar o JSON retornado com `data/lancamentos_produtos_dia.json` depois de `exportarTudo()`.
 
 Para auditar Monochrome:
 
