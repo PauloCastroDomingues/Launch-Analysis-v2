@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-13T10:28:08-03:00",
+  "generated_at": "2026-07-13T10:57:50-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_shopify_shoppub",
@@ -54,6 +54,7 @@
     "Filtros de data usam >= para incluir D0.",
     "Dados ausentes devem permanecer null/—; nunca transformar em zero.",
     "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
-    "day_zero_base define o D0 analitico de cada modelo."
+    "day_zero_base define o D0 analitico de cada modelo.",
+    "Vendas de modelos usam somente pedidos validos do SSOT: Shopify com is_valid_order TRUE, Shoppub com is_valid_order_calc TRUE e pedidos_validos unificado."
   ]
 }
