@@ -36,6 +36,19 @@
     { key: '60d', label: '60 dias' },
     { key: 'total', label: 'Total dias' }
   ];
+  const STOCK_FILTERS = [
+    { key: 'all', label: 'Todos' },
+    { key: 'critical', label: 'Com alerta' },
+    { key: 'low', label: 'Cobertura baixa' },
+    { key: 'zero', label: 'Estoque zerado' },
+    { key: 'no-base', label: 'Sem base D-30' }
+  ];
+  const STOCK_SORTS = [
+    { key: 'coverage-asc', label: 'Menor cobertura' },
+    { key: 'stock-desc', label: 'Maior estoque' },
+    { key: 'sales-desc', label: 'Mais vendas D-30' },
+    { key: 'name-asc', label: 'Nome A-Z' }
+  ];
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
 
   const state = {
@@ -44,11 +57,14 @@
     primaryModelId: null,
     compareModelIds: [],
     analysisPeriodKey: 'total',
+    stockFilter: 'all',
+    stockSort: 'coverage-asc',
     snapshotClock: null,
     charts: {}
   };
 
   const $ = (id) => document.getElementById(id);
+  let stockDrawerReturnFocus = null;
 
   const fmtBRL = (value, compact = false) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -1101,6 +1117,32 @@
     });
   }
 
+  function closeStockDrawer() {
+    const drawer = $('stock-detail-drawer');
+    const overlay = $('stock-detail-overlay');
+    if (!drawer || !overlay) return;
+    document.body.classList.remove('stock-detail-open');
+    overlay.hidden = true;
+    drawer.setAttribute('aria-hidden', 'true');
+    drawer.setAttribute('inert', '');
+    if (stockDrawerReturnFocus?.focus) stockDrawerReturnFocus.focus({ preventScroll: true });
+    stockDrawerReturnFocus = null;
+  }
+
+  function configureStockDrawer() {
+    const drawer = $('stock-detail-drawer');
+    const overlay = $('stock-detail-overlay');
+    const close = $('stock-detail-close');
+    if (!drawer || !overlay || !close) return;
+    close.addEventListener('click', closeStockDrawer);
+    overlay.addEventListener('click', closeStockDrawer);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && document.body.classList.contains('stock-detail-open')) {
+        closeStockDrawer();
+      }
+    });
+  }
+
   function configureTooltips() {
     const tooltip = document.createElement('div');
     tooltip.className = 'app-tooltip';
@@ -2024,24 +2066,249 @@
     });
   }
 
+  function stockNumber(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function stockCoverage(row) {
+    const direct = stockNumber(row.cobertura_dias);
+    if (direct !== null) return direct;
+    const stock = stockNumber(row.estoque_atual);
+    const sales = stockNumber(row.vendas_d30);
+    if (stock === null || sales === null || sales <= 0) return null;
+    return stock / (sales / 30);
+  }
+
+  function stockDailySales(row) {
+    const sales = stockNumber(row.vendas_d30);
+    return sales !== null && sales > 0 ? sales / 30 : null;
+  }
+
+  function stockCoverageLabel(value, digits = 0) {
+    return value === null || value === undefined || Number.isNaN(value) ? '—' : `${fmtNum(value, digits)} dias`;
+  }
+
+  function stockStatus(row) {
+    const stock = stockNumber(row.estoque_atual);
+    const coverage = stockCoverage(row);
+    if (stock !== null && stock <= 0) return 'zero';
+    if (coverage !== null && coverage < 15) return 'low';
+    if (coverage === null) return 'no-base';
+    return 'ok';
+  }
+
+  function stockStatusBadge(status) {
+    if (status === 'zero') return badge('neg', 'Zerado', 'Snapshot de estoque veio zerado para esta combinacao. Verifique antes de inferir ruptura real.');
+    if (status === 'low') return badge('neg', 'Baixa', 'Cobertura estimada abaixo de 15 dias.');
+    if (status === 'no-base') return badge('parcial', 'Sem D-30', 'Sem vendas D-30 para calcular velocidade. A ausencia permanece vazia, nao vira zero.');
+    return badge('pipeline', 'Coberto', 'Cobertura calculada igual ou acima de 15 dias.');
+  }
+
+  function stockStatusRead(status) {
+    if (status === 'zero') return 'Estoque zerado no snapshot.';
+    if (status === 'low') return 'Priorizar reposicao ou acompanhamento comercial.';
+    if (status === 'no-base') return 'Sem velocidade D-30; use estoque absoluto e auditoria de SKU.';
+    return 'Sem alerta de cobertura no criterio atual.';
+  }
+
+  function decorateStockRows(rows) {
+    return rows.map((row, index) => {
+      const coverage = stockCoverage(row);
+      return {
+        ...row,
+        _index: index,
+        _stock: stockNumber(row.estoque_atual),
+        _sales: stockNumber(row.vendas_d30),
+        _dailySales: stockDailySales(row),
+        _coverage: coverage,
+        _status: stockStatus(row)
+      };
+    });
+  }
+
+  function stockFilterMatch(row) {
+    if (state.stockFilter === 'critical') return ['low', 'zero'].includes(row._status);
+    if (state.stockFilter === 'low') return row._status === 'low';
+    if (state.stockFilter === 'zero') return row._status === 'zero';
+    if (state.stockFilter === 'no-base') return row._status === 'no-base';
+    return true;
+  }
+
+  function compareStockRows(a, b) {
+    const textA = normalizeText(`${a.sub_modelo || ''} ${a.cor || ''} ${a.sku || ''}`);
+    const textB = normalizeText(`${b.sub_modelo || ''} ${b.cor || ''} ${b.sku || ''}`);
+    const coverageValue = (row) => {
+      if (row._status === 'zero' && row._coverage === null) return -1;
+      return row._coverage === null ? Number.POSITIVE_INFINITY : row._coverage;
+    };
+    if (state.stockSort === 'stock-desc') {
+      return (b._stock ?? -1) - (a._stock ?? -1) || textA.localeCompare(textB, 'pt-BR');
+    }
+    if (state.stockSort === 'sales-desc') {
+      return (b._sales ?? -1) - (a._sales ?? -1) || textA.localeCompare(textB, 'pt-BR');
+    }
+    if (state.stockSort === 'name-asc') {
+      return textA.localeCompare(textB, 'pt-BR');
+    }
+    return coverageValue(a) - coverageValue(b) || textA.localeCompare(textB, 'pt-BR');
+  }
+
+  function stockSum(rows, key) {
+    const values = rows.map((row) => row[key]).filter((value) => value !== null && value !== undefined);
+    return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
+  }
+
+  function openStockDrawer(row, selected, returnFocus) {
+    const drawer = $('stock-detail-drawer');
+    const overlay = $('stock-detail-overlay');
+    const content = $('stock-detail-content');
+    if (!drawer || !overlay || !content) return;
+
+    stockDrawerReturnFocus = returnFocus || document.activeElement;
+    const status = row._status || stockStatus(row);
+    const coverage = row._coverage ?? stockCoverage(row);
+    const dailySales = row._dailySales ?? stockDailySales(row);
+    const updatedAt = row.updated_at ? fmtDate(String(row.updated_at).slice(0, 10)) : '—';
+    const itemName = row.sub_modelo || row.nome_produto || row.sku || selected.modelo;
+    const sku = row.sku || '—';
+
+    content.innerHTML = `
+      <div class="stock-detail-kicker">Cobertura de estoque</div>
+      <h3>${escapeHtml(itemName)}</h3>
+      <div class="stock-detail-sub">${escapeHtml(selected.modelo)} · ${escapeHtml(row.cor || 'Sem cor')}</div>
+      <div class="stock-detail-status">${stockStatusBadge(status)}</div>
+      <div class="stock-detail-metrics">
+        <div><span>Estoque atual</span><strong>${fmtNum(row._stock)}</strong></div>
+        <div><span>Vendas D-30</span><strong>${fmtNum(row._sales)}</strong></div>
+        <div><span>Média/dia</span><strong>${dailySales === null ? '—' : fmtNum(dailySales, 1)}</strong></div>
+        <div><span>Cobertura</span><strong>${stockCoverageLabel(coverage, 1)}</strong></div>
+      </div>
+      <div class="stock-detail-section">
+        <h4>Leitura</h4>
+        <p>${escapeHtml(stockStatusRead(status))}</p>
+      </div>
+      <div class="stock-detail-section">
+        <h4>Fonte e fórmula</h4>
+        <p>Fonte: <code>data/estoque.json</code>. Cobertura = estoque atual / (vendas D-30 / 30). Sem vendas D-30, a cobertura fica vazia.</p>
+      </div>
+      <div class="stock-detail-list">
+        <div><span>SKU</span><strong>${escapeHtml(sku)}</strong></div>
+        <div><span>Atualizado em</span><strong>${escapeHtml(updatedAt)}</strong></div>
+      </div>
+    `;
+
+    document.body.classList.add('stock-detail-open');
+    overlay.hidden = false;
+    drawer.setAttribute('aria-hidden', 'false');
+    drawer.removeAttribute('inert');
+    drawer.focus({ preventScroll: true });
+  }
+
   function renderStock(selected) {
+    const wrap = $('stock-grid');
     const rows = (state.data.estoque || []).filter((row) => row.modelo_id === selected.modelo_id);
     if (!rows.length) {
-      $('stock-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Sem dados de estoque para ${escapeHtml(selected.modelo)}.</strong>O arquivo data/estoque.json está preparado, mas precisa ser preenchido pelo BigQuery.</div></div>`;
+      wrap.innerHTML = `<div class="empty-state"><div><strong>Sem dados de estoque para ${escapeHtml(selected.modelo)}.</strong>O arquivo data/estoque.json está preparado, mas precisa ser preenchido pelo BigQuery.</div></div>`;
+      closeStockDrawer();
       return;
     }
-    $('stock-grid').innerHTML = rows.map((row) => {
-      const coverage = row.cobertura_dias ?? (row.vendas_d30 ? row.estoque_atual / (row.vendas_d30 / 30) : null);
-      const low = coverage !== null && coverage < 15;
-      return `<div class="stock-card ${low ? 'low' : ''}">
-        <div class="stock-title">${escapeHtml(row.sub_modelo || selected.modelo)} ${tip('Fonte: data/estoque.json exportado pelo Apps Script quando a tabela de inventario estiver disponivel. Cobertura = estoque atual / media diaria de vendas D-30 quando vendas_d30 existir.')}</div>
-        <div class="stock-sub">${escapeHtml(row.cor || 'Sem cor')}</div>
-        <div class="stock-row"><span>${labelTip('Estoque atual', 'Quantidade disponivel no snapshot de estoque. Se vazio, nao inferir ruptura nem disponibilidade.')}</span><span>${fmtNum(row.estoque_atual)}</span></div>
-        <div class="stock-row"><span>${labelTip('Vendas D-30', 'Pares vendidos nos ultimos 30 dias quando essa leitura vier no JSON de estoque. Pode ficar nulo no snapshot atual.')}</span><span>${fmtNum(row.vendas_d30)}</span></div>
-        <div class="stock-row"><span>${labelTip('Cobertura', 'Formula: estoque atual / (vendas D-30 / 30). Abaixo de 15 dias vira alerta; sem vendas D-30 permanece vazio.')}</span><span>${coverage === null ? '—' : `${fmtNum(coverage, 0)} dias`}</span></div>
-        ${low ? `<div style="margin-top:10px">${badge('neg', 'Cobertura baixa')}</div>` : ''}
-      </div>`;
-    }).join('');
+
+    const decorated = decorateStockRows(rows);
+    const filtered = decorated.filter(stockFilterMatch).sort(compareStockRows);
+    const totalStock = stockSum(decorated, '_stock');
+    const totalSales = stockSum(decorated, '_sales');
+    const knownCoverages = decorated.map((row) => row._coverage).filter((value) => value !== null);
+    const minCoverage = knownCoverages.length ? Math.min(...knownCoverages) : null;
+    const alertCount = decorated.filter((row) => ['low', 'zero'].includes(row._status)).length;
+    const noBaseCount = decorated.filter((row) => row._status === 'no-base').length;
+
+    const summary = [
+      { label: 'Linhas', value: fmtNum(decorated.length), sub: 'sub-modelo/cor' },
+      { label: 'Estoque', value: fmtNum(totalStock), sub: 'pares disponíveis' },
+      { label: 'Vendas D-30', value: fmtNum(totalSales), sub: 'pares vendidos' },
+      { label: 'Menor cobertura', value: stockCoverageLabel(minCoverage), sub: `${fmtNum(alertCount)} alertas · ${fmtNum(noBaseCount)} sem D-30` }
+    ];
+
+    wrap.innerHTML = `
+      <div class="stock-workbench">
+        <div class="stock-toolbar">
+          <div>
+            <div class="stock-toolbar-title">Cobertura operacional ${tip('Fonte: data/estoque.json. Cobertura = estoque atual / media diaria de vendas D-30 quando vendas_d30 existir.')}</div>
+            <div class="stock-toolbar-sub">Mostrando ${fmtNum(filtered.length)} de ${fmtNum(decorated.length)} linhas do modelo.</div>
+          </div>
+          <div class="stock-controls">
+            <label>
+              <span>Status</span>
+              <select id="stock-filter" class="stock-select" aria-label="Filtrar estoque por status">
+                ${STOCK_FILTERS.map((filter) => `<option value="${filter.key}" ${filter.key === state.stockFilter ? 'selected' : ''}>${escapeHtml(filter.label)}</option>`).join('')}
+              </select>
+            </label>
+            <label>
+              <span>Ordenar</span>
+              <select id="stock-sort" class="stock-select" aria-label="Ordenar estoque">
+                ${STOCK_SORTS.map((sort) => `<option value="${sort.key}" ${sort.key === state.stockSort ? 'selected' : ''}>${escapeHtml(sort.label)}</option>`).join('')}
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="stock-summary-grid">
+          ${summary.map((item) => `
+            <div class="stock-summary-item">
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${escapeHtml(item.value)}</strong>
+              <small>${escapeHtml(item.sub)}</small>
+            </div>
+          `).join('')}
+        </div>
+        <div class="table-wrap stock-table-wrap">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>${labelTip('Item', 'Sub-modelo ou SKU do snapshot de estoque.')}</th>
+                <th>${labelTip('Cor', 'Cor ou variante informada no estoque.')}</th>
+                <th class="num">${labelTip('Estoque', 'Quantidade disponivel no snapshot de estoque.')}</th>
+                <th class="num">${labelTip('Vendas D-30', 'Pares vendidos nos ultimos 30 dias. Quando ausente, cobertura permanece vazia.')}</th>
+                <th class="num">${labelTip('Cobertura', 'Formula: estoque atual / (vendas D-30 / 30). Abaixo de 15 dias vira alerta.')}</th>
+                <th>${labelTip('Status', 'Leitura operacional da cobertura de estoque.')}</th>
+                <th class="num">Detalhe</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.length ? filtered.map((row) => {
+                const itemName = row.sub_modelo || row.nome_produto || row.sku || selected.modelo;
+                const critical = ['low', 'zero'].includes(row._status);
+                return `<tr class="${critical ? 'stock-row-alert' : ''}">
+                  <td class="model-name">${escapeHtml(itemName)}<div class="metric-sub">${escapeHtml(row.sku || selected.modelo_id)}</div></td>
+                  <td>${escapeHtml(row.cor || 'Sem cor')}</td>
+                  <td class="num">${fmtNum(row._stock)}</td>
+                  <td class="num">${fmtNum(row._sales)}</td>
+                  <td class="num">${stockCoverageLabel(row._coverage)}</td>
+                  <td>${stockStatusBadge(row._status)}</td>
+                  <td class="num"><button class="stock-detail-button" type="button" data-stock-index="${row._index}">Detalhes</button></td>
+                </tr>`;
+              }).join('') : `<tr><td colspan="7" class="stock-empty-cell">Nenhuma linha para este filtro.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    wrap.querySelector('#stock-filter')?.addEventListener('change', (event) => {
+      state.stockFilter = event.target.value;
+      renderStock(selected);
+    });
+    wrap.querySelector('#stock-sort')?.addEventListener('change', (event) => {
+      state.stockSort = event.target.value;
+      renderStock(selected);
+    });
+    wrap.querySelectorAll('[data-stock-index]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const row = decorated.find((item) => item._index === Number(button.dataset.stockIndex));
+        if (row) openStockDrawer(row, selected, button);
+      });
+    });
   }
 
   function renderColorMix() {
@@ -2407,13 +2674,63 @@
     };
   }
 
+  function mediaWindowMetric(row, launch) {
+    const janela = String(row.janela || '').trim().toLowerCase();
+    if (WINDOW_KEYS.includes(janela)) return getWindow(launch, janela);
+    return null;
+  }
+
+  function enrichMediaEstimates(rows, launch) {
+    const groups = new Map();
+    rows.forEach((row) => {
+      const key = String(row.janela || 'sem_janela');
+      const current = groups.get(key) || [];
+      current.push(row);
+      groups.set(key, current);
+    });
+
+    const enriched = [];
+    groups.forEach((group) => {
+      const metric = mediaWindowMetric(group[0], launch);
+      const receitaModelo = numberOrNull(metric?.receita);
+      const pedidosModelo = numberOrNull(metric?.pedidos);
+      const receitaExplicit = group.reduce((acc, row) => acc + (row.receita_atribuida !== null && row.receita_atribuida !== undefined ? Number(row.receita_atribuida || 0) : 0), 0);
+      const pedidosExplicit = group.reduce((acc, row) => acc + (row.pedidos !== null && row.pedidos !== undefined ? Number(row.pedidos || 0) : 0), 0);
+      const missingRows = group.filter((row) => row.investimento !== null && row.investimento > 0 && (row.receita_atribuida === null || row.receita_atribuida === undefined || row.pedidos === null || row.pedidos === undefined));
+      const missingInvestment = missingRows.reduce((acc, row) => acc + Number(row.investimento || 0), 0);
+      const receitaDisponivel = receitaModelo !== null ? Math.max(0, receitaModelo - receitaExplicit) : null;
+      const pedidosDisponiveis = pedidosModelo !== null ? Math.max(0, pedidosModelo - pedidosExplicit) : null;
+
+      group.forEach((row) => {
+        const out = { ...row };
+        const share = missingInvestment && out.investimento ? Number(out.investimento) / missingInvestment : null;
+        if ((out.receita_atribuida === null || out.receita_atribuida === undefined) && receitaDisponivel !== null && share !== null) {
+          out.receita_atribuida = receitaDisponivel * share;
+          out.receita_source = 'modelo_rateado';
+        }
+        if ((out.pedidos === null || out.pedidos === undefined) && pedidosDisponiveis !== null && share !== null) {
+          out.pedidos = pedidosDisponiveis * share;
+          out.pedidos_source = 'modelo_rateado';
+        }
+        if ((out.roas === null || out.roas === undefined) && out.receita_atribuida !== null && out.receita_atribuida !== undefined && out.investimento) {
+          out.roas = out.receita_atribuida / out.investimento;
+        }
+        if ((out.cpa === null || out.cpa === undefined) && out.pedidos) {
+          out.cpa = out.investimento / out.pedidos;
+        }
+        enriched.push(out);
+      });
+    });
+    return enriched;
+  }
+
   function normalizeCrmRow(row) {
     const investimento = numberOrNull(row.investimento);
     const receitaLinha = numberOrNull(row.receita_linha);
     const receitaDia = numberOrNull(row.receita_dia);
     const receitaBase = receitaDia ?? receitaLinha;
     const pedidos = numberOrNull(row.pedidos);
-    const roas = rowRoas(row);
+    const roas = rowRoas(row) ?? (investimento && receitaBase !== null ? receitaBase / investimento : null);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
     return {
       ...row,
@@ -2458,14 +2775,22 @@
         investimento: 0,
         receita_atribuida: 0,
         pedidos: 0,
+        hasReceitaAtribuida: false,
+        hasPedidos: false,
         roas_weighted: 0,
         roas_investimento: 0,
         count: 0,
         aggregate: true
       };
       current.investimento += row.investimento || 0;
-      current.receita_atribuida += row.receita_atribuida || 0;
-      current.pedidos += row.pedidos || 0;
+      if (row.receita_atribuida !== null && row.receita_atribuida !== undefined) {
+        current.receita_atribuida += row.receita_atribuida || 0;
+        current.hasReceitaAtribuida = true;
+      }
+      if (row.pedidos !== null && row.pedidos !== undefined) {
+        current.pedidos += row.pedidos || 0;
+        current.hasPedidos = true;
+      }
       if (row.roas !== null && row.roas !== undefined && row.investimento) {
         current.roas_weighted += row.roas * row.investimento;
         current.roas_investimento += row.investimento;
@@ -2475,10 +2800,12 @@
     });
     return [...groups.values()]
       .filter((row) => row.count > 1)
-      .map(({ count, roas_weighted, roas_investimento, ...row }) => ({
+      .map(({ count, roas_weighted, roas_investimento, hasReceitaAtribuida, hasPedidos, ...row }) => ({
         ...row,
+        receita_atribuida: hasReceitaAtribuida ? row.receita_atribuida : null,
+        pedidos: hasPedidos ? row.pedidos : null,
         roas: roas_investimento ? roas_weighted / roas_investimento : null,
-        cpa: row.pedidos ? row.investimento / row.pedidos : null
+        cpa: hasPedidos && row.pedidos ? row.investimento / row.pedidos : null
       }));
   }
 
@@ -2554,15 +2881,15 @@
               ${thTip('Janela base', 'Janela usada para contextualizar a receita do modelo: acumulado D+n para ativo ou melhor janela fechada/historica.')}
               ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou historico versionado.', 'num')}
               ${thTip('Invest. midia', 'Soma do investimento informado nas campanhas de midia paga cadastradas na planilha.', 'num')}
-              ${thTip('ROAS midia', 'ROAS informado na planilha de midia. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
-              ${thTip('CPA midia', 'Formula: investimento de midia / pedidos atribuidos. Fica vazio sem pedidos.', 'num')}
+              ${thTip('ROAS midia', 'ROAS informado na planilha ou estimado por janela do modelo quando so houver investimento. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
+              ${thTip('CPA midia', 'Formula: investimento de midia / pedidos. Pedidos podem vir da planilha ou do rateio da janela do modelo.', 'num')}
               ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
               ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
-              ${thTip('ROAS CRM', 'ROAS informado na planilha de CRM. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
+              ${thTip('ROAS CRM', 'ROAS informado na planilha de CRM ou calculado por receita base / investimento. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
               ${thTip('CPA CRM', 'Formula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
               ${thTip('Invest. total', 'Soma de investimento de midia paga e CRM.', 'num')}
-              ${thTip('Receita comercial', 'Soma das receitas informadas nas planilhas de midia e CRM. Nao substitui ROAS quando o campo roas nao estiver cadastrado.', 'num')}
-              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS cadastrado.', 'num')}
+              ${thTip('Receita comercial', 'Soma das receitas informadas ou estimadas em midia e CRM. Leituras estimadas aparecem como apoio, nao atribuicao real por canal.', 'num')}
+              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou estimado.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -2595,12 +2922,12 @@
     }
 
     const mediaRows = (state.data.midia_paga || []).filter((row) => row.modelo_id === selected.modelo_id);
-    const detailedRows = mediaRows.map((row) => normalizeMediaRow(row, selected));
+    const detailedRows = enrichMediaEstimates(mediaRows.map((row) => normalizeMediaRow(row, selected)), selected);
     const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows];
     $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
       <tr>
         <td>${row.aggregate ? `<strong>${escapeHtml(row.campanha)}</strong>` : escapeHtml(row.campanha)}</td>
-        <td>${escapeHtml(row.janela)}</td>
+        <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}</td>
@@ -2636,9 +2963,10 @@
     const mediaByModel = new Map();
     const crmByModel = new Map();
     const detailedRows = launches.flatMap((launch) => {
-      const rows = (state.data.midia_paga || [])
+      const rowsRaw = (state.data.midia_paga || [])
         .filter((row) => row.modelo_id === launch.modelo_id)
         .map((row) => normalizeMediaRow(row, launch));
+      const rows = enrichMediaEstimates(rowsRaw, launch);
       mediaByModel.set(launch.modelo_id, rows);
       return rows;
     });
@@ -2843,6 +3171,7 @@
 
   async function init() {
     configureDrawer();
+    configureStockDrawer();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();

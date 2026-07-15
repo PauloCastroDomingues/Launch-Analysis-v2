@@ -30,6 +30,7 @@ function exportarTudo() {
   const ativos = modelos.filter(ehModeloAtivo_);
   Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${exportaveis.length} exportaveis com status historico/ativo e day_zero_base valido.`);
 
+  const cadastroStatus = sincronizarCadastroBigQuery_(modelos);
   const produtosDia = exportaveis.length ? consultarProdutosDia_(exportaveis) : [];
   const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(exportaveis);
   const dataQuality = {};
@@ -66,6 +67,7 @@ function exportarTudo() {
     active_models: ativos.map(m => m.modelo_id),
     exported_models: exportaveis.map(m => m.modelo_id),
     row_counts: {
+      linha_cadastro: cadastroStatus.rows,
       lancamentos_produtos_dia: produtosDia.length,
       auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
       estoque: estoqueStatus.rows,
@@ -74,6 +76,7 @@ function exportarTudo() {
     },
     data_quality: dataQuality,
     export_status: {
+      cadastro_bigquery: cadastroStatus.status,
       estoque: estoqueStatus.status,
       midia_paga: midiaStatus.status,
       crm_disparos: crmStatus.status
@@ -449,18 +452,8 @@ LIMIT 200`;
   return rows;
 }
 
-function consultarProdutosDia_(modelos) {
-  const modelosSql = modelos.map(m => {
-    const termosRegex = termosRegex_(m);
-    const skuPrefixos = skuPrefixos_(m);
-    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
-  }).join('\nUNION ALL\n');
-
-  const query = `
-WITH modelos AS (
-  ${modelosSql}
-),
-modelos_norm AS (
+function modelosNormCteSql_() {
+  return `modelos_norm AS (
   SELECT
     *,
     CASE modelo_id
@@ -479,7 +472,130 @@ modelos_norm AS (
       r'\\p{M}', ''
     ), r'[^a-z0-9|]+', '') AS sku_prefixos_compact
   FROM modelos
+)`;
+}
+
+function itensClassificadosV1CteSql_(options) {
+  const opts = options || {};
+  const sourceCte = opts.sourceCte || 'itens_validos';
+  const joinCond = opts.usarJanelaD0 === false
+    ? 'TRUE'
+    : 'i.data BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 90 DAY)';
+  const partitionBy = opts.partitionBy || 'order_sk, line_item_key';
+
+  return `itens_candidatos_v1 AS (
+  SELECT
+    m.modelo_id,
+    m.modelo,
+    m.d0,
+    m.prioridade_modelo,
+    i.*,
+    CASE
+      WHEN m.modelo_id = 'rs8_monochrome' THEN 'regra_monochrome'
+      WHEN m.modelo_id = 'phantom' THEN 'regra_phantom'
+      WHEN m.modelo_id = 'gt' THEN 'regra_gt'
+      WHEN m.modelo_id = 'avant' THEN 'regra_avant'
+      ELSE 'regra_cadastro'
+    END AS regra_classificacao
+  FROM ${sourceCte} i
+  JOIN modelos_norm m
+    ON ${joinCond}
+  WHERE (
+    (
+      m.modelo_id = 'rs8_monochrome'
+      AND (
+        STARTS_WITH(i.sku_compact, 'rs8avantmc')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantab')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantct')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantcf')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantmono')
+        OR STARTS_WITH(i.sku_compact, 'rs8mono')
+        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )rs8 avant monochrome( |$)')
+        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
+      )
+    )
+    OR (
+      m.modelo_id = 'phantom'
+      AND (
+        STARTS_WITH(i.sku_compact, 'phteasy')
+        OR STARTS_WITH(i.sku_compact, 'phtslip')
+        OR STARTS_WITH(i.sku_compact, 'phtknit')
+        OR STARTS_WITH(i.sku_compact, 'phantomeasy')
+        OR STARTS_WITH(i.sku_compact, 'phantomslip')
+        OR STARTS_WITH(i.sku_compact, 'phantomknit')
+        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )phantom( |$)')
+      )
+    )
+    OR (
+      m.modelo_id = 'gt'
+      AND (
+        STARTS_WITH(i.sku_compact, 'rs6gt')
+        OR STARTS_WITH(i.sku_compact, '911gt')
+        OR STARTS_WITH(i.sku_compact, 'knitgt')
+        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 gt|911 gt|knit gt|gt collection)( |$)')
+      )
+    )
+    OR (
+      m.modelo_id = 'avant'
+      AND (
+        STARTS_WITH(i.sku_compact, 'rs6avant')
+        OR STARTS_WITH(i.sku_compact, 'rs7avant')
+        OR STARTS_WITH(i.sku_compact, 'rs8avant')
+        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 avant|rs7 avant|rs8 avant)( |$)')
+      )
+      AND NOT (
+        STARTS_WITH(i.sku_compact, 'rs8avantmc')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantab')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantct')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantcf')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantmono')
+        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
+      )
+    )
+    OR (
+      m.modelo_id NOT IN ('rs8_monochrome', 'phantom', 'gt', 'avant')
+      AND (
+        EXISTS (
+          SELECT 1
+          FROM UNNEST(SPLIT(IFNULL(m.sku_prefixos_compact, ''), '|')) AS prefixo
+          WHERE TRIM(prefixo) != ''
+            AND STARTS_WITH(i.sku_compact, TRIM(prefixo))
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM UNNEST(SPLIT(IFNULL(m.termos_norm, ''), '|')) AS termo
+          WHERE TRIM(termo) != ''
+            AND REGEXP_CONTAINS(
+              i.match_text_norm,
+              CONCAT(r'(^|[^a-z0-9])', REGEXP_REPLACE(TRIM(termo), r'\\s+', r'\\\\s+'), r'([^a-z0-9]|$)')
+            )
+        )
+      )
+    )
+   )
 ),
+itens_classificados_v1 AS (
+  SELECT *
+  FROM itens_candidatos_v1
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY ${partitionBy}
+    ORDER BY prioridade_modelo, d0 DESC, modelo_id
+  ) = 1
+)`;
+}
+
+function consultarProdutosDia_(modelos) {
+  const modelosSql = modelos.map(m => {
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+  }).join('\nUNION ALL\n');
+
+  const query = `
+WITH modelos AS (
+  ${modelosSql}
+),
+${modelosNormCteSql_()},
 itens_validos AS (
   SELECT
     i.order_partition_date_brt AS data,
@@ -496,18 +612,18 @@ itens_validos AS (
       ))
     ) AS line_item_key,
     CASE
-      WHEN NULLIF(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_sk')), '') IS NOT NULL
-        THEN CONCAT('customer_sk:', TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_sk')))
-      WHEN REGEXP_CONTAINS(NULLIF(LOWER(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_email'))), ''), r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
-        THEN CONCAT('email:', LOWER(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_email'))))
+      WHEN NULLIF(TRIM(CAST(o.customer_sk AS STRING)), '') IS NOT NULL
+        THEN CONCAT('customer_sk:', TRIM(CAST(o.customer_sk AS STRING)))
+      WHEN REGEXP_CONTAINS(NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), ''), r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        THEN CONCAT('email:', LOWER(TRIM(CAST(o.customer_email AS STRING))))
       WHEN LENGTH(NULLIF(REGEXP_REPLACE(COALESCE(
-        JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_phone'),
-        JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_phone_digits'),
+        CAST(o.customer_phone_digits AS STRING),
+        CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.customer_phone') AS STRING),
         ''
       ), r'\\D', ''), '')) BETWEEN 8 AND 15
         THEN CONCAT('phone:', NULLIF(REGEXP_REPLACE(COALESCE(
-          JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_phone'),
-          JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_phone_digits'),
+          CAST(o.customer_phone_digits AS STRING),
+          CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.customer_phone') AS STRING),
           ''
         ), r'\\D', ''), ''))
       ELSE NULL
@@ -522,6 +638,8 @@ itens_validos AS (
     REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  LEFT JOIN \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
+    ON CAST(o.order_sk AS STRING) = CAST(i.order_sk AS STRING)
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
     AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
@@ -529,19 +647,17 @@ itens_validos AS (
 ),
 cliente_pedidos_source AS (
   SELECT
-    CAST(i.order_sk AS STRING) AS order_sk,
-    i.order_partition_date_brt AS data_pedido,
-    NULLIF(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_sk')), '') AS customer_sk_norm,
-    NULLIF(LOWER(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_email'))), '') AS email_norm,
+    CAST(o.order_sk AS STRING) AS order_sk,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data_pedido,
+    NULLIF(TRIM(CAST(o.customer_sk AS STRING)), '') AS customer_sk_norm,
+    NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '') AS email_norm,
     NULLIF(REGEXP_REPLACE(COALESCE(
-      JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_phone'),
-      JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.customer_phone_digits'),
+      CAST(o.customer_phone_digits AS STRING),
+      CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.customer_phone') AS STRING),
       ''
     ), r'\\D', ''), '') AS phone_norm
-  FROM \`reise-ssot.mart_shared.fct_order_item\` i
-  WHERE i.is_valid_order = TRUE
-    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
-    AND SAFE_CAST(i.quantity AS INT64) > 0
+  FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
+  WHERE DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
 ),
 cliente_pedidos_com_key AS (
   SELECT
@@ -571,97 +687,7 @@ cliente_primeira_compra AS (
   FROM cliente_pedidos
   GROUP BY customer_key
 ),
-itens_candidatos AS (
-  SELECT
-    m.modelo_id,
-    m.modelo,
-    m.d0,
-    m.prioridade_modelo,
-    i.*,
-    CASE
-      WHEN m.modelo_id = 'rs8_monochrome' THEN 'regra_monochrome'
-      WHEN m.modelo_id = 'phantom' THEN 'regra_phantom'
-      WHEN m.modelo_id = 'gt' THEN 'regra_gt'
-      WHEN m.modelo_id = 'avant' THEN 'regra_avant'
-      ELSE 'regra_cadastro'
-    END AS regra_classificacao
-  FROM itens_validos i
-  JOIN modelos_norm m
-    ON i.data BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 90 DAY)
-  WHERE (
-    (
-      m.modelo_id = 'rs8_monochrome'
-      AND (
-        STARTS_WITH(i.sku_compact, 'RS8AVANTMC')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTAB')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCF')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTMONO')
-        OR STARTS_WITH(i.sku_compact, 'RS8MONO')
-        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )rs8 avant monochrome( |$)')
-        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
-      )
-    )
-    OR (
-      m.modelo_id = 'phantom'
-      AND (
-        STARTS_WITH(i.sku_compact, 'PHTEASY')
-        OR STARTS_WITH(i.sku_compact, 'PHTSLIP')
-        OR STARTS_WITH(i.sku_compact, 'PHTKNIT')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMEASY')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMSLIP')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMKNIT')
-        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )phantom( |$)')
-      )
-    )
-    OR (
-      m.modelo_id = 'gt'
-      AND (
-        STARTS_WITH(i.sku_compact, 'RS6GT')
-        OR STARTS_WITH(i.sku_compact, '911GT')
-        OR STARTS_WITH(i.sku_compact, 'KNITGT')
-        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 gt|911 gt|knit gt|gt collection)( |$)')
-      )
-    )
-    OR (
-      m.modelo_id = 'avant'
-      AND (
-        STARTS_WITH(i.sku_compact, 'RS6AVANT')
-        OR STARTS_WITH(i.sku_compact, 'RS7AVANT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANT')
-        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 avant|rs7 avant|rs8 avant)( |$)')
-      )
-      AND NOT (
-        STARTS_WITH(i.sku_compact, 'RS8AVANTMC')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTAB')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCF')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTMONO')
-        OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
-      )
-    )
-    OR (
-      m.modelo_id NOT IN ('rs8_monochrome', 'phantom', 'gt', 'avant')
-      AND (
-        EXISTS (
-          SELECT 1
-          FROM UNNEST(SPLIT(IFNULL(m.sku_prefixos_compact, ''), '|')) AS prefixo
-          WHERE TRIM(prefixo) != ''
-            AND STARTS_WITH(i.sku_compact, TRIM(prefixo))
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM UNNEST(SPLIT(IFNULL(m.termos_norm, ''), '|')) AS termo
-          WHERE TRIM(termo) != ''
-            AND REGEXP_CONTAINS(
-              i.match_text_norm,
-              CONCAT(r'(^|[^a-z0-9])', REGEXP_REPLACE(TRIM(termo), r'\\s+', r'\\\\s+'), r'([^a-z0-9]|$)')
-            )
-        )
-      )
-    )
-   )
-),
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })},
 itens_classificados AS (
   SELECT
     c.*,
@@ -671,13 +697,9 @@ itens_classificados AS (
       WHEN p.primeira_compra < c.data THEN 'recorrente'
       ELSE 'novo'
     END AS cliente_tipo
-  FROM itens_candidatos c
+  FROM itens_classificados_v1 c
   LEFT JOIN cliente_primeira_compra p
     ON p.customer_key = c.customer_key
-  QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY c.order_sk, c.line_item_key
-    ORDER BY c.prioridade_modelo, c.d0 DESC, c.modelo_id
-  ) = 1
 ),
 itens_com_flags AS (
   SELECT
@@ -755,52 +777,90 @@ function consultarAuditoriaMonochromeSeAtivo_(modelos) {
 
 function consultarAuditoriaMonochrome_(modelo) {
   const d0 = sql_(modelo.day_zero_base);
+  const modeloNome = sql_(modelo.modelo || 'RS8 Avant Monochrome');
+  const termosRegex = termosRegex_(modelo);
+  const skuPrefixos = skuPrefixos_(modelo);
   const query = `
-WITH modelo AS (
-  SELECT DATE('${d0}') AS d0
-), base AS (
+WITH modelos AS (
+  SELECT 'rs8_monochrome' AS modelo_id, '${modeloNome}' AS modelo, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos
+),
+${modelosNormCteSql_()},
+itens_validos AS (
   SELECT
-    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data_venda,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data,
     CAST(o.order_name AS STRING) AS pedido,
     CAST(o.order_sk AS STRING) AS order_sk,
     NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), '') AS line_item_id,
-    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS titulo_produto,
+    COALESCE(
+      NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), ''),
+      TO_JSON_STRING(STRUCT(
+        CAST(o.order_sk AS STRING) AS order_sk,
+        CAST(i.sku AS STRING) AS sku,
+        CAST(i.item_name AS STRING) AS item_name,
+        SAFE_CAST(i.quantity AS INT64) AS quantity,
+        SAFE_CAST(i.line_gross_amount AS NUMERIC) AS line_gross_amount,
+        SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS line_discount_amount
+      ))
+    ) AS line_item_key,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
-    SAFE_CAST(i.quantity AS INT64) AS quantidade,
-    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS valor_bruto_item,
-    SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS desconto_item,
-    SAFE_CAST(i.line_gross_amount - IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS valor_liquido_item,
+    SAFE_CAST(i.quantity AS INT64) AS pares,
+    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita_bruta,
+    SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS desconto,
+    SAFE_CAST(i.line_gross_amount - IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS receita_liquida,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
-    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS sku_norm
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM \`reise-ssot.core.order_item\` i
   JOIN \`reise-ssot.core.order\` o
     ON o.order_sk = i.order_sk
-  CROSS JOIN modelo m
+  CROSS JOIN modelos_norm m
   WHERE o.is_valid_order = TRUE
     AND i.item_name IS NOT NULL
-    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= m.d0
+    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 90 DAY)
     AND SAFE_CAST(i.quantity AS INT64) > 0
-), flags AS (
+),
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })},
+classificadas_raw AS (
   SELECT
-    *,
-    REGEXP_CONTAINS(item_name_norm, r'(^|[^a-z0-9])monochrome([^a-z0-9]|$)') AS has_title_match,
-    (
-      STARTS_WITH(sku_norm, 'rs8 avant mono')
-      OR STARTS_WITH(sku_norm, 'rs8 mono')
-      OR STARTS_WITH(sku_norm, 'rs8avantmono')
-    ) AS has_sku_match,
+    data AS data_venda,
+    pedido,
+    order_sk,
+    line_item_id,
+    line_item_key AS dedupe_key,
+    item_name AS titulo_produto,
+    sku,
+    pares AS quantidade,
+    receita_bruta AS valor_bruto_item,
+    desconto AS desconto_item,
+    receita_liquida AS valor_liquido_item,
+    item_name_norm,
+    sku_compact AS sku_norm,
+    regra_classificacao,
     NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
     NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho
-  FROM base
+  FROM itens_candidatos_v1
+  WHERE modelo_id = 'rs8_monochrome'
 ), classificadas AS (
   SELECT
-    *,
-    COALESCE(
-      NULLIF(line_item_id, ''),
-      TO_JSON_STRING(STRUCT(order_sk, sku, titulo_produto, quantidade, valor_bruto_item, desconto_item, valor_liquido_item))
-    ) AS dedupe_key
-  FROM flags
-  WHERE has_title_match OR has_sku_match
+    data AS data_venda,
+    pedido,
+    order_sk,
+    line_item_id,
+    line_item_key AS dedupe_key,
+    item_name AS titulo_produto,
+    sku,
+    pares AS quantidade,
+    receita_bruta AS valor_bruto_item,
+    desconto AS desconto_item,
+    receita_liquida AS valor_liquido_item,
+    item_name_norm,
+    sku_compact AS sku_norm,
+    regra_classificacao,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
+    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho
+  FROM itens_classificados_v1
+  WHERE modelo_id = 'rs8_monochrome'
 ), dedup AS (
   SELECT *
   FROM classificadas
@@ -821,34 +881,37 @@ WITH modelo AS (
       desconto_item,
       valor_liquido_item
     ) ORDER BY pedido LIMIT 5) AS exemplos
-  FROM classificadas
+  FROM classificadas_raw
   GROUP BY dedupe_key
   HAVING COUNT(*) > 1
   ORDER BY linhas DESC
   LIMIT 100
 ), linhas_suspeitas AS (
   SELECT
-    pedido,
-    sku,
-    titulo_produto,
-    quantidade,
-    valor_bruto_item,
-    desconto_item,
-    valor_liquido_item,
-    item_name_norm,
-    sku_norm
-  FROM classificadas
-  WHERE NOT has_title_match
-    AND NOT has_sku_match
+    v.pedido,
+    v.sku,
+    v.item_name AS titulo_produto,
+    v.pares AS quantidade,
+    v.receita_bruta AS valor_bruto_item,
+    v.desconto AS desconto_item,
+    v.receita_liquida AS valor_liquido_item,
+    v.item_name_norm,
+    v.sku_compact AS sku_norm
+  FROM itens_validos v
+  LEFT JOIN itens_classificados_v1 c
+    ON c.order_sk = v.order_sk
+   AND c.line_item_key = v.line_item_key
+  WHERE c.line_item_key IS NULL
+    AND REGEXP_CONTAINS(v.match_text_norm, r'(rs8|avant|mono|monochrome)')
   LIMIT 100
 )
 SELECT TO_JSON_STRING(STRUCT(
   'rs8_monochrome' AS modelo_id,
   'reise-ssot.core.order_item + core.order' AS fonte,
-  'item_name normalizado contem monochrome; SKU especifico permitido apenas para RS8-AVANT-MONO, RS8-MONO, RS8AVANTMONO' AS regra_match,
+  'itens_classificados_v1: prioridade rs8_monochrome > phantom > gt > avant > cadastro_generico; janela D0 a D+90' AS regra_match,
   STRUCT(
-    CAST((SELECT d0 FROM modelo) AS STRING) AS inicio,
-    CAST(CURRENT_DATE('America/Sao_Paulo') AS STRING) AS fim
+    CAST((SELECT d0 FROM modelos_norm) AS STRING) AS inicio,
+    CAST(DATE_ADD((SELECT d0 FROM modelos_norm), INTERVAL 90 DAY) AS STRING) AS fim
   ) AS periodo,
   (
     SELECT AS STRUCT
@@ -996,34 +1059,66 @@ function round6_(value) {
 
 function consultarEstoque_(modelos) {
   const modelosSql = modelos.map(m => {
-    const regex = String(m.termos_busca || m.modelo || '').replace(/'/g, "\\'");
-    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, r'${regex}' AS regex`;
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    const d0 = sql_(m.day_zero_base || m.data_lancamento);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
 
   const query = `
 WITH modelos AS (
   ${modelosSql}
-), estoque AS (
+),
+${modelosNormCteSql_()},
+estoque AS (
   SELECT
     sku,
     product_title,
     variant_title,
-    SUM(available) AS estoque_atual,
-    MAX(updated_at) AS updated_at
-  FROM \`reise-ssot.core.inventory_sku_current\`
+    SUM(available_total) AS estoque_atual,
+    MAX(last_updated_at) AS updated_at
+  FROM \`reise-ssot.mart_shared.inventory_sku_current\`
+  WHERE sku IS NOT NULL AND TRIM(sku) != ''
   GROUP BY 1,2,3
-)
+),
+itens_validos AS (
+  SELECT
+    CURRENT_DATE('America/Sao_Paulo') AS data,
+    sku,
+    COALESCE(NULLIF(TRIM(product_title), ''), NULLIF(TRIM(variant_title), ''), sku) AS item_name,
+    product_title,
+    variant_title,
+    estoque_atual,
+    updated_at,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(product_title, ''), ' ', COALESCE(variant_title, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(sku, ''), ' ', COALESCE(product_title, ''), ' ', COALESCE(variant_title, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM estoque
+),
+vendas_d30 AS (
+  SELECT
+    NULLIF(TRIM(CAST(sku AS STRING)), '') AS sku,
+    SUM(SAFE_CAST(quantity AS INT64)) AS vendas_d30
+  FROM \`reise-ssot.mart_shared.fct_order_item\`
+  WHERE is_valid_order = TRUE
+    AND order_partition_date_brt >= DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 30 DAY)
+    AND order_partition_date_brt <= CURRENT_DATE('America/Sao_Paulo')
+    AND NULLIF(TRIM(CAST(sku AS STRING)), '') IS NOT NULL
+    AND SAFE_CAST(quantity AS INT64) > 0
+  GROUP BY 1
+),
+${itensClassificadosV1CteSql_({ usarJanelaD0: false, partitionBy: 'sku' })}
 SELECT
-  m.modelo_id,
-  e.product_title AS sub_modelo,
-  e.variant_title AS cor,
-  SUM(e.estoque_atual) AS estoque_atual,
-  CAST(NULL AS INT64) AS vendas_d30,
-  CAST(NULL AS FLOAT64) AS cobertura_dias,
-  MAX(e.updated_at) AS updated_at
-FROM estoque e
-JOIN modelos m
-  ON REGEXP_CONTAINS(LOWER(CONCAT(e.product_title, ' ', e.sku)), LOWER(m.regex))
+  c.modelo_id,
+  COALESCE(NULLIF(c.product_title, ''), c.sku) AS sub_modelo,
+  c.variant_title AS cor,
+  SUM(c.estoque_atual) AS estoque_atual,
+  SUM(IFNULL(v.vendas_d30, 0)) AS vendas_d30,
+  SAFE_DIVIDE(CAST(SUM(c.estoque_atual) AS FLOAT64), SAFE_DIVIDE(CAST(SUM(IFNULL(v.vendas_d30, 0)) AS FLOAT64), 30.0)) AS cobertura_dias,
+  MAX(c.updated_at) AS updated_at
+FROM itens_classificados_v1 c
+LEFT JOIN vendas_d30 v
+  ON UPPER(TRIM(v.sku)) = UPPER(TRIM(c.sku))
 GROUP BY 1,2,3
 ORDER BY modelo_id, sub_modelo, cor`;
 
@@ -1197,6 +1292,10 @@ function runBq_(query) {
     Utilities.sleep(500);
     job = BigQuery.Jobs.getQueryResults(CONFIG.bqProjectId, jobId, { location: CONFIG.bqLocation });
   }
+  if (job.errors && job.errors.length) {
+    throw new Error(`BigQuery retornou erro: ${JSON.stringify(job.errors.slice(0, 3))}`);
+  }
+  if (!job.schema || !job.schema.fields || !job.schema.fields.length) return [];
   const schema = job.schema.fields.map(f => f.name);
   const rows = [];
   let pageToken;
@@ -1300,6 +1399,50 @@ function carregarModelos_() {
   return validos;
 }
 
+function sincronizarCadastroBigQuery_(modelos) {
+  const rows = (modelos || []).map((modelo, index) => {
+    const modeloId = String(modelo.modelo_id || '').trim();
+    const linha = String(modelo.linha || modelo.modelo || '').trim();
+    const dataLancamento = dateIso_(modelo.data_lancamento || modelo.day_zero_base);
+
+    if (!modeloId || !linha || !dataLancamento) {
+      throw new Error(`lancamentos_modelos.json item ${index + 1}: modelo_id, linha e data_lancamento sao obrigatorios para sincronizar mart_shared.linha_cadastro.`);
+    }
+
+    return { modeloId, linha, dataLancamento };
+  });
+
+  if (!rows.length) {
+    throw new Error('Nenhum modelo valido para sincronizar em mart_shared.linha_cadastro.');
+  }
+
+  const sourceSql = rows.map(row =>
+    `SELECT '${sql_(row.modeloId)}' AS modelo_id, '${sql_(row.linha)}' AS linha, DATE('${sql_(row.dataLancamento)}') AS data_lancamento`
+  ).join('\nUNION ALL\n');
+
+  const query = `
+CREATE TABLE IF NOT EXISTS \`reise-ssot.mart_shared.linha_cadastro\` (
+  modelo_id STRING,
+  linha STRING,
+  data_lancamento DATE
+);
+
+MERGE \`reise-ssot.mart_shared.linha_cadastro\` T
+USING (
+  ${sourceSql}
+) S
+ON T.modelo_id = S.modelo_id
+WHEN MATCHED THEN
+  UPDATE SET linha = S.linha, data_lancamento = S.data_lancamento
+WHEN NOT MATCHED THEN
+  INSERT (modelo_id, linha, data_lancamento)
+  VALUES (S.modelo_id, S.linha, S.data_lancamento);`;
+
+  runBq_(query);
+  Logger.log(`mart_shared.linha_cadastro sincronizada com ${rows.length} modelos.`);
+  return { status: 'synced', rows: rows.length };
+}
+
 function lerJsonGitHub_(path) {
   validarGithubConfig_();
   const token = getProp_('GITHUB_TOKEN', '');
@@ -1366,14 +1509,14 @@ function githubDataPath_(path) {
   return `${dataPath}/${clean}`;
 }
 
-function exportarEstoqueSeDisponivel_(ativos) {
-  if (!ativos.length) {
-    Logger.log('Sem modelos ativos com day_zero_base valido; estoque nao consultado.');
+function exportarEstoqueSeDisponivel_(modelos) {
+  if (!modelos.length) {
+    Logger.log('Sem modelos exportaveis com day_zero_base valido; estoque nao consultado.');
     return { status: 'skipped', rows: 'skipped' };
   }
 
   try {
-    const estoque = consultarEstoque_(ativos);
+    const estoque = consultarEstoque_(modelos);
     escreverJsonGitHub_('estoque.json', estoque);
     Logger.log(`estoque.json exportado com ${estoque.length} linhas.`);
     return { status: 'exported', rows: estoque.length };
@@ -1517,6 +1660,11 @@ function dateOnly_(value) {
   const parts = String(value).slice(0, 10).split('-').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
   return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function dateIso_(value) {
+  const date = dateOnly_(value);
+  return date ? Utilities.formatDate(date, CONFIG.timeZone, 'yyyy-MM-dd') : '';
 }
 
 function numberOrNull_(value) {

@@ -224,6 +224,20 @@ preco_medio_par = receita_bruta / pares
 
 Receita de mídia/CRM não substitui receita SSOT do lançamento. Planilhas externas entram apenas como contexto comercial, investimento, ROAS informado e CPA.
 
+### Regra canônica de classificação de SKU/produto
+
+A classificação usada por vendas, auditoria Monochrome e estoque fica centralizada na CTE `itens_classificados_v1` em `apps_script/ExportLaunchAnalysis.gs`.
+
+Para `modelo_id IN ('rs8_monochrome', 'phantom', 'gt', 'avant')`, o match é uma regra fixa de SKU/nome com prioridade:
+
+```txt
+rs8_monochrome > phantom > gt > avant > cadastro_generico
+```
+
+Nesses quatro modelos, os campos `sku_prefixos` e `termos_busca` de `data/lancamentos_modelos.json` são cadastro descritivo e apoio operacional; eles não controlam sozinhos o match efetivo. Alterar a regra de match de `rs8_monochrome`, `phantom`, `gt` ou `avant` exige editar a CTE `itens_classificados_v1`, e portar a mesma regra para `reise-ssot.mart_shared.produto_lancamento_v` quando a regra tiver impacto no catálogo canônico.
+
+Para modelos fora dessa lista fixa, o match genérico continua usando `sku_prefixos` e `termos_busca` do JSON.
+
 ### Regra de clientes novos/recorrentes
 
 No pipeline de vendas (`lancamentos_produtos_dia.json`), `novos` e `recorrentes` são classificados no BigQuery a partir de uma `customer_key` segura:
@@ -243,10 +257,7 @@ Para evitar dupla contagem em pedidos com mais de uma linha/SKU, a contagem de c
 
 Como a camada canônica usa `fct_order_item` já filtrada por `i.is_valid_order = TRUE`, a regra de validade de pedido fica concentrada no SSOT e não depende de joins auxiliares no frontend.
 
-O Monochrome usa uma regra especial de auditoria baseada em `reise-ssot.core.order_item + core.order`, com match por:
-
-- `item_name` normalizado contendo `monochrome`;
-- ou SKU iniciado por `rs8 avant mono`, `rs8 mono` ou `rs8avantmono`.
+O Monochrome usa a mesma CTE canônica `itens_classificados_v1` na auditoria baseada em `reise-ssot.core.order_item + core.order`. A auditoria também respeita a mesma janela do export principal: D0 até D+90.
 
 O manifest compara `lancamentos_produtos_dia.json` contra `auditoria_monochrome.json`. Se a diferença de pedidos, pares ou receita passar de 1%, o status vira `divergente` e o manifest recebe alerta.
 
@@ -258,6 +269,7 @@ Cadastro atual:
 | --- | --- |
 | `modelo_id` | `rs8_monochrome` |
 | Modelo | RS8 Avant Monochrome |
+| Linha | RS8 Avant Monochrome |
 | Status | `ativo` |
 | D0 | `2026-06-25` |
 | Termos | `Monochrome|RS8 Monochrome|RS8 Avant Monochrome` |
@@ -295,9 +307,11 @@ Regras:
 
 - `campanha` é obrigatório.
 - `investimento` deve ser o valor real informado por campanha.
-- `roas` deve vir informado na planilha em escala de multiplicador (`6,48` = `6,48x`); o front não calcula ROAS usando receita da janela, receita_linha ou receita_dia.
+- `roas` deve vir informado na planilha em escala de multiplicador (`6,48` = `6,48x`) sempre que houver atribuição real.
 - Se `roas` vier como percentual/texto (`647,8%`) ou como número acima de `100`, o exportador/front normalizam por `/100` para evitar confusão de escala percentual vs. multiplicador.
 - `receita_atribuida`, `receita_linha` e `receita_dia` são contexto/atribuição cadastrada e não substituem o campo `roas`.
+- Quando `midia_paga` trouxer investimento, mas não trouxer `receita_atribuida`, `pedidos`, `roas` ou `cpa`, o dashboard calcula uma leitura estimada da janela do modelo e marca a origem como `modelo_rateado`. Isso não é atribuição real por canal.
+- Para CRM, se `roas` estiver vazio, o dashboard calcula `receita_base / investimento` usando `receita_dia` ou `receita_linha`.
 - `janela` pode ser preenchida manualmente.
 - Se `janela` vier vazia, o Apps Script calcula pela relação entre `data_inicio`/`data_fim` e o D0 do modelo.
 - Se a planilha não estiver configurada, o exportador não apaga os arquivos atuais.
@@ -401,7 +415,7 @@ O bloco de metodologia mostra `Data oficial`, `Day zero usado`, `Primeira venda 
 - `novos` e `recorrentes` do pipeline exportável ficam `null` somente quando não houver `customer_key` confiável.
 - `novos_pct` de GT/Avant está `null` nos benchmarks recalculados.
 - Mix por cor de GT/Avant ainda precisa de auditoria SSOT própria antes de uso decisório.
-- `estoque.json` está exportado, mas o snapshot atual tem `0` linhas.
+- `estoque.json` é classificado pela CTE canônica de SKU/produto; se voltar vazio, investigar primeiro a ingestão de `mart_shared.inventory_sku_current` e o mapa `stg.shopify_inventory_item_map_latest`.
 - `midia_paga.json` e `crm_disparos.json` só são atualizados quando `MIDIA_SPREADSHEET_ID` estiver configurado.
 
 ## Regras Preservadas
