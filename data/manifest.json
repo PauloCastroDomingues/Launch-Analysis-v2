@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-15T16:03:34-03:00",
+  "generated_at": "2026-07-15T16:10:54-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -24,15 +24,15 @@
     "rs8_monochrome": {
       "status": "ok",
       "auditado": true,
-      "pedidos_auditoria": 367,
-      "pares_auditoria": 494,
-      "receita_auditoria": 355186,
+      "pedidos_auditoria": 369,
+      "pares_auditoria": 497,
+      "receita_auditoria": 357343,
       "pedidos_exportados": 367,
       "pares_exportados": 494,
       "receita_exportada": 355186,
-      "diferenca_pedidos_pct": 0,
-      "diferenca_pares_pct": 0,
-      "diferenca_receita_pct": 0,
+      "diferenca_pedidos_pct": 0.00542,
+      "diferenca_pares_pct": 0.006036,
+      "diferenca_receita_pct": 0.006036,
       "linhas_suspeitas": 100,
       "duplicidades": 0
     }
