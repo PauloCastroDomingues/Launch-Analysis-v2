@@ -281,7 +281,7 @@ h1 {
 .analysis-context {
   position: sticky;
   top: 63px;
-  z-index: 42;
+  z-index: 30;
   display: flex;
   align-items: stretch;
   justify-content: space-between;
@@ -406,6 +406,9 @@ h1 {
   position: relative;
   width: 100%;
 }
+.compare-dropdown[open] {
+  z-index: 45;
+}
 .compare-dropdown summary {
   list-style: none;
   min-width: 0;
@@ -449,7 +452,7 @@ h1 {
 }
 .compare-menu {
   position: absolute;
-  z-index: 20;
+  z-index: 45;
   top: calc(100% + 6px);
   right: 0;
   width: min(520px, 100%);
