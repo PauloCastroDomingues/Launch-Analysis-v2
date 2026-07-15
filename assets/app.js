@@ -49,6 +49,12 @@
     { key: 'sales-desc', label: 'Mais vendas D-30' },
     { key: 'name-asc', label: 'Nome A-Z' }
   ];
+  const STOCK_PAGE_SIZES = [
+    { key: '10', label: '10 linhas' },
+    { key: '25', label: '25 linhas' },
+    { key: '50', label: '50 linhas' },
+    { key: 'all', label: 'Todas' }
+  ];
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
 
   const state = {
@@ -59,6 +65,7 @@
     analysisPeriodKey: 'total',
     stockFilter: 'all',
     stockSort: 'coverage-asc',
+    stockPageSize: '10',
     snapshotClock: null,
     charts: {}
   };
@@ -1311,6 +1318,33 @@
     $('planned-count').textContent = state.launches.filter((l) => isPlannedStatus(l.status)).length;
   }
 
+  function renderAnalysisContext(selected) {
+    const wrap = $('analysis-context');
+    if (!wrap || !selected) return;
+    const period = ANALYSIS_PERIODS.find((item) => item.key === state.analysisPeriodKey);
+    const compareCount = selectedCompareLaunches().length || 1;
+    const dLabel = selected.isFuture
+      ? `D${selected.dPlus}`
+      : `D+${Math.max(0, selected.dPlus ?? 0)}`;
+    const items = [
+      { label: 'Modelo', value: selected.modelo },
+      { label: 'Janela', value: period?.label || state.analysisPeriodKey },
+      { label: 'Comparativo', value: `${fmtNum(compareCount)} modelos` },
+      { label: 'Snapshot', value: `${fmtDate(snapshotIso())} · ${dLabel}` }
+    ];
+    wrap.innerHTML = `
+      <div class="analysis-context-main">
+        ${items.map((item) => `
+          <div class="analysis-context-item">
+            <span>${escapeHtml(item.label)}</span>
+            <strong>${escapeHtml(item.value)}</strong>
+          </div>
+        `).join('')}
+      </div>
+      <div class="analysis-context-status">${sourceBadge(selected)}</div>
+    `;
+  }
+
   function renderSelectedHeader(selected) {
     const firstSaleGap = selected?.first_sale_date
       ? daysBetween(selected.d0, toDate(selected.first_sale_date))
@@ -2160,6 +2194,12 @@
     return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
   }
 
+  function visibleStockRows(rows) {
+    if (state.stockPageSize === 'all') return rows;
+    const limit = Number(state.stockPageSize || 10);
+    return rows.slice(0, Number.isFinite(limit) && limit > 0 ? limit : 10);
+  }
+
   function openStockDrawer(row, selected, returnFocus) {
     const drawer = $('stock-detail-drawer');
     const overlay = $('stock-detail-overlay');
@@ -2217,6 +2257,7 @@
 
     const decorated = decorateStockRows(rows);
     const filtered = decorated.filter(stockFilterMatch).sort(compareStockRows);
+    const visibleRows = visibleStockRows(filtered);
     const totalStock = stockSum(decorated, '_stock');
     const totalSales = stockSum(decorated, '_sales');
     const knownCoverages = decorated.map((row) => row._coverage).filter((value) => value !== null);
@@ -2236,7 +2277,7 @@
         <div class="stock-toolbar">
           <div>
             <div class="stock-toolbar-title">Cobertura operacional ${tip('Fonte: data/estoque.json. Cobertura = estoque atual / media diaria de vendas D-30 quando vendas_d30 existir.')}</div>
-            <div class="stock-toolbar-sub">Mostrando ${fmtNum(filtered.length)} de ${fmtNum(decorated.length)} linhas do modelo.</div>
+            <div class="stock-toolbar-sub">Mostrando ${fmtNum(visibleRows.length)} de ${fmtNum(filtered.length)} linhas filtradas · ${fmtNum(decorated.length)} no modelo.</div>
           </div>
           <div class="stock-controls">
             <label>
@@ -2249,6 +2290,12 @@
               <span>Ordenar</span>
               <select id="stock-sort" class="stock-select" aria-label="Ordenar estoque">
                 ${STOCK_SORTS.map((sort) => `<option value="${sort.key}" ${sort.key === state.stockSort ? 'selected' : ''}>${escapeHtml(sort.label)}</option>`).join('')}
+              </select>
+            </label>
+            <label>
+              <span>Linhas</span>
+              <select id="stock-page-size" class="stock-select" aria-label="Quantidade de linhas de estoque exibidas">
+                ${STOCK_PAGE_SIZES.map((size) => `<option value="${size.key}" ${size.key === state.stockPageSize ? 'selected' : ''}>${escapeHtml(size.label)}</option>`).join('')}
               </select>
             </label>
           </div>
@@ -2276,7 +2323,7 @@
               </tr>
             </thead>
             <tbody>
-              ${filtered.length ? filtered.map((row) => {
+              ${visibleRows.length ? visibleRows.map((row) => {
                 const itemName = row.sub_modelo || row.nome_produto || row.sku || selected.modelo;
                 const critical = ['low', 'zero'].includes(row._status);
                 return `<tr class="${critical ? 'stock-row-alert' : ''}">
@@ -2301,6 +2348,10 @@
     });
     wrap.querySelector('#stock-sort')?.addEventListener('change', (event) => {
       state.stockSort = event.target.value;
+      renderStock(selected);
+    });
+    wrap.querySelector('#stock-page-size')?.addEventListener('change', (event) => {
+      state.stockPageSize = event.target.value;
       renderStock(selected);
     });
     wrap.querySelectorAll('[data-stock-index]').forEach((button) => {
@@ -3153,6 +3204,7 @@
     renderPeriodSelector();
     renderCompareSelector();
     renderTopMeta();
+    renderAnalysisContext(selected);
     renderMethodology(selected);
     renderState(selected);
     renderComparison();
