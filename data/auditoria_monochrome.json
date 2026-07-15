@@ -4,18 +4,18 @@
   "regra_match": "item_name normalizado contem monochrome; SKU especifico permitido apenas para RS8-AVANT-MONO, RS8-MONO, RS8AVANTMONO",
   "periodo": {
     "inicio": "2026-06-25",
-    "fim": "2026-07-14"
+    "fim": "2026-07-15"
   },
   "resumo": {
     "primeira_venda": "2026-06-25",
-    "ultima_venda": "2026-07-14",
-    "pedidos": 345,
-    "pares_vendidos": 467,
-    "receita_bruta_itens": 335773,
-    "desconto_itens": "68499.08",
-    "receita_liquida_itens": "267273.92",
+    "ultima_venda": "2026-07-15",
+    "pedidos": 361,
+    "pares_vendidos": 487,
+    "receita_bruta_itens": 350153,
+    "desconto_itens": 71160,
+    "receita_liquida_itens": 278993,
     "preco_medio_bruto": 719,
-    "preco_medio_liquido": "572.32"
+    "preco_medio_liquido": "572.88"
   },
   "por_dia": [
     {
@@ -210,37 +210,47 @@
     },
     {
       "data": "2026-07-14",
-      "pedidos": 2,
-      "pares_vendidos": 4,
-      "receita_bruta_itens": 2876,
-      "desconto_itens": 719,
-      "receita_liquida_itens": 2157,
+      "pedidos": 17,
+      "pares_vendidos": 23,
+      "receita_bruta_itens": 16537,
+      "desconto_itens": "3210.96",
+      "receita_liquida_itens": "13326.04",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "539.25"
+      "preco_medio_liquido": "579.39"
+    },
+    {
+      "data": "2026-07-15",
+      "pedidos": 1,
+      "pares_vendidos": 1,
+      "receita_bruta_itens": 719,
+      "desconto_itens": "168.96",
+      "receita_liquida_itens": "550.04",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "550.04"
     }
   ],
   "por_produto": [
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
       "sku": "RS8AVANT-MC-40",
-      "pedidos": 42,
-      "pares_vendidos": 42,
-      "receita_bruta_itens": 30198,
-      "desconto_itens": "3153.96",
-      "receita_liquida_itens": "27044.04",
+      "pedidos": 44,
+      "pares_vendidos": 44,
+      "receita_bruta_itens": 31636,
+      "desconto_itens": "3394.82",
+      "receita_liquida_itens": "28241.18",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "643.91"
+      "preco_medio_liquido": "641.85"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
       "sku": "RS8AVANT-MC-41",
-      "pedidos": 36,
-      "pares_vendidos": 37,
-      "receita_bruta_itens": 26603,
-      "desconto_itens": "3445.94",
-      "receita_liquida_itens": "23157.06",
+      "pedidos": 39,
+      "pares_vendidos": 40,
+      "receita_bruta_itens": 28760,
+      "desconto_itens": "3589.74",
+      "receita_liquida_itens": "25170.26",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "625.87"
+      "preco_medio_liquido": "629.26"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -256,46 +266,57 @@
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
       "sku": "RS8AVANT-AB-41",
-      "pedidos": 32,
-      "pares_vendidos": 32,
-      "receita_bruta_itens": 23008,
-      "desconto_itens": "5090.52",
-      "receita_liquida_itens": "17917.48",
+      "pedidos": 33,
+      "pares_vendidos": 33,
+      "receita_bruta_itens": 23727,
+      "desconto_itens": "5259.48",
+      "receita_liquida_itens": "18467.52",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "559.92"
+      "preco_medio_liquido": "559.62"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
       "sku": "RS8AVANT-CT-41",
-      "pedidos": 28,
-      "pares_vendidos": 28,
-      "receita_bruta_itens": 20132,
+      "pedidos": 29,
+      "pares_vendidos": 29,
+      "receita_bruta_itens": 20851,
       "desconto_itens": "3735.36",
-      "receita_liquida_itens": "16396.64",
+      "receita_liquida_itens": "17115.64",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "585.59"
+      "preco_medio_liquido": "590.19"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
       "sku": "RS8AVANT-CT-40",
-      "pedidos": 24,
-      "pares_vendidos": 24,
-      "receita_bruta_itens": 17256,
-      "desconto_itens": "3184.02",
-      "receita_liquida_itens": "14071.98",
+      "pedidos": 26,
+      "pares_vendidos": 26,
+      "receita_bruta_itens": 18694,
+      "desconto_itens": "3327.82",
+      "receita_liquida_itens": "15366.18",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "586.33"
+      "preco_medio_liquido": "591.01"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
       "sku": "RS8AVANT-AB-40",
-      "pedidos": 25,
-      "pares_vendidos": 25,
-      "receita_bruta_itens": 17975,
-      "desconto_itens": "4677.1",
-      "receita_liquida_itens": "13297.9",
+      "pedidos": 27,
+      "pares_vendidos": 27,
+      "receita_bruta_itens": 19413,
+      "desconto_itens": 5468,
+      "receita_liquida_itens": 13945,
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "531.92"
+      "preco_medio_liquido": "516.48"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
+      "sku": "RS8AVANT-CT-42",
+      "pedidos": 24,
+      "pares_vendidos": 24,
+      "receita_bruta_itens": 17256,
+      "desconto_itens": "4307.62",
+      "receita_liquida_itens": "12948.38",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "539.52"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -309,17 +330,6 @@
       "preco_medio_liquido": "576.25"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
-      "sku": "RS8AVANT-CT-42",
-      "pedidos": 22,
-      "pares_vendidos": 22,
-      "receita_bruta_itens": 15818,
-      "desconto_itens": "4235.72",
-      "receita_liquida_itens": "11582.28",
-      "preco_medio_bruto": 719,
-      "preco_medio_liquido": "526.47"
-    },
-    {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
       "sku": "RS8AVANT-AB-43",
       "pedidos": 19,
@@ -329,6 +339,17 @@
       "receita_liquida_itens": "11481.6",
       "preco_medio_bruto": 719,
       "preco_medio_liquido": "604.29"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
+      "sku": "RS8AVANT-CF-42",
+      "pedidos": 18,
+      "pares_vendidos": 18,
+      "receita_bruta_itens": 12942,
+      "desconto_itens": "2043.82",
+      "receita_liquida_itens": "10898.18",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "605.45"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -342,37 +363,26 @@
       "preco_medio_liquido": "506.94"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
-      "sku": "RS8AVANT-CF-42",
-      "pedidos": 17,
-      "pares_vendidos": 17,
-      "receita_bruta_itens": 12223,
-      "desconto_itens": "2043.82",
-      "receita_liquida_itens": "10179.18",
-      "preco_medio_bruto": 719,
-      "preco_medio_liquido": "598.78"
-    },
-    {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
       "sku": "RS8AVANT-MC-39",
-      "pedidos": 14,
-      "pares_vendidos": 14,
-      "receita_bruta_itens": 10066,
-      "desconto_itens": "693.21",
-      "receita_liquida_itens": "9372.79",
+      "pedidos": 15,
+      "pares_vendidos": 15,
+      "receita_bruta_itens": 10785,
+      "desconto_itens": "765.11",
+      "receita_liquida_itens": "10019.89",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "669.49"
+      "preco_medio_liquido": "667.99"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
       "sku": "RS8AVANT-CF-40",
-      "pedidos": 16,
-      "pares_vendidos": 16,
-      "receita_bruta_itens": 11504,
-      "desconto_itens": "3073.72",
-      "receita_liquida_itens": "8430.28",
+      "pedidos": 17,
+      "pares_vendidos": 17,
+      "receita_bruta_itens": 12223,
+      "desconto_itens": "3461.72",
+      "receita_liquida_itens": "8761.28",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "526.89"
+      "preco_medio_liquido": "515.37"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -388,13 +398,13 @@
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
       "sku": "RS8AVANT-CF-43",
-      "pedidos": 10,
-      "pares_vendidos": 10,
-      "receita_bruta_itens": 7190,
-      "desconto_itens": "912.8",
-      "receita_liquida_itens": "6277.2",
+      "pedidos": 12,
+      "pares_vendidos": 12,
+      "receita_bruta_itens": 8628,
+      "desconto_itens": "1481.7",
+      "receita_liquida_itens": "7146.3",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "627.72"
+      "preco_medio_liquido": "595.53"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -421,13 +431,13 @@
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
       "sku": "RS8AVANT-CT-43",
-      "pedidos": 8,
-      "pares_vendidos": 8,
-      "receita_bruta_itens": 5752,
-      "desconto_itens": "1581.8",
-      "receita_liquida_itens": "4170.2",
+      "pedidos": 9,
+      "pares_vendidos": 9,
+      "receita_bruta_itens": 6471,
+      "desconto_itens": "1653.7",
+      "receita_liquida_itens": "4817.3",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "521.28"
+      "preco_medio_liquido": "535.26"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 39",
@@ -551,6 +561,17 @@
       "preco_medio_liquido": "683.05"
     },
     {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 38",
+      "sku": "RS8AVANT-MC-38",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_bruta_itens": 1438,
+      "desconto_itens": "136.61",
+      "receita_liquida_itens": "1301.39",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "650.7"
+    },
+    {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 46",
       "sku": "RS8AVANT-MC-46",
       "pedidos": 2,
@@ -604,84 +625,73 @@
       "receita_liquida_itens": "647.1",
       "preco_medio_bruto": 719,
       "preco_medio_liquido": "647.1"
-    },
-    {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 38",
-      "sku": "RS8AVANT-MC-38",
-      "pedidos": 1,
-      "pares_vendidos": 1,
-      "receita_bruta_itens": 719,
-      "desconto_itens": "136.61",
-      "receita_liquida_itens": "582.39",
-      "preco_medio_bruto": 719,
-      "preco_medio_liquido": "582.39"
     }
   ],
   "por_cor": [
     {
       "cor": "cinza",
-      "pedidos": 157,
-      "pares_vendidos": 158,
-      "receita_bruta_itens": 113602,
-      "receita_liquida_itens": "97716.7"
+      "pedidos": 164,
+      "pares_vendidos": 165,
+      "receita_bruta_itens": 118635,
+      "receita_liquida_itens": "102293.14"
     },
     {
       "cor": "all black",
-      "pedidos": 118,
-      "pares_vendidos": 118,
-      "receita_bruta_itens": 84842,
-      "receita_liquida_itens": "61665.43"
+      "pedidos": 121,
+      "pares_vendidos": 121,
+      "receita_bruta_itens": 86999,
+      "receita_liquida_itens": "62862.57"
     },
     {
       "cor": "caqui",
-      "pedidos": 103,
-      "pares_vendidos": 104,
-      "receita_bruta_itens": 74776,
-      "receita_liquida_itens": "57344.55"
+      "pedidos": 109,
+      "pares_vendidos": 110,
+      "receita_bruta_itens": 79090,
+      "receita_liquida_itens": "61370.95"
     },
     {
       "cor": "marrom",
-      "pedidos": 87,
-      "pares_vendidos": 87,
-      "receita_bruta_itens": 62553,
-      "receita_liquida_itens": "50547.24"
+      "pedidos": 91,
+      "pares_vendidos": 91,
+      "receita_bruta_itens": 65429,
+      "receita_liquida_itens": "52466.34"
     }
   ],
   "por_tamanho": [
     {
       "tamanho": "41",
-      "pedidos": 89,
-      "pares_vendidos": 119,
-      "receita_bruta_itens": 85561,
-      "receita_liquida_itens": "70148.72"
+      "pedidos": 94,
+      "pares_vendidos": 124,
+      "receita_bruta_itens": 89156,
+      "receita_liquida_itens": "73430.96"
     },
     {
       "tamanho": "40",
-      "pedidos": 81,
-      "pares_vendidos": 107,
-      "receita_bruta_itens": 76933,
-      "receita_liquida_itens": "62844.2"
+      "pedidos": 87,
+      "pares_vendidos": 114,
+      "receita_bruta_itens": 81966,
+      "receita_liquida_itens": "66313.64"
     },
     {
       "tamanho": "42",
-      "pedidos": 67,
-      "pares_vendidos": 92,
-      "receita_bruta_itens": 66148,
-      "receita_liquida_itens": "52021.86"
+      "pedidos": 69,
+      "pares_vendidos": 95,
+      "receita_bruta_itens": 68305,
+      "receita_liquida_itens": "54106.96"
     },
     {
       "tamanho": "43",
-      "pedidos": 35,
-      "pares_vendidos": 51,
-      "receita_bruta_itens": 36669,
-      "receita_liquida_itens": "30030.31"
+      "pedidos": 38,
+      "pares_vendidos": 54,
+      "receita_bruta_itens": 38826,
+      "receita_liquida_itens": "31546.51"
     },
     {
       "tamanho": "39",
-      "pedidos": 29,
-      "pares_vendidos": 37,
-      "receita_bruta_itens": 26603,
-      "receita_liquida_itens": "19678.92"
+      "pedidos": 30,
+      "pares_vendidos": 38,
+      "receita_bruta_itens": 27322,
+      "receita_liquida_itens": "20326.02"
     },
     {
       "tamanho": "44",
@@ -699,10 +709,10 @@
     },
     {
       "tamanho": "38",
-      "pedidos": 11,
-      "pares_vendidos": 11,
-      "receita_bruta_itens": 7909,
-      "receita_liquida_itens": "5902.99"
+      "pedidos": 12,
+      "pares_vendidos": 12,
+      "receita_bruta_itens": 8628,
+      "receita_liquida_itens": "6621.99"
     },
     {
       "tamanho": "46",
