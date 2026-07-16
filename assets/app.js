@@ -1468,6 +1468,15 @@
       }
     ];
 
+    const shareQuality = state.data.manifest?.data_quality?.share_trajetoria;
+    if (shareQuality) {
+      rows.unshift({
+        title: 'Alerta share_trajetoria',
+        copy: String(shareQuality),
+        badge: badge('neg', 'Share falhou')
+      });
+    }
+
     if (!(state.data.lancamentos_produtos_dia || []).length) {
       rows.unshift({
         title: 'Alerta técnico',

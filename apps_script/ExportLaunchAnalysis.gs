@@ -23,6 +23,11 @@ const CONFIG = {
   timeZone: 'America/Sao_Paulo'
 };
 
+const SHARE_TRAJETORIA_REQUIRED_TABLES = [
+  'datas_sazonais',
+  'eventos_comerciais_produto'
+];
+
 function exportarTudo() {
   validarGithubConfig_();
   const modelos = carregarModelos_();
@@ -59,6 +64,11 @@ function exportarTudo() {
 
   const estoqueStatus = exportarEstoqueSeDisponivel_(exportaveis);
   const shareStatus = exportarShareTrajetoriaSeDisponivel_(exportaveis);
+  if (shareStatus.status === 'failed') {
+    const resumoErroShare = shareStatus.error_summary || shareStatus.error || 'erro desconhecido';
+    dataQuality.share_trajetoria = `failed: ${resumoErroShare}`;
+    warnings.push(`share_trajetoria falhou: ${resumoErroShare}`);
+  }
   const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos);
   const crmStatus = exportarCrmSeConfigurado_();
 
@@ -139,6 +149,51 @@ function auditarVendasMonochrome() {
 
 function diagnosticarRs8Monochrome() {
   return diagnosticarMonochrome();
+}
+
+function diagnosticarShareTrajetoria() {
+  const tabelasAntes = diagnosticarDependenciasShareTrajetoria_();
+  Logger.log(`diagnosticarShareTrajetoria: INFORMATION_SCHEMA antes=${JSON.stringify(tabelasAntes)}`);
+
+  const dependencias = garantirDependenciasShareTrajetoria_(tabelasAntes);
+  Logger.log(`diagnosticarShareTrajetoria: dependencias=${JSON.stringify(dependencias)}`);
+
+  const tabelasDepois = diagnosticarDependenciasShareTrajetoria_();
+  Logger.log(`diagnosticarShareTrajetoria: INFORMATION_SCHEMA depois=${JSON.stringify(tabelasDepois)}`);
+
+  validarGithubConfig_();
+  const modelos = carregarModelos_();
+  const exportaveis = modelos.filter(ehModeloExportavel_);
+  if (!exportaveis.length) {
+    throw new Error('diagnosticarShareTrajetoria: nenhum modelo exportavel com status historico/ativo e day_zero_base valido.');
+  }
+
+  try {
+    const share = consultarShareTrajetoria_(exportaveis);
+    const mono = share.payload.modelos.rs8_monochrome || {};
+    const primeiroPonto = (mono.pontos || [])[0] || {};
+    const ultimoPonto = (mono.pontos || [])[Math.max(0, (mono.pontos || []).length - 1)] || {};
+    const resumo = {
+      status: 'ok',
+      rows: share.rows,
+      modelos: Object.keys(share.payload.modelos || {}),
+      rs8_monochrome: {
+        receita_empresa_pre_periodo: mono.receita_empresa_pre_periodo,
+        receita_empresa_pos_periodo: mono.receita_empresa_pos_periodo,
+        variacao_receita_empresa_pct: mono.variacao_receita_empresa_pct,
+        dias_pos_disponiveis: mono.dias_pos_disponiveis,
+        primeiro_ponto_evento_comercial_tipo: primeiroPonto.evento_comercial_tipo,
+        primeiro_ponto_evento_comercial_descricao: primeiroPonto.evento_comercial_descricao,
+        ultimo_ponto_tem_receita_empresa: Object.prototype.hasOwnProperty.call(ultimoPonto, 'receita_empresa')
+      }
+    };
+    Logger.log(`diagnosticarShareTrajetoria: consultarShareTrajetoria_ OK=${JSON.stringify(resumo)}`);
+    return resumo;
+  } catch (error) {
+    const resumoErro = resumirErro_(error);
+    Logger.log(`diagnosticarShareTrajetoria: ERRO REAL consultarShareTrajetoria_=${resumoErro}`);
+    throw new Error(`diagnosticarShareTrajetoria falhou: ${resumoErro}`);
+  }
 }
 
 function diagnosticarMonochrome() {
@@ -1462,6 +1517,54 @@ WHEN NOT MATCHED THEN
   return { status: 'synced', rows: rows.length };
 }
 
+function consultarTabelasMartShared_(tableNames) {
+  const names = (tableNames || [])
+    .map(name => String(name || '').trim())
+    .filter(Boolean);
+  if (!names.length) return [];
+
+  const namesSql = names.map(name => `'${sql_(name)}'`).join(', ');
+  const query = `
+SELECT table_name
+FROM \`${CONFIG.bqProjectId}.mart_shared.INFORMATION_SCHEMA.TABLES\`
+WHERE table_name IN (${namesSql})
+ORDER BY table_name`;
+
+  return runBq_(query).map(row => String(row.table_name || '').trim()).filter(Boolean);
+}
+
+function diagnosticarDependenciasShareTrajetoria_() {
+  const existentes = consultarTabelasMartShared_(SHARE_TRAJETORIA_REQUIRED_TABLES);
+  const existentesSet = {};
+  existentes.forEach(name => existentesSet[name] = true);
+  const ausentes = SHARE_TRAJETORIA_REQUIRED_TABLES.filter(name => !existentesSet[name]);
+  const diagnostico = { existentes, ausentes };
+  Logger.log(`share_trajetoria dependencias INFORMATION_SCHEMA=${JSON.stringify(diagnostico)}`);
+  return diagnostico;
+}
+
+function garantirDependenciasShareTrajetoria_(diagnosticoInicial) {
+  const antes = diagnosticoInicial || diagnosticarDependenciasShareTrajetoria_();
+  const acoes = [];
+
+  if ((antes.ausentes || []).includes('datas_sazonais')) {
+    sincronizarDatasSazonaisBigQuery_();
+    acoes.push('created_or_synced:datas_sazonais');
+  }
+
+  if ((antes.ausentes || []).includes('eventos_comerciais_produto')) {
+    garantirEventosComerciaisProdutoBigQuery_();
+    acoes.push('created:eventos_comerciais_produto');
+  }
+
+  const depois = diagnosticarDependenciasShareTrajetoria_();
+  if ((depois.ausentes || []).length) {
+    throw new Error(`Dependencias share_trajetoria ainda ausentes apos tentativa de criacao: ${depois.ausentes.join(', ')}`);
+  }
+
+  return { status: 'ready', antes, depois, acoes };
+}
+
 function sincronizarDatasSazonaisSeDisponivel_() {
   try {
     return sincronizarDatasSazonaisBigQuery_();
@@ -1540,20 +1643,20 @@ function lerJsonGitHub_(path) {
   const repoPath = githubDataPath_(path);
   const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${repoPath}`;
   const url = `${api}?ref=${encodeURIComponent(CONFIG.githubBranch)}`;
-  let response = UrlFetchApp.fetch(url, {
+  let response = urlFetchComRetry_(url, {
     method: 'get',
     headers: githubHeaders_(token),
     muteHttpExceptions: true
-  });
+  }, `GitHub GET ${repoPath}`);
 
   let code = response.getResponseCode();
   let body = response.getContentText();
   if ([401, 403, 404].includes(code)) {
-    const publicResponse = UrlFetchApp.fetch(url, {
+    const publicResponse = urlFetchComRetry_(url, {
       method: 'get',
       headers: githubHeaders_(''),
       muteHttpExceptions: true
-    });
+    }, `GitHub GET publico ${repoPath}`);
     if (publicResponse.getResponseCode() === 200) {
       Logger.log(`Aviso GitHub: leitura autenticada falhou com HTTP ${code}, mas leitura publica funcionou. O GITHUB_TOKEN provavelmente nao tem acesso/Contents ao repositorio configurado. ${githubRequestContext_(repoPath)}`);
       response = publicResponse;
@@ -1623,13 +1726,16 @@ function exportarShareTrajetoriaSeDisponivel_(modelos) {
   }
 
   try {
+    const dependencias = garantirDependenciasShareTrajetoria_();
+    Logger.log(`share_trajetoria dependencias prontas: ${JSON.stringify(dependencias)}`);
     const share = consultarShareTrajetoria_(modelos);
     escreverJsonGitHub_('share_trajetoria.json', share.payload);
     Logger.log(`share_trajetoria.json exportado com ${share.rows} pontos para ${Object.keys(share.payload.modelos).length} modelos.`);
-    return { status: 'exported', rows: share.rows };
+    return { status: 'exported', rows: share.rows, dependencies: dependencias };
   } catch (error) {
-    Logger.log(`share_trajetoria.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
-    return { status: 'skipped', rows: 'skipped', error: error.message };
+    const resumoErro = resumirErro_(error);
+    Logger.log(`share_trajetoria.json nao exportado; mantendo arquivo atual. Erro: ${resumoErro}`);
+    return { status: 'failed', rows: 'failed', error: error.message, error_summary: resumoErro };
   }
 }
 
@@ -2056,6 +2162,13 @@ function roasOrNull_(value) {
   return parsed;
 }
 
+function resumirErro_(error) {
+  const message = String(error && error.message ? error.message : error || 'erro desconhecido')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return message.length > 500 ? `${message.slice(0, 497)}...` : message;
+}
+
 function termosRegex_(model) {
   return String(model.termos_busca || model.modelo || '')
     .split('|')
@@ -2077,11 +2190,11 @@ function escreverJsonGitHub_(fileName, payload) {
   const token = getProp_('GITHUB_TOKEN', '');
   const path = githubDataPath_(fileName);
   const api = `https://api.github.com/repos/${CONFIG.githubRepo}/contents/${path}`;
-  const current = UrlFetchApp.fetch(`${api}?ref=${CONFIG.githubBranch}`, {
+  const current = urlFetchComRetry_(`${api}?ref=${CONFIG.githubBranch}`, {
     method: 'get',
     headers: githubHeaders_(token),
     muteHttpExceptions: true
-  });
+  }, `GitHub GET ${path}`);
   const currentJson = current.getResponseCode() === 200 ? JSON.parse(current.getContentText()) : null;
   if (current.getResponseCode() !== 200) {
     Logger.log(`Aviso GitHub: nao consegui obter SHA atual de ${path}. HTTP ${current.getResponseCode()}: ${current.getContentText().slice(0, 300)}. ${githubRequestContext_(path)}`);
@@ -2093,17 +2206,44 @@ function escreverJsonGitHub_(fileName, payload) {
     content: Utilities.base64Encode(JSON.stringify(payload, null, 2), Utilities.Charset.UTF_8),
     sha: currentJson && currentJson.sha ? currentJson.sha : undefined
   };
-  const response = UrlFetchApp.fetch(api, {
+  const response = urlFetchComRetry_(api, {
     method: 'put',
     contentType: 'application/json',
     headers: githubHeaders_(token),
     payload: JSON.stringify(requestBody),
     muteHttpExceptions: true
-  });
+  }, `GitHub PUT ${path}`);
   const code = response.getResponseCode();
   if (code < 200 || code >= 300) {
     throw new Error(`Nao consegui escrever ${path} no GitHub. HTTP ${code}: ${response.getContentText().slice(0, 400)}. Contexto: ${githubRequestContext_(path)}. Verifique se o GITHUB_TOKEN tem acesso ao repo e permissao Contents: Read and write.`);
   }
+}
+
+function urlFetchComRetry_(url, options, context) {
+  const maxAttempts = 4;
+  const retryStatus = { 408: true, 429: true, 500: true, 502: true, 503: true, 504: true };
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = UrlFetchApp.fetch(url, options);
+      const code = response.getResponseCode();
+      if (!retryStatus[code] || attempt === maxAttempts) return response;
+
+      lastError = new Error(`HTTP ${code}: ${response.getContentText().slice(0, 250)}`);
+      Logger.log(`${context}: tentativa ${attempt}/${maxAttempts} retornou ${resumirErro_(lastError)}; nova tentativa em instantes.`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts) {
+        throw new Error(`${context} falhou apos ${maxAttempts} tentativas: ${resumirErro_(error)}`);
+      }
+      Logger.log(`${context}: tentativa ${attempt}/${maxAttempts} falhou com ${resumirErro_(error)}; nova tentativa em instantes.`);
+    }
+
+    Utilities.sleep(Math.min(30000, Math.pow(2, attempt - 1) * 1000));
+  }
+
+  throw lastError || new Error(`${context} falhou sem erro detalhado.`);
 }
 
 function normalizeCell_(value) {
