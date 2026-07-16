@@ -1880,7 +1880,7 @@ base AS (
 janela_pos AS (
   SELECT
     modelo_id,
-    ANY_VALUE(data_lancamento) AS data_lancamento,
+    ANY_VALUE(data_lancamento) AS data_lancamento_janela,
     COUNT(DISTINCT data_calendario) AS dias_pos_disponiveis,
     SUM(receita_empresa) AS receita_empresa_pos_periodo
   FROM base
@@ -1892,8 +1892,8 @@ janela_pre AS (
     SUM(re.receita_empresa) AS receita_empresa_pre_periodo
   FROM janela_pos p
   JOIN receita_empresa_dia re
-    ON re.data BETWEEN DATE_SUB(p.data_lancamento, INTERVAL p.dias_pos_disponiveis DAY)
-                   AND DATE_SUB(p.data_lancamento, INTERVAL 1 DAY)
+    ON re.data BETWEEN DATE_SUB(p.data_lancamento_janela, INTERVAL p.dias_pos_disponiveis DAY)
+                   AND DATE_SUB(p.data_lancamento_janela, INTERVAL 1 DAY)
   GROUP BY p.modelo_id
 ), sazonalidade_d0 AS (
   SELECT
@@ -1907,7 +1907,7 @@ janela_pre AS (
 SELECT
   modelo_id,
   ANY_VALUE(linha) AS linha,
-  CAST(ANY_VALUE(data_lancamento) AS STRING) AS data_lancamento,
+  CAST(ANY_VALUE(b.data_lancamento) AS STRING) AS data_lancamento,
   MAX(dias_desde_lancamento) AS dias_disponiveis,
   90 AS janela_alvo_dias,
   ARRAY_AGG(share_acumulado_ate_o_dia IGNORE NULLS ORDER BY dias_desde_lancamento DESC LIMIT 1)[SAFE_OFFSET(0)] AS share_acumulado_atual,
