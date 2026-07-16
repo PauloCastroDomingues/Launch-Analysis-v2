@@ -15,7 +15,6 @@
   --border: rgba(255,255,255,0.07);
   --border-2: rgba(255,255,255,0.12);
   --shadow: 0 4px 24px rgba(0,0,0,0.40);
-  --font-voice: "Source Serif 4", Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -406,6 +405,12 @@ body.share-drawer-open .share-drawer {
 }
 .ti-chart-line::before {
   content: "↗";
+  color: var(--orange);
+  font-weight: 900;
+}
+
+.ti-presentation::before {
+  content: "▦";
   color: var(--orange);
   font-weight: 900;
 }
@@ -1756,19 +1761,18 @@ body.stock-detail-open .stock-detail-drawer {
   position: fixed;
   inset: 0;
   z-index: 120;
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  display: block;
   background: var(--bg-page);
   color: var(--txt-primary);
   overflow: hidden;
 }
 .presentation-close {
   position: fixed;
-  top: 24px;
-  right: 28px;
+  top: 16px;
+  right: 18px;
   z-index: 2;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
@@ -1788,185 +1792,236 @@ body.stock-detail-open .stock-detail-drawer {
   min-height: 0;
   height: 100%;
   outline: none;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
-.presentation-page.is-entering {
-  opacity: 0;
-  transform: translateY(4px);
-}
-.presentation-slide {
-  height: 100%;
+.compact-overview {
+  height: 100vh;
   min-height: 0;
-  display: grid;
-  align-content: center;
-  gap: clamp(18px, 3vh, 34px);
-  padding: clamp(28px, 5vw, 72px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.1vh, 14px);
+  padding: clamp(16px, 2vw, 28px);
   overflow: hidden;
 }
-.presentation-kicker {
-  color: var(--orange);
-  font-size: clamp(.72rem, 1.2vw, .86rem);
-  font-weight: 900;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-.presentation-title {
-  max-width: min(1120px, 92vw);
-  margin: 0;
-  font-family: var(--font-voice);
-  font-size: clamp(2.45rem, 7.5vw, 7rem);
-  font-weight: 700;
-  line-height: .92;
-  letter-spacing: 0;
-}
-.presentation-subtitle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  color: var(--txt-secondary);
-  font-size: clamp(.86rem, 1.5vw, 1.05rem);
-}
-.presentation-subtitle strong {
-  color: var(--txt-primary);
-  font-weight: 800;
-}
-.presentation-stat-grid {
+.compact-row {
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  max-width: 1120px;
+  gap: clamp(8px, 1vw, 14px);
 }
-.presentation-stat {
-  min-width: 0;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
+.compact-row--kpis {
+  flex: .64 1 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
-.presentation-stat-label {
-  color: var(--txt-muted);
-  font-size: .7rem;
-  font-weight: 900;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+.compact-row--middle {
+  flex: 2.2 1 0;
+  grid-template-columns: 1.3fr .9fr 1.4fr;
 }
-.presentation-stat-value {
-  margin-top: 8px;
-  font-size: clamp(1.35rem, 3vw, 2.6rem);
-  font-weight: 900;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
+.compact-row--bottom {
+  flex: 1.35 1 0;
+  grid-template-columns: 1fr 1fr;
 }
-.presentation-stat-sub {
-  margin-top: 8px;
-  color: var(--txt-secondary);
-  font-size: .78rem;
-}
-.presentation-stat--accent .presentation-stat-value {
-  color: var(--orange);
-}
-.presentation-stat--positive .presentation-stat-value {
-  color: var(--positive);
-}
-.presentation-stat--negative .presentation-stat-value {
-  color: var(--negative);
-}
-.presentation-stat--neutral .presentation-stat-value {
-  color: var(--txt-secondary);
-}
-.presentation-chart-shell {
+.compact-kpi,
+.compact-panel {
   position: relative;
-  width: min(1040px, 86vw);
-  height: clamp(86px, 15vh, 150px);
-  pointer-events: none;
-}
-.presentation-chart-shell canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-.presentation-summary {
-  align-content: center;
-}
-.presentation-summary-head {
-  display: grid;
-  gap: 12px;
-  max-width: 1060px;
-}
-.presentation-summary-title {
-  margin: 0;
-  font-family: var(--font-voice);
-  font-size: clamp(2.4rem, 6vw, 5.8rem);
-  line-height: .95;
-  letter-spacing: 0;
-}
-.presentation-summary-copy {
-  max-width: 720px;
-  color: var(--txt-secondary);
-  font-size: clamp(.9rem, 1.5vw, 1.08rem);
-}
-.presentation-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-.presentation-summary-card {
   min-width: 0;
+  min-height: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg-card);
-  padding: clamp(14px, 2vw, 20px);
+  overflow: hidden;
 }
-.presentation-summary-card h2 {
-  margin: 0 0 12px;
-  font-size: clamp(1rem, 1.6vw, 1.34rem);
-  line-height: 1.12;
-}
-.presentation-summary-metrics {
-  display: grid;
-  gap: 8px;
-  color: var(--txt-secondary);
-  font-size: .8rem;
-}
-.presentation-summary-metrics strong {
-  display: block;
-  color: var(--txt-primary);
-  font-size: 1rem;
-}
-.presentation-empty {
-  color: var(--txt-secondary);
-  font-size: 1rem;
-}
-.presentation-indicators {
+.compact-kpi {
   display: flex;
-  justify-content: center;
-  gap: 9px;
-  padding: 0 clamp(28px, 5vw, 72px) clamp(22px, 3vw, 36px);
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  padding: clamp(10px, 1.2vw, 16px);
 }
-.presentation-indicator {
-  width: clamp(32px, 5vw, 58px);
-  height: 18px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-  position: relative;
+.compact-panel {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1vh, 12px);
+  padding: clamp(10px, 1.15vw, 16px);
 }
-.presentation-indicator::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 8px;
-  height: 2px;
-  background: rgba(255,255,255,0.15);
+.compact-card-head,
+.compact-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
 }
-.presentation-indicator.is-active::before {
+.compact-card-head span,
+.compact-panel-head h2 {
+  min-width: 0;
+}
+.compact-card-head span {
+  color: var(--txt-muted);
+  font-size: clamp(.58rem, .85vw, .7rem);
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.compact-kpi strong {
+  color: var(--txt-primary);
+  font-size: clamp(1.15rem, 2.1vw, 2rem);
+  line-height: 1;
+  letter-spacing: 0;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.compact-kpi--accent strong {
+  color: var(--orange);
+}
+.compact-panel-head h2 {
+  margin: 0;
+  font-size: clamp(.78rem, 1.08vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.presentation-help {
+  flex: 0 0 auto;
+}
+.compact-chart {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.compact-chart canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.compact-share-ranking,
+.compact-company-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, .85vh, 10px);
+}
+.compact-share-row {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.compact-share-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--txt-secondary);
+  font-size: clamp(.64rem, .85vw, .78rem);
+}
+.compact-share-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-share-label strong {
+  color: var(--txt-primary);
+  font-size: .88em;
+  white-space: nowrap;
+}
+.compact-share-track {
+  height: clamp(5px, .8vh, 8px);
+  border-radius: 999px;
+  background: var(--bg-card-2);
+  overflow: hidden;
+}
+.compact-share-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
   background: var(--orange);
 }
-.presentation-indicator:focus-visible {
-  outline: 2px solid var(--orange);
-  outline-offset: 4px;
+.compact-company-item {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: clamp(5px, .7vh, 8px);
+}
+.compact-company-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.compact-company-item p {
+  margin: 0;
+  color: var(--txt-secondary);
+  font-size: clamp(.56rem, .74vw, .68rem);
+  line-height: 1.2;
+}
+.compact-company-item p:first-child {
+  color: var(--txt-primary);
+  font-weight: 900;
+}
+.compact-company-values {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--txt-primary);
+  font-size: clamp(.68rem, .88vw, .82rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.compact-company-values span:last-child {
+  white-space: nowrap;
+}
+.compact-company-values--missing {
+  display: block;
+  color: var(--txt-secondary);
+}
+.is-positive {
+  color: var(--positive);
+}
+.is-negative {
+  color: var(--negative);
+}
+.compact-table {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: clamp(.58rem, .78vw, .72rem);
+}
+.compact-table th,
+.compact-table td {
+  padding: clamp(4px, .65vh, 7px) 7px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  text-align: left;
+  line-height: 1.18;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.compact-table th {
+  color: var(--txt-muted);
+  font-size: .82em;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+.compact-table td {
+  color: var(--txt-secondary);
+}
+.compact-table td:first-child {
+  color: var(--txt-primary);
+  font-weight: 800;
+}
+.compact-table tr:last-child td {
+  border-bottom: 0;
+}
+.compact-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.compact-empty {
+  color: var(--txt-secondary);
+  font-size: .82rem;
+}
+.compact-overview--empty {
+  display: grid;
+  place-items: center;
 }
 
 .hide { display: none !important; }
@@ -2025,11 +2080,16 @@ body.stock-detail-open .stock-detail-drawer {
   .insight { grid-template-columns: 1fr; }
   .footer { display: block; }
   .footer-methodology summary { display: block; }
-  .presentation-slide { padding: 26px 20px; align-content: center; }
-  .presentation-close { top: 14px; right: 14px; }
-  .presentation-title { max-width: 100%; font-size: clamp(2.1rem, 12vw, 4.2rem); }
-  .presentation-summary-title { font-size: clamp(2rem, 11vw, 3.6rem); }
-  .presentation-stat-grid, .presentation-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .presentation-chart-shell { width: 100%; height: 84px; }
-  .presentation-indicators { padding-inline: 20px; }
+  .compact-overview { padding: 12px; gap: 8px; }
+  .compact-row { gap: 8px; }
+  .compact-row--kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .compact-row--middle { grid-template-columns: 1.25fr .85fr 1.35fr; }
+  .compact-row--bottom { grid-template-columns: 1fr 1fr; }
+  .compact-kpi, .compact-panel { padding: 9px; }
+  .compact-card-head span { font-size: .56rem; }
+  .compact-kpi strong { font-size: clamp(.9rem, 1.8vw, 1.3rem); }
+  .compact-panel-head h2 { font-size: .72rem; }
+  .compact-company-values { display: grid; gap: 3px; }
+  .compact-company-item p { font-size: .55rem; }
+  .compact-table { font-size: .55rem; }
 }
