@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260715-zindex-fix" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260716-share-drawer-company-context" />
 </head>
 <body>
   <div class="app-shell">
@@ -36,6 +36,11 @@
         <strong>Regra de dados:</strong><br />
         Dado ausente vira “—” na interface e <code>null</code> nos gráficos. Nunca vira zero.
       </div>
+    </aside>
+
+    <aside id="share-drawer" class="sidebar share-drawer" aria-label="Share de representatividade" aria-hidden="true" tabindex="-1" inert>
+      <button id="share-drawer-close" class="nav-drawer-close" type="button" aria-label="Fechar share de representatividade">&times;</button>
+      <div id="share-drawer-content"></div>
     </aside>
 
     <div id="drawer-overlay" class="drawer-overlay" hidden></div>
@@ -98,7 +103,13 @@
             <p class="section-desc">KPIs calculados pelo período escolhido na barra de análise. Total dias usa o acumulado atual ou a melhor janela disponível.</p>
             <div id="selected-dates" class="selected-dates"></div>
           </div>
-          <div id="selected-status"></div>
+          <div class="section-head-actions">
+            <div id="selected-status"></div>
+            <button id="share-drawer-open-top" class="section-action-button" type="button">
+              <span class="ti ti-chart-line" aria-hidden="true"></span>
+              <span>Share representatividade</span>
+            </button>
+          </div>
         </div>
         <div id="launch-state"></div>
       </section>
@@ -364,7 +375,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-  <script src="assets/embedded-data.js?v=20260715-zindex-fix"></script>
-  <script src="assets/app.js?v=20260715-zindex-fix"></script>
+  <script src="assets/embedded-data.js?v=20260716-share-drawer-context"></script>
+  <script src="assets/app.js?v=20260716-share-drawer-company-context"></script>
 </body>
 </html>

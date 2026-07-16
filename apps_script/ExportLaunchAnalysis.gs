@@ -31,6 +31,8 @@ function exportarTudo() {
   Logger.log(`exportarTudo: ${modelos.length} modelos carregados de data/lancamentos_modelos.json; ${exportaveis.length} exportaveis com status historico/ativo e day_zero_base valido.`);
 
   const cadastroStatus = sincronizarCadastroBigQuery_(modelos);
+  const sazonalidadeStatus = sincronizarDatasSazonaisSeDisponivel_();
+  const eventoComercialStatus = garantirEventosComerciaisProdutoSeDisponivel_();
   const produtosDia = exportaveis.length ? consultarProdutosDia_(exportaveis) : [];
   const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(exportaveis);
   const dataQuality = {};
@@ -56,6 +58,7 @@ function exportarTudo() {
   if (auditoriaMonochrome) escreverJsonGitHub_('auditoria_monochrome.json', auditoriaMonochrome);
 
   const estoqueStatus = exportarEstoqueSeDisponivel_(exportaveis);
+  const shareStatus = exportarShareTrajetoriaSeDisponivel_(exportaveis);
   const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos);
   const crmStatus = exportarCrmSeConfigurado_();
 
@@ -68,16 +71,22 @@ function exportarTudo() {
     exported_models: exportaveis.map(m => m.modelo_id),
     row_counts: {
       linha_cadastro: cadastroStatus.rows,
+      datas_sazonais: sazonalidadeStatus.rows,
+      eventos_comerciais_produto: eventoComercialStatus.rows,
       lancamentos_produtos_dia: produtosDia.length,
       auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
       estoque: estoqueStatus.rows,
+      share_trajetoria: shareStatus.rows,
       midia_paga: midiaStatus.rows,
       crm_disparos: crmStatus.rows
     },
     data_quality: dataQuality,
     export_status: {
       cadastro_bigquery: cadastroStatus.status,
+      datas_sazonais: sazonalidadeStatus.status,
+      eventos_comerciais_produto: eventoComercialStatus.status,
       estoque: estoqueStatus.status,
+      share_trajetoria: shareStatus.status,
       midia_paga: midiaStatus.status,
       crm_disparos: crmStatus.status
     },
@@ -88,6 +97,7 @@ function exportarTudo() {
       'midia_paga.json',
       'crm_disparos.json',
       'estoque.json',
+      'share_trajetoria.json',
       'manifest.json'
     ],
     warnings
@@ -902,7 +912,16 @@ classificadas_raw AS (
     ON c.order_sk = v.order_sk
    AND c.line_item_key = v.line_item_key
   WHERE c.line_item_key IS NULL
-    AND REGEXP_CONTAINS(v.match_text_norm, r'(rs8|avant|mono|monochrome)')
+    -- Evita falso positivo de RS8/Avant comum; suspeita aqui e apenas Monochrome fora da regra.
+    AND (
+      STARTS_WITH(v.sku_compact, 'rs8avantmc')
+      OR STARTS_WITH(v.sku_compact, 'rs8avantab')
+      OR STARTS_WITH(v.sku_compact, 'rs8avantct')
+      OR STARTS_WITH(v.sku_compact, 'rs8avantcf')
+      OR STARTS_WITH(v.sku_compact, 'rs8avantmono')
+      OR STARTS_WITH(v.sku_compact, 'rs8mono')
+      OR REGEXP_CONTAINS(v.match_text_norm, r'(mono|monochrome|monocrome)')
+    )
   LIMIT 100
 )
 SELECT TO_JSON_STRING(STRUCT(
@@ -1443,6 +1462,77 @@ WHEN NOT MATCHED THEN
   return { status: 'synced', rows: rows.length };
 }
 
+function sincronizarDatasSazonaisSeDisponivel_() {
+  try {
+    return sincronizarDatasSazonaisBigQuery_();
+  } catch (error) {
+    Logger.log(`mart_shared.datas_sazonais nao sincronizada. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message };
+  }
+}
+
+function sincronizarDatasSazonaisBigQuery_() {
+  const eventos = [
+    { data: '2025-06-12', evento: 'Dia dos Namorados' },
+    { data: '2025-08-10', evento: 'Dia dos Pais' },
+    { data: '2025-11-28', evento: 'Black Friday' },
+    { data: '2025-12-25', evento: 'Natal' },
+    { data: '2026-06-12', evento: 'Dia dos Namorados' },
+    { data: '2026-08-09', evento: 'Dia dos Pais' },
+    { data: '2026-11-27', evento: 'Black Friday' },
+    { data: '2026-12-25', evento: 'Natal' }
+  ];
+
+  const sourceSql = eventos.map(row =>
+    `SELECT DATE('${sql_(row.data)}') AS data, '${sql_(row.evento)}' AS evento`
+  ).join('\nUNION ALL\n');
+
+  const query = `
+CREATE TABLE IF NOT EXISTS \`reise-ssot.mart_shared.datas_sazonais\` (
+  data DATE,
+  evento STRING
+);
+
+MERGE \`reise-ssot.mart_shared.datas_sazonais\` T
+USING (
+  ${sourceSql}
+) S
+ON T.data = S.data AND T.evento = S.evento
+WHEN NOT MATCHED THEN
+  INSERT (data, evento)
+  VALUES (S.data, S.evento);`;
+
+  runBq_(query);
+  Logger.log(`mart_shared.datas_sazonais sincronizada com ${eventos.length} eventos.`);
+  return { status: 'synced', rows: eventos.length };
+}
+
+function garantirEventosComerciaisProdutoSeDisponivel_() {
+  try {
+    return garantirEventosComerciaisProdutoBigQuery_();
+  } catch (error) {
+    Logger.log(`mart_shared.eventos_comerciais_produto nao garantida. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message };
+  }
+}
+
+function garantirEventosComerciaisProdutoBigQuery_() {
+  const query = `
+CREATE TABLE IF NOT EXISTS \`reise-ssot.mart_shared.eventos_comerciais_produto\` (
+  modelo_id STRING,
+  data_inicio DATE,
+  data_fim DATE,
+  tipo STRING,
+  descricao STRING,
+  registrado_por STRING,
+  registrado_em TIMESTAMP
+);`;
+
+  runBq_(query);
+  Logger.log('mart_shared.eventos_comerciais_produto garantida para cadastro manual.');
+  return { status: 'ready', rows: 'manual' };
+}
+
 function lerJsonGitHub_(path) {
   validarGithubConfig_();
   const token = getProp_('GITHUB_TOKEN', '');
@@ -1524,6 +1614,274 @@ function exportarEstoqueSeDisponivel_(modelos) {
     Logger.log(`Estoque nao exportado; mantendo estoque.json atual. Erro: ${error.message}`);
     return { status: 'skipped', rows: 'skipped', error: error.message };
   }
+}
+
+function exportarShareTrajetoriaSeDisponivel_(modelos) {
+  if (!modelos.length) {
+    Logger.log('Sem modelos exportaveis com day_zero_base valido; share_trajetoria nao consultado.');
+    return { status: 'skipped', rows: 'skipped' };
+  }
+
+  try {
+    const share = consultarShareTrajetoria_(modelos);
+    escreverJsonGitHub_('share_trajetoria.json', share.payload);
+    Logger.log(`share_trajetoria.json exportado com ${share.rows} pontos para ${Object.keys(share.payload.modelos).length} modelos.`);
+    return { status: 'exported', rows: share.rows };
+  } catch (error) {
+    Logger.log(`share_trajetoria.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message };
+  }
+}
+
+function consultarShareTrajetoria_(modelos) {
+  const modelosSql = modelos.map(m => {
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    const d0 = sql_(m.day_zero_base || m.data_lancamento);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, '${sql_(m.linha || m.modelo)}' AS linha, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+  }).join('\nUNION ALL\n');
+
+  const query = `
+WITH modelos AS (
+  ${modelosSql}
+),
+${modelosNormCteSql_()},
+itens_validos AS (
+  SELECT
+    i.order_partition_date_brt AS data,
+    CAST(i.order_sk AS STRING) AS order_sk,
+    COALESCE(
+      NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), ''),
+      TO_JSON_STRING(STRUCT(
+        CAST(i.order_sk AS STRING) AS order_sk,
+        CAST(i.sku AS STRING) AS sku,
+        CAST(i.item_name AS STRING) AS item_name,
+        SAFE_CAST(i.quantity AS INT64) AS quantity,
+        SAFE_CAST(i.line_gross_amount AS NUMERIC) AS line_gross_amount,
+        SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS line_discount_amount
+      ))
+    ) AS line_item_key,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
+    SAFE_CAST(i.quantity AS INT64) AS pares,
+    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita_bruta,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  WHERE i.is_valid_order = TRUE
+    AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
+    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+    AND SAFE_CAST(i.line_gross_amount AS NUMERIC) > 0
+),
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })},
+receita_produto_dia AS (
+  SELECT
+    modelo_id,
+    data,
+    SUM(receita_bruta) AS receita_produto
+  FROM itens_classificados_v1
+  WHERE modelo_id IS NOT NULL
+  GROUP BY 1, 2
+),
+receita_empresa_dia AS (
+  SELECT
+    i.order_partition_date_brt AS data,
+    SUM(SAFE_CAST(i.line_gross_amount AS NUMERIC)) AS receita_empresa,
+    COUNT(DISTINCT CAST(i.order_sk AS STRING)) AS pedidos_empresa,
+    'fct_order_item_valid_orders' AS regra_receita_empresa
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  WHERE i.is_valid_order = TRUE
+    AND i.order_partition_date_brt >= DATE_SUB((SELECT MIN(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+    AND SAFE_CAST(i.line_gross_amount AS NUMERIC) > 0
+  GROUP BY 1
+),
+datas_modelo AS (
+  SELECT
+    m.modelo_id,
+    COALESCE(NULLIF(m.linha, ''), m.modelo, m.modelo_id) AS linha,
+    m.d0 AS data_lancamento,
+    day AS dias_desde_lancamento,
+    DATE_ADD(m.d0, INTERVAL day DAY) AS data_calendario
+  FROM modelos_norm m,
+  UNNEST(GENERATE_ARRAY(0, 90)) AS day
+  WHERE DATE_ADD(m.d0, INTERVAL day DAY) < CURRENT_DATE('America/Sao_Paulo')
+),
+eventos_comerciais_cadastro AS (
+  SELECT
+    modelo_id,
+    COUNT(*) AS eventos_comerciais_cadastrados
+  FROM \`reise-ssot.mart_shared.eventos_comerciais_produto\`
+  WHERE modelo_id IN (SELECT modelo_id FROM modelos_norm)
+  GROUP BY modelo_id
+),
+eventos_comerciais_ponto AS (
+  SELECT
+    d.modelo_id,
+    d.data_calendario,
+    ARRAY_AGG(STRUCT(
+      e.tipo AS tipo,
+      e.descricao AS descricao
+    ) ORDER BY e.data_inicio, e.tipo LIMIT 1)[SAFE_OFFSET(0)] AS evento
+  FROM datas_modelo d
+  JOIN \`reise-ssot.mart_shared.eventos_comerciais_produto\` e
+    ON e.modelo_id = d.modelo_id
+   AND d.data_calendario BETWEEN e.data_inicio AND COALESCE(e.data_fim, e.data_inicio)
+  GROUP BY d.modelo_id, d.data_calendario
+),
+base AS (
+  SELECT
+    d.modelo_id,
+    d.linha,
+    d.data_lancamento,
+    d.dias_desde_lancamento,
+    d.data_calendario,
+    COALESCE(rp.receita_produto, 0) AS receita_produto,
+    re.receita_empresa,
+    re.pedidos_empresa,
+    re.regra_receita_empresa,
+    SAFE_DIVIDE(COALESCE(rp.receita_produto, 0), re.receita_empresa) AS share_do_dia,
+    SAFE_DIVIDE(
+      SUM(COALESCE(rp.receita_produto, 0)) OVER (
+        PARTITION BY d.modelo_id
+        ORDER BY d.dias_desde_lancamento
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      ),
+      SUM(re.receita_empresa) OVER (
+        PARTITION BY d.modelo_id
+        ORDER BY d.dias_desde_lancamento
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      )
+    ) AS share_acumulado_ate_o_dia,
+    s.evento AS evento_sazonal,
+    ec.evento.tipo AS evento_comercial_tipo,
+    ec.evento.descricao AS evento_comercial_descricao
+  FROM datas_modelo d
+  JOIN receita_empresa_dia re
+    ON re.data = d.data_calendario
+  LEFT JOIN receita_produto_dia rp
+    ON rp.modelo_id = d.modelo_id
+   AND rp.data = d.data_calendario
+  LEFT JOIN \`reise-ssot.mart_shared.datas_sazonais\` s
+    ON s.data = d.data_calendario
+  LEFT JOIN eventos_comerciais_ponto ec
+    ON ec.modelo_id = d.modelo_id
+   AND ec.data_calendario = d.data_calendario
+),
+janela_pos AS (
+  SELECT
+    modelo_id,
+    ANY_VALUE(data_lancamento) AS data_lancamento,
+    COUNT(DISTINCT data_calendario) AS dias_pos_disponiveis,
+    SUM(receita_empresa) AS receita_empresa_pos_periodo
+  FROM base
+  GROUP BY modelo_id
+),
+janela_pre AS (
+  SELECT
+    p.modelo_id,
+    SUM(re.receita_empresa) AS receita_empresa_pre_periodo
+  FROM janela_pos p
+  JOIN receita_empresa_dia re
+    ON re.data BETWEEN DATE_SUB(p.data_lancamento, INTERVAL p.dias_pos_disponiveis DAY)
+                   AND DATE_SUB(p.data_lancamento, INTERVAL 1 DAY)
+  GROUP BY p.modelo_id
+), sazonalidade_d0 AS (
+  SELECT
+    b.modelo_id,
+    COUNTIF(s.data = b.data_lancamento) > 0 AS d0_coincide_com_sazonalidade
+  FROM (SELECT DISTINCT modelo_id, data_lancamento FROM base) b
+  LEFT JOIN \`reise-ssot.mart_shared.datas_sazonais\` s
+    ON s.data = b.data_lancamento
+  GROUP BY b.modelo_id
+)
+SELECT
+  modelo_id,
+  ANY_VALUE(linha) AS linha,
+  CAST(ANY_VALUE(data_lancamento) AS STRING) AS data_lancamento,
+  MAX(dias_desde_lancamento) AS dias_disponiveis,
+  90 AS janela_alvo_dias,
+  ARRAY_AGG(share_acumulado_ate_o_dia IGNORE NULLS ORDER BY dias_desde_lancamento DESC LIMIT 1)[SAFE_OFFSET(0)] AS share_acumulado_atual,
+  SUM(receita_produto) AS receita_lancamento_periodo,
+  SAFE_DIVIDE(SUM(receita_empresa), SUM(pedidos_empresa)) AS ticket_medio_empresa_periodo,
+  CAST(MAX(data_calendario) AS STRING) AS dado_ate,
+  ANY_VALUE(jp.dias_pos_disponiveis) AS dias_pos_disponiveis,
+  ANY_VALUE(jpre.receita_empresa_pre_periodo) AS receita_empresa_pre_periodo,
+  ANY_VALUE(jp.receita_empresa_pos_periodo) AS receita_empresa_pos_periodo,
+  SAFE_DIVIDE(
+    ANY_VALUE(jp.receita_empresa_pos_periodo) - ANY_VALUE(jpre.receita_empresa_pre_periodo),
+    ANY_VALUE(jpre.receita_empresa_pre_periodo)
+  ) AS variacao_receita_empresa_pct,
+  IFNULL(ANY_VALUE(ecm.eventos_comerciais_cadastrados), 0) AS eventos_comerciais_cadastrados,
+  IFNULL(ANY_VALUE(s.d0_coincide_com_sazonalidade), FALSE) AS d0_coincide_com_sazonalidade,
+  TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    dias_desde_lancamento,
+    CAST(data_calendario AS STRING) AS data_calendario,
+    receita_empresa,
+    pedidos_empresa,
+    share_do_dia,
+    share_acumulado_ate_o_dia,
+    regra_receita_empresa,
+    evento_sazonal,
+    evento_comercial_tipo,
+    evento_comercial_descricao
+  ) ORDER BY dias_desde_lancamento)) AS pontos_json
+FROM base b
+LEFT JOIN sazonalidade_d0 s USING (modelo_id)
+LEFT JOIN janela_pos jp USING (modelo_id)
+LEFT JOIN janela_pre jpre USING (modelo_id)
+LEFT JOIN eventos_comerciais_cadastro ecm USING (modelo_id)
+GROUP BY modelo_id
+ORDER BY modelo_id`;
+
+  const rows = runBq_(query);
+  const generatedAt = Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+  const payload = {
+    generated_at: generatedAt,
+    modelos: {}
+  };
+  let pointCount = 0;
+
+  rows.forEach(row => {
+    const pontos = JSON.parse(row.pontos_json || '[]').map(point => ({
+      dias_desde_lancamento: Number(point.dias_desde_lancamento),
+      data_calendario: point.data_calendario || null,
+      receita_empresa: numberOrNull_(point.receita_empresa),
+      pedidos_empresa: numberOrNull_(point.pedidos_empresa),
+      share_do_dia: numberOrNull_(point.share_do_dia),
+      share_acumulado_ate_o_dia: numberOrNull_(point.share_acumulado_ate_o_dia),
+      regra_receita_empresa: point.regra_receita_empresa || null,
+      evento_sazonal: point.evento_sazonal || null,
+      evento_comercial_tipo: point.evento_comercial_tipo || null,
+      evento_comercial_descricao: point.evento_comercial_descricao || null
+    }));
+    const diasDisponiveis = Number(row.dias_disponiveis || 0);
+    const janelaAlvoDias = Number(row.janela_alvo_dias || 90);
+    payload.modelos[row.modelo_id] = {
+      linha: row.linha || row.modelo_id,
+      data_lancamento: row.data_lancamento || null,
+      janela_completa: diasDisponiveis >= janelaAlvoDias,
+      dias_disponiveis: diasDisponiveis,
+      janela_alvo_dias: janelaAlvoDias,
+      share_acumulado_atual: numberOrNull_(row.share_acumulado_atual),
+      receita_lancamento_periodo: numberOrNull_(row.receita_lancamento_periodo),
+      ticket_medio_empresa_periodo: numberOrNull_(row.ticket_medio_empresa_periodo),
+      dado_ate: row.dado_ate || null,
+      dias_pos_disponiveis: numberOrNull_(row.dias_pos_disponiveis),
+      receita_empresa_pre_periodo: numberOrNull_(row.receita_empresa_pre_periodo),
+      receita_empresa_pos_periodo: numberOrNull_(row.receita_empresa_pos_periodo),
+      variacao_receita_empresa_pct: numberOrNull_(row.variacao_receita_empresa_pct),
+      eventos_comerciais_cadastrados: Number(row.eventos_comerciais_cadastrados || 0),
+      d0_coincide_com_sazonalidade: booleanOrFalse_(row.d0_coincide_com_sazonalidade),
+      pontos
+    };
+    pointCount += pontos.length;
+  });
+
+  return { payload, rows: pointCount };
 }
 
 function exportarMidiaPagaSeConfigurada_(modelos) {
@@ -1680,6 +2038,11 @@ function numberOrNull_(value) {
     : cleaned.replace(/,/g, '');
   const parsed = Number(normalized);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function booleanOrFalse_(value) {
+  if (value === true || value === false) return value;
+  return String(value || '').trim().toLowerCase() === 'true';
 }
 
 function roasOrNull_(value) {

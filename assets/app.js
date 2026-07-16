@@ -7,9 +7,10 @@
     'crm_disparos',
     'estoque',
     'calendario_br',
+    'share_trajetoria',
     'auditoria_monochrome'
   ];
-  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_produtos_dia', 'auditoria_monochrome']);
+  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_produtos_dia', 'share_trajetoria', 'auditoria_monochrome']);
 
   const CORES_MODELO = {
     gt: { line: '#F07800', fill: 'rgba(240,120,0,0.12)' },
@@ -67,11 +68,13 @@
     stockSort: 'coverage-asc',
     stockPageSize: '10',
     snapshotClock: null,
-    charts: {}
+    charts: {},
+    shareChart: null
   };
 
   const $ = (id) => document.getElementById(id);
   let stockDrawerReturnFocus = null;
+  let shareDrawerReturnFocus = null;
 
   const fmtBRL = (value, compact = false) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -97,6 +100,13 @@
     if (!iso) return '—';
     const [y, m, d] = iso.split('-').map(Number);
     return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(y, m - 1, d));
+  };
+
+  const fmtDateSlash = (iso) => {
+    if (!iso) return '-';
+    const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number);
+    if ([y, m, d].some(Number.isNaN)) return '-';
+    return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
   };
 
   const toDate = (iso) => {
@@ -199,6 +209,7 @@
 
   const emptyDataFor = (name) => {
     if (name === 'manifest') return {};
+    if (name === 'share_trajetoria') return null;
     if (name === 'auditoria_monochrome') return null;
     return [];
   };
@@ -1096,6 +1107,34 @@
     return state.charts[id];
   }
 
+  function updateMainDrawerOverlay() {
+    const overlay = $('drawer-overlay');
+    if (!overlay) return;
+    overlay.hidden = !(document.body.classList.contains('drawer-open') || document.body.classList.contains('share-drawer-open'));
+  }
+
+  function setNavDrawerOpen(open) {
+    const drawer = $('nav-drawer');
+    const overlay = $('drawer-overlay');
+    const toggle = $('nav-drawer-toggle');
+    const close = $('nav-drawer-close');
+    if (!drawer || !overlay || !toggle || !close) return;
+
+    if (open) closeShareDrawer(false);
+    document.body.classList.toggle('drawer-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    drawer.setAttribute('aria-hidden', String(!open));
+    if (open) drawer.removeAttribute('inert');
+    else drawer.setAttribute('inert', '');
+    updateMainDrawerOverlay();
+    if (open) drawer.focus({ preventScroll: true });
+  }
+
+  function closeMainDrawers() {
+    setNavDrawerOpen(false);
+    closeShareDrawer();
+  }
+
   function configureDrawer() {
     const drawer = $('nav-drawer');
     const overlay = $('drawer-overlay');
@@ -1103,25 +1142,52 @@
     const close = $('nav-drawer-close');
     if (!drawer || !overlay || !toggle || !close) return;
 
-    const setOpen = (open) => {
-      document.body.classList.toggle('drawer-open', open);
-      overlay.hidden = !open;
-      toggle.setAttribute('aria-expanded', String(open));
-      drawer.setAttribute('aria-hidden', String(!open));
-      if (open) drawer.removeAttribute('inert');
-      else drawer.setAttribute('inert', '');
-      if (open) drawer.focus({ preventScroll: true });
-    };
-
-    toggle.addEventListener('click', () => setOpen(!document.body.classList.contains('drawer-open')));
-    close.addEventListener('click', () => setOpen(false));
-    overlay.addEventListener('click', () => setOpen(false));
+    toggle.addEventListener('click', () => setNavDrawerOpen(!document.body.classList.contains('drawer-open')));
+    close.addEventListener('click', () => setNavDrawerOpen(false));
+    overlay.addEventListener('click', closeMainDrawers);
     drawer.querySelectorAll('.nav-list a').forEach((link) => {
-      link.addEventListener('click', () => setOpen(false));
+      link.addEventListener('click', () => setNavDrawerOpen(false));
     });
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') closeMainDrawers();
     });
+  }
+
+  function closeShareDrawer(restoreFocus = true) {
+    const drawer = $('share-drawer');
+    if (!drawer) return;
+    document.body.classList.remove('share-drawer-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    drawer.setAttribute('inert', '');
+    updateMainDrawerOverlay();
+    state.shareChart?.destroy?.();
+    state.shareChart = null;
+    if (restoreFocus && shareDrawerReturnFocus?.focus) shareDrawerReturnFocus.focus({ preventScroll: true });
+    shareDrawerReturnFocus = null;
+  }
+
+  function setShareDrawerOpen(open) {
+    const drawer = $('share-drawer');
+    if (!drawer) return;
+    if (open) setNavDrawerOpen(false);
+    document.body.classList.toggle('share-drawer-open', open);
+    drawer.setAttribute('aria-hidden', String(!open));
+    if (open) drawer.removeAttribute('inert');
+    else drawer.setAttribute('inert', '');
+    updateMainDrawerOverlay();
+    if (open) drawer.focus({ preventScroll: true });
+  }
+
+  function configureShareDrawer() {
+    const close = $('share-drawer-close');
+    const topOpen = $('share-drawer-open-top');
+    if (close) close.addEventListener('click', () => closeShareDrawer());
+    if (topOpen) {
+      topOpen.addEventListener('click', (event) => {
+        const selected = state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
+        openShareDrawer(selected, event.currentTarget);
+      });
+    }
   }
 
   function closeStockDrawer() {
@@ -1462,6 +1528,331 @@
     `).join('');
   }
 
+  const REQUIRED_SHARE_MODEL_FIELDS = [
+    'janela_completa',
+    'dias_disponiveis',
+    'janela_alvo_dias',
+    'd0_coincide_com_sazonalidade'
+  ];
+
+  function sharePayloadForLaunch(launch) {
+    const payload = state.data?.share_trajetoria;
+    if (!payload || typeof payload !== 'object' || !payload.modelos) {
+      return { error: 'data/share_trajetoria.json nao foi carregado ou esta fora do contrato esperado.' };
+    }
+    const model = payload.modelos?.[launch.modelo_id];
+    if (!model) {
+      return { error: `Sem share_trajetoria para ${launch.modelo}. Rode exportarTudo para gerar data/share_trajetoria.json atualizado.` };
+    }
+
+    const missing = REQUIRED_SHARE_MODEL_FIELDS.filter((field) => !Object.prototype.hasOwnProperty.call(model, field));
+    const points = Array.isArray(model.pontos) ? model.pontos : [];
+    if (!Array.isArray(model.pontos)) missing.push('pontos');
+    points.forEach((point, index) => {
+      if (!Object.prototype.hasOwnProperty.call(point, 'regra_receita_empresa')) {
+        missing.push(`pontos[${index}].regra_receita_empresa`);
+      }
+    });
+    if (missing.length) {
+      return { error: `share_trajetoria incompleto: campo(s) obrigatorio(s) ausente(s): ${missing.join(', ')}.` };
+    }
+    return { model, points };
+  }
+
+  function shareDrawerError(message, selected) {
+    const line = selected?.linha || selected?.modelo || 'Lancamento';
+    return `
+      <div class="share-drawer-head">
+        <div>
+          <div class="share-drawer-kicker">Share de representatividade</div>
+          <h3>${escapeHtml(line)}</h3>
+        </div>
+      </div>
+      <div class="share-error">
+        <strong>Share indisponivel</strong>
+        <p>${escapeHtml(message)}</p>
+      </div>
+    `;
+  }
+
+  function shareChartAria(points) {
+    const values = points.map((point) => Number(point.share_do_dia)).filter((value) => Number.isFinite(value));
+    if (!values.length) return 'Share diario do lancamento sem pontos validos.';
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const companyValues = points.map((point) => numberOrNull(point.receita_empresa)).filter((value) => value !== null);
+    const companyLayer = companyValues.length ? ' com camada de faturamento total da Reise.' : '.';
+    return `Share diario do lancamento entre ${fmtPct(min, 1)} e ${fmtPct(max, 1)} ao longo de ${fmtNum(points.length)} dias${companyLayer}`;
+  }
+
+  function commercialEventTypeLabel(type) {
+    const key = normalizeText(type);
+    const labels = {
+      promocao: 'Promocao',
+      ruptura_estoque: 'Ruptura de estoque',
+      midia_paga: 'Midia paga',
+      concorrente: 'Concorrente',
+      outro: 'Outro'
+    };
+    return labels[key] || String(type || 'Evento comercial');
+  }
+
+  const hasCommercialEvent = (point) => Boolean(point?.evento_comercial_tipo || point?.evento_comercial_descricao);
+  const hasSeasonalEvent = (point) => Boolean(point?.evento_sazonal);
+
+  function shareCoveredPeriod(points) {
+    const first = points[0]?.data_calendario;
+    const last = points[points.length - 1]?.data_calendario;
+    return first && last ? `${fmtDateSlash(first)} a ${fmtDateSlash(last)}` : '-';
+  }
+
+  function shareDataUntil(model, points) {
+    return model?.dado_ate || points[points.length - 1]?.data_calendario || null;
+  }
+
+  function shareVariationClass(value) {
+    const num = numberOrNull(value);
+    if (num === null || num === 0) return 'share-stat-delta';
+    return `share-stat-delta ${num > 0 ? 'share-stat-delta--positive' : 'share-stat-delta--negative'}`;
+  }
+
+  function shareCompanyMomentHtml(model) {
+    const preRevenue = numberOrNull(model.receita_empresa_pre_periodo);
+    const posRevenue = numberOrNull(model.receita_empresa_pos_periodo);
+    const variation = numberOrNull(model.variacao_receita_empresa_pct);
+    const days = numberOrNull(model.dias_pos_disponiveis);
+
+    if (preRevenue === null || posRevenue === null) {
+      return `
+        <small>comparativo contra a janela pre-D0</small>
+        <em>Campos ausentes no JSON. Rode exportarTudo atualizado.</em>
+      `;
+    }
+
+    return `
+      <div class="share-company-values">
+        <div>
+          <span>Antes D0</span>
+          <strong>${fmtBRL(preRevenue)}</strong>
+        </div>
+        <div>
+          <span>Depois D0</span>
+          <strong>${fmtBRL(posRevenue)}</strong>
+        </div>
+      </div>
+      <em class="${shareVariationClass(variation)}">Variacao ${fmtPct(variation, 1)} em ${fmtNum(days)} dia(s) comparaveis</em>
+    `;
+  }
+
+  function renderShareChart(points) {
+    const canvas = $('share-chart');
+    if (!canvas || !window.Chart) return;
+    state.shareChart?.destroy?.();
+    const styles = getComputedStyle(document.documentElement);
+    const orange = styles.getPropertyValue('--orange').trim() || '#F07800';
+    const orangeDim = styles.getPropertyValue('--orange-dim').trim() || 'rgba(240,120,0,0.15)';
+    const warning = styles.getPropertyValue('--warning').trim() || '#E8A020';
+    const commercial = '#5BB8D4';
+    const company = 'rgba(255,255,255,0.58)';
+    const companyValues = points.map((point) => numberOrNull(point.receita_empresa));
+    const hasCompanyRevenueSeries = companyValues.some((value) => value !== null);
+    const datasets = [{
+      label: 'Share diario',
+      data: points.map((point) => Number(point.share_do_dia)),
+      yAxisID: 'y',
+      borderColor: orange,
+      backgroundColor: orangeDim,
+      borderWidth: 2,
+      fill: true,
+      tension: 0.25,
+      pointStyle: points.map((point) => hasCommercialEvent(point) ? 'rect' : (hasSeasonalEvent(point) ? 'rectRot' : 'circle')),
+      pointRadius: points.map((point) => hasCommercialEvent(point) || hasSeasonalEvent(point) ? 5 : 2),
+      pointHoverRadius: points.map((point) => hasCommercialEvent(point) || hasSeasonalEvent(point) ? 7 : 4),
+      pointBackgroundColor: points.map((point) => hasCommercialEvent(point) ? commercial : (hasSeasonalEvent(point) ? warning : orange)),
+      pointBorderColor: points.map((point) => hasCommercialEvent(point) ? commercial : (hasSeasonalEvent(point) ? warning : orange)),
+      pointBorderWidth: points.map((point) => hasCommercialEvent(point) || hasSeasonalEvent(point) ? 2 : 1)
+    }];
+
+    if (hasCompanyRevenueSeries) {
+      datasets.push({
+        label: 'Faturamento total Reise',
+        data: companyValues,
+        yAxisID: 'y1',
+        borderColor: company,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        fill: false,
+        tension: 0.2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointBackgroundColor: company,
+        pointBorderColor: company
+      });
+    }
+
+    state.shareChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: points.map((point) => `D+${Number(point.dias_desde_lancamento || 0)}`),
+        datasets
+      },
+      options: chartOptions({
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
+          y: {
+            beginAtZero: true,
+            position: 'left',
+            title: { display: true, text: 'Share', color: 'rgba(255,255,255,0.55)' },
+            ticks: { callback: (value) => fmtPct(Number(value), 0) }
+          },
+          ...(hasCompanyRevenueSeries ? {
+            y1: {
+              beginAtZero: true,
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              title: { display: true, text: 'Empresa', color: 'rgba(255,255,255,0.55)' },
+              ticks: { callback: (value) => fmtBRL(Number(value), true) }
+            }
+          } : {})
+        },
+        plugins: {
+          legend: {
+            display: hasCompanyRevenueSeries,
+            labels: { padding: 14, color: 'rgba(255,255,255,0.68)' }
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => (
+                ctx.dataset.yAxisID === 'y1'
+                  ? `Faturamento total Reise: ${fmtBRL(ctx.parsed.y)}`
+                  : `Share do dia: ${fmtPct(ctx.parsed.y, 1)}`
+              ),
+              afterLabel: (ctx) => {
+                const point = points[ctx.dataIndex];
+                const rows = [`Data calendario: ${fmtDateSlash(point.data_calendario)}`];
+                if (hasSeasonalEvent(point)) rows.push(`Sazonalidade: ${point.evento_sazonal}`);
+                if (hasCommercialEvent(point)) {
+                  const label = commercialEventTypeLabel(point.evento_comercial_tipo);
+                  const description = point.evento_comercial_descricao ? `: ${point.evento_comercial_descricao}` : '';
+                  rows.push(`Evento comercial - ${label}${description}`);
+                }
+                return rows;
+              }
+            }
+          }
+        }
+      })
+    });
+  }
+
+  function openShareDrawer(selected, returnFocus) {
+    const content = $('share-drawer-content');
+    if (!content || !selected) return;
+
+    shareDrawerReturnFocus = returnFocus || document.activeElement;
+    const result = sharePayloadForLaunch(selected);
+    if (result.error) {
+      content.innerHTML = shareDrawerError(result.error, selected);
+      setShareDrawerOpen(true);
+      return;
+    }
+
+    const model = result.model;
+    const points = result.points
+      .filter((point) => Number.isFinite(Number(point.dias_desde_lancamento)) && Number.isFinite(Number(point.share_do_dia)))
+      .sort((a, b) => Number(a.dias_desde_lancamento) - Number(b.dias_desde_lancamento));
+    if (!points.length) {
+      content.innerHTML = shareDrawerError('share_trajetoria nao tem pontos validos para este lancamento.', selected);
+      setShareDrawerOpen(true);
+      return;
+    }
+
+    const hasSeasonal = points.some(hasSeasonalEvent);
+    const hasCommercial = points.some(hasCommercialEvent);
+    const commercialRegistered = Number(model.eventos_comerciais_cadastrados || 0) > 0;
+    const hasAltRevenueRule = points.some((point) => point.regra_receita_empresa === 'paid_at_sem_tag');
+    const line = model.linha || selected.linha || selected.modelo;
+    const coveredPeriod = shareCoveredPeriod(points);
+    const dataUntil = shareDataUntil(model, points);
+    const hasCompanyRevenueSeries = points.some((point) => numberOrNull(point.receita_empresa) !== null);
+    const partialBadge = model.janela_completa === false
+      ? `<span class="badge badge-warning">Parcial — D+${fmtNum(model.dias_disponiveis)} de ${fmtNum(model.janela_alvo_dias)}</span>`
+      : '';
+    const completeBadge = model.janela_completa === true
+      ? `<span class="badge badge-neutral">Janela completa</span>`
+      : '';
+    const seasonalWarning = model.d0_coincide_com_sazonalidade === true
+      ? `<div class="share-warning"><span class="share-note-icon ti ti-alert-triangle" aria-hidden="true">!</span><span>Lançamento nasce em cima de data sazonal — não comparável 1:1 com os demais.</span></div>`
+      : '';
+    const commercialNote = commercialRegistered
+      ? (hasCommercial
+        ? ''
+        : '<p class="share-note">Ha evento comercial cadastrado para este lancamento, mas nenhum cruza o periodo coberto no grafico.</p>')
+      : '<p class="share-note share-note--pending">Nenhum evento comercial registrado para este lancamento - cadastro manual pendente.</p>';
+    const markerLegend = (hasSeasonal || hasCommercial)
+      ? `<div class="share-legend">
+          ${hasSeasonal ? '<span><i class="share-marker share-marker--seasonal"></i>Sazonalidade</span>' : ''}
+          ${hasCommercial ? '<span><i class="share-marker share-marker--commercial"></i>Evento comercial</span>' : ''}
+        </div>`
+      : '';
+
+    content.innerHTML = `
+      <div class="share-drawer-head">
+        <div>
+          <div class="share-drawer-kicker">Share de representatividade</div>
+          <h3>${escapeHtml(line)}</h3>
+          <p>${escapeHtml(selected.modelo)} · D0 ${fmtDate(model.data_lancamento || selected.d0)}</p>
+        </div>
+      </div>
+      <div class="share-data-note">Dado ate ${fmtDateSlash(dataUntil)} · ${fmtNum(points.length)} dia(s) observado(s)</div>
+      <div class="share-badges">${partialBadge || completeBadge}</div>
+      ${seasonalWarning}
+      <div class="share-stats">
+        <div class="share-stat">
+          <span>Share acumulado</span>
+          <strong>${fmtPct(model.share_acumulado_atual, 1)}</strong>
+          <small>do faturamento total da Reise no periodo</small>
+        </div>
+        <div class="share-stat">
+          <span>Receita do lançamento</span>
+          <strong>${fmtBRL(model.receita_lancamento_periodo)}</strong>
+          <small>itens classificados no periodo coberto</small>
+        </div>
+        <div class="share-stat">
+          <span>Ticket médio empresa</span>
+          <strong>${fmtBRL(model.ticket_medio_empresa_periodo)}</strong>
+          <small>receita total da Reise / pedidos no periodo</small>
+        </div>
+        <div class="share-stat share-stat-company">
+          <span>Momento da empresa</span>
+          ${shareCompanyMomentHtml(model)}
+        </div>
+      </div>
+      <div class="share-chart-card">
+        <div class="share-chart-title">
+          <span>Share diario + empresa</span>
+          <div class="share-chart-meta">
+            <small>Periodo coberto: ${escapeHtml(coveredPeriod)}</small>
+            <small>Eixo alinhado por D+n do lançamento</small>
+          </div>
+        </div>
+        <div class="share-chart-canvas">
+          <canvas id="share-chart" role="img" aria-label="${escapeHtml(shareChartAria(points))}"></canvas>
+        </div>
+        ${hasCompanyRevenueSeries ? '' : '<p class="share-note share-note--pending">Camada de faturamento total da empresa ausente no JSON atual. Reexecute exportarTudo para ativar a linha comparativa.</p>'}
+        ${markerLegend}
+        ${hasSeasonal ? '' : '<p class="share-note">Sem data sazonal dentro da janela D0-D90 deste lançamento.</p>'}
+        ${commercialNote}
+      </div>
+      ${hasAltRevenueRule ? '<div class="share-footer-note"><span class="share-note-icon ti ti-info-circle" aria-hidden="true">i</span><span>Parte do período usa regra de receita alternativa por causa de uma falha de tag no Shopify entre ago-nov/2025 — ver documentação.</span></div>' : ''}
+    `;
+
+    setShareDrawerOpen(true);
+    renderShareChart(points);
+  }
+
   function renderState(selected) {
     const container = $('launch-state');
     if (selected.isFuture) {
@@ -1485,8 +1876,13 @@
               <div><div class="metric-sub">Ticket médio/pedido</div><div class="metric-value">${fmtBRL(avgTicket)}</div></div>
             </div>
             <p class="section-desc" style="margin-top:16px">O dashboard já calcula sazonalidade futura a partir de calendario_br.json. Depois do D0, os dados entram pelo pipeline.</p>
+            <button class="share-open-button" type="button" data-share-open>
+              <span class="ti ti-chart-line" aria-hidden="true"></span>
+              <span>Ver share de representatividade</span>
+            </button>
           </div>
         </div>`;
+      container.querySelector('[data-share-open]')?.addEventListener('click', (event) => openShareDrawer(selected, event.currentTarget));
       return;
     }
 
@@ -1554,6 +1950,12 @@
             <div class="metric-sub">${card.sub}</div>
           </div>`).join('')}
       </div>
+      <div class="share-entry-row">
+        <button class="share-open-button" type="button" data-share-open>
+          <span class="ti ti-chart-line" aria-hidden="true"></span>
+          <span>Ver share de representatividade</span>
+        </button>
+      </div>
       ${auditWarning}
       ${empty}
       <div class="grid grid-2" style="margin-top:14px">
@@ -1568,6 +1970,7 @@
           <div class="metric-sub">${isCurrentAccumulated ? 'Disponível quando uma janela fechar.' : `vs ${previous ? escapeHtml(previous.modelo) : 'modelo anterior'} na mesma janela`}</div>
         </div>
       </div>`;
+    container.querySelector('[data-share-open]')?.addEventListener('click', (event) => openShareDrawer(selected, event.currentTarget));
   }
 
   function previousLaunch(selected) {
@@ -3223,6 +3626,7 @@
 
   async function init() {
     configureDrawer();
+    configureShareDrawer();
     configureStockDrawer();
     configureTooltips();
     configureChartDefaults();
