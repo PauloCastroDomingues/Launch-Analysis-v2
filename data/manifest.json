@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-16T11:03:49-03:00",
+  "generated_at": "2026-07-16T11:48:04-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -15,10 +15,11 @@
   "row_counts": {
     "linha_cadastro": 5,
     "datas_sazonais": 8,
-    "lancamentos_produtos_dia": 7038,
+    "eventos_comerciais_produto": "manual",
+    "lancamentos_produtos_dia": 7039,
     "auditoria_monochrome": 1,
     "estoque": 416,
-    "share_trajetoria": 292,
+    "share_trajetoria": "skipped",
     "midia_paga": 17,
     "crm_disparos": 23
   },
@@ -26,12 +27,12 @@
     "rs8_monochrome": {
       "status": "ok",
       "auditado": true,
-      "pedidos_auditoria": 377,
-      "pares_auditoria": 508,
-      "receita_auditoria": 365252,
-      "pedidos_exportados": 377,
-      "pares_exportados": 508,
-      "receita_exportada": 365252,
+      "pedidos_auditoria": 378,
+      "pares_auditoria": 509,
+      "receita_auditoria": 365971,
+      "pedidos_exportados": 378,
+      "pares_exportados": 509,
+      "receita_exportada": 365971,
       "diferenca_pedidos_pct": 0,
       "diferenca_pares_pct": 0,
       "diferenca_receita_pct": 0,
@@ -42,8 +43,9 @@
   "export_status": {
     "cadastro_bigquery": "synced",
     "datas_sazonais": "synced",
+    "eventos_comerciais_produto": "ready",
     "estoque": "exported",
-    "share_trajetoria": "exported",
+    "share_trajetoria": "skipped",
     "midia_paga": "exported",
     "crm_disparos": "exported"
   },
