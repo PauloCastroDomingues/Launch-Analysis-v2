@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-16T10:56:21-03:00",
+  "generated_at": "2026-07-16T11:00:30-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -14,6 +14,7 @@
   ],
   "row_counts": {
     "linha_cadastro": 5,
+    "datas_sazonais": 8,
     "lancamentos_produtos_dia": 7038,
     "auditoria_monochrome": 1,
     "estoque": 416,
@@ -40,6 +41,7 @@
   },
   "export_status": {
     "cadastro_bigquery": "synced",
+    "datas_sazonais": "synced",
     "estoque": "exported",
     "share_trajetoria": "skipped",
     "midia_paga": "exported",
