@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-16T11:03:43-03:00",
+  "generated_at": "2026-07-16T14:30:31-03:00",
   "modelos": {
     "avant": {
       "linha": "Avant",
@@ -10,719 +10,1081 @@
       "share_acumulado_atual": 0.253699123,
       "receita_lancamento_periodo": 2072894,
       "ticket_medio_empresa_periodo": 879.607989019,
+      "dado_ate": "2026-03-14",
+      "dias_pos_disponiveis": 89,
+      "receita_empresa_pre_periodo": 477,
+      "receita_empresa_pos_periodo": 8170678.61,
+      "variacao_receita_empresa_pct": 17128.305262055,
+      "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
         {
           "dias_desde_lancamento": 0,
           "data_calendario": "2025-12-14",
+          "receita_empresa": 418,
+          "pedidos_empresa": 1,
           "share_do_dia": 0.928229665,
           "share_acumulado_ate_o_dia": 0.928229665,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 3,
           "data_calendario": "2025-12-17",
+          "receita_empresa": 143839,
+          "pedidos_empresa": 188,
           "share_do_dia": 0.223193988,
           "share_acumulado_ate_o_dia": 0.225236904,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 4,
           "data_calendario": "2025-12-18",
+          "receita_empresa": 88380.56,
+          "pedidos_empresa": 124,
           "share_do_dia": 0.198256268,
           "share_acumulado_ate_o_dia": 0.21498678,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 5,
           "data_calendario": "2025-12-19",
+          "receita_empresa": 91793.56,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.178182435,
           "share_acumulado_ate_o_dia": 0.20457347,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 6,
           "data_calendario": "2025-12-20",
+          "receita_empresa": 97555,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.21485316,
           "share_acumulado_ate_o_dia": 0.206949935,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 7,
           "data_calendario": "2025-12-21",
+          "receita_empresa": 106749.56,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.218155466,
           "share_acumulado_ate_o_dia": 0.209212285,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 8,
           "data_calendario": "2025-12-22",
+          "receita_empresa": 110880,
+          "pedidos_empresa": 146,
           "share_do_dia": 0.201533189,
           "share_acumulado_ate_o_dia": 0.207881083,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 9,
           "data_calendario": "2025-12-23",
+          "receita_empresa": 70304,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.25,
           "share_acumulado_ate_o_dia": 0.212052158,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 10,
           "data_calendario": "2025-12-24",
+          "receita_empresa": 66068.78,
+          "pedidos_empresa": 77,
           "share_do_dia": 0.182113246,
           "share_acumulado_ate_o_dia": 0.209503116,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 11,
           "data_calendario": "2025-12-25",
+          "receita_empresa": 38295,
+          "pedidos_empresa": 50,
           "share_do_dia": 0.20994908,
           "share_acumulado_ate_o_dia": 0.209524089,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": "Natal"
+          "evento_sazonal": "Natal",
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 12,
           "data_calendario": "2025-12-26",
+          "receita_empresa": 60804.78,
+          "pedidos_empresa": 71,
           "share_do_dia": 0.14863963,
           "share_acumulado_ate_o_dia": 0.205293583,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 13,
           "data_calendario": "2025-12-27",
+          "receita_empresa": 33467,
+          "pedidos_empresa": 47,
           "share_do_dia": 0.192189321,
           "share_acumulado_ate_o_dia": 0.204810882,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 14,
           "data_calendario": "2025-12-28",
+          "receita_empresa": 43987,
+          "pedidos_empresa": 67,
           "share_do_dia": 0.128583445,
           "share_acumulado_ate_o_dia": 0.201290811,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 15,
           "data_calendario": "2025-12-29",
+          "receita_empresa": 55025,
+          "pedidos_empresa": 72,
           "share_do_dia": 0.136047251,
           "share_acumulado_ate_o_dia": 0.197727747,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 16,
           "data_calendario": "2025-12-30",
+          "receita_empresa": 39002,
+          "pedidos_empresa": 54,
           "share_do_dia": 0.102353725,
           "share_acumulado_ate_o_dia": 0.194173488,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 17,
           "data_calendario": "2025-12-31",
+          "receita_empresa": 30625,
+          "pedidos_empresa": 40,
           "share_do_dia": 0.155689796,
           "share_acumulado_ate_o_dia": 0.193079384,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 18,
           "data_calendario": "2026-01-01",
+          "receita_empresa": 69962,
+          "pedidos_empresa": 44,
           "share_do_dia": 0.168034076,
           "share_acumulado_ate_o_dia": 0.191551937,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 19,
           "data_calendario": "2026-01-02",
+          "receita_empresa": 84090,
+          "pedidos_empresa": 58,
           "share_do_dia": 0.139136639,
           "share_acumulado_ate_o_dia": 0.187972148,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 20,
           "data_calendario": "2026-01-03",
+          "receita_empresa": 83391.56,
+          "pedidos_empresa": 68,
           "share_do_dia": 0.042546272,
           "share_acumulado_ate_o_dia": 0.178747333,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 21,
           "data_calendario": "2026-01-04",
+          "receita_empresa": 86926,
+          "pedidos_empresa": 72,
           "share_do_dia": 0.072084302,
           "share_acumulado_ate_o_dia": 0.172132014,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 22,
           "data_calendario": "2026-01-05",
+          "receita_empresa": 124770,
+          "pedidos_empresa": 90,
           "share_do_dia": 0.252865272,
           "share_acumulado_ate_o_dia": 0.178731546,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 23,
           "data_calendario": "2026-01-06",
+          "receita_empresa": 128072,
+          "pedidos_empresa": 101,
           "share_do_dia": 0.154990943,
           "share_acumulado_ate_o_dia": 0.176893722,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 24,
           "data_calendario": "2026-01-07",
+          "receita_empresa": 126088,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.208885857,
           "share_acumulado_ate_o_dia": 0.179159287,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 25,
           "data_calendario": "2026-01-08",
+          "receita_empresa": 95760,
+          "pedidos_empresa": 79,
           "share_do_dia": 0.101336675,
           "share_acumulado_ate_o_dia": 0.175187387,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 26,
           "data_calendario": "2026-01-09",
+          "receita_empresa": 95734,
+          "pedidos_empresa": 76,
           "share_do_dia": 0.104832139,
           "share_acumulado_ate_o_dia": 0.171771854,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 27,
           "data_calendario": "2026-01-10",
+          "receita_empresa": 83664,
+          "pedidos_empresa": 67,
           "share_do_dia": 0.16965481,
           "share_acumulado_ate_o_dia": 0.171685691,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 28,
           "data_calendario": "2026-01-11",
+          "receita_empresa": 96480,
+          "pedidos_empresa": 68,
           "share_do_dia": 0.087354892,
           "share_acumulado_ate_o_dia": 0.167905144,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 29,
           "data_calendario": "2026-01-12",
+          "receita_empresa": 97948,
+          "pedidos_empresa": 77,
           "share_do_dia": 0.129640217,
           "share_acumulado_ate_o_dia": 0.166239437,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 30,
           "data_calendario": "2026-01-13",
+          "receita_empresa": 138062,
+          "pedidos_empresa": 118,
           "share_do_dia": 0.071489621,
           "share_acumulado_ate_o_dia": 0.160761811,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 31,
           "data_calendario": "2026-01-14",
+          "receita_empresa": 131334,
+          "pedidos_empresa": 97,
           "share_do_dia": 0.121598368,
           "share_acumulado_ate_o_dia": 0.158720318,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 32,
           "data_calendario": "2026-01-15",
+          "receita_empresa": 115722,
+          "pedidos_empresa": 93,
           "share_do_dia": 0.127927274,
           "share_acumulado_ate_o_dia": 0.157368073,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 33,
           "data_calendario": "2026-01-16",
+          "receita_empresa": 103994,
+          "pedidos_empresa": 88,
           "share_do_dia": 0.156759044,
           "share_acumulado_ate_o_dia": 0.157344951,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 34,
           "data_calendario": "2026-01-17",
+          "receita_empresa": 71886,
+          "pedidos_empresa": 60,
           "share_do_dia": 0.128815068,
           "share_acumulado_ate_o_dia": 0.156615374,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 35,
           "data_calendario": "2026-01-18",
+          "receita_empresa": 132804,
+          "pedidos_empresa": 98,
           "share_do_dia": 0.12108069,
           "share_acumulado_ate_o_dia": 0.155012338,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 36,
           "data_calendario": "2026-01-19",
+          "receita_empresa": 140318,
+          "pedidos_empresa": 88,
           "share_do_dia": 0.171510426,
           "share_acumulado_ate_o_dia": 0.155762931,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 37,
           "data_calendario": "2026-01-20",
+          "receita_empresa": 130083,
+          "pedidos_empresa": 86,
           "share_do_dia": 0.265984026,
           "share_acumulado_ate_o_dia": 0.160223612,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 38,
           "data_calendario": "2026-01-21",
+          "receita_empresa": 135225,
+          "pedidos_empresa": 93,
           "share_do_dia": 0.3694731,
           "share_acumulado_ate_o_dia": 0.168671349,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 39,
           "data_calendario": "2026-01-22",
+          "receita_empresa": 140315,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.246588034,
           "share_acumulado_ate_o_dia": 0.171804139,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 40,
           "data_calendario": "2026-01-23",
+          "receita_empresa": 81582,
+          "pedidos_empresa": 76,
           "share_do_dia": 0.282758452,
           "share_acumulado_ate_o_dia": 0.17433868,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 41,
           "data_calendario": "2026-01-24",
+          "receita_empresa": 41095,
+          "pedidos_empresa": 67,
           "share_do_dia": 0.333276554,
           "share_acumulado_ate_o_dia": 0.176146723,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 42,
           "data_calendario": "2026-01-25",
+          "receita_empresa": 64362,
+          "pedidos_empresa": 92,
           "share_do_dia": 0.231751655,
           "share_acumulado_ate_o_dia": 0.177120065,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 43,
           "data_calendario": "2026-01-26",
+          "receita_empresa": 56103,
+          "pedidos_empresa": 89,
           "share_do_dia": 0.286615689,
           "share_acumulado_ate_o_dia": 0.178765682,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 44,
           "data_calendario": "2026-01-27",
+          "receita_empresa": 46192,
+          "pedidos_empresa": 76,
           "share_do_dia": 0.169250087,
           "share_acumulado_ate_o_dia": 0.178649375,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 45,
           "data_calendario": "2026-01-28",
+          "receita_empresa": 58527,
+          "pedidos_empresa": 102,
           "share_do_dia": 0.196114614,
           "share_acumulado_ate_o_dia": 0.17891573,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 46,
           "data_calendario": "2026-01-29",
+          "receita_empresa": 57470,
+          "pedidos_empresa": 94,
           "share_do_dia": 0.276909692,
           "share_acumulado_ate_o_dia": 0.180361556,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 47,
           "data_calendario": "2026-01-30",
+          "receita_empresa": 78132,
+          "pedidos_empresa": 117,
           "share_do_dia": 0.321481595,
           "share_acumulado_ate_o_dia": 0.183136587,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 48,
           "data_calendario": "2026-01-31",
+          "receita_empresa": 55204,
+          "pedidos_empresa": 100,
           "share_do_dia": 0.299326136,
           "share_acumulado_ate_o_dia": 0.184728779,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 49,
           "data_calendario": "2026-02-01",
+          "receita_empresa": 60617,
+          "pedidos_empresa": 103,
           "share_do_dia": 0.191167494,
           "share_acumulado_ate_o_dia": 0.184824226,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 50,
           "data_calendario": "2026-02-02",
+          "receita_empresa": 68739,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.250861956,
           "share_acumulado_ate_o_dia": 0.185915986,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 51,
           "data_calendario": "2026-02-03",
+          "receita_empresa": 98449,
+          "pedidos_empresa": 142,
           "share_do_dia": 0.312588244,
           "share_acumulado_ate_o_dia": 0.188845942,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 52,
           "data_calendario": "2026-02-04",
+          "receita_empresa": 81985,
+          "pedidos_empresa": 113,
           "share_do_dia": 0.279319388,
           "share_acumulado_ate_o_dia": 0.190555713,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 53,
           "data_calendario": "2026-02-05",
+          "receita_empresa": 85241,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.287514224,
           "share_acumulado_ate_o_dia": 0.192424098,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 54,
           "data_calendario": "2026-02-06",
+          "receita_empresa": 67631.97,
+          "pedidos_empresa": 95,
           "share_do_dia": 0.224627495,
           "share_acumulado_ate_o_dia": 0.192909047,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 55,
           "data_calendario": "2026-02-07",
+          "receita_empresa": 81649,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.237014538,
           "share_acumulado_ate_o_dia": 0.193696566,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 56,
           "data_calendario": "2026-02-08",
+          "receita_empresa": 86491,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.32632297,
           "share_acumulado_ate_o_dia": 0.196158526,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 57,
           "data_calendario": "2026-02-09",
+          "receita_empresa": 68846,
+          "pedidos_empresa": 107,
           "share_do_dia": 0.332626442,
           "share_acumulado_ate_o_dia": 0.198145623,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 58,
           "data_calendario": "2026-02-10",
+          "receita_empresa": 129982,
+          "pedidos_empresa": 175,
           "share_do_dia": 0.322937022,
           "share_acumulado_ate_o_dia": 0.201484493,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 59,
           "data_calendario": "2026-02-11",
+          "receita_empresa": 97991,
+          "pedidos_empresa": 131,
           "share_do_dia": 0.290843037,
           "share_acumulado_ate_o_dia": 0.203251268,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 60,
           "data_calendario": "2026-02-12",
+          "receita_empresa": 76380,
+          "pedidos_empresa": 106,
           "share_do_dia": 0.208352972,
           "share_acumulado_ate_o_dia": 0.203328698,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 61,
           "data_calendario": "2026-02-13",
+          "receita_empresa": 67426,
+          "pedidos_empresa": 103,
           "share_do_dia": 0.35280159,
           "share_acumulado_ate_o_dia": 0.205304879,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 62,
           "data_calendario": "2026-02-14",
+          "receita_empresa": 66362,
+          "pedidos_empresa": 92,
           "share_do_dia": 0.325035412,
           "share_acumulado_ate_o_dia": 0.206842844,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 63,
           "data_calendario": "2026-02-15",
+          "receita_empresa": 50416,
+          "pedidos_empresa": 79,
           "share_do_dia": 0.303554427,
           "share_acumulado_ate_o_dia": 0.207777499,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 64,
           "data_calendario": "2026-02-16",
+          "receita_empresa": 56835,
+          "pedidos_empresa": 89,
           "share_do_dia": 0.378534354,
           "share_acumulado_ate_o_dia": 0.209617816,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 65,
           "data_calendario": "2026-02-17",
+          "receita_empresa": 62575.76,
+          "pedidos_empresa": 83,
           "share_do_dia": 0.31635253,
           "share_acumulado_ate_o_dia": 0.210869478,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 66,
           "data_calendario": "2026-02-18",
+          "receita_empresa": 117685,
+          "pedidos_empresa": 155,
           "share_do_dia": 0.344691337,
           "share_acumulado_ate_o_dia": 0.213757162,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 67,
           "data_calendario": "2026-02-19",
+          "receita_empresa": 76187.99,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.330498285,
           "share_acumulado_ate_o_dia": 0.215365535,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 68,
           "data_calendario": "2026-02-20",
+          "receita_empresa": 69389,
+          "pedidos_empresa": 97,
           "share_do_dia": 0.336479846,
           "share_acumulado_ate_o_dia": 0.216866419,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 69,
           "data_calendario": "2026-02-21",
+          "receita_empresa": 60243,
+          "pedidos_empresa": 80,
           "share_do_dia": 0.310691699,
           "share_acumulado_ate_o_dia": 0.21786513,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 70,
           "data_calendario": "2026-02-22",
+          "receita_empresa": 64999,
+          "pedidos_empresa": 90,
           "share_do_dia": 0.326805028,
           "share_acumulado_ate_o_dia": 0.219102067,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 71,
           "data_calendario": "2026-02-23",
+          "receita_empresa": 57959,
+          "pedidos_empresa": 71,
           "share_do_dia": 0.310478097,
           "share_acumulado_ate_o_dia": 0.220017934,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 72,
           "data_calendario": "2026-02-24",
+          "receita_empresa": 98371,
+          "pedidos_empresa": 119,
           "share_do_dia": 0.318213701,
           "share_acumulado_ate_o_dia": 0.221660463,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 73,
           "data_calendario": "2026-02-25",
+          "receita_empresa": 68989,
+          "pedidos_empresa": 104,
           "share_do_dia": 0.31503573,
           "share_acumulado_ate_o_dia": 0.222743143,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 74,
           "data_calendario": "2026-02-26",
+          "receita_empresa": 48650,
+          "pedidos_empresa": 78,
           "share_do_dia": 0.307872559,
           "share_acumulado_ate_o_dia": 0.223433564,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 75,
           "data_calendario": "2026-02-27",
+          "receita_empresa": 121122.98,
+          "pedidos_empresa": 128,
           "share_do_dia": 0.312244629,
           "share_acumulado_ate_o_dia": 0.225191339,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 76,
           "data_calendario": "2026-02-28",
+          "receita_empresa": 102851,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.349923676,
           "share_acumulado_ate_o_dia": 0.227253008,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 77,
           "data_calendario": "2026-03-01",
+          "receita_empresa": 98900,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.382406471,
           "share_acumulado_ate_o_dia": 0.229680405,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 78,
           "data_calendario": "2026-03-02",
+          "receita_empresa": 104592,
+          "pedidos_empresa": 120,
           "share_do_dia": 0.396588649,
           "share_acumulado_ate_o_dia": 0.232397047,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 79,
           "data_calendario": "2026-03-03",
+          "receita_empresa": 109590.2,
+          "pedidos_empresa": 134,
           "share_do_dia": 0.417464335,
           "share_acumulado_ate_o_dia": 0.235500274,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 80,
           "data_calendario": "2026-03-04",
+          "receita_empresa": 108875.2,
+          "pedidos_empresa": 124,
           "share_do_dia": 0.369781181,
           "share_acumulado_ate_o_dia": 0.237700566,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 81,
           "data_calendario": "2026-03-05",
+          "receita_empresa": 228995.4,
+          "pedidos_empresa": 244,
           "share_do_dia": 0.263717088,
           "share_acumulado_ate_o_dia": 0.238567323,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 82,
           "data_calendario": "2026-03-06",
+          "receita_empresa": 189982.38,
+          "pedidos_empresa": 220,
           "share_do_dia": 0.327504056,
           "share_acumulado_ate_o_dia": 0.240959401,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 83,
           "data_calendario": "2026-03-07",
+          "receita_empresa": 187581,
+          "pedidos_empresa": 207,
           "share_do_dia": 0.351208278,
           "share_acumulado_ate_o_dia": 0.243811476,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 84,
           "data_calendario": "2026-03-08",
+          "receita_empresa": 152678.98,
+          "pedidos_empresa": 172,
           "share_do_dia": 0.387545162,
           "share_acumulado_ate_o_dia": 0.24677553,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 85,
           "data_calendario": "2026-03-09",
+          "receita_empresa": 121368,
+          "pedidos_empresa": 141,
           "share_do_dia": 0.341770483,
           "share_acumulado_ate_o_dia": 0.248307646,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 86,
           "data_calendario": "2026-03-10",
+          "receita_empresa": 136807.98,
+          "pedidos_empresa": 152,
           "share_do_dia": 0.334410317,
           "share_acumulado_ate_o_dia": 0.249845057,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 87,
           "data_calendario": "2026-03-11",
+          "receita_empresa": 147675.99,
+          "pedidos_empresa": 161,
           "share_do_dia": 0.322191847,
           "share_acumulado_ate_o_dia": 0.251213102,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 88,
           "data_calendario": "2026-03-12",
+          "receita_empresa": 155370.99,
+          "pedidos_empresa": 152,
           "share_do_dia": 0.318013034,
           "share_acumulado_ate_o_dia": 0.252516154,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 89,
           "data_calendario": "2026-03-13",
+          "receita_empresa": 106985.99,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.25087397,
           "share_acumulado_ate_o_dia": 0.252494388,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 90,
           "data_calendario": "2026-03-14",
+          "receita_empresa": 98721,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.352204698,
           "share_acumulado_ate_o_dia": 0.253699123,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         }
       ]
     },
@@ -735,735 +1097,1105 @@
       "share_acumulado_atual": 0.103111884,
       "receita_lancamento_periodo": 888175,
       "ticket_medio_empresa_periodo": 881.648065507,
+      "dado_ate": "2026-03-17",
+      "dias_pos_disponiveis": 91,
+      "receita_empresa_pre_periodo": 895,
+      "receita_empresa_pos_periodo": 8613701.6,
+      "variacao_receita_empresa_pct": 9623.247597765,
+      "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
         {
           "dias_desde_lancamento": 0,
           "data_calendario": "2025-12-17",
+          "receita_empresa": 143839,
+          "pedidos_empresa": 188,
           "share_do_dia": 0.12964495,
           "share_acumulado_ate_o_dia": 0.12964495,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 1,
           "data_calendario": "2025-12-18",
+          "receita_empresa": 88380.56,
+          "pedidos_empresa": 124,
           "share_do_dia": 0.131872892,
           "share_acumulado_ate_o_dia": 0.130492884,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 2,
           "data_calendario": "2025-12-19",
+          "receita_empresa": 91793.56,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.15236363,
           "share_acumulado_ate_o_dia": 0.136688909,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 3,
           "data_calendario": "2025-12-20",
+          "receita_empresa": 97555,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.119471068,
           "share_acumulado_ate_o_dia": 0.132704532,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 4,
           "data_calendario": "2025-12-21",
+          "receita_empresa": 106749.56,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.138295652,
           "share_acumulado_ate_o_dia": 0.133834249,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 5,
           "data_calendario": "2025-12-22",
+          "receita_empresa": 110880,
+          "pedidos_empresa": 146,
           "share_do_dia": 0.091098485,
           "share_acumulado_ate_o_dia": 0.126420985,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 6,
           "data_calendario": "2025-12-23",
+          "receita_empresa": 70304,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.110520027,
           "share_acumulado_ate_o_dia": 0.12484537,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 7,
           "data_calendario": "2025-12-24",
+          "receita_empresa": 66068.78,
+          "pedidos_empresa": 77,
           "share_do_dia": 0.223448957,
           "share_acumulado_ate_o_dia": 0.133245147,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 8,
           "data_calendario": "2025-12-25",
+          "receita_empresa": 38295,
+          "pedidos_empresa": 50,
           "share_do_dia": 0.101449275,
           "share_acumulado_ate_o_dia": 0.131749049,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": "Natal"
+          "evento_sazonal": "Natal",
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 9,
           "data_calendario": "2025-12-26",
+          "receita_empresa": 60804.78,
+          "pedidos_empresa": 71,
           "share_do_dia": 0.153343208,
           "share_acumulado_ate_o_dia": 0.133250218,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 10,
           "data_calendario": "2025-12-27",
+          "receita_empresa": 33467,
+          "pedidos_empresa": 47,
           "share_do_dia": 0.162518302,
           "share_acumulado_ate_o_dia": 0.134328816,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 11,
           "data_calendario": "2025-12-28",
+          "receita_empresa": 43987,
+          "pedidos_empresa": 67,
           "share_do_dia": 0.123013618,
           "share_acumulado_ate_o_dia": 0.133806067,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 12,
           "data_calendario": "2025-12-29",
+          "receita_empresa": 55025,
+          "pedidos_empresa": 72,
           "share_do_dia": 0.098845979,
           "share_acumulado_ate_o_dia": 0.131896044,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 13,
           "data_calendario": "2025-12-30",
+          "receita_empresa": 39002,
+          "pedidos_empresa": 54,
           "share_do_dia": 0.079688221,
           "share_acumulado_ate_o_dia": 0.129949662,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 14,
           "data_calendario": "2025-12-31",
+          "receita_empresa": 30625,
+          "pedidos_empresa": 40,
           "share_do_dia": 0.151314286,
           "share_acumulado_ate_o_dia": 0.130557301,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 15,
           "data_calendario": "2026-01-01",
+          "receita_empresa": 69962,
+          "pedidos_empresa": 44,
           "share_do_dia": 0.099954261,
           "share_acumulado_ate_o_dia": 0.128690223,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 16,
           "data_calendario": "2026-01-02",
+          "receita_empresa": 84090,
+          "pedidos_empresa": 58,
           "share_do_dia": 0.101641099,
           "share_acumulado_ate_o_dia": 0.126842231,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 17,
           "data_calendario": "2026-01-03",
+          "receita_empresa": 83391.56,
+          "pedidos_empresa": 68,
           "share_do_dia": 0.046587448,
           "share_acumulado_ate_o_dia": 0.121749802,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 18,
           "data_calendario": "2026-01-04",
+          "receita_empresa": 86926,
+          "pedidos_empresa": 72,
           "share_do_dia": 0.080447737,
           "share_acumulado_ate_o_dia": 0.119187454,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 19,
           "data_calendario": "2026-01-05",
+          "receita_empresa": 124770,
+          "pedidos_empresa": 90,
           "share_do_dia": 0.068502044,
           "share_acumulado_ate_o_dia": 0.115043045,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 20,
           "data_calendario": "2026-01-06",
+          "receita_empresa": 128072,
+          "pedidos_empresa": 101,
           "share_do_dia": 0.115271098,
           "share_acumulado_ate_o_dia": 0.115060704,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 21,
           "data_calendario": "2026-01-07",
+          "receita_empresa": 126088,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.092435442,
           "share_acumulado_ate_o_dia": 0.11345809,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 22,
           "data_calendario": "2026-01-08",
+          "receita_empresa": 95760,
+          "pedidos_empresa": 79,
           "share_do_dia": 0.105482456,
           "share_acumulado_ate_o_dia": 0.11305094,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 23,
           "data_calendario": "2026-01-09",
+          "receita_empresa": 95734,
+          "pedidos_empresa": 76,
           "share_do_dia": 0.121743581,
           "share_acumulado_ate_o_dia": 0.11347303,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 24,
           "data_calendario": "2026-01-10",
+          "receita_empresa": 83664,
+          "pedidos_empresa": 67,
           "share_do_dia": 0.055722892,
           "share_acumulado_ate_o_dia": 0.111122151,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 25,
           "data_calendario": "2026-01-11",
+          "receita_empresa": 96480,
+          "pedidos_empresa": 68,
           "share_do_dia": 0.048320896,
           "share_acumulado_ate_o_dia": 0.108306225,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 26,
           "data_calendario": "2026-01-12",
+          "receita_empresa": 97948,
+          "pedidos_empresa": 77,
           "share_do_dia": 0.015865561,
           "share_acumulado_ate_o_dia": 0.104281452,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 27,
           "data_calendario": "2026-01-13",
+          "receita_empresa": 138062,
+          "pedidos_empresa": 118,
           "share_do_dia": 0.056279063,
           "share_acumulado_ate_o_dia": 0.101505878,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 28,
           "data_calendario": "2026-01-14",
+          "receita_empresa": 131334,
+          "pedidos_empresa": 97,
           "share_do_dia": 0.082826991,
           "share_acumulado_ate_o_dia": 0.100532032,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 29,
           "data_calendario": "2026-01-15",
+          "receita_empresa": 115722,
+          "pedidos_empresa": 93,
           "share_do_dia": 0.053714938,
           "share_acumulado_ate_o_dia": 0.098475782,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 30,
           "data_calendario": "2026-01-16",
+          "receita_empresa": 103994,
+          "pedidos_empresa": 88,
           "share_do_dia": 0.037357924,
           "share_acumulado_ate_o_dia": 0.096155075,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 31,
           "data_calendario": "2026-01-17",
+          "receita_empresa": 71886,
+          "pedidos_empresa": 60,
           "share_do_dia": 0.043235122,
           "share_acumulado_ate_o_dia": 0.094801584,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 32,
           "data_calendario": "2026-01-18",
+          "receita_empresa": 132804,
+          "pedidos_empresa": 98,
           "share_do_dia": 0.070208729,
           "share_acumulado_ate_o_dia": 0.093691996,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 33,
           "data_calendario": "2026-01-19",
+          "receita_empresa": 140318,
+          "pedidos_empresa": 88,
           "share_do_dia": 0.193809775,
           "share_acumulado_ate_o_dia": 0.098247548,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 34,
           "data_calendario": "2026-01-20",
+          "receita_empresa": 130083,
+          "pedidos_empresa": 86,
           "share_do_dia": 0.167247065,
           "share_acumulado_ate_o_dia": 0.101040342,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 35,
           "data_calendario": "2026-01-21",
+          "receita_empresa": 135225,
+          "pedidos_empresa": 93,
           "share_do_dia": 0.103427621,
           "share_acumulado_ate_o_dia": 0.101136733,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 36,
           "data_calendario": "2026-01-22",
+          "receita_empresa": 140315,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.128909953,
           "share_acumulado_ate_o_dia": 0.102253542,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 37,
           "data_calendario": "2026-01-23",
+          "receita_empresa": 81582,
+          "pedidos_empresa": 76,
           "share_do_dia": 0.095241597,
           "share_acumulado_ate_o_dia": 0.102093349,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 38,
           "data_calendario": "2026-01-24",
+          "receita_empresa": 41095,
+          "pedidos_empresa": 67,
           "share_do_dia": 0.094537048,
           "share_acumulado_ate_o_dia": 0.10200738,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 39,
           "data_calendario": "2026-01-25",
+          "receita_empresa": 64362,
+          "pedidos_empresa": 92,
           "share_do_dia": 0.132795749,
           "share_acumulado_ate_o_dia": 0.102546379,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 40,
           "data_calendario": "2026-01-26",
+          "receita_empresa": 56103,
+          "pedidos_empresa": 89,
           "share_do_dia": 0.069247634,
           "share_acumulado_ate_o_dia": 0.102045874,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 41,
           "data_calendario": "2026-01-27",
+          "receita_empresa": 46192,
+          "pedidos_empresa": 76,
           "share_do_dia": 0.16214929,
           "share_acumulado_ate_o_dia": 0.102780589,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 42,
           "data_calendario": "2026-01-28",
+          "receita_empresa": 58527,
+          "pedidos_empresa": 102,
           "share_do_dia": 0.132759239,
           "share_acumulado_ate_o_dia": 0.103237831,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 43,
           "data_calendario": "2026-01-29",
+          "receita_empresa": 57470,
+          "pedidos_empresa": 94,
           "share_do_dia": 0.027040195,
           "share_acumulado_ate_o_dia": 0.102113473,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 44,
           "data_calendario": "2026-01-30",
+          "receita_empresa": 78132,
+          "pedidos_empresa": 117,
           "share_do_dia": 0.125697538,
           "share_acumulado_ate_o_dia": 0.102577287,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 45,
           "data_calendario": "2026-01-31",
+          "receita_empresa": 55204,
+          "pedidos_empresa": 100,
           "share_do_dia": 0.042225201,
           "share_acumulado_ate_o_dia": 0.101750172,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 46,
           "data_calendario": "2026-02-01",
+          "receita_empresa": 60617,
+          "pedidos_empresa": 103,
           "share_do_dia": 0.038454559,
           "share_acumulado_ate_o_dia": 0.100811781,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 47,
           "data_calendario": "2026-02-02",
+          "receita_empresa": 68739,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.029837501,
           "share_acumulado_ate_o_dia": 0.099638291,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 48,
           "data_calendario": "2026-02-03",
+          "receita_empresa": 98449,
+          "pedidos_empresa": 142,
           "share_do_dia": 0.099757235,
           "share_acumulado_ate_o_dia": 0.099641042,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 49,
           "data_calendario": "2026-02-04",
+          "receita_empresa": 81985,
+          "pedidos_empresa": 113,
           "share_do_dia": 0.104250778,
           "share_acumulado_ate_o_dia": 0.099728166,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 50,
           "data_calendario": "2026-02-05",
+          "receita_empresa": 85241,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.096983846,
           "share_acumulado_ate_o_dia": 0.099675278,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 51,
           "data_calendario": "2026-02-06",
+          "receita_empresa": 67631.97,
+          "pedidos_empresa": 95,
           "share_do_dia": 0.045954598,
           "share_acumulado_ate_o_dia": 0.098866226,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 52,
           "data_calendario": "2026-02-07",
+          "receita_empresa": 81649,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.072701442,
           "share_acumulado_ate_o_dia": 0.098399002,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 53,
           "data_calendario": "2026-02-08",
+          "receita_empresa": 86491,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.104565793,
           "share_acumulado_ate_o_dia": 0.098513487,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 54,
           "data_calendario": "2026-02-09",
+          "receita_empresa": 68846,
+          "pedidos_empresa": 107,
           "share_do_dia": 0.063649304,
           "share_acumulado_ate_o_dia": 0.098005788,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 55,
           "data_calendario": "2026-02-10",
+          "receita_empresa": 129982,
+          "pedidos_empresa": 175,
           "share_do_dia": 0.065755258,
           "share_acumulado_ate_o_dia": 0.097142831,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 56,
           "data_calendario": "2026-02-11",
+          "receita_empresa": 97991,
+          "pedidos_empresa": 131,
           "share_do_dia": 0.163657887,
           "share_acumulado_ate_o_dia": 0.098458061,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 57,
           "data_calendario": "2026-02-12",
+          "receita_empresa": 76380,
+          "pedidos_empresa": 106,
           "share_do_dia": 0.193283582,
           "share_acumulado_ate_o_dia": 0.099897383,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 58,
           "data_calendario": "2026-02-13",
+          "receita_empresa": 67426,
+          "pedidos_empresa": 103,
           "share_do_dia": 0.088037256,
           "share_acumulado_ate_o_dia": 0.099740567,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 59,
           "data_calendario": "2026-02-14",
+          "receita_empresa": 66362,
+          "pedidos_empresa": 92,
           "share_do_dia": 0.124574305,
           "share_acumulado_ate_o_dia": 0.100059588,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 60,
           "data_calendario": "2026-02-15",
+          "receita_empresa": 50416,
+          "pedidos_empresa": 79,
           "share_do_dia": 0.1177404,
           "share_acumulado_ate_o_dia": 0.100230475,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 61,
           "data_calendario": "2026-02-16",
+          "receita_empresa": 56835,
+          "pedidos_empresa": 89,
           "share_do_dia": 0.08202692,
           "share_acumulado_ate_o_dia": 0.100034273,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 62,
           "data_calendario": "2026-02-17",
+          "receita_empresa": 62575.76,
+          "pedidos_empresa": 83,
           "share_do_dia": 0.194196603,
           "share_acumulado_ate_o_dia": 0.101138587,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 63,
           "data_calendario": "2026-02-18",
+          "receita_empresa": 117685,
+          "pedidos_empresa": 155,
           "share_do_dia": 0.072626078,
           "share_acumulado_ate_o_dia": 0.100523281,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 64,
           "data_calendario": "2026-02-19",
+          "receita_empresa": 76187.99,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.112183036,
           "share_acumulado_ate_o_dia": 0.100683933,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 65,
           "data_calendario": "2026-02-20",
+          "receita_empresa": 69389,
+          "pedidos_empresa": 97,
           "share_do_dia": 0.100779662,
           "share_acumulado_ate_o_dia": 0.100685119,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 66,
           "data_calendario": "2026-02-21",
+          "receita_empresa": 60243,
+          "pedidos_empresa": 80,
           "share_do_dia": 0.103182112,
           "share_acumulado_ate_o_dia": 0.1007117,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 67,
           "data_calendario": "2026-02-22",
+          "receita_empresa": 64999,
+          "pedidos_empresa": 90,
           "share_do_dia": 0.079370452,
           "share_acumulado_ate_o_dia": 0.100469367,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 68,
           "data_calendario": "2026-02-23",
+          "receita_empresa": 57959,
+          "pedidos_empresa": 71,
           "share_do_dia": 0.174278369,
           "share_acumulado_ate_o_dia": 0.101209212,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 69,
           "data_calendario": "2026-02-24",
+          "receita_empresa": 98371,
+          "pedidos_empresa": 119,
           "share_do_dia": 0.039493347,
           "share_acumulado_ate_o_dia": 0.100176812,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 70,
           "data_calendario": "2026-02-25",
+          "receita_empresa": 68989,
+          "pedidos_empresa": 104,
           "share_do_dia": 0.090101321,
           "share_acumulado_ate_o_dia": 0.100059979,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 71,
           "data_calendario": "2026-02-26",
+          "receita_empresa": 48650,
+          "pedidos_empresa": 78,
           "share_do_dia": 0.031942446,
           "share_acumulado_ate_o_dia": 0.09950749,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 72,
           "data_calendario": "2026-02-27",
+          "receita_empresa": 121122.98,
+          "pedidos_empresa": 128,
           "share_do_dia": 0.153959224,
           "share_acumulado_ate_o_dia": 0.100585289,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 73,
           "data_calendario": "2026-02-28",
+          "receita_empresa": 102851,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.135983121,
           "share_acumulado_ate_o_dia": 0.10117041,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 74,
           "data_calendario": "2026-03-01",
+          "receita_empresa": 98900,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.117846309,
           "share_acumulado_ate_o_dia": 0.101431324,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 75,
           "data_calendario": "2026-03-02",
+          "receita_empresa": 104592,
+          "pedidos_empresa": 120,
           "share_do_dia": 0.096575264,
           "share_acumulado_ate_o_dia": 0.10135228,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 76,
           "data_calendario": "2026-03-03",
+          "receita_empresa": 109590.2,
+          "pedidos_empresa": 134,
           "share_do_dia": 0.0709005,
           "share_acumulado_ate_o_dia": 0.100841629,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 77,
           "data_calendario": "2026-03-04",
+          "receita_empresa": 108875.2,
+          "pedidos_empresa": 124,
           "share_do_dia": 0.092775949,
           "share_acumulado_ate_o_dia": 0.100709459,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 78,
           "data_calendario": "2026-03-05",
+          "receita_empresa": 228995.4,
+          "pedidos_empresa": 244,
           "share_do_dia": 0.132330169,
           "share_acumulado_ate_o_dia": 0.101762988,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 79,
           "data_calendario": "2026-03-06",
+          "receita_empresa": 189982.38,
+          "pedidos_empresa": 220,
           "share_do_dia": 0.15132456,
           "share_acumulado_ate_o_dia": 0.103096094,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 80,
           "data_calendario": "2026-03-07",
+          "receita_empresa": 187581,
+          "pedidos_empresa": 207,
           "share_do_dia": 0.128408528,
           "share_acumulado_ate_o_dia": 0.10375095,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 81,
           "data_calendario": "2026-03-08",
+          "receita_empresa": 152678.98,
+          "pedidos_empresa": 172,
           "share_do_dia": 0.111960402,
           "share_acumulado_ate_o_dia": 0.103920254,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 82,
           "data_calendario": "2026-03-09",
+          "receita_empresa": 121368,
+          "pedidos_empresa": 141,
           "share_do_dia": 0.12804034,
           "share_acumulado_ate_o_dia": 0.104309293,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 83,
           "data_calendario": "2026-03-10",
+          "receita_empresa": 136807.98,
+          "pedidos_empresa": 152,
           "share_do_dia": 0.102230879,
           "share_acumulado_ate_o_dia": 0.10427218,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 84,
           "data_calendario": "2026-03-11",
+          "receita_empresa": 147675.99,
+          "pedidos_empresa": 161,
           "share_do_dia": 0.136799489,
           "share_acumulado_ate_o_dia": 0.10488729,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 85,
           "data_calendario": "2026-03-12",
+          "receita_empresa": 155370.99,
+          "pedidos_empresa": 152,
           "share_do_dia": 0.060011203,
           "share_acumulado_ate_o_dia": 0.104011855,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 86,
           "data_calendario": "2026-03-13",
+          "receita_empresa": 106985.99,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.09855496,
           "share_acumulado_ate_o_dia": 0.103939526,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 87,
           "data_calendario": "2026-03-14",
+          "receita_empresa": 98721,
+          "pedidos_empresa": 122,
           "share_do_dia": 0.070835992,
           "share_acumulado_ate_o_dia": 0.103539537,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 88,
           "data_calendario": "2026-03-15",
+          "receita_empresa": 151329.99,
+          "pedidos_empresa": 177,
           "share_do_dia": 0.075913571,
           "share_acumulado_ate_o_dia": 0.103037153,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 89,
           "data_calendario": "2026-03-16",
+          "receita_empresa": 151640,
+          "pedidos_empresa": 149,
           "share_do_dia": 0.107577156,
           "share_acumulado_ate_o_dia": 0.103118402,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 90,
           "data_calendario": "2026-03-17",
+          "receita_empresa": 140471,
+          "pedidos_empresa": 156,
           "share_do_dia": 0.102718711,
           "share_acumulado_ate_o_dia": 0.103111884,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         }
       ]
     },
@@ -1476,735 +2208,1105 @@
       "share_acumulado_atual": 0.107868056,
       "receita_lancamento_periodo": 1221581,
       "ticket_medio_empresa_periodo": 921.087494103,
+      "dado_ate": "2026-07-15",
+      "dias_pos_disponiveis": 91,
+      "receita_empresa_pre_periodo": 9749977.25,
+      "receita_empresa_pos_periodo": 11324770.74,
+      "variacao_receita_empresa_pct": 0.161517658,
+      "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
         {
           "dias_desde_lancamento": 0,
           "data_calendario": "2026-04-16",
+          "receita_empresa": 107209,
+          "pedidos_empresa": 118,
           "share_do_dia": 0.160956636,
           "share_acumulado_ate_o_dia": 0.160956636,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 1,
           "data_calendario": "2026-04-17",
+          "receita_empresa": 108275,
+          "pedidos_empresa": 117,
           "share_do_dia": 0.172652967,
           "share_acumulado_ate_o_dia": 0.166833732,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 2,
           "data_calendario": "2026-04-18",
+          "receita_empresa": 90525.99,
+          "pedidos_empresa": 107,
           "share_do_dia": 0.150906938,
           "share_acumulado_ate_o_dia": 0.162122158,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 3,
           "data_calendario": "2026-04-19",
+          "receita_empresa": 126100.99,
+          "pedidos_empresa": 137,
           "share_do_dia": 0.1368427,
           "share_acumulado_ate_o_dia": 0.154744969,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 4,
           "data_calendario": "2026-04-20",
+          "receita_empresa": 106766.99,
+          "pedidos_empresa": 134,
           "share_do_dia": 0.107748659,
           "share_acumulado_ate_o_dia": 0.145433668,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 5,
           "data_calendario": "2026-04-21",
+          "receita_empresa": 131886.99,
+          "pedidos_empresa": 137,
           "share_do_dia": 0.141742563,
           "share_acumulado_ate_o_dia": 0.144707917,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 6,
           "data_calendario": "2026-04-22",
+          "receita_empresa": 107770.99,
+          "pedidos_empresa": 106,
           "share_do_dia": 0.173460409,
           "share_acumulado_ate_o_dia": 0.14868806,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 7,
           "data_calendario": "2026-04-23",
+          "receita_empresa": 78803,
+          "pedidos_empresa": 94,
           "share_do_dia": 0.191604381,
           "share_acumulado_ate_o_dia": 0.152632748,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 8,
           "data_calendario": "2026-04-24",
+          "receita_empresa": 90424,
+          "pedidos_empresa": 96,
           "share_do_dia": 0.127222861,
           "share_acumulado_ate_o_dia": 0.150208446,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 9,
           "data_calendario": "2026-04-25",
+          "receita_empresa": 95589.99,
+          "pedidos_empresa": 98,
           "share_do_dia": 0.090260497,
           "share_acumulado_ate_o_dia": 0.14471613,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 10,
           "data_calendario": "2026-04-26",
+          "receita_empresa": 143133.99,
+          "pedidos_empresa": 129,
           "share_do_dia": 0.140651427,
           "share_acumulado_ate_o_dia": 0.144225778,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 11,
           "data_calendario": "2026-04-27",
+          "receita_empresa": 106763,
+          "pedidos_empresa": 121,
           "share_do_dia": 0.107752686,
           "share_acumulado_ate_o_dia": 0.141214777,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 12,
           "data_calendario": "2026-04-28",
+          "receita_empresa": 104747.99,
+          "pedidos_empresa": 116,
           "share_do_dia": 0.151010058,
           "share_acumulado_ate_o_dia": 0.141948709,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 13,
           "data_calendario": "2026-04-29",
+          "receita_empresa": 88327,
+          "pedidos_empresa": 97,
           "share_do_dia": 0.122103094,
           "share_acumulado_ate_o_dia": 0.140769355,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 14,
           "data_calendario": "2026-04-30",
+          "receita_empresa": 86552,
+          "pedidos_empresa": 103,
           "share_do_dia": 0.099685738,
           "share_acumulado_ate_o_dia": 0.138508613,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 15,
           "data_calendario": "2026-05-01",
+          "receita_empresa": 91747,
+          "pedidos_empresa": 108,
           "share_do_dia": 0.101877991,
           "share_acumulado_ate_o_dia": 0.136489688,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 16,
           "data_calendario": "2026-05-02",
+          "receita_empresa": 129098.99,
+          "pedidos_empresa": 137,
           "share_do_dia": 0.116956763,
           "share_acumulado_ate_o_dia": 0.135083852,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 17,
           "data_calendario": "2026-05-03",
+          "receita_empresa": 114107,
+          "pedidos_empresa": 119,
           "share_do_dia": 0.189033101,
           "share_acumulado_ate_o_dia": 0.138310548,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 18,
           "data_calendario": "2026-05-04",
+          "receita_empresa": 104021.99,
+          "pedidos_empresa": 137,
           "share_do_dia": 0.082944001,
           "share_acumulado_ate_o_dia": 0.135447843,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 19,
           "data_calendario": "2026-05-05",
+          "receita_empresa": 121720.99,
+          "pedidos_empresa": 146,
           "share_do_dia": 0.100418178,
           "share_acumulado_ate_o_dia": 0.13344939,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 20,
           "data_calendario": "2026-05-06",
+          "receita_empresa": 116796,
+          "pedidos_empresa": 136,
           "share_do_dia": 0.036936196,
           "share_acumulado_ate_o_dia": 0.128440275,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 21,
           "data_calendario": "2026-05-07",
+          "receita_empresa": 85283,
+          "pedidos_empresa": 96,
           "share_do_dia": 0.151753573,
           "share_acumulado_ate_o_dia": 0.129291527,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 22,
           "data_calendario": "2026-05-08",
+          "receita_empresa": 78232,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.11028735,
           "share_acumulado_ate_o_dia": 0.128675617,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 23,
           "data_calendario": "2026-05-09",
+          "receita_empresa": 108758.98,
+          "pedidos_empresa": 139,
           "share_do_dia": 0.125608019,
           "share_acumulado_ate_o_dia": 0.128543364,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 24,
           "data_calendario": "2026-05-10",
+          "receita_empresa": 112568,
+          "pedidos_empresa": 126,
           "share_do_dia": 0.16606851,
           "share_acumulado_ate_o_dia": 0.130146321,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 25,
           "data_calendario": "2026-05-11",
+          "receita_empresa": 109659,
+          "pedidos_empresa": 127,
           "share_do_dia": 0.091793651,
           "share_acumulado_ate_o_dia": 0.128614112,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 26,
           "data_calendario": "2026-05-12",
+          "receita_empresa": 104785.98,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.08233926,
           "share_acumulado_ate_o_dia": 0.126912518,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 27,
           "data_calendario": "2026-05-13",
+          "receita_empresa": 164434,
+          "pedidos_empresa": 198,
           "share_do_dia": 0.100569225,
           "share_acumulado_ate_o_dia": 0.125475357,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 28,
           "data_calendario": "2026-05-14",
+          "receita_empresa": 86351,
+          "pedidos_empresa": 96,
           "share_do_dia": 0.191509073,
           "share_acumulado_ate_o_dia": 0.127314475,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 29,
           "data_calendario": "2026-05-15",
+          "receita_empresa": 89955,
+          "pedidos_empresa": 100,
           "share_do_dia": 0.087921739,
           "share_acumulado_ate_o_dia": 0.126203775,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 30,
           "data_calendario": "2026-05-16",
+          "receita_empresa": 98721,
+          "pedidos_empresa": 109,
           "share_do_dia": 0.14566303,
           "share_acumulado_ate_o_dia": 0.126787834,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 31,
           "data_calendario": "2026-05-17",
+          "receita_empresa": 143571,
+          "pedidos_empresa": 154,
           "share_do_dia": 0.150239254,
           "share_acumulado_ate_o_dia": 0.127768681,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 32,
           "data_calendario": "2026-05-18",
+          "receita_empresa": 115093,
+          "pedidos_empresa": 147,
           "share_do_dia": 0.093706828,
           "share_acumulado_ate_o_dia": 0.126663686,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 33,
           "data_calendario": "2026-05-19",
+          "receita_empresa": 115442.99,
+          "pedidos_empresa": 151,
           "share_do_dia": 0.049825459,
           "share_acumulado_ate_o_dia": 0.124242203,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 34,
           "data_calendario": "2026-05-20",
+          "receita_empresa": 129714,
+          "pedidos_empresa": 149,
           "share_do_dia": 0.138574094,
           "share_acumulado_ate_o_dia": 0.124732337,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 35,
           "data_calendario": "2026-05-21",
+          "receita_empresa": 120332.99,
+          "pedidos_empresa": 136,
           "share_do_dia": 0.137426985,
           "share_acumulado_ate_o_dia": 0.125122697,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 36,
           "data_calendario": "2026-05-22",
+          "receita_empresa": 104850,
+          "pedidos_empresa": 107,
           "share_do_dia": 0.096003815,
           "share_acumulado_ate_o_dia": 0.12436286,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 37,
           "data_calendario": "2026-05-23",
+          "receita_empresa": 116872,
+          "pedidos_empresa": 106,
           "share_do_dia": 0.110736532,
           "share_acumulado_ate_o_dia": 0.123977724,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 38,
           "data_calendario": "2026-05-24",
+          "receita_empresa": 156384,
+          "pedidos_empresa": 147,
           "share_do_dia": 0.151722683,
           "share_acumulado_ate_o_dia": 0.124988791,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 39,
           "data_calendario": "2026-05-25",
+          "receita_empresa": 126852,
+          "pedidos_empresa": 135,
           "share_do_dia": 0.181376722,
           "share_acumulado_ate_o_dia": 0.126607747,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 40,
           "data_calendario": "2026-05-26",
+          "receita_empresa": 106796.99,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.121183191,
           "share_acumulado_ate_o_dia": 0.12647972,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 41,
           "data_calendario": "2026-05-27",
+          "receita_empresa": 133611.99,
+          "pedidos_empresa": 134,
           "share_do_dia": 0.096862565,
           "share_acumulado_ate_o_dia": 0.125630286,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 42,
           "data_calendario": "2026-05-28",
+          "receita_empresa": 123586,
+          "pedidos_empresa": 125,
           "share_do_dia": 0.081449355,
           "share_acumulado_ate_o_dia": 0.124488527,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 43,
           "data_calendario": "2026-05-29",
+          "receita_empresa": 141292,
+          "pedidos_empresa": 139,
           "share_do_dia": 0.142485066,
           "share_acumulado_ate_o_dia": 0.125004981,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 44,
           "data_calendario": "2026-05-30",
+          "receita_empresa": 128059,
+          "pedidos_empresa": 133,
           "share_do_dia": 0.123521189,
           "share_acumulado_ate_o_dia": 0.124967366,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 45,
           "data_calendario": "2026-05-31",
+          "receita_empresa": 171472.99,
+          "pedidos_empresa": 161,
           "share_do_dia": 0.104827005,
           "share_acumulado_ate_o_dia": 0.124306157,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 46,
           "data_calendario": "2026-06-01",
+          "receita_empresa": 146453,
+          "pedidos_empresa": 159,
           "share_do_dia": 0.142373321,
           "share_acumulado_ate_o_dia": 0.124798938,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 47,
           "data_calendario": "2026-06-02",
+          "receita_empresa": 147040.99,
+          "pedidos_empresa": 173,
           "share_do_dia": 0.09779586,
           "share_acumulado_ate_o_dia": 0.124079183,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 48,
           "data_calendario": "2026-06-03",
+          "receita_empresa": 158072,
+          "pedidos_empresa": 148,
           "share_do_dia": 0.100068323,
           "share_acumulado_ate_o_dia": 0.123410337,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 49,
           "data_calendario": "2026-06-04",
+          "receita_empresa": 159695,
+          "pedidos_empresa": 161,
           "share_do_dia": 0.126065312,
           "share_acumulado_ate_o_dia": 0.123483008,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 50,
           "data_calendario": "2026-06-05",
+          "receita_empresa": 181871,
+          "pedidos_empresa": 200,
           "share_do_dia": 0.094880437,
           "share_acumulado_ate_o_dia": 0.122618343,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 51,
           "data_calendario": "2026-06-06",
+          "receita_empresa": 159606,
+          "pedidos_empresa": 171,
           "share_do_dia": 0.058562961,
           "share_acumulado_ate_o_dia": 0.120962907,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 52,
           "data_calendario": "2026-06-07",
+          "receita_empresa": 205451.99,
+          "pedidos_empresa": 230,
           "share_do_dia": 0.055993617,
           "share_acumulado_ate_o_dia": 0.118871139,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 53,
           "data_calendario": "2026-06-08",
+          "receita_empresa": 171246.99,
+          "pedidos_empresa": 209,
           "share_do_dia": 0.104965349,
           "share_acumulado_ate_o_dia": 0.118507715,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 54,
           "data_calendario": "2026-06-09",
+          "receita_empresa": 193004.99,
+          "pedidos_empresa": 202,
           "share_do_dia": 0.078231138,
           "share_acumulado_ate_o_dia": 0.117355304,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 55,
           "data_calendario": "2026-06-10",
+          "receita_empresa": 133450,
+          "pedidos_empresa": 151,
           "share_do_dia": 0.102367928,
           "share_acumulado_ate_o_dia": 0.117064552,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 56,
           "data_calendario": "2026-06-11",
+          "receita_empresa": 147871.99,
+          "pedidos_empresa": 161,
           "share_do_dia": 0.106970901,
           "share_acumulado_ate_o_dia": 0.116852141,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 57,
           "data_calendario": "2026-06-12",
+          "receita_empresa": 127712,
+          "pedidos_empresa": 144,
           "share_do_dia": 0.157635931,
           "share_acumulado_ate_o_dia": 0.117580153,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": "Dia dos Namorados"
+          "evento_sazonal": "Dia dos Namorados",
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 58,
           "data_calendario": "2026-06-13",
+          "receita_empresa": 111654,
+          "pedidos_empresa": 118,
           "share_do_dia": 0.109472119,
           "share_acumulado_ate_o_dia": 0.117455563,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 59,
           "data_calendario": "2026-06-14",
+          "receita_empresa": 168639.99,
+          "pedidos_empresa": 172,
           "share_do_dia": 0.089533924,
           "share_acumulado_ate_o_dia": 0.116822232,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 60,
           "data_calendario": "2026-06-15",
+          "receita_empresa": 124359,
+          "pedidos_empresa": 133,
           "share_do_dia": 0.086724724,
           "share_acumulado_ate_o_dia": 0.116327086,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 61,
           "data_calendario": "2026-06-16",
+          "receita_empresa": 134832,
+          "pedidos_empresa": 149,
           "share_do_dia": 0.13331405,
           "share_acumulado_ate_o_dia": 0.11662477,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 62,
           "data_calendario": "2026-06-17",
+          "receita_empresa": 107248,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.120673579,
           "share_acumulado_ate_o_dia": 0.116680431,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 63,
           "data_calendario": "2026-06-18",
+          "receita_empresa": 128651,
+          "pedidos_empresa": 144,
           "share_do_dia": 0.089420214,
           "share_acumulado_ate_o_dia": 0.116238175,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 64,
           "data_calendario": "2026-06-19",
+          "receita_empresa": 105878,
+          "pedidos_empresa": 114,
           "share_do_dia": 0.054326678,
           "share_acumulado_ate_o_dia": 0.11542244,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 65,
           "data_calendario": "2026-06-20",
+          "receita_empresa": 95206,
+          "pedidos_empresa": 105,
           "share_do_dia": 0.052864315,
           "share_acumulado_ate_o_dia": 0.114689946,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 66,
           "data_calendario": "2026-06-21",
+          "receita_empresa": 163919,
+          "pedidos_empresa": 172,
           "share_do_dia": 0.074567317,
           "share_acumulado_ate_o_dia": 0.113897066,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 67,
           "data_calendario": "2026-06-22",
+          "receita_empresa": 117841,
+          "pedidos_empresa": 130,
           "share_do_dia": 0.061014418,
           "share_acumulado_ate_o_dia": 0.113156317,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 68,
           "data_calendario": "2026-06-23",
+          "receita_empresa": 95241,
+          "pedidos_empresa": 117,
           "share_do_dia": 0.090591237,
           "share_acumulado_ate_o_dia": 0.112903716,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 69,
           "data_calendario": "2026-06-24",
+          "receita_empresa": 114420,
+          "pedidos_empresa": 120,
           "share_do_dia": 0.163380528,
           "share_acumulado_ate_o_dia": 0.113573547,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 70,
           "data_calendario": "2026-06-25",
+          "receita_empresa": 140581,
+          "pedidos_empresa": 148,
           "share_do_dia": 0.056259381,
           "share_acumulado_ate_o_dia": 0.11265408,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 71,
           "data_calendario": "2026-06-26",
+          "receita_empresa": 133765,
+          "pedidos_empresa": 126,
           "share_do_dia": 0.096751766,
           "share_acumulado_ate_o_dia": 0.112414985,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 72,
           "data_calendario": "2026-06-27",
+          "receita_empresa": 130518,
+          "pedidos_empresa": 137,
           "share_do_dia": 0.082632281,
           "share_acumulado_ate_o_dia": 0.111984381,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 73,
           "data_calendario": "2026-06-28",
+          "receita_empresa": 156744,
+          "pedidos_empresa": 156,
           "share_do_dia": 0.110090338,
           "share_acumulado_ate_o_dia": 0.111952056,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 74,
           "data_calendario": "2026-06-29",
+          "receita_empresa": 110565,
+          "pedidos_empresa": 110,
           "share_do_dia": 0.084538507,
           "share_acumulado_ate_o_dia": 0.111625954,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 75,
           "data_calendario": "2026-06-30",
+          "receita_empresa": 103910,
+          "pedidos_empresa": 118,
           "share_do_dia": 0.089952844,
           "share_acumulado_ate_o_dia": 0.111386336,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 76,
           "data_calendario": "2026-07-01",
+          "receita_empresa": 129705,
+          "pedidos_empresa": 131,
           "share_do_dia": 0.049890135,
           "share_acumulado_ate_o_dia": 0.110549203,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 77,
           "data_calendario": "2026-07-02",
+          "receita_empresa": 140457,
+          "pedidos_empresa": 157,
           "share_do_dia": 0.071666061,
           "share_acumulado_ate_o_dia": 0.109984346,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 78,
           "data_calendario": "2026-07-03",
+          "receita_empresa": 130323,
+          "pedidos_empresa": 131,
           "share_do_dia": 0.082755922,
           "share_acumulado_ate_o_dia": 0.109622218,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 79,
           "data_calendario": "2026-07-04",
+          "receita_empresa": 137269,
+          "pedidos_empresa": 152,
           "share_do_dia": 0.08904414,
           "share_acumulado_ate_o_dia": 0.109337932,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 80,
           "data_calendario": "2026-07-05",
+          "receita_empresa": 110592,
+          "pedidos_empresa": 121,
           "share_do_dia": 0.078016493,
           "share_acumulado_ate_o_dia": 0.108993157,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 81,
           "data_calendario": "2026-07-06",
+          "receita_empresa": 140382,
+          "pedidos_empresa": 160,
           "share_do_dia": 0.102434785,
           "share_acumulado_ate_o_dia": 0.108902781,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 82,
           "data_calendario": "2026-07-07",
+          "receita_empresa": 157134,
+          "pedidos_empresa": 163,
           "share_do_dia": 0.073211399,
           "share_acumulado_ate_o_dia": 0.108360618,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 83,
           "data_calendario": "2026-07-08",
+          "receita_empresa": 135504,
+          "pedidos_empresa": 159,
           "share_do_dia": 0.058367281,
           "share_acumulado_ate_o_dia": 0.107714207,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 84,
           "data_calendario": "2026-07-09",
+          "receita_empresa": 131882,
+          "pedidos_empresa": 151,
           "share_do_dia": 0.147199769,
           "share_acumulado_ate_o_dia": 0.108204931,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 85,
           "data_calendario": "2026-07-10",
+          "receita_empresa": 105147,
+          "pedidos_empresa": 127,
           "share_do_dia": 0.095732641,
           "share_acumulado_ate_o_dia": 0.108082561,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 86,
           "data_calendario": "2026-07-11",
+          "receita_empresa": 121863,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.070800817,
           "share_acumulado_ate_o_dia": 0.107663393,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 87,
           "data_calendario": "2026-07-12",
+          "receita_empresa": 142214,
+          "pedidos_empresa": 128,
           "share_do_dia": 0.075836416,
           "share_acumulado_ate_o_dia": 0.107251203,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 88,
           "data_calendario": "2026-07-13",
+          "receita_empresa": 136250,
+          "pedidos_empresa": 130,
           "share_do_dia": 0.131926606,
           "share_acumulado_ate_o_dia": 0.107553619,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 89,
           "data_calendario": "2026-07-14",
+          "receita_empresa": 124782,
+          "pedidos_empresa": 119,
           "share_do_dia": 0.17286147,
           "share_acumulado_ate_o_dia": 0.108278512,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 90,
           "data_calendario": "2026-07-15",
+          "receita_empresa": 82771,
+          "pedidos_empresa": 101,
           "share_do_dia": 0.052119704,
           "share_acumulado_ate_o_dia": 0.107868056,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         }
       ]
     },
@@ -2217,175 +3319,265 @@
       "share_acumulado_atual": 0.13462835,
       "receita_lancamento_periodo": 363814,
       "ticket_medio_empresa_periodo": 948.861657303,
+      "dado_ate": "2026-07-15",
+      "dias_pos_disponiveis": 21,
+      "receita_empresa_pre_periodo": 2947798.95,
+      "receita_empresa_pos_periodo": 2702358,
+      "variacao_receita_empresa_pct": -0.083262446,
+      "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
         {
           "dias_desde_lancamento": 0,
           "data_calendario": "2026-06-25",
+          "receita_empresa": 140581,
+          "pedidos_empresa": 148,
           "share_do_dia": 0.225037523,
           "share_acumulado_ate_o_dia": 0.225037523,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 1,
           "data_calendario": "2026-06-26",
+          "receita_empresa": 133765,
+          "pedidos_empresa": 126,
           "share_do_dia": 0.139752551,
           "share_acumulado_ate_o_dia": 0.18345447,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 2,
           "data_calendario": "2026-06-27",
+          "receita_empresa": 130518,
+          "pedidos_empresa": 137,
           "share_do_dia": 0.137720468,
           "share_acumulado_ate_o_dia": 0.168710975,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 3,
           "data_calendario": "2026-06-28",
+          "receita_empresa": 156744,
+          "pedidos_empresa": 156,
           "share_do_dia": 0.151374215,
           "share_acumulado_ate_o_dia": 0.16387231,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 4,
           "data_calendario": "2026-06-29",
+          "receita_empresa": 110565,
+          "pedidos_empresa": 110,
           "share_do_dia": 0.130059241,
           "share_acumulado_ate_o_dia": 0.158310435,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 5,
           "data_calendario": "2026-06-30",
+          "receita_empresa": 103910,
+          "pedidos_empresa": 118,
           "share_do_dia": 0.076113945,
           "share_acumulado_ate_o_dia": 0.147305121,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 6,
           "data_calendario": "2026-07-01",
+          "receita_empresa": 129705,
+          "pedidos_empresa": 131,
           "share_do_dia": 0.149670406,
           "share_acumulado_ate_o_dia": 0.14764382,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 7,
           "data_calendario": "2026-07-02",
+          "receita_empresa": 140457,
+          "pedidos_empresa": 157,
           "share_do_dia": 0.133094114,
           "share_acumulado_ate_o_dia": 0.145690541,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 8,
           "data_calendario": "2026-07-03",
+          "receita_empresa": 130323,
+          "pedidos_empresa": 131,
           "share_do_dia": 0.143443598,
           "share_acumulado_ate_o_dia": 0.145441657,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 9,
           "data_calendario": "2026-07-04",
+          "receita_empresa": 137269,
+          "pedidos_empresa": 152,
           "share_do_dia": 0.078568358,
           "share_acumulado_ate_o_dia": 0.13845477,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 10,
           "data_calendario": "2026-07-05",
+          "receita_empresa": 110592,
+          "pedidos_empresa": 121,
           "share_do_dia": 0.123526114,
           "share_acumulado_ate_o_dia": 0.137295716,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 11,
           "data_calendario": "2026-07-06",
+          "receita_empresa": 140382,
+          "pedidos_empresa": 160,
           "share_do_dia": 0.112678264,
           "share_acumulado_ate_o_dia": 0.135087241,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 12,
           "data_calendario": "2026-07-07",
+          "receita_empresa": 157134,
+          "pedidos_empresa": 163,
           "share_do_dia": 0.096089961,
           "share_acumulado_ate_o_dia": 0.131528591,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 13,
           "data_calendario": "2026-07-08",
+          "receita_empresa": 135504,
+          "pedidos_empresa": 159,
           "share_do_dia": 0.132652911,
           "share_acumulado_ate_o_dia": 0.131610612,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 14,
           "data_calendario": "2026-07-09",
+          "receita_empresa": 131882,
+          "pedidos_empresa": 151,
           "share_do_dia": 0.087229493,
           "share_acumulado_ate_o_dia": 0.128668381,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 15,
           "data_calendario": "2026-07-10",
+          "receita_empresa": 105147,
+          "pedidos_empresa": 127,
           "share_do_dia": 0.102570687,
           "share_acumulado_ate_o_dia": 0.127358225,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 16,
           "data_calendario": "2026-07-11",
+          "receita_empresa": 121863,
+          "pedidos_empresa": 123,
           "share_do_dia": 0.200602316,
           "share_acumulado_ate_o_dia": 0.131385468,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 17,
           "data_calendario": "2026-07-12",
+          "receita_empresa": 142214,
+          "pedidos_empresa": 128,
           "share_do_dia": 0.161784353,
           "share_acumulado_ate_o_dia": 0.133218432,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 18,
           "data_calendario": "2026-07-13",
+          "receita_empresa": 136250,
+          "pedidos_empresa": 130,
           "share_do_dia": 0.13720367,
           "share_acumulado_ate_o_dia": 0.13343608,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 19,
           "data_calendario": "2026-07-14",
+          "receita_empresa": 124782,
+          "pedidos_empresa": 119,
           "share_do_dia": 0.132527127,
           "share_acumulado_ate_o_dia": 0.133392783,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         },
         {
           "dias_desde_lancamento": 20,
           "data_calendario": "2026-07-15",
+          "receita_empresa": 82771,
+          "pedidos_empresa": 101,
           "share_do_dia": 0.173732346,
           "share_acumulado_ate_o_dia": 0.13462835,
           "regra_receita_empresa": "fct_order_item_valid_orders",
-          "evento_sazonal": null
+          "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         }
       ]
     }
