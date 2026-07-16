@@ -3633,6 +3633,32 @@
     renderInsights(selected);
   }
 
+  function getDashboardSnapshot() {
+    return {
+      data: state.data,
+      launches: state.launches,
+      primaryModelId: state.primaryModelId,
+      snapshotClock: state.snapshotClock
+    };
+  }
+
+  window.ReiseLaunchDashboard = {
+    getSnapshot: getDashboardSnapshot,
+    badge,
+    formatters: {
+      fmtBRL,
+      fmtDate,
+      fmtDateSlash,
+      fmtNum,
+      fmtPct
+    },
+    helpers: {
+      hasValidDayZero,
+      isEligibleStatus,
+      normalizedStatus
+    }
+  };
+
   async function init() {
     configureDrawer();
     configureShareDrawer();
@@ -3647,6 +3673,7 @@
     state.primaryModelId = preferred?.modelo_id;
     state.compareModelIds = comparable.map((launch) => launch.modelo_id);
     renderAll();
+    window.dispatchEvent(new CustomEvent('reise-dashboard-ready', { detail: getDashboardSnapshot() }));
   }
 
   document.addEventListener('DOMContentLoaded', init);

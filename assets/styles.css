@@ -15,6 +15,7 @@
   --border: rgba(255,255,255,0.07);
   --border-2: rgba(255,255,255,0.12);
   --shadow: 0 4px 24px rgba(0,0,0,0.40);
+  --font-voice: "Source Serif 4", Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -100,6 +101,9 @@ body.share-drawer-open .share-drawer {
   position: sticky;
   top: 0;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 -34px 26px;
   padding: 12px 34px;
   background: rgba(22,22,22,.92);
@@ -1738,6 +1742,233 @@ body.stock-detail-open .stock-detail-drawer {
   padding: 0 18px 14px;
 }
 
+.presentation-open {
+  overflow: hidden;
+}
+.presentation-open .app-shell {
+  visibility: hidden;
+  pointer-events: none;
+}
+.presentation-mode[hidden] {
+  display: none;
+}
+.presentation-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: var(--bg-page);
+  color: var(--txt-primary);
+  overflow: hidden;
+}
+.presentation-close {
+  position: fixed;
+  top: 24px;
+  right: 28px;
+  z-index: 2;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--txt-secondary);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.presentation-close:hover,
+.presentation-close:focus-visible {
+  color: var(--txt-primary);
+  border-color: var(--orange);
+}
+.presentation-page {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  outline: none;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.presentation-page.is-entering {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.presentation-slide {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  align-content: center;
+  gap: clamp(18px, 3vh, 34px);
+  padding: clamp(28px, 5vw, 72px);
+  overflow: hidden;
+}
+.presentation-kicker {
+  color: var(--orange);
+  font-size: clamp(.72rem, 1.2vw, .86rem);
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.presentation-title {
+  max-width: min(1120px, 92vw);
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: clamp(2.45rem, 7.5vw, 7rem);
+  font-weight: 700;
+  line-height: .92;
+  letter-spacing: 0;
+}
+.presentation-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  color: var(--txt-secondary);
+  font-size: clamp(.86rem, 1.5vw, 1.05rem);
+}
+.presentation-subtitle strong {
+  color: var(--txt-primary);
+  font-weight: 800;
+}
+.presentation-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 1120px;
+}
+.presentation-stat {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.presentation-stat-label {
+  color: var(--txt-muted);
+  font-size: .7rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.presentation-stat-value {
+  margin-top: 8px;
+  font-size: clamp(1.35rem, 3vw, 2.6rem);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.presentation-stat-sub {
+  margin-top: 8px;
+  color: var(--txt-secondary);
+  font-size: .78rem;
+}
+.presentation-stat--accent .presentation-stat-value {
+  color: var(--orange);
+}
+.presentation-stat--positive .presentation-stat-value {
+  color: var(--positive);
+}
+.presentation-stat--negative .presentation-stat-value {
+  color: var(--negative);
+}
+.presentation-stat--neutral .presentation-stat-value {
+  color: var(--txt-secondary);
+}
+.presentation-chart-shell {
+  position: relative;
+  width: min(1040px, 86vw);
+  height: clamp(86px, 15vh, 150px);
+  pointer-events: none;
+}
+.presentation-chart-shell canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.presentation-summary {
+  align-content: center;
+}
+.presentation-summary-head {
+  display: grid;
+  gap: 12px;
+  max-width: 1060px;
+}
+.presentation-summary-title {
+  margin: 0;
+  font-family: var(--font-voice);
+  font-size: clamp(2.4rem, 6vw, 5.8rem);
+  line-height: .95;
+  letter-spacing: 0;
+}
+.presentation-summary-copy {
+  max-width: 720px;
+  color: var(--txt-secondary);
+  font-size: clamp(.9rem, 1.5vw, 1.08rem);
+}
+.presentation-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.presentation-summary-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: clamp(14px, 2vw, 20px);
+}
+.presentation-summary-card h2 {
+  margin: 0 0 12px;
+  font-size: clamp(1rem, 1.6vw, 1.34rem);
+  line-height: 1.12;
+}
+.presentation-summary-metrics {
+  display: grid;
+  gap: 8px;
+  color: var(--txt-secondary);
+  font-size: .8rem;
+}
+.presentation-summary-metrics strong {
+  display: block;
+  color: var(--txt-primary);
+  font-size: 1rem;
+}
+.presentation-empty {
+  color: var(--txt-secondary);
+  font-size: 1rem;
+}
+.presentation-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 clamp(28px, 5vw, 72px) clamp(22px, 3vw, 36px);
+}
+.presentation-indicator {
+  width: clamp(32px, 5vw, 58px);
+  height: 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  position: relative;
+}
+.presentation-indicator::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 2px;
+  background: rgba(255,255,255,0.15);
+}
+.presentation-indicator.is-active::before {
+  background: var(--orange);
+}
+.presentation-indicator:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 4px;
+}
+
 .hide { display: none !important; }
 
 @media (max-width: 1180px) {
@@ -1794,4 +2025,11 @@ body.stock-detail-open .stock-detail-drawer {
   .insight { grid-template-columns: 1fr; }
   .footer { display: block; }
   .footer-methodology summary { display: block; }
+  .presentation-slide { padding: 26px 20px; align-content: center; }
+  .presentation-close { top: 14px; right: 14px; }
+  .presentation-title { max-width: 100%; font-size: clamp(2.1rem, 12vw, 4.2rem); }
+  .presentation-summary-title { font-size: clamp(2rem, 11vw, 3.6rem); }
+  .presentation-stat-grid, .presentation-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .presentation-chart-shell { width: 100%; height: 84px; }
+  .presentation-indicators { padding-inline: 20px; }
 }
