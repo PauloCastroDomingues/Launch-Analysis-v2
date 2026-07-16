@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-16T14:04:37-03:00",
+  "generated_at": "2026-07-16T14:30:39-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -19,7 +19,7 @@
     "lancamentos_produtos_dia": 7046,
     "auditoria_monochrome": 1,
     "estoque": 416,
-    "share_trajetoria": "failed",
+    "share_trajetoria": 292,
     "midia_paga": 17,
     "crm_disparos": 23
   },
@@ -38,15 +38,14 @@
       "diferenca_receita_pct": 0,
       "linhas_suspeitas": 0,
       "duplicidades": 0
-    },
-    "share_trajetoria": "failed: API call to bigquery.jobs.query failed with error: Column name data_lancamento is ambiguous at [284:18]"
+    }
   },
   "export_status": {
     "cadastro_bigquery": "synced",
     "datas_sazonais": "synced",
     "eventos_comerciais_produto": "ready",
     "estoque": "exported",
-    "share_trajetoria": "failed",
+    "share_trajetoria": "exported",
     "midia_paga": "exported",
     "crm_disparos": "exported"
   },
@@ -65,7 +64,6 @@
     "Dados ausentes devem permanecer null/—; nunca transformar em zero.",
     "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
     "day_zero_base define o D0 analitico de cada modelo.",
-    "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard.",
-    "share_trajetoria falhou: API call to bigquery.jobs.query failed with error: Column name data_lancamento is ambiguous at [284:18]"
+    "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard."
   ]
 }
