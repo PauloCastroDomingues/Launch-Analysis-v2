@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-17T07:11:22-03:00",
+  "generated_at": "2026-07-17T11:07:20-03:00",
   "modelos": {
     "avant": {
       "linha": "Avant",
@@ -3316,14 +3316,14 @@
       "janela_completa": false,
       "dias_disponiveis": 21,
       "janela_alvo_dias": 90,
-      "share_acumulado_atual": 0.134407158,
+      "share_acumulado_atual": 0.134312016,
       "receita_lancamento_periodo": 378913,
-      "ticket_medio_empresa_periodo": 951.448869389,
+      "ticket_medio_empresa_periodo": 951.801619433,
       "dado_ate": "2026-07-16",
       "dias_pos_disponiveis": 22,
       "receita_empresa_pre_periodo": 3105870.95,
-      "receita_empresa_pos_periodo": 2819143,
-      "variacao_receita_empresa_pct": -0.09231805,
+      "receita_empresa_pos_periodo": 2821140,
+      "variacao_receita_empresa_pct": -0.091675074,
       "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
@@ -3582,10 +3582,10 @@
         {
           "dias_desde_lancamento": 21,
           "data_calendario": "2026-07-16",
-          "receita_empresa": 116092,
-          "pedidos_empresa": 115,
-          "share_do_dia": 0.130060642,
-          "share_acumulado_ate_o_dia": 0.134407158,
+          "receita_empresa": 118089,
+          "pedidos_empresa": 116,
+          "share_do_dia": 0.127861189,
+          "share_acumulado_ate_o_dia": 0.134312016,
           "regra_receita_empresa": "fct_order_item_valid_orders",
           "evento_sazonal": null,
           "evento_comercial_tipo": null,
