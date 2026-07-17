@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-17T11:48:48-03:00",
+  "generated_at": "2026-07-17T15:01:15-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -23,18 +23,19 @@
     "estoque": 443,
     "share_trajetoria": 293,
     "midia_paga": 17,
-    "crm_disparos": 23
+    "crm_disparos": 23,
+    "impacto_investimento": 4
   },
   "data_quality": {
     "rs8_monochrome": {
       "status": "ok",
       "auditado": true,
-      "pedidos_auditoria": 395,
-      "pares_auditoria": 537,
-      "receita_auditoria": 386103,
-      "pedidos_exportados": 395,
-      "pares_exportados": 537,
-      "receita_exportada": 386103,
+      "pedidos_auditoria": 396,
+      "pares_auditoria": 538,
+      "receita_auditoria": 386822,
+      "pedidos_exportados": 396,
+      "pares_exportados": 538,
+      "receita_exportada": 386822,
       "diferenca_pedidos_pct": 0,
       "diferenca_pares_pct": 0,
       "diferenca_receita_pct": 0,
@@ -51,7 +52,8 @@
     "estoque": "exported",
     "share_trajetoria": "exported",
     "midia_paga": "exported",
-    "crm_disparos": "exported"
+    "crm_disparos": "exported",
+    "impacto_investimento": "exported"
   },
   "files": [
     "lancamentos_modelos.json",
@@ -61,6 +63,7 @@
     "sub_modelos_dia.json",
     "midia_paga.json",
     "crm_disparos.json",
+    "impacto_investimento.json",
     "estoque.json",
     "share_trajetoria.json",
     "manifest.json"
