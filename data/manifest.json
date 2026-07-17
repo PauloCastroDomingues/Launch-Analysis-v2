@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-17T07:11:34-03:00",
+  "generated_at": "2026-07-17T11:07:26-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -16,8 +16,9 @@
     "linha_cadastro": 5,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "lancamentos_produtos_dia": 7062,
+    "lancamentos_produtos_dia": 7066,
     "auditoria_monochrome": 1,
+    "investigacao_linhas_suspeitas": "skipped",
     "estoque": 443,
     "share_trajetoria": 293,
     "midia_paga": 17,
@@ -27,12 +28,12 @@
     "rs8_monochrome": {
       "status": "ok",
       "auditado": true,
-      "pedidos_auditoria": 392,
-      "pares_auditoria": 532,
-      "receita_auditoria": 382508,
-      "pedidos_exportados": 392,
-      "pares_exportados": 532,
-      "receita_exportada": 382508,
+      "pedidos_auditoria": 394,
+      "pares_auditoria": 536,
+      "receita_auditoria": 385384,
+      "pedidos_exportados": 394,
+      "pares_exportados": 536,
+      "receita_exportada": 385384,
       "diferenca_pedidos_pct": 0,
       "diferenca_pares_pct": 0,
       "diferenca_receita_pct": 0,
@@ -44,6 +45,7 @@
     "cadastro_bigquery": "synced",
     "datas_sazonais": "synced",
     "eventos_comerciais_produto": "ready",
+    "investigacao_linhas_suspeitas": "skipped",
     "estoque": "exported",
     "share_trajetoria": "exported",
     "midia_paga": "exported",
@@ -53,6 +55,7 @@
     "lancamentos_modelos.json",
     "lancamentos_produtos_dia.json",
     "auditoria_monochrome.json",
+    "investigacao_linhas_suspeitas.json",
     "midia_paga.json",
     "crm_disparos.json",
     "estoque.json",
@@ -64,6 +67,7 @@
     "Dados ausentes devem permanecer null/—; nunca transformar em zero.",
     "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
     "day_zero_base define o D0 analitico de cada modelo.",
-    "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard."
+    "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard.",
+    "investigacao_linhas_suspeitas skipped: ANTHROPIC_API_KEY nao configurada"
   ]
 }
