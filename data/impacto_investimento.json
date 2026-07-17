@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-17T15:01:14-03:00",
+  "generated_at": "2026-07-17T16:02:29-03:00",
   "metodologia": "correlacao_por_janela_calendario",
   "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas se dias com investimento ativo tiveram share medio maior que dias sem, no mesmo lancamento.",
   "modelos": {
@@ -12,10 +12,10 @@
       "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas se dias com investimento ativo tiveram share medio maior que dias sem, no mesmo lancamento."
     },
     "phantom": {
-      "share_medio_dias_com_investimento": 0.109403,
-      "share_medio_dias_sem_investimento": null,
-      "dias_com_investimento": 91,
-      "dias_sem_investimento": 0,
+      "share_medio_dias_com_investimento": 0.127622,
+      "share_medio_dias_sem_investimento": 0.09999,
+      "dias_com_investimento": 31,
+      "dias_sem_investimento": 60,
       "metodologia": "correlacao_por_janela_calendario",
       "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas se dias com investimento ativo tiveram share medio maior que dias sem, no mesmo lancamento."
     },
