@@ -825,7 +825,7 @@ itens_classificados AS (
 itens_com_flags AS (
   SELECT
     ic.*,
-    ic.variant_title AS variant_title_catalogo,
+    CAST(NULL AS STRING) AS variant_title_catalogo,
     ROW_NUMBER() OVER (
       PARTITION BY ic.modelo_id, ic.order_sk
       ORDER BY ic.data, ic.line_item_key

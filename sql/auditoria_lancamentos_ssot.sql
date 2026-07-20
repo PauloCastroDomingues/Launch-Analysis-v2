@@ -127,7 +127,7 @@ classificados AS (
 classificados_com_catalogo AS (
   SELECT
     c.*,
-    c.variant_title AS variant_title_catalogo,
+    CAST(NULL AS STRING) AS variant_title_catalogo,
     COALESCE(
       NULLIF(TRIM(pl.cor), ''),
       NULLIF(REGEXP_EXTRACT(c.item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
