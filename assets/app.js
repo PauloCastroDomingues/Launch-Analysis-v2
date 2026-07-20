@@ -1218,16 +1218,9 @@
   function configureShareDrawer() {
     const close = $('share-drawer-close');
     const topOpen = $('share-drawer-open-top');
-    const momentoOpen = $('momento-context-open');
     if (close) close.addEventListener('click', () => closeShareDrawer());
     if (topOpen) {
       topOpen.addEventListener('click', (event) => {
-        const selected = state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
-        openShareDrawer(selected, event.currentTarget);
-      });
-    }
-    if (momentoOpen) {
-      momentoOpen.addEventListener('click', (event) => {
         const selected = state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
         openShareDrawer(selected, event.currentTarget);
       });
@@ -2704,13 +2697,8 @@
               <div><div class="metric-sub">Ticket médio/pedido</div><div class="metric-value">${fmtBRL(avgTicket)}</div></div>
             </div>
             <p class="section-desc" style="margin-top:16px">O dashboard já calcula sazonalidade futura a partir de calendario_br.json. Depois do D0, os dados entram pelo pipeline.</p>
-            <button class="share-open-button" type="button" data-share-open>
-              <span class="ti ti-chart-line" aria-hidden="true"></span>
-              <span>Ver share de representatividade</span>
-            </button>
           </div>
         </div>`;
-      container.querySelector('[data-share-open]')?.addEventListener('click', (event) => openShareDrawer(selected, event.currentTarget));
       return;
     }
 
@@ -2778,12 +2766,6 @@
             <div class="metric-sub">${card.sub}</div>
           </div>`).join('')}
       </div>
-      <div class="share-entry-row">
-        <button class="share-open-button" type="button" data-share-open>
-          <span class="ti ti-chart-line" aria-hidden="true"></span>
-          <span>Ver share de representatividade</span>
-        </button>
-      </div>
       ${auditWarning}
       ${empty}
       <div class="grid grid-2" style="margin-top:14px">
@@ -2798,7 +2780,6 @@
           <div class="metric-sub">${isCurrentAccumulated ? 'Disponível quando uma janela fechar.' : `vs ${previous ? escapeHtml(previous.modelo) : 'modelo anterior'} na mesma janela`}</div>
         </div>
       </div>`;
-    container.querySelector('[data-share-open]')?.addEventListener('click', (event) => openShareDrawer(selected, event.currentTarget));
   }
 
   function previousLaunch(selected) {
