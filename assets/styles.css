@@ -859,6 +859,123 @@ h1 {
   justify-content: flex-end;
   flex: 0 0 auto;
 }
+.story-brief {
+  margin: -12px 0 28px;
+}
+.story-brief:empty {
+  display: none;
+}
+.story-brief-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .28fr);
+  gap: 16px;
+  align-items: stretch;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(240,120,0,.12), rgba(255,255,255,.025) 42%, rgba(76,159,106,.08));
+}
+.story-brief-head h2 {
+  margin: 0;
+  font-size: 1.32rem;
+  line-height: 1.15;
+}
+.story-brief-head p {
+  max-width: 980px;
+  margin: 8px 0 0;
+  color: var(--txt-secondary);
+  line-height: 1.45;
+}
+.story-brief-verdict {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border-left: 1px solid rgba(255,255,255,.12);
+  padding-left: 16px;
+}
+.story-brief-verdict span {
+  color: var(--txt-muted);
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.story-brief-verdict strong {
+  color: var(--txt-primary);
+  font-size: 1rem;
+  line-height: 1.18;
+}
+.story-step-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.story-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 14px;
+}
+.story-step--focus {
+  border-color: rgba(240,120,0,.58);
+  box-shadow: inset 0 0 0 1px rgba(240,120,0,.18);
+}
+.story-step--pending {
+  border-color: rgba(232,160,32,.35);
+  background: rgba(232,160,32,.065);
+}
+.story-step--warn {
+  border-color: rgba(224,82,82,.35);
+  background: rgba(224,82,82,.055);
+}
+.story-step-num {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+  color: var(--orange);
+  font-size: .68rem;
+  font-weight: 900;
+}
+.story-step span {
+  display: block;
+  color: var(--txt-muted);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.story-step strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--txt-primary);
+  font-size: 1.16rem;
+  line-height: 1.08;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.story-step em {
+  display: block;
+  margin-top: 5px;
+  color: var(--txt-secondary);
+  font-size: .75rem;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+.story-step p {
+  margin: 8px 0 0;
+  color: var(--txt-secondary);
+  font-size: .74rem;
+  line-height: 1.35;
+}
 .hero-chart-wrap {
   margin: 18px 0 8px;
 }
@@ -2439,6 +2556,9 @@ body.stock-detail-open .stock-detail-drawer {
   .selector-panel { grid-template-columns: minmax(0, 1fr) minmax(170px, .5fr); }
   .selector-panel .selector-block:last-child { grid-column: 1 / -1; }
   .analysis-context-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .story-brief-head { grid-template-columns: 1fr; }
+  .story-brief-verdict { border-left: 0; border-top: 1px solid rgba(255,255,255,.12); padding: 14px 0 0; }
+  .story-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-6, .grid-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .size-ranking-grid, .size-model-grid, .cut-promoters-grid { grid-template-columns: 1fr 1fr; }
   .stock-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2460,6 +2580,9 @@ body.stock-detail-open .stock-detail-drawer {
   .analysis-context { position: static; display: grid; margin: -10px 0 24px; }
   .analysis-context-main { grid-template-columns: 1fr; }
   .analysis-context-status { justify-content: flex-start; padding: 0 2px 2px; }
+  .story-brief { margin-top: -12px; }
+  .story-brief-head { padding: 16px; }
+  .story-step-grid { grid-template-columns: 1fr; }
   .compare-dropdown summary { gap: 8px; padding-inline: 10px; }
   .compare-dropdown-count { display: none; }
   .compare-menu { position: static; width: 100%; margin-top: 6px; max-height: none; }

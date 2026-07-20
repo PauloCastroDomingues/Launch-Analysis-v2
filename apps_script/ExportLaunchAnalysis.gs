@@ -91,6 +91,8 @@ function exportarTudo() {
   }
   const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos, shareStatus.payload);
   const crmStatus = exportarCrmSeConfigurado_(shareStatus.payload);
+  const metasMensaisStatus = exportarMetasMensaisSeConfigurado_();
+  const faturamentoCampanhaStatus = exportarFaturamentoCampanhaSeConfigurado_();
   const impactoStatus = {
     status: 'deprecated',
     rows: 'skipped',
@@ -117,6 +119,8 @@ function exportarTudo() {
       share_trajetoria: shareStatus.rows,
       midia_paga: midiaStatus.rows,
       crm_disparos: crmStatus.rows,
+      metas_mensais: metasMensaisStatus.rows,
+      faturamento_campanha: faturamentoCampanhaStatus.rows,
       impacto_investimento: impactoStatus.rows
     },
     data_quality: dataQuality,
@@ -130,6 +134,8 @@ function exportarTudo() {
       share_trajetoria: shareStatus.status,
       midia_paga: midiaStatus.status,
       crm_disparos: crmStatus.status,
+      metas_mensais: metasMensaisStatus.status,
+      faturamento_campanha: faturamentoCampanhaStatus.status,
       impacto_investimento: impactoStatus.status
     },
     files: [
@@ -140,6 +146,8 @@ function exportarTudo() {
       'sub_modelos_dia.json',
       'midia_paga.json',
       'crm_disparos.json',
+      'metas_mensais.json',
+      'faturamento_campanha.json',
       'estoque.json',
       'share_trajetoria.json',
       'manifest.json'
@@ -2503,6 +2511,64 @@ function exportarCrmSeConfigurado_(shareTrajetoria) {
   }
 }
 
+function exportarMetasMensaisSeConfigurado_() {
+  const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
+  if (!spreadsheetId) {
+    Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo metas_mensais.json atual');
+    return { status: 'skipped', rows: 'skipped', payload: { generated_at: null, rows: [] } };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName('metas_mensais');
+    if (!sheet) {
+      Logger.log('Aba metas_mensais nao encontrada; mantendo metas_mensais.json atual');
+      return { status: 'skipped', rows: 'skipped', payload: { generated_at: null, rows: [] } };
+    }
+
+    const rows = normalizeMetasMensais_(sheetToObjects_(sheet));
+    const payload = {
+      generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+      rows
+    };
+    escreverJsonGitHub_('metas_mensais.json', payload);
+    Logger.log(`metas_mensais.json exportado com ${rows.length} linhas.`);
+    return { status: 'exported', rows: rows.length, payload };
+  } catch (error) {
+    Logger.log(`metas_mensais.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message, payload: { generated_at: null, rows: [] } };
+  }
+}
+
+function exportarFaturamentoCampanhaSeConfigurado_() {
+  const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
+  if (!spreadsheetId) {
+    Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo faturamento_campanha.json atual');
+    return { status: 'skipped', rows: 'skipped', payload: { generated_at: null, rows: [] } };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName('faturamento_campanha');
+    if (!sheet) {
+      Logger.log('Aba faturamento_campanha nao encontrada; mantendo faturamento_campanha.json atual');
+      return { status: 'skipped', rows: 'skipped', payload: { generated_at: null, rows: [] } };
+    }
+
+    const rows = normalizeFaturamentoCampanha_(sheetToObjects_(sheet));
+    const payload = {
+      generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+      rows
+    };
+    escreverJsonGitHub_('faturamento_campanha.json', payload);
+    Logger.log(`faturamento_campanha.json exportado com ${rows.length} linhas.`);
+    return { status: 'exported', rows: rows.length, payload };
+  } catch (error) {
+    Logger.log(`faturamento_campanha.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
+    return { status: 'skipped', rows: 'skipped', error: error.message, payload: { generated_at: null, rows: [] } };
+  }
+}
+
 function sheetToObjects_(sheet) {
   if (!sheet) return [];
   const values = sheet.getDataRange().getValues();
@@ -2567,6 +2633,51 @@ function normalizeCrmDisparos_(rows) {
     observacao: row.observacao || null,
     status: row.status || null
   }));
+}
+
+function normalizeMetasMensais_(rows) {
+  return (rows || []).map(row => {
+    const mes = monthKey_(row.mes || row.competencia || row.month || row.data || row.data_inicio);
+    return {
+      mes,
+      modelo_id: row.modelo_id || null,
+      linha: row.linha || null,
+      meta_receita: primeiroNumeroDisponivel_(row, ['meta_receita', 'meta_faturamento', 'meta']),
+      realizado_receita: primeiroNumeroDisponivel_(row, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']),
+      meta_pedidos: primeiroNumeroDisponivel_(row, ['meta_pedidos', 'pedidos_meta']),
+      realizado_pedidos: primeiroNumeroDisponivel_(row, ['realizado_pedidos', 'pedidos_realizados']),
+      meta_pares: primeiroNumeroDisponivel_(row, ['meta_pares', 'pares_meta']),
+      realizado_pares: primeiroNumeroDisponivel_(row, ['realizado_pares', 'pares_realizados']),
+      atingimento: roasOrNull_(row.atingimento),
+      observacao: row.observacao || null,
+      status: row.status || null
+    };
+  }).filter(row => row.mes || row.meta_receita !== null || row.realizado_receita !== null);
+}
+
+function normalizeFaturamentoCampanha_(rows) {
+  return (rows || []).map(row => {
+    const investimento = primeiroNumeroDisponivel_(row, ['investimento', 'spend', 'custo']);
+    const receita = primeiroNumeroDisponivel_(row, ['receita_atribuida', 'receita', 'faturamento', 'faturamento_campanha', 'receita_campanha']);
+    const pedidos = primeiroNumeroDisponivel_(row, ['pedidos', 'orders']);
+    return {
+      modelo_id: row.modelo_id || null,
+      campanha: row.campanha || row.campaign || row.utm_campaign || null,
+      canal: row.canal || row.channel || row.source_medium || null,
+      data_inicio: dateIsoKey_(row.data_inicio || row.data || row.inicio),
+      data_fim: dateIsoKey_(row.data_fim || row.data || row.fim),
+      janela: row.janela || null,
+      investimento,
+      receita_atribuida: receita,
+      pedidos,
+      pares: primeiroNumeroDisponivel_(row, ['pares', 'quantidade']),
+      cliques: primeiroNumeroDisponivel_(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']),
+      roas: roasOrNull_(row.roas) ?? (investimento && investimento > 0 && receita !== null ? round6_(receita / investimento) : null),
+      cpa: primeiroNumeroDisponivel_(row, ['cpa']) ?? (investimento && investimento > 0 && pedidos ? round2_(investimento / pedidos) : null),
+      observacao: row.observacao || null,
+      status: row.status || null
+    };
+  }).filter(row => row.modelo_id || row.campanha || row.receita_atribuida !== null);
 }
 
 function janelaEmDias_(janelaStr) {
@@ -2922,6 +3033,19 @@ function addDaysIso_(value, days) {
   if (!date) return null;
   date.setDate(date.getDate() + Number(days || 0));
   return Utilities.formatDate(date, CONFIG.timeZone, 'yyyy-MM-dd');
+}
+
+function monthKey_(value) {
+  if (!value) return '';
+  if (value instanceof Date) return Utilities.formatDate(value, CONFIG.timeZone, 'yyyy-MM');
+  const text = String(value).trim();
+  const iso = text.match(/^(\d{4})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+  const br = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (br) return `${br[3]}-${String(br[2]).padStart(2, '0')}`;
+  const monthYear = text.match(/^(\d{1,2})\/(\d{4})$/);
+  if (monthYear) return `${monthYear[2]}-${String(monthYear[1]).padStart(2, '0')}`;
+  return '';
 }
 
 function inferJanelaMidia_(row, modelo) {

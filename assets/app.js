@@ -4,6 +4,8 @@
     'lancamentos_historico',
     'lancamentos_produtos_dia',
     'midia_paga',
+    'metas_mensais',
+    'faturamento_campanha',
     'crm_disparos',
     'sub_modelos_dia',
     'estoque',
@@ -1638,6 +1640,228 @@
         `).join('')}
       </div>
       <div class="analysis-context-status">${sourceBadge(selected)}</div>
+    `;
+  }
+
+  function optionalRows(name) {
+    const payload = state.data?.[name];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.rows)) return payload.rows;
+    return [];
+  }
+
+  function monthKeyFromIso(value) {
+    const text = String(value || '').trim();
+    return /^\d{4}-\d{2}/.test(text) ? text.slice(0, 7) : '';
+  }
+
+  function metaMonthKey(row) {
+    return monthKeyFromIso(row.mes || row.competencia || row.month || row.data || row.data_inicio);
+  }
+
+  function metaMensalForLaunch(launch) {
+    const rows = optionalRows('metas_mensais');
+    const month = monthKeyFromIso(launch?.d0 || snapshotIso());
+    if (!rows.length || !month) return null;
+
+    const scored = rows
+      .map((row) => {
+        const rowMonth = metaMonthKey(row);
+        if (rowMonth !== month) return null;
+        const rowModel = String(row.modelo_id || '').trim();
+        const modelScore = rowModel && rowModel === launch.modelo_id ? 2 : rowModel ? -1 : 1;
+        return modelScore < 0 ? null : { row, score: modelScore };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score);
+
+    return scored[0]?.row || null;
+  }
+
+  function campaignRevenueRowsForLaunch(launch) {
+    return optionalRows('faturamento_campanha').filter((row) => {
+      const rowModel = String(row.modelo_id || '').trim();
+      return !rowModel || rowModel === launch?.modelo_id;
+    });
+  }
+
+  function campaignRevenueValue(row) {
+    return firstKnownCommercialNumber(row, [
+      'receita_atribuida',
+      'receita',
+      'faturamento',
+      'faturamento_campanha',
+      'receita_campanha'
+    ]);
+  }
+
+  function campaignRevenueForMedia(row, launch) {
+    const campaign = normalizeText(row?.campanha);
+    if (!campaign) return null;
+    const channel = normalizeText(row?.canal);
+    const windowKey = commercialWindowKey(row);
+    const month = monthKeyFromIso(row?.data_inicio || row?.data_fim || launch?.d0);
+
+    return campaignRevenueRowsForLaunch(launch)
+      .map((candidate) => {
+        const candidateCampaign = normalizeText(candidate.campanha || candidate.campaign || candidate.utm_campaign);
+        if (!candidateCampaign || candidateCampaign !== campaign) return null;
+        let score = 10;
+        const candidateChannel = normalizeText(candidate.canal || candidate.channel || candidate.source_medium);
+        const candidateWindow = commercialWindowKey(candidate);
+        const candidateMonth = monthKeyFromIso(candidate.data_inicio || candidate.data_fim || candidate.data || candidate.mes);
+        if (channel && candidateChannel && candidateChannel === channel) score += 2;
+        if (windowKey && candidateWindow && candidateWindow === windowKey) score += 2;
+        if (month && candidateMonth && candidateMonth === month) score += 1;
+        return { candidate, score };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score)[0]?.candidate || null;
+  }
+
+  function metaNarrative(meta) {
+    if (!meta) {
+      return {
+        label: 'Pendente',
+        value: 'Sem meta',
+        copy: 'Contrato esperado: mes, meta_receita e realizado_receita; modelo_id opcional.'
+      };
+    }
+    const target = firstKnownCommercialNumber(meta, ['meta_receita', 'meta_faturamento', 'meta']);
+    const actual = firstKnownCommercialNumber(meta, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+    const pct = roasNumberOrNull(meta.atingimento) ?? ratioOrNull(actual, target);
+    return {
+      label: metaMonthKey(meta) || 'Meta mensal',
+      value: pct !== null ? fmtPct(pct, 1) : fmtBRL(target),
+      copy: `Meta ${fmtBRL(target)} · realizado ${fmtBRL(actual)}`
+    };
+  }
+
+  function campaignNarrative(launch) {
+    const rows = campaignRevenueRowsForLaunch(launch);
+    if (!rows.length) {
+      return {
+        label: 'Pendente',
+        value: 'Sem campanha',
+        copy: 'Contrato esperado: modelo_id, campanha, canal, receita_atribuida, pedidos e janela.'
+      };
+    }
+    const revenue = rows
+      .map(campaignRevenueValue)
+      .filter((value) => value !== null)
+      .reduce((acc, value) => acc + value, 0);
+    const campaigns = new Set(rows.map((row) => normalizeText(row.campanha || row.campaign || row.utm_campaign)).filter(Boolean));
+    return {
+      label: `${fmtNum(rows.length)} linha(s)`,
+      value: fmtBRL(revenue),
+      copy: `${fmtNum(campaigns.size || rows.length)} campanha(s) com faturamento atribuido`
+    };
+  }
+
+  function companyMomentNarrative(model) {
+    const variation = numberOrNull(model?.variacao_receita_empresa_pct);
+    const pre = numberOrNull(model?.receita_empresa_pre_periodo);
+    const pos = numberOrNull(model?.receita_empresa_pos_periodo);
+    const days = numberOrNull(model?.dias_pos_disponiveis);
+    if (variation === null && pre === null && pos === null) {
+      return {
+        label: 'Momento',
+        value: 'Sem contexto',
+        copy: 'share_trajetoria ainda nao trouxe a leitura antes/depois da empresa.'
+      };
+    }
+    const direction = variation > 0.05 ? 'Empresa acelerando' : variation < -0.05 ? 'Empresa pressionada' : 'Empresa estavel';
+    return {
+      label: direction,
+      value: fmtPct(variation, 1),
+      copy: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''}`
+    };
+  }
+
+  function renderStoryBrief(selected) {
+    const wrap = $('story-brief');
+    if (!wrap || !selected) return;
+
+    const model = shareModelForLine(selected.modelo_id);
+    const selectedWindow = selectedAnalysisWindow(selected);
+    const company = companyMomentNarrative(model);
+    const meta = metaNarrative(metaMensalForLaunch(selected));
+    const campaign = campaignNarrative(selected);
+    const share = numberOrNull(model?.share_acumulado_atual);
+    const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
+    const comparisonRows = selectedCompareLaunches()
+      .map((launch) => ({
+        launch,
+        share: numberOrNull(shareModelForLine(launch.modelo_id)?.share_acumulado_atual)
+      }))
+      .filter((row) => row.share !== null)
+      .sort((a, b) => b.share - a.share);
+    const rank = comparisonRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
+    const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo comparado` : 'Ranking depende de share_trajetoria.';
+    const thesis = share !== null
+      ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no periodo coberto.`
+      : `${selected.modelo} ainda nao tem leitura de representatividade carregada.`;
+
+    const cards = [
+      {
+        step: '01',
+        title: 'Momento da empresa',
+        value: company.value,
+        label: company.label,
+        copy: company.copy,
+        state: numberOrNull(model?.variacao_receita_empresa_pct) < -0.05 ? 'warn' : 'ok'
+      },
+      {
+        step: '02',
+        title: 'Representatividade',
+        value: fmtPct(share, 1),
+        label: fmtBRL(launchRevenue),
+        copy: rankCopy,
+        state: 'focus'
+      },
+      {
+        step: '03',
+        title: 'Meta mensal',
+        value: meta.value,
+        label: meta.label,
+        copy: meta.copy,
+        state: meta.label === 'Pendente' ? 'pending' : 'ok'
+      },
+      {
+        step: '04',
+        title: 'Campanha',
+        value: campaign.value,
+        label: campaign.label,
+        copy: campaign.copy,
+        state: campaign.label === 'Pendente' ? 'pending' : 'ok'
+      }
+    ];
+
+    wrap.innerHTML = `
+      <div class="story-brief-head">
+        <div>
+          <div class="section-kicker">Leitura executiva</div>
+          <h2>A história do lançamento</h2>
+          <p>${escapeHtml(thesis)} A leitura principal cruza momento da empresa, peso no faturamento, meta mensal e eficiencia por campanha.</p>
+        </div>
+        <div class="story-brief-verdict">
+          <span>Pergunta central</span>
+          <strong>${share !== null ? 'Peso relevante ou efeito de contexto?' : 'Contexto ainda incompleto'}</strong>
+        </div>
+      </div>
+      <div class="story-step-grid">
+        ${cards.map((card) => `
+          <div class="story-step story-step--${card.state}">
+            <div class="story-step-num">${escapeHtml(card.step)}</div>
+            <div>
+              <span>${escapeHtml(card.title)}</span>
+              <strong>${escapeHtml(card.value)}</strong>
+              <em>${escapeHtml(card.label)}</em>
+              <p>${escapeHtml(card.copy)}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
     `;
   }
 
@@ -4584,36 +4808,42 @@
   }
 
   function normalizeMediaRow(row, launch) {
+    const campanha = row.campanha || 'Campanha sem nome';
+    const canal = row.canal || '—';
+    const janela = inferMediaWindow(row, launch);
+    const campaignRevenue = campaignRevenueForMedia({ ...row, campanha, canal, janela }, launch);
     const investimento = numberOrNull(row.investimento);
     const receitaBase = mediaRevenueBase(row);
-    const pedidos = numberOrNull(row.pedidos);
-    const roas = rowRoas(row);
+    const receitaCampanha = campaignRevenueValue(campaignRevenue);
+    const receita = receitaBase.value ?? receitaCampanha;
+    const receitaSource = receitaBase.source || (receitaCampanha !== null ? 'faturamento_campanha' : null);
+    const pedidos = numberOrNull(row.pedidos) ?? firstKnownCommercialNumber(campaignRevenue, ['pedidos', 'orders']);
+    const roas = rowRoas(row) ?? roasNumberOrNull(campaignRevenue?.roas) ?? (investimento && receita !== null ? receita / investimento : null);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
-    const janela = inferMediaWindow(row, launch);
     const validacaoData = validarJanelaMidia({ ...row, janela });
     return {
       modelo_id: launch.modelo_id,
       modelo: launch.modelo,
-      campanha: row.campanha || 'Campanha sem nome',
+      campanha,
       janela,
       data_inicio: row.data_inicio || null,
       data_fim: row.data_fim || null,
-      canal: row.canal || '—',
+      canal,
       investimento,
-      receita_atribuida: receitaBase.value,
+      receita_atribuida: receita,
       receita_janela_agregada: numberOrNull(row.receita_janela_agregada),
-      receita_source: receitaBase.source,
+      receita_source: receitaSource,
       pedidos,
       pedidos_janela_agregados: numberOrNull(row.pedidos_janela_agregados),
-      pares: firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']),
-      cliques: firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']),
+      pares: firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']) ?? firstKnownCommercialNumber(campaignRevenue, ['pares', 'quantidade']),
+      cliques: firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? firstKnownCommercialNumber(campaignRevenue, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']),
       roas,
       cpa,
       cps: firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']),
       cpc: firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']),
       status: row.status || '',
-      metodologia: row.metodologia || '',
-      aviso: row.aviso || '',
+      metodologia: row.metodologia || (receitaSource === 'faturamento_campanha' ? 'faturamento_campanha' : ''),
+      aviso: row.aviso || (receitaSource === 'faturamento_campanha' ? 'Receita atribuida por campanha via data/faturamento_campanha.json.' : ''),
       data_suspeita: row.data_suspeita !== undefined ? Boolean(row.data_suspeita) : !validacaoData.valida,
       data_suspeita_motivo: row.data_suspeita_motivo || (validacaoData.valida ? null : validacaoData.motivo),
       valor_suspeito: Boolean(row.valor_suspeito),
@@ -5123,6 +5353,7 @@
     renderCompareSelector();
     renderTopMeta();
     renderAnalysisContext(selected);
+    renderStoryBrief(selected);
     renderMethodology(selected);
     renderState(selected);
     renderMomentoContext(selected);
