@@ -69,6 +69,8 @@
     stockSort: 'coverage-asc',
     stockPageSize: '10',
     snapshotClock: null,
+    normalizedChartMode: 'linha',
+    canibalLineFilter: null,
     charts: {},
     shareChart: null
   };
@@ -76,7 +78,6 @@
   const $ = (id) => document.getElementById(id);
   let stockDrawerReturnFocus = null;
   let shareDrawerReturnFocus = null;
-  let cannibalDrawerReturnFocus = null;
 
   const fmtBRL = (value, compact = false) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -1232,47 +1233,47 @@
     }
   }
 
-  function closeCannibalDrawer() {
-    const drawer = $('cannibal-drawer');
-    const overlay = $('cannibal-overlay');
-    if (!drawer || !overlay) return;
-    document.body.classList.remove('cannibal-drawer-open');
-    overlay.hidden = true;
-    drawer.setAttribute('aria-hidden', 'true');
-    drawer.setAttribute('inert', '');
-    state.charts['chart-cannibal']?.destroy?.();
-    delete state.charts['chart-cannibal'];
-    if (cannibalDrawerReturnFocus?.focus) cannibalDrawerReturnFocus.focus({ preventScroll: true });
-    cannibalDrawerReturnFocus = null;
+  function populateCannibalLineSelect() {
+    const lineSelect = $('cannibal-line-select');
+    if (!lineSelect) return;
+    const lines = [...new Set((state.launches || []).map((launch) => launch.modelo_id))]
+      .filter((modelId) => modelId !== 'rs8_monochrome' && familiesForModel(modelId).length > 1);
+    lineSelect.innerHTML = lines.map((modelId) => {
+      const launch = state.launches.find((item) => item.modelo_id === modelId);
+      return `<option value="${escapeHtml(modelId)}">${escapeHtml(launch?.linha || launch?.modelo || modelId)}</option>`;
+    }).join('');
+    if (!state.canibalLineFilter || !lines.includes(state.canibalLineFilter)) {
+      state.canibalLineFilter = lines[0] || null;
+    }
+    lineSelect.value = state.canibalLineFilter || '';
   }
 
-  function openCannibalDrawer(returnFocusEl) {
-    const drawer = $('cannibal-drawer');
-    const overlay = $('cannibal-overlay');
-    if (!drawer || !overlay) return;
-    cannibalDrawerReturnFocus = returnFocusEl || null;
-    overlay.hidden = false;
-    drawer.removeAttribute('inert');
-    drawer.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('cannibal-drawer-open');
-    renderCannibalChart();
-    drawer.focus({ preventScroll: true });
-  }
+  function configureNormalizedChartModeToggle() {
+    const buttons = [...document.querySelectorAll('.chart-mode-btn')];
+    const lineSelect = $('cannibal-line-select');
+    if (!buttons.length) return;
 
-  function configureCannibalDrawer() {
-    const drawer = $('cannibal-drawer');
-    const overlay = $('cannibal-overlay');
-    const close = $('cannibal-drawer-close');
-    const open = $('open-cannibal-chart');
-    if (!drawer || !overlay || !close) return;
-    close.addEventListener('click', closeCannibalDrawer);
-    overlay.addEventListener('click', closeCannibalDrawer);
-    if (open) open.addEventListener('click', (event) => openCannibalDrawer(event.currentTarget));
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && document.body.classList.contains('cannibal-drawer-open')) {
-        closeCannibalDrawer();
-      }
+    const currentSelected = () => state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        buttons.forEach((button) => button.classList.toggle('is-active', button === btn));
+        state.normalizedChartMode = btn.dataset.chartMode || 'linha';
+        if (lineSelect) {
+          const showSelect = state.normalizedChartMode === 'canibal-submodelos';
+          lineSelect.hidden = !showSelect;
+          if (showSelect) populateCannibalLineSelect();
+        }
+        renderNormalizedChart(currentSelected());
+      });
     });
+
+    if (lineSelect) {
+      lineSelect.addEventListener('change', () => {
+        state.canibalLineFilter = lineSelect.value;
+        renderNormalizedChart(currentSelected());
+      });
+    }
   }
 
   function closeStockDrawer() {
@@ -2854,39 +2855,197 @@
     return { dates, datasets, checkpoints };
   }
 
-  function renderCannibalChart() {
-    const canvas = $('chart-cannibal');
-    if (!canvas) return;
-    const { dates, datasets, checkpoints } = buildCannibalTimelineData(comparableLaunches());
-    state.charts['chart-cannibal']?.destroy?.();
-    delete state.charts['chart-cannibal'];
-    if (!dates.length || !datasets.length) return;
-    createChart('chart-cannibal', {
-      type: 'line',
-      data: { labels: dates, datasets },
-      options: chartOptions({
-        plugins: {
-          legend: { position: 'bottom' },
-          launchCheckpoints: { checkpoints },
-          tooltip: {
-            callbacks: {
-              title: (items) => fmtDateSlash(items[0]?.label),
-              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`
+  function familiesForModel(modelId) {
+    return [...new Set(subModelDailyRows(modelId).map((row) => row.sub_modelo_id).filter(Boolean))];
+  }
+
+  function buildCannibalSubmodelData(modelId) {
+    const rows = subModelDailyRows(modelId);
+    const bySub = new Map();
+    rows.forEach((row) => {
+      if (!row.sub_modelo_id || !row.data) return;
+      if (!bySub.has(row.sub_modelo_id)) bySub.set(row.sub_modelo_id, []);
+      bySub.get(row.sub_modelo_id).push(row);
+    });
+
+    const dateSet = new Set();
+    rows.forEach((row) => {
+      if (row.data) dateSet.add(row.data);
+    });
+    const dates = [...dateSet].sort();
+
+    const entries = [...bySub.entries()];
+    const checkpoints = entries
+      .map(([subId, subRows], index) => {
+        const firstDate = subRows.map((row) => row.data).sort()[0];
+        return { dateLabel: firstDate, text: subModelLabel(subId), color: colorFor(subId, index) };
+      })
+      .filter((cp) => cp.dateLabel && dates.includes(cp.dateLabel));
+
+    const datasets = entries.map(([subId, subRows], index) => {
+      const byDate = new Map(subRows.map((row) => [row.data, numberOrNull(row.receita)]));
+      return {
+        label: subModelLabel(subId),
+        data: dates.map((date) => (byDate.has(date) ? byDate.get(date) : null)),
+        borderColor: colorFor(subId, index),
+        backgroundColor: fillFor(subId, index),
+        spanGaps: true,
+        tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4
+      };
+    });
+
+    return { dates, datasets, checkpoints };
+  }
+
+  function renderNormalizedChart(selected) {
+    const canvas = $('chart-normalized');
+    if (!canvas || !selected) return;
+    state.charts['chart-normalized']?.destroy?.();
+    delete state.charts['chart-normalized'];
+
+    const subText = $('chart-normalized-sub');
+    const lineSelect = $('cannibal-line-select');
+    const mode = state.normalizedChartMode || 'linha';
+    if (lineSelect) {
+      lineSelect.hidden = mode !== 'canibal-submodelos';
+      if (mode === 'canibal-submodelos') populateCannibalLineSelect();
+    }
+
+    if (mode === 'linha') {
+      if (subText) subText.textContent = 'Faturamento acumulado por dia desde o lançamento';
+      const chartLaunches = selectedCompareLaunches();
+      const normalizedLabels = Array.from({ length: 91 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
+      const normalizedLaunches = [...chartLaunches].sort((a, b) => {
+        if (a.modelo_id === selected.modelo_id) return -1;
+        if (b.modelo_id === selected.modelo_id) return 1;
+        return a.order - b.order;
+      });
+      createChart('chart-normalized', {
+        type: 'line',
+        data: {
+          labels: normalizedLabels,
+          datasets: normalizedLaunches.map((launch, index) => {
+            const data = Array(91).fill(null);
+            const hasDaily = Boolean(launch.daily?.length);
+            const isBackfilled = launch.daily_source === 'historico_backfill';
+            if (hasDaily) {
+              const byDay = new Map();
+              launch.daily.forEach((row) => {
+                if (row.day < 0 || row.day > 90) return;
+                byDay.set(row.day, (byDay.get(row.day) || 0) + Number(row.receita || 0));
+              });
+              let running = 0;
+              const validDays = launch.daily.map((row) => row.day).filter((day) => day >= 0 && day <= 90);
+              const maxDailyDay = validDays.length ? Math.min(90, Math.max(...validDays)) : 0;
+              for (let day = 0; day <= maxDailyDay; day += 1) {
+                running += byDay.get(day) || 0;
+                data[day] = running;
+              }
+            } else {
+              data[0] = 0;
+              const points = WINDOW_KEYS.map((key) => ({
+                day: WINDOW_DAYS[key],
+                value: getWindow(launch, key)?.receita
+              }));
+              points.forEach((point) => {
+                if (point.value !== null && point.value !== undefined) data[point.day] = point.value;
+              });
+            }
+            const validDataDays = data
+              .map((value, day) => value !== null && value !== undefined ? day : null)
+              .filter((day) => day !== null);
+            const lastDataDay = validDataDays.length ? Math.max(...validDataDays) : null;
+            const isSelected = launch.modelo_id === selected.modelo_id;
+            return {
+              label: isBackfilled ? `${launch.modelo} · backfill` : hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
+              data,
+              borderColor: colorFor(launch.modelo_id, index),
+              backgroundColor: fillFor(launch.modelo_id, index),
+              borderWidth: isSelected ? 3 : 2,
+              borderDash: isBackfilled ? [4, 4] : hasDaily ? [] : [6, 5],
+              fill: isSelected ? 'origin' : false,
+              pointRadius: (ctx) => {
+                const day = ctx.dataIndex;
+                if (data[day] === null || data[day] === undefined) return 0;
+                if (day === lastDataDay) return isSelected ? 4 : 3;
+                return MILESTONE_DAYS.includes(day) ? (isSelected ? 3 : 2) : 0;
+              },
+              pointHoverRadius: 6,
+              pointHitRadius: 10,
+              pointBackgroundColor: colorFor(launch.modelo_id, index),
+              pointBorderColor: '#1A1A1A',
+              pointBorderWidth: 1,
+              tension: hasDaily ? 0.32 : 0.12,
+              spanGaps: !hasDaily,
+              sourceLabel: isBackfilled ? 'backfill diário a partir das janelas acumuladas' : hasDaily ? 'diário real' : 'histórico agregado'
+            };
+          })
+        },
+        options: chartOptions({
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: {
+              callbacks: {
+                title: (items) => items[0]?.label || '',
+                label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
+                afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}. A curva e acumulada desde D0; linhas tracejadas indicam agregado/backfill.`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: {
+                autoSkip: false,
+                maxRotation: 0,
+                callback: (_, index) => MILESTONE_DAYS.includes(index) ? (index === 0 ? 'D0' : `D+${index}`) : ''
+              }
+            },
+            y: {
+              ticks: { callback: (v) => fmtBRL(v, true) },
+              grid: { color: 'rgba(255,255,255,0.045)' }
             }
           }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { autoSkip: true, maxRotation: 0, callback: (_, idx) => fmtDateSlash(dates[idx]) }
-          },
-          y: {
-            ticks: { callback: (v) => fmtBRL(v, true) },
-            grid: { color: 'rgba(255,255,255,0.045)' }
+        })
+      });
+      return;
+    }
+
+    const sharedOptions = (dates, checkpoints) => chartOptions({
+      plugins: {
+        legend: { position: 'bottom' },
+        launchCheckpoints: { checkpoints },
+        tooltip: {
+          callbacks: {
+            title: (items) => fmtDateSlash(items[0]?.label),
+            label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`
           }
         }
-      })
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, callback: (_, idx) => fmtDateSlash(dates[idx]) } },
+        y: { ticks: { callback: (v) => fmtBRL(v, true) }, grid: { color: 'rgba(255,255,255,0.045)' } }
+      }
     });
+
+    if (mode === 'canibal-linhas') {
+      if (subText) subText.textContent = 'Faturamento diário por linha, alinhado por data real (não por D+n)';
+      const { dates, datasets, checkpoints } = buildCannibalTimelineData(comparableLaunches());
+      if (!dates.length || !datasets.length) return;
+      createChart('chart-normalized', { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
+      return;
+    }
+
+    if (mode === 'canibal-submodelos') {
+      const lineId = state.canibalLineFilter || selected.modelo_id;
+      const lineLaunch = state.launches.find((launch) => launch.modelo_id === lineId);
+      if (subText) subText.textContent = `Sub-produtos dentro de ${lineLaunch?.linha || lineLaunch?.modelo || lineId} · faturamento diário real`;
+      const { dates, datasets, checkpoints } = buildCannibalSubmodelData(lineId);
+      if (!dates.length || !datasets.length) return;
+      createChart('chart-normalized', { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
+    }
   }
 
   function hasEnoughComparison() {
@@ -3318,100 +3477,7 @@
       })
     });
 
-    const normalizedLabels = Array.from({ length: 91 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
-    const normalizedLaunches = [...chartLaunches].sort((a, b) => {
-      if (a.modelo_id === selected.modelo_id) return -1;
-      if (b.modelo_id === selected.modelo_id) return 1;
-      return a.order - b.order;
-    });
-    createChart('chart-normalized', {
-      type: 'line',
-      data: {
-        labels: normalizedLabels,
-        datasets: normalizedLaunches.map((launch, index) => {
-          const data = Array(91).fill(null);
-          const hasDaily = Boolean(launch.daily?.length);
-          const isBackfilled = launch.daily_source === 'historico_backfill';
-          if (hasDaily) {
-            const byDay = new Map();
-            launch.daily.forEach((row) => {
-              if (row.day < 0 || row.day > 90) return;
-              byDay.set(row.day, (byDay.get(row.day) || 0) + Number(row.receita || 0));
-            });
-            let running = 0;
-            const validDays = launch.daily.map((row) => row.day).filter((day) => day >= 0 && day <= 90);
-            const maxDailyDay = validDays.length ? Math.min(90, Math.max(...validDays)) : 0;
-            for (let day = 0; day <= maxDailyDay; day += 1) {
-              running += byDay.get(day) || 0;
-              data[day] = running;
-            }
-          } else {
-            data[0] = 0;
-            const points = WINDOW_KEYS.map((key) => ({
-              day: WINDOW_DAYS[key],
-              value: getWindow(launch, key)?.receita
-            }));
-            points.forEach((point) => {
-              if (point.value !== null && point.value !== undefined) data[point.day] = point.value;
-            });
-          }
-          const validDataDays = data
-            .map((value, day) => value !== null && value !== undefined ? day : null)
-            .filter((day) => day !== null);
-          const lastDataDay = validDataDays.length ? Math.max(...validDataDays) : null;
-          const isSelected = launch.modelo_id === selected.modelo_id;
-          return {
-            label: isBackfilled ? `${launch.modelo} · backfill` : hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
-            data,
-            borderColor: colorFor(launch.modelo_id, index),
-            backgroundColor: fillFor(launch.modelo_id, index),
-            borderWidth: isSelected ? 3 : 2,
-            borderDash: isBackfilled ? [4, 4] : hasDaily ? [] : [6, 5],
-            fill: isSelected ? 'origin' : false,
-            pointRadius: (ctx) => {
-              const day = ctx.dataIndex;
-              if (data[day] === null || data[day] === undefined) return 0;
-              if (day === lastDataDay) return isSelected ? 4 : 3;
-              return MILESTONE_DAYS.includes(day) ? (isSelected ? 3 : 2) : 0;
-            },
-            pointHoverRadius: 6,
-            pointHitRadius: 10,
-            pointBackgroundColor: colorFor(launch.modelo_id, index),
-            pointBorderColor: '#1A1A1A',
-            pointBorderWidth: 1,
-            tension: hasDaily ? 0.32 : 0.12,
-            spanGaps: !hasDaily,
-            sourceLabel: isBackfilled ? 'backfill diário a partir das janelas acumuladas' : hasDaily ? 'diário real' : 'histórico agregado'
-          };
-        })
-      },
-      options: chartOptions({
-        plugins: {
-          legend: { position: 'bottom' },
-          tooltip: {
-            callbacks: {
-              title: (items) => items[0]?.label || '',
-              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
-              afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}. A curva e acumulada desde D0; linhas tracejadas indicam agregado/backfill.`
-            }
-          }
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: {
-              autoSkip: false,
-              maxRotation: 0,
-              callback: (_, index) => MILESTONE_DAYS.includes(index) ? (index === 0 ? 'D0' : `D+${index}`) : ''
-            }
-          },
-          y: {
-            ticks: { callback: (v) => fmtBRL(v, true) },
-            grid: { color: 'rgba(255,255,255,0.045)' }
-          }
-        }
-      })
-    });
+    renderNormalizedChart(selected);
   }
 
   function stockNumber(value) {
@@ -4765,7 +4831,7 @@
     configureDrawer();
     configureShareDrawer();
     configureStockDrawer();
-    configureCannibalDrawer();
+    configureNormalizedChartModeToggle();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();

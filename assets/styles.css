@@ -162,30 +162,6 @@ body.share-drawer-open .share-drawer {
 .share-drawer:focus {
   outline: none;
 }
-.cannibal-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 61;
-  background: var(--bg-card);
-  width: min(900px, calc(100vw - 24px));
-  padding: 26px 22px;
-  overflow-y: auto;
-  transform: translateX(105%);
-  transition: transform .25s ease;
-  border-left: 1px solid var(--border);
-}
-.cannibal-drawer:focus {
-  outline: none;
-}
-body.cannibal-drawer-open {
-  overflow: hidden;
-}
-body.cannibal-drawer-open .cannibal-drawer {
-  transform: translateX(0);
-  box-shadow: var(--shadow);
-}
 .share-drawer-head {
   display: flex;
   align-items: flex-start;
@@ -1518,6 +1494,44 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 }
 .chart-title { font-weight: 800; letter-spacing: 0; }
 .chart-sub { color: var(--txt-secondary); font-size: 0.76rem; margin-top: 2px; }
+.chart-mode-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chart-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.chart-mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--txt-secondary);
+  font-size: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.chart-mode-btn + .chart-mode-btn {
+  border-left: 1px solid var(--border-2);
+}
+.chart-mode-btn.is-active {
+  background: var(--orange-dim);
+  color: var(--orange);
+}
+.cannibal-line-select {
+  background: var(--bg-card-2);
+  color: var(--txt-primary);
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.cannibal-line-select[hidden] {
+  display: none;
+}
 .chart-canvas { height: 260px; position: relative; }
 .chart-canvas.tall { height: 340px; }
 .chart-note {
@@ -2385,7 +2399,9 @@ body.stock-detail-open .stock-detail-drawer {
   .stock-summary-grid, .stock-detail-metrics { grid-template-columns: 1fr; }
   .stock-detail-drawer { width: min(100vw, 430px); padding-inline: 18px; }
   .share-drawer { width: min(100vw, 430px); padding-inline: 18px; }
-  .cannibal-drawer { width: 100vw; padding-inline: 18px; }
+  .chart-mode-controls { width: 100%; }
+  .chart-mode-toggle { flex: 1; }
+  .chart-mode-btn { flex: 1; }
   .share-stats { grid-template-columns: 1fr; }
   .share-company-values { grid-template-columns: 1fr; }
   .share-chart-canvas { height: 240px; }

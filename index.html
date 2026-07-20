@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260720-context-cannibal" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260720-cannibal-toggle" />
 </head>
 <body>
   <div class="app-shell">
@@ -209,12 +209,16 @@
             <div class="chart-head">
               <div>
                 <div class="chart-title chart-title--with-tip"><span>Curva normalizada D0 → D90</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa. Ativos mostram somente dias ja observados no snapshot; historicos usam os dados disponiveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div>
-                <div class="chart-sub">Faturamento acumulado por dia desde o lançamento</div>
+                <div class="chart-sub" id="chart-normalized-sub">Faturamento acumulado por dia desde o lançamento</div>
               </div>
-              <button id="open-cannibal-chart" class="section-action-button" type="button">
-                <span class="ti ti-chart-dots" aria-hidden="true"></span>
-                <span>Canibalizacao entre lancamentos</span>
-              </button>
+              <div class="chart-mode-controls">
+                <div class="chart-mode-toggle" role="group" aria-label="Modo do grafico de curva">
+                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 → D90</button>
+                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
+                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
+                </div>
+                <select id="cannibal-line-select" class="cannibal-line-select" hidden></select>
+              </div>
             </div>
             <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
           </div>
@@ -239,19 +243,6 @@
       <aside id="stock-detail-drawer" class="stock-detail-drawer" aria-hidden="true" tabindex="-1" inert>
         <button id="stock-detail-close" class="stock-detail-close" type="button" aria-label="Fechar detalhe de estoque">&times;</button>
         <div id="stock-detail-content"></div>
-      </aside>
-
-      <div id="cannibal-overlay" class="drawer-overlay" hidden></div>
-      <aside id="cannibal-drawer" class="cannibal-drawer" aria-hidden="true" tabindex="-1" inert>
-        <button id="cannibal-drawer-close" class="nav-drawer-close" type="button" aria-label="Fechar canibalizacao entre lancamentos">&times;</button>
-        <div class="share-drawer-head">
-          <div>
-            <div class="share-drawer-kicker">Canibalizacao entre lancamentos</div>
-            <h3>Linha do tempo real</h3>
-            <p>Eixo por data de calendario, nao por D+n. Linha tracejada = D0 de cada modelo.</p>
-          </div>
-        </div>
-        <div class="chart-canvas tall"><canvas id="chart-cannibal"></canvas></div>
       </aside>
 
       <section id="cores">
@@ -418,7 +409,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="assets/embedded-data.js?v=20260716-share-drawer-context"></script>
-  <script src="assets/app.js?v=20260720-context-cannibal"></script>
+  <script src="assets/app.js?v=20260720-cannibal-toggle"></script>
   <script src="assets/presentation.js?v=20260716-compact-overview"></script>
 </body>
 </html>
