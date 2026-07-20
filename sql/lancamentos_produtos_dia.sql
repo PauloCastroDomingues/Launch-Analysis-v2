@@ -182,12 +182,12 @@ itens_candidatos AS (
     (
       m.modelo_id = 'rs8_monochrome'
       AND (
-        STARTS_WITH(i.sku_compact, 'RS8AVANTMC')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTAB')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCF')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTMONO')
-        OR STARTS_WITH(i.sku_compact, 'RS8MONO')
+        STARTS_WITH(i.sku_compact, 'rs8avantmc')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantab')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantct')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantcf')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantmono')
+        OR STARTS_WITH(i.sku_compact, 'rs8mono')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )rs8 avant monochrome( |$)')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
       )
@@ -195,38 +195,38 @@ itens_candidatos AS (
     OR (
       m.modelo_id = 'phantom'
       AND (
-        STARTS_WITH(i.sku_compact, 'PHTEASY')
-        OR STARTS_WITH(i.sku_compact, 'PHTSLIP')
-        OR STARTS_WITH(i.sku_compact, 'PHTKNIT')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMEASY')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMSLIP')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMKNIT')
+        STARTS_WITH(i.sku_compact, 'phteasy')
+        OR STARTS_WITH(i.sku_compact, 'phtslip')
+        OR STARTS_WITH(i.sku_compact, 'phtknit')
+        OR STARTS_WITH(i.sku_compact, 'phantomeasy')
+        OR STARTS_WITH(i.sku_compact, 'phantomslip')
+        OR STARTS_WITH(i.sku_compact, 'phantomknit')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )phantom( |$)')
       )
     )
     OR (
       m.modelo_id = 'gt'
       AND (
-        STARTS_WITH(i.sku_compact, 'RS6GT')
-        OR STARTS_WITH(i.sku_compact, '911GT')
-        OR STARTS_WITH(i.sku_compact, 'KNITGT')
+        STARTS_WITH(i.sku_compact, 'rs6gt')
+        OR STARTS_WITH(i.sku_compact, '911gt')
+        OR STARTS_WITH(i.sku_compact, 'knitgt')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 gt|911 gt|knit gt|gt collection)( |$)')
       )
     )
     OR (
       m.modelo_id = 'avant'
       AND (
-        STARTS_WITH(i.sku_compact, 'RS6AVANT')
-        OR STARTS_WITH(i.sku_compact, 'RS7AVANT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANT')
+        STARTS_WITH(i.sku_compact, 'rs6avant')
+        OR STARTS_WITH(i.sku_compact, 'rs7avant')
+        OR STARTS_WITH(i.sku_compact, 'rs8avant')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 avant|rs7 avant|rs8 avant)( |$)')
       )
       AND NOT (
-        STARTS_WITH(i.sku_compact, 'RS8AVANTMC')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTAB')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCF')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTMONO')
+        STARTS_WITH(i.sku_compact, 'rs8avantmc')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantab')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantct')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantcf')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantmono')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
       )
     )
@@ -271,18 +271,26 @@ itens_classificados AS (
 ),
 itens_com_flags AS (
   SELECT
-    *,
+    ic.*,
+    pl.variant_title AS variant_title_catalogo,
     ROW_NUMBER() OVER (
-      PARTITION BY modelo_id, order_sk
-      ORDER BY data, line_item_key
+      PARTITION BY ic.modelo_id, ic.order_sk
+      ORDER BY ic.data, ic.line_item_key
     ) AS cliente_row_num,
-    DATE_DIFF(data, d0, DAY) AS dia_desde_d0,
+    DATE_DIFF(ic.data, ic.d0, DAY) AS dia_desde_d0,
     COALESCE(
-      NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
+      NULLIF(TRIM(pl.cor), ''),
+      NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
       'sem_cor'
     ) AS cor_detectada,
-    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho_detectado
-  FROM itens_classificados
+    COALESCE(
+      NULLIF(TRIM(pl.tamanho), ''),
+      NULLIF(REGEXP_EXTRACT(ic.sku, r'-(3[3-9]|4[0-8])$'), ''),
+      NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
+    ) AS tamanho_detectado
+  FROM itens_classificados ic
+  LEFT JOIN `reise-ssot.mart_shared.produto_lancamento_v` pl
+    ON UPPER(TRIM(pl.sku)) = UPPER(TRIM(ic.sku))
 )
 SELECT
   modelo_id,
@@ -292,7 +300,7 @@ SELECT
   'ssot_fct_order_item' AS origem,
   sku,
   item_name AS nome_produto,
-  CAST(NULL AS STRING) AS variant_title,
+  ANY_VALUE(variant_title_catalogo) AS variant_title,
   item_name AS sub_modelo,
   cor_detectada AS cor,
   tamanho_detectado AS tamanho,

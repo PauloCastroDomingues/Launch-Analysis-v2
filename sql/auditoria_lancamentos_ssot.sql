@@ -67,50 +67,50 @@ candidatos AS (
     (
       c.modelo_id = 'rs8_monochrome'
       AND (
-        STARTS_WITH(i.sku_compact, 'RS8AVANTMC')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTAB')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCF')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTMONO')
-        OR STARTS_WITH(i.sku_compact, 'RS8MONO')
+        STARTS_WITH(i.sku_compact, 'rs8avantmc')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantab')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantct')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantcf')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantmono')
+        OR STARTS_WITH(i.sku_compact, 'rs8mono')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs8 avant monochrome|monochrome|monocrome)( |$)')
       )
     )
     OR (
       c.modelo_id = 'phantom'
       AND (
-        STARTS_WITH(i.sku_compact, 'PHTEASY')
-        OR STARTS_WITH(i.sku_compact, 'PHTSLIP')
-        OR STARTS_WITH(i.sku_compact, 'PHTKNIT')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMEASY')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMSLIP')
-        OR STARTS_WITH(i.sku_compact, 'PHANTOMKNIT')
+        STARTS_WITH(i.sku_compact, 'phteasy')
+        OR STARTS_WITH(i.sku_compact, 'phtslip')
+        OR STARTS_WITH(i.sku_compact, 'phtknit')
+        OR STARTS_WITH(i.sku_compact, 'phantomeasy')
+        OR STARTS_WITH(i.sku_compact, 'phantomslip')
+        OR STARTS_WITH(i.sku_compact, 'phantomknit')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )phantom( |$)')
       )
     )
     OR (
       c.modelo_id = 'gt'
       AND (
-        STARTS_WITH(i.sku_compact, 'RS6GT')
-        OR STARTS_WITH(i.sku_compact, '911GT')
-        OR STARTS_WITH(i.sku_compact, 'KNITGT')
+        STARTS_WITH(i.sku_compact, 'rs6gt')
+        OR STARTS_WITH(i.sku_compact, '911gt')
+        OR STARTS_WITH(i.sku_compact, 'knitgt')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 gt|911 gt|knit gt|gt collection)( |$)')
       )
     )
     OR (
       c.modelo_id = 'avant'
       AND (
-        STARTS_WITH(i.sku_compact, 'RS6AVANT')
-        OR STARTS_WITH(i.sku_compact, 'RS7AVANT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANT')
+        STARTS_WITH(i.sku_compact, 'rs6avant')
+        OR STARTS_WITH(i.sku_compact, 'rs7avant')
+        OR STARTS_WITH(i.sku_compact, 'rs8avant')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(rs6 avant|rs7 avant|rs8 avant)( |$)')
       )
       AND NOT (
-        STARTS_WITH(i.sku_compact, 'RS8AVANTMC')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTAB')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCT')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTCF')
-        OR STARTS_WITH(i.sku_compact, 'RS8AVANTMONO')
+        STARTS_WITH(i.sku_compact, 'rs8avantmc')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantab')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantct')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantcf')
+        OR STARTS_WITH(i.sku_compact, 'rs8avantmono')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
       )
     )
@@ -123,6 +123,24 @@ classificados AS (
     PARTITION BY order_sk, line_item_key
     ORDER BY prioridade, d0 DESC, modelo_id
   ) = 1
+),
+classificados_com_catalogo AS (
+  SELECT
+    c.*,
+    pl.variant_title AS variant_title_catalogo,
+    COALESCE(
+      NULLIF(TRIM(pl.cor), ''),
+      NULLIF(REGEXP_EXTRACT(c.item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
+      'sem_cor'
+    ) AS cor,
+    COALESCE(
+      NULLIF(TRIM(pl.tamanho), ''),
+      NULLIF(REGEXP_EXTRACT(c.sku, r'-(3[3-9]|4[0-8])$'), ''),
+      NULLIF(REGEXP_EXTRACT(c.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
+    ) AS tamanho
+  FROM classificados c
+  LEFT JOIN `reise-ssot.mart_shared.produto_lancamento_v` pl
+    ON UPPER(TRIM(pl.sku)) = UPPER(TRIM(c.sku))
 ),
 pedido_modelo AS (
   SELECT
@@ -189,6 +207,9 @@ por_sku AS (
     modelo,
     sku,
     item_name,
+    ANY_VALUE(variant_title_catalogo) AS variant_title,
+    ANY_VALUE(cor) AS cor,
+    ANY_VALUE(tamanho) AS tamanho,
     COUNT(DISTINCT order_sk) AS pedidos,
     SUM(quantity) AS pares,
     ROUND(SUM(receita_bruta), 2) AS receita_bruta,
@@ -196,8 +217,32 @@ por_sku AS (
     ROUND(SUM(receita_liquida), 2) AS receita_liquida,
     MIN(data_venda) AS primeira_data,
     MAX(data_venda) AS ultima_data
-  FROM classificados
+  FROM classificados_com_catalogo
   GROUP BY modelo_id, modelo, sku, item_name
+),
+por_cor AS (
+  SELECT
+    modelo_id,
+    modelo,
+    cor,
+    COUNT(DISTINCT order_sk) AS pedidos,
+    SUM(quantity) AS pares,
+    ROUND(SUM(receita_bruta), 2) AS receita_bruta,
+    ROUND(SUM(receita_liquida), 2) AS receita_liquida
+  FROM classificados_com_catalogo
+  GROUP BY modelo_id, modelo, cor
+),
+por_tamanho AS (
+  SELECT
+    modelo_id,
+    modelo,
+    COALESCE(tamanho, 'sem_tamanho') AS tamanho,
+    COUNT(DISTINCT order_sk) AS pedidos,
+    SUM(quantity) AS pares,
+    ROUND(SUM(receita_bruta), 2) AS receita_bruta,
+    ROUND(SUM(receita_liquida), 2) AS receita_liquida
+  FROM classificados_com_catalogo
+  GROUP BY modelo_id, modelo, COALESCE(tamanho, 'sem_tamanho')
 ),
 duplicidades AS (
   SELECT
@@ -208,7 +253,7 @@ duplicidades AS (
     SUM(quantity) AS soma_quantity,
     ROUND(SUM(receita_bruta), 2) AS soma_receita_bruta,
     ARRAY_AGG(DISTINCT item_name IGNORE NULLS LIMIT 10) AS nomes_agrupados
-  FROM classificados
+  FROM classificados_com_catalogo
   GROUP BY order_sk, sku
   HAVING COUNT(*) > 1
 ),
@@ -252,6 +297,8 @@ SELECT TO_JSON_STRING(STRUCT(
   ARRAY(SELECT AS STRUCT * FROM resumo_janelas ORDER BY modelo_id, janela_dias) AS resumo_janelas,
   ARRAY(SELECT AS STRUCT * FROM diario ORDER BY modelo_id, data) AS diario_acumulado,
   ARRAY(SELECT AS STRUCT * FROM por_sku ORDER BY modelo_id, receita_bruta DESC, pares DESC LIMIT 1000) AS por_sku,
+  ARRAY(SELECT AS STRUCT * FROM por_cor ORDER BY modelo_id, receita_bruta DESC, pares DESC LIMIT 1000) AS por_cor,
+  ARRAY(SELECT AS STRUCT * FROM por_tamanho ORDER BY modelo_id, receita_bruta DESC, pares DESC LIMIT 1000) AS por_tamanho,
   ARRAY(SELECT AS STRUCT * FROM duplicidades ORDER BY quantidade_linhas DESC, soma_receita_bruta DESC LIMIT 500) AS duplicidades,
   ARRAY(SELECT AS STRUCT * FROM conflitos_classificacao ORDER BY order_sk LIMIT 500) AS conflitos_classificacao,
   ARRAY(SELECT AS STRUCT * FROM itens_nao_classificados ORDER BY receita_bruta DESC LIMIT 500) AS itens_nao_classificados

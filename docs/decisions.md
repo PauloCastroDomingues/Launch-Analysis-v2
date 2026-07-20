@@ -20,3 +20,8 @@
 18. A camada canonica nova de vendas por lancamento usa `reise-ssot.mart_shared.fct_order_item` com `i.is_valid_order = TRUE`, `order_sk` como identificador de pedido e `COUNT(DISTINCT order_sk)` para pedidos.
 19. O faturamento principal do dashboard passa a ser `receita_bruta = line_gross_amount`. `desconto = IFNULL(line_discount_amount, 0)` e `receita_liquida = line_gross_amount - desconto` ficam disponiveis no JSON para auditoria e analise financeira.
 20. A classificacao de itens fica concentrada no BigQuery, com prioridade Monochrome > Phantom > GT > Avant > genericos. O frontend nao reclassifica SKU nem decide pedido valido.
+21. Cor, tamanho e `variant_title` do export principal priorizam `reise-ssot.mart_shared.produto_lancamento_v`; regex em `item_name` e sufixo de SKU ficam apenas como fallback para dado antigo ou incompleto.
+22. Neste dashboard, o rotulo tecnico de custo por pedido/venda e `CPA`. `CPS` nao deve ser usado no codigo/JSON porque no SSOT geral significa custo por sessao.
+23. `impacto_investimento.json` esta aposentado no fluxo principal. Correlacao por janela de investimento nao e atribuicao real; midia fica agregada por janela ate existir last-click por pedido no payload.
+24. Quando a mesma `receita_atribuida` aparece em canais diferentes do mesmo modelo/janela, ROAS/CPA por canal sao bloqueados e a UI mostra apenas o total agregado da janela.
+25. O card de promotores/ofensores usa desvios de participacao por cor e tamanho dentro do lancamento selecionado. Canal so entra quando o JSON trouxer atribuicao real por pedido.

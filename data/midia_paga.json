@@ -7,9 +7,11 @@
     "data_fim": "2026-07-09",
     "janela": "15d",
     "investimento": 17670.54,
-    "receita_atribuida": 255964,
+    "receita_atribuida": null,
+    "receita_janela_agregada": 255964,
     "pedidos": null,
-    "roas": 14.485352,
+    "pedidos_janela_agregados": null,
+    "roas": null,
     "cpa": null,
     "observacao": "investimento informado manualmente",
     "status": "validado",
@@ -17,8 +19,9 @@
     "data_suspeita_motivo": null,
     "valor_suspeito": false,
     "valor_suspeito_motivo": null,
-    "metodologia": "correlacao_por_janela_calendario",
-    "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas receita do produto na mesma janela de calendario da acao registrada."
+    "metodologia": "receita_janela_agregada",
+    "aviso": "Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use leitura agregada ate existir atribuicao real por pedido.",
+    "atribuicao_bloqueada": true
   },
   {
     "modelo_id": "rs8_monochrome",
@@ -28,9 +31,11 @@
     "data_fim": "2026-07-09",
     "janela": "15d",
     "investimento": 2584.21,
-    "receita_atribuida": 255964,
+    "receita_atribuida": null,
+    "receita_janela_agregada": 255964,
     "pedidos": null,
-    "roas": 99.049226,
+    "pedidos_janela_agregados": null,
+    "roas": null,
     "cpa": null,
     "observacao": "investimento informado manualmente",
     "status": "validado",
@@ -38,8 +43,9 @@
     "data_suspeita_motivo": null,
     "valor_suspeito": false,
     "valor_suspeito_motivo": null,
-    "metodologia": "correlacao_por_janela_calendario",
-    "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas receita do produto na mesma janela de calendario da acao registrada."
+    "metodologia": "receita_janela_agregada",
+    "aviso": "Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use leitura agregada ate existir atribuicao real por pedido.",
+    "atribuicao_bloqueada": true
   },
   {
     "modelo_id": "gt",
@@ -238,9 +244,11 @@
     "data_fim": "2026-04-22",
     "janela": "7d",
     "investimento": 3342.39,
-    "receita_atribuida": 115759,
+    "receita_atribuida": null,
+    "receita_janela_agregada": 115759,
     "pedidos": null,
-    "roas": 34.633601,
+    "pedidos_janela_agregados": null,
+    "roas": null,
     "cpa": null,
     "observacao": "investimento informado manualmente",
     "status": "validado",
@@ -248,8 +256,9 @@
     "data_suspeita_motivo": null,
     "valor_suspeito": false,
     "valor_suspeito_motivo": null,
-    "metodologia": "correlacao_por_janela_calendario",
-    "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas receita do produto na mesma janela de calendario da acao registrada."
+    "metodologia": "receita_janela_agregada",
+    "aviso": "Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use leitura agregada ate existir atribuicao real por pedido.",
+    "atribuicao_bloqueada": true
   },
   {
     "modelo_id": "phantom",
@@ -259,9 +268,11 @@
     "data_fim": "2026-04-22",
     "janela": "7d",
     "investimento": 191.05,
-    "receita_atribuida": 115759,
+    "receita_atribuida": null,
+    "receita_janela_agregada": 115759,
     "pedidos": null,
-    "roas": 605.909448,
+    "pedidos_janela_agregados": null,
+    "roas": null,
     "cpa": null,
     "observacao": "investimento informado manualmente",
     "status": "validado",
@@ -269,8 +280,9 @@
     "data_suspeita_motivo": null,
     "valor_suspeito": false,
     "valor_suspeito_motivo": null,
-    "metodologia": "correlacao_por_janela_calendario",
-    "aviso": "Nao mede atribuicao real de clique/conversao. Mostra apenas receita do produto na mesma janela de calendario da acao registrada."
+    "metodologia": "receita_janela_agregada",
+    "aviso": "Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use leitura agregada ate existir atribuicao real por pedido.",
+    "atribuicao_bloqueada": true
   },
   {
     "modelo_id": "phantom",

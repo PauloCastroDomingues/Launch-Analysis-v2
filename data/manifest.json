@@ -24,7 +24,7 @@
     "share_trajetoria": 296,
     "midia_paga": 17,
     "crm_disparos": 23,
-    "impacto_investimento": 4
+    "impacto_investimento": "skipped"
   },
   "data_quality": {
     "rs8_monochrome": {
@@ -53,7 +53,7 @@
     "share_trajetoria": "exported",
     "midia_paga": "exported",
     "crm_disparos": "exported",
-    "impacto_investimento": "exported"
+    "impacto_investimento": "deprecated"
   },
   "files": [
     "lancamentos_modelos.json",
@@ -63,7 +63,6 @@
     "sub_modelos_dia.json",
     "midia_paga.json",
     "crm_disparos.json",
-    "impacto_investimento.json",
     "estoque.json",
     "share_trajetoria.json",
     "manifest.json"
@@ -74,6 +73,7 @@
     "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
     "day_zero_base define o D0 analitico de cada modelo.",
     "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard.",
-    "investigacao_linhas_suspeitas skipped: ANTHROPIC_API_KEY nao configurada"
+    "investigacao_linhas_suspeitas skipped: ANTHROPIC_API_KEY nao configurada",
+    "impacto_investimento.json aposentado: correlacao por janela nao e atribuicao real."
   ]
 }

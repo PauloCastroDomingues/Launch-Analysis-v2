@@ -28,6 +28,9 @@ const SHARE_TRAJETORIA_REQUIRED_TABLES = [
   'eventos_comerciais_produto'
 ];
 
+const METODOLOGIA_INVESTIMENTO = 'correlacao_por_janela_calendario';
+const AVISO_INVESTIMENTO = 'Nao mede atribuicao real de clique/conversao. Mostra apenas receita do produto na mesma janela de calendario da acao registrada.';
+
 function exportarTudo() {
   validarGithubConfig_();
   const modelos = carregarModelos_();
@@ -62,6 +65,23 @@ function exportarTudo() {
   escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
   if (auditoriaMonochrome) escreverJsonGitHub_('auditoria_monochrome.json', auditoriaMonochrome);
 
+  const investigacaoMonochromeStatus = exportarInvestigacaoMonochromeSeDisponivel_(exportaveis);
+  if (investigacaoMonochromeStatus.status === 'failed') {
+    const resumoErroInvestigacao = investigacaoMonochromeStatus.error_summary || investigacaoMonochromeStatus.error || 'erro desconhecido';
+    dataQuality.investigacao_linhas_suspeitas = `failed: ${resumoErroInvestigacao}`;
+    warnings.push(`investigacao_linhas_suspeitas falhou: ${resumoErroInvestigacao}`);
+  } else if (investigacaoMonochromeStatus.error_summary || investigacaoMonochromeStatus.error) {
+    const resumoAvisoInvestigacao = investigacaoMonochromeStatus.error_summary || investigacaoMonochromeStatus.error;
+    warnings.push(`investigacao_linhas_suspeitas ${investigacaoMonochromeStatus.status}: ${resumoAvisoInvestigacao}`);
+  }
+
+  const subModelosStatus = exportarSubModelosDiaSeDisponivel_(exportaveis);
+  if (subModelosStatus.status === 'failed') {
+    const resumoErroSubModelos = subModelosStatus.error_summary || subModelosStatus.error || 'erro desconhecido';
+    dataQuality.sub_modelos_dia = `failed: ${resumoErroSubModelos}`;
+    warnings.push(`sub_modelos_dia falhou: ${resumoErroSubModelos}`);
+  }
+
   const estoqueStatus = exportarEstoqueSeDisponivel_(exportaveis);
   const shareStatus = exportarShareTrajetoriaSeDisponivel_(exportaveis);
   if (shareStatus.status === 'failed') {
@@ -69,8 +89,14 @@ function exportarTudo() {
     dataQuality.share_trajetoria = `failed: ${resumoErroShare}`;
     warnings.push(`share_trajetoria falhou: ${resumoErroShare}`);
   }
-  const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos);
-  const crmStatus = exportarCrmSeConfigurado_();
+  const midiaStatus = exportarMidiaPagaSeConfigurada_(modelos, shareStatus.payload);
+  const crmStatus = exportarCrmSeConfigurado_(shareStatus.payload);
+  const impactoStatus = {
+    status: 'deprecated',
+    rows: 'skipped',
+    error_summary: 'substituido por leitura comercial agregada e futura atribuicao real por pedido'
+  };
+  warnings.push('impacto_investimento.json aposentado: correlacao por janela nao e atribuicao real.');
 
   const manifest = {
     generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
@@ -85,25 +111,33 @@ function exportarTudo() {
       eventos_comerciais_produto: eventoComercialStatus.rows,
       lancamentos_produtos_dia: produtosDia.length,
       auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
+      investigacao_linhas_suspeitas: investigacaoMonochromeStatus.rows,
+      sub_modelos_dia: subModelosStatus.rows,
       estoque: estoqueStatus.rows,
       share_trajetoria: shareStatus.rows,
       midia_paga: midiaStatus.rows,
-      crm_disparos: crmStatus.rows
+      crm_disparos: crmStatus.rows,
+      impacto_investimento: impactoStatus.rows
     },
     data_quality: dataQuality,
     export_status: {
       cadastro_bigquery: cadastroStatus.status,
       datas_sazonais: sazonalidadeStatus.status,
       eventos_comerciais_produto: eventoComercialStatus.status,
+      investigacao_linhas_suspeitas: investigacaoMonochromeStatus.status,
+      sub_modelos_dia: subModelosStatus.status,
       estoque: estoqueStatus.status,
       share_trajetoria: shareStatus.status,
       midia_paga: midiaStatus.status,
-      crm_disparos: crmStatus.status
+      crm_disparos: crmStatus.status,
+      impacto_investimento: impactoStatus.status
     },
     files: [
       'lancamentos_modelos.json',
       'lancamentos_produtos_dia.json',
       'auditoria_monochrome.json',
+      'investigacao_linhas_suspeitas.json',
+      'sub_modelos_dia.json',
       'midia_paga.json',
       'crm_disparos.json',
       'estoque.json',
@@ -556,6 +590,28 @@ function itensClassificadosV1CteSql_(options) {
     m.prioridade_modelo,
     i.*,
     CASE
+      WHEN m.modelo_id = 'rs8_monochrome' AND STARTS_WITH(i.sku_compact, 'rs8avantmc') THEN 'rs8avantmc'
+      WHEN m.modelo_id = 'rs8_monochrome' AND STARTS_WITH(i.sku_compact, 'rs8avantab') THEN 'rs8avantab'
+      WHEN m.modelo_id = 'rs8_monochrome' AND STARTS_WITH(i.sku_compact, 'rs8avantct') THEN 'rs8avantct'
+      WHEN m.modelo_id = 'rs8_monochrome' AND STARTS_WITH(i.sku_compact, 'rs8avantcf') THEN 'rs8avantcf'
+      WHEN m.modelo_id = 'rs8_monochrome' AND (STARTS_WITH(i.sku_compact, 'rs8avantmono') OR STARTS_WITH(i.sku_compact, 'rs8mono')) THEN 'rs8mono'
+      WHEN m.modelo_id = 'rs8_monochrome' THEN 'rs8_monochrome_sem_prefixo'
+      WHEN m.modelo_id = 'phantom' AND STARTS_WITH(i.sku_compact, 'phteasy') THEN 'phteasy'
+      WHEN m.modelo_id = 'phantom' AND STARTS_WITH(i.sku_compact, 'phtslip') THEN 'phtslip'
+      WHEN m.modelo_id = 'phantom' AND STARTS_WITH(i.sku_compact, 'phtknit') THEN 'phtknit'
+      WHEN m.modelo_id = 'phantom' THEN 'phantom_sem_prefixo'
+      WHEN m.modelo_id = 'gt' AND STARTS_WITH(i.sku_compact, 'rs6gt') THEN 'rs6gt'
+      WHEN m.modelo_id = 'gt' AND STARTS_WITH(i.sku_compact, '911gt') THEN '911gt'
+      WHEN m.modelo_id = 'gt' AND STARTS_WITH(i.sku_compact, 'knitgt') THEN 'knitgt'
+      WHEN m.modelo_id = 'gt' THEN 'gt_sem_prefixo'
+      WHEN m.modelo_id = 'avant' AND STARTS_WITH(i.sku_compact, 'rs6avant') THEN 'rs6avant'
+      WHEN m.modelo_id = 'avant' AND STARTS_WITH(i.sku_compact, 'rs7avant') THEN 'rs7avant'
+      WHEN m.modelo_id = 'avant' AND STARTS_WITH(i.sku_compact, 'rs8avant') THEN 'rs8avant'
+      WHEN m.modelo_id = 'avant' THEN 'avant_sem_prefixo'
+      WHEN m.modelo_id IS NOT NULL THEN m.modelo_id
+      ELSE NULL
+    END AS sub_modelo_id,
+    CASE
       WHEN m.modelo_id = 'rs8_monochrome' THEN 'regra_monochrome'
       WHEN m.modelo_id = 'phantom' THEN 'regra_phantom'
       WHEN m.modelo_id = 'gt' THEN 'regra_gt'
@@ -768,28 +824,37 @@ itens_classificados AS (
 ),
 itens_com_flags AS (
   SELECT
-    *,
+    ic.*,
+    pl.variant_title AS variant_title_catalogo,
     ROW_NUMBER() OVER (
-      PARTITION BY modelo_id, order_sk
-      ORDER BY data, line_item_key
+      PARTITION BY ic.modelo_id, ic.order_sk
+      ORDER BY ic.data, ic.line_item_key
     ) AS cliente_row_num,
-    DATE_DIFF(data, d0, DAY) AS dia_desde_d0,
+    DATE_DIFF(ic.data, ic.d0, DAY) AS dia_desde_d0,
     COALESCE(
-      NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
+      NULLIF(TRIM(pl.cor), ''),
+      NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
       'sem_cor'
     ) AS cor_detectada,
-    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho_detectado
-  FROM itens_classificados
+    COALESCE(
+      NULLIF(TRIM(pl.tamanho), ''),
+      NULLIF(REGEXP_EXTRACT(ic.sku, r'-(3[3-9]|4[0-8])$'), ''),
+      NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
+    ) AS tamanho_detectado
+  FROM itens_classificados ic
+  LEFT JOIN \`reise-ssot.mart_shared.produto_lancamento_v\` pl
+    ON UPPER(TRIM(pl.sku)) = UPPER(TRIM(ic.sku))
 )
 SELECT
   modelo_id,
+  sub_modelo_id,
   data,
   order_sk AS source_order_id,
   order_sk,
   'ssot_fct_order_item' AS origem,
   sku,
   item_name AS nome_produto,
-  CAST(NULL AS STRING) AS variant_title,
+  ANY_VALUE(variant_title_catalogo) AS variant_title,
   item_name AS sub_modelo,
   cor_detectada AS cor,
   tamanho_detectado AS tamanho,
@@ -823,6 +888,7 @@ SELECT
 FROM itens_com_flags
 GROUP BY
   modelo_id,
+  sub_modelo_id,
   data,
   order_sk,
   sku,
@@ -834,19 +900,92 @@ ORDER BY modelo_id, data, order_sk, sku;`;
   return runBq_(query);
 }
 
+function exportarSubModelosDiaSeDisponivel_(modelos) {
+  if (!modelos.length) {
+    Logger.log('Sem modelos exportaveis com day_zero_base valido; sub_modelos_dia nao consultado.');
+    return { status: 'skipped', rows: 'skipped' };
+  }
+
+  try {
+    const subModelosDia = consultarSubModelosDia_(modelos);
+    escreverJsonGitHub_('sub_modelos_dia.json', subModelosDia);
+    Logger.log(`sub_modelos_dia.json exportado com ${subModelosDia.length} linhas.`);
+    return { status: 'exported', rows: subModelosDia.length };
+  } catch (error) {
+    const resumoErro = resumirErro_(error);
+    Logger.log(`sub_modelos_dia.json nao exportado; mantendo arquivo atual. Erro: ${resumoErro}`);
+    return { status: 'failed', rows: 'failed', error: error.message, error_summary: resumoErro };
+  }
+}
+
+function consultarSubModelosDia_(modelos) {
+  const modelosSql = modelos.map(m => {
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+  }).join('\nUNION ALL\n');
+
+  const query = `
+WITH modelos AS (
+  ${modelosSql}
+),
+${modelosNormCteSql_()},
+itens_validos AS (
+  SELECT
+    i.order_partition_date_brt AS data,
+    CAST(i.order_sk AS STRING) AS order_sk,
+    COALESCE(
+      NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), ''),
+      TO_JSON_STRING(STRUCT(
+        CAST(i.order_sk AS STRING) AS order_sk,
+        CAST(i.sku AS STRING) AS sku,
+        CAST(i.item_name AS STRING) AS item_name,
+        SAFE_CAST(i.quantity AS INT64) AS quantity,
+        SAFE_CAST(i.line_gross_amount AS NUMERIC) AS line_gross_amount,
+        SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS line_discount_amount
+      ))
+    ) AS line_item_key,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
+    SAFE_CAST(i.quantity AS INT64) AS quantidade,
+    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS valor_bruto_item,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  WHERE i.is_valid_order = TRUE
+    AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
+    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+),
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })}
+SELECT
+  modelo_id,
+  sub_modelo_id,
+  data AS data_venda,
+  SUM(quantidade) AS pares,
+  ROUND(SUM(valor_bruto_item), 2) AS receita
+FROM itens_classificados_v1
+WHERE modelo_id IS NOT NULL
+GROUP BY modelo_id, sub_modelo_id, data
+ORDER BY modelo_id, sub_modelo_id, data_venda;`;
+
+  return runBq_(query);
+}
+
 function consultarAuditoriaMonochromeSeAtivo_(modelos) {
   const mono = modelos.find(isMonochromeModel_);
   if (!mono) return null;
   return consultarAuditoriaMonochrome_(mono);
 }
 
-function consultarAuditoriaMonochrome_(modelo) {
+function monochromeAuditoriaBaseCtesSql_(modelo) {
   const d0 = sql_(modelo.day_zero_base);
   const modeloNome = sql_(modelo.modelo || 'RS8 Avant Monochrome');
   const termosRegex = termosRegex_(modelo);
   const skuPrefixos = skuPrefixos_(modelo);
-  const query = `
-WITH modelos AS (
+
+  return `modelos AS (
   SELECT 'rs8_monochrome' AS modelo_id, '${modeloNome}' AS modelo, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos
 ),
 ${modelosNormCteSql_()},
@@ -885,7 +1024,12 @@ itens_validos AS (
     AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 90 DAY)
     AND SAFE_CAST(i.quantity AS INT64) > 0
 ),
-${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })},
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })}`;
+}
+
+function consultarAuditoriaMonochrome_(modelo) {
+  const query = `
+WITH ${monochromeAuditoriaBaseCtesSql_(modelo)},
 classificadas_raw AS (
   SELECT
     data AS data_venda,
@@ -902,9 +1046,22 @@ classificadas_raw AS (
     item_name_norm,
     sku_compact AS sku_norm,
     regra_classificacao,
-    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
-    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho
+    COALESCE(
+      NULLIF(TRIM(pl.cor_catalogo), ''),
+      NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
+      'sem_cor'
+    ) AS cor,
+    COALESCE(
+      NULLIF(TRIM(pl.tamanho_catalogo), ''),
+      NULLIF(REGEXP_EXTRACT(sku, r'-(3[3-9]|4[0-8])$'), ''),
+      NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
+    ) AS tamanho
   FROM itens_candidatos_v1
+  LEFT JOIN (
+    SELECT sku AS pl_sku, cor AS cor_catalogo, tamanho AS tamanho_catalogo
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+  ) pl
+    ON UPPER(TRIM(pl.pl_sku)) = UPPER(TRIM(sku))
   WHERE modelo_id = 'rs8_monochrome'
 ), classificadas AS (
   SELECT
@@ -922,9 +1079,22 @@ classificadas_raw AS (
     item_name_norm,
     sku_compact AS sku_norm,
     regra_classificacao,
-    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), '') AS cor,
-    NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '') AS tamanho
+    COALESCE(
+      NULLIF(TRIM(pl.cor_catalogo), ''),
+      NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
+      'sem_cor'
+    ) AS cor,
+    COALESCE(
+      NULLIF(TRIM(pl.tamanho_catalogo), ''),
+      NULLIF(REGEXP_EXTRACT(sku, r'-(3[3-9]|4[0-8])$'), ''),
+      NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
+    ) AS tamanho
   FROM itens_classificados_v1
+  LEFT JOIN (
+    SELECT sku AS pl_sku, cor AS cor_catalogo, tamanho AS tamanho_catalogo
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+  ) pl
+    ON UPPER(TRIM(pl.pl_sku)) = UPPER(TRIM(sku))
   WHERE modelo_id = 'rs8_monochrome'
 ), dedup AS (
   SELECT *
@@ -967,16 +1137,8 @@ classificadas_raw AS (
     ON c.order_sk = v.order_sk
    AND c.line_item_key = v.line_item_key
   WHERE c.line_item_key IS NULL
-    -- Evita falso positivo de RS8/Avant comum; suspeita aqui e apenas Monochrome fora da regra.
-    AND (
-      STARTS_WITH(v.sku_compact, 'rs8avantmc')
-      OR STARTS_WITH(v.sku_compact, 'rs8avantab')
-      OR STARTS_WITH(v.sku_compact, 'rs8avantct')
-      OR STARTS_WITH(v.sku_compact, 'rs8avantcf')
-      OR STARTS_WITH(v.sku_compact, 'rs8avantmono')
-      OR STARTS_WITH(v.sku_compact, 'rs8mono')
-      OR REGEXP_CONTAINS(v.match_text_norm, r'(mono|monochrome|monocrome)')
-    )
+    -- RS8 isolado e compartilhado por outros produtos; alerta so usa termos de linha.
+    AND REGEXP_CONTAINS(v.match_text_norm, r'(avant|mono|monochrome)')
   LIMIT 100
 )
 SELECT TO_JSON_STRING(STRUCT(
@@ -1066,6 +1228,305 @@ SELECT TO_JSON_STRING(STRUCT(
   } catch (error) {
     throw new Error(`Auditoria Monochrome retornou JSON invalido: ${error.message}`);
   }
+}
+
+function exportarInvestigacaoMonochrome() {
+  validarGithubConfig_();
+  const modelos = carregarModelos_().filter(ehModeloExportavel_);
+  const status = exportarInvestigacaoMonochromeSeDisponivel_(modelos);
+  Logger.log(`exportarInvestigacaoMonochrome: ${JSON.stringify(status)}`);
+  return status;
+}
+
+function exportarInvestigacaoMonochromeSeDisponivel_(modelos) {
+  const mono = (modelos || []).find(isMonochromeModel_);
+  if (!mono) {
+    Logger.log('investigacao_linhas_suspeitas nao exportada: rs8_monochrome ausente dos modelos exportaveis.');
+    return { status: 'skipped', rows: 'skipped', error_summary: 'rs8_monochrome ausente dos modelos exportaveis' };
+  }
+
+  const apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') || '';
+  if (!apiKey) {
+    Logger.log('investigacao_linhas_suspeitas nao exportada: ANTHROPIC_API_KEY nao configurada.');
+    return { status: 'skipped', rows: 'skipped', error_summary: 'ANTHROPIC_API_KEY nao configurada' };
+  }
+
+  try {
+    const linhas = consultarLinhasSuspeitasMonochrome_(mono);
+    const analises = investigarLinhasSuspeitasComIA_(linhas);
+    const relatorio = montarRelatorioInvestigacaoMonochrome_(linhas, analises);
+    escreverJsonGitHub_('investigacao_linhas_suspeitas.json', relatorio);
+    Logger.log(`investigacao_linhas_suspeitas.json exportado com ${relatorio.total_analisado} linhas. Resumo=${JSON.stringify(relatorio.resumo)}`);
+    return { status: 'exported', rows: relatorio.total_analisado, resumo: relatorio.resumo };
+  } catch (error) {
+    const resumoErro = resumirErro_(error);
+    Logger.log(`investigacao_linhas_suspeitas.json nao exportado; mantendo arquivo atual. Erro: ${resumoErro}`);
+    return { status: 'failed', rows: 'failed', error: error.message, error_summary: resumoErro };
+  }
+}
+
+function consultarLinhasSuspeitasMonochrome_(modelo) {
+  const query = `
+WITH ${monochromeAuditoriaBaseCtesSql_(modelo)}
+SELECT
+  ROW_NUMBER() OVER (ORDER BY v.receita_bruta DESC, v.data, v.order_sk, v.sku) AS linha_idx,
+  CAST(v.data AS STRING) AS data_venda,
+  v.pedido,
+  v.order_sk,
+  v.line_item_id,
+  v.line_item_key AS dedupe_key,
+  v.sku,
+  v.item_name,
+  v.item_name_norm,
+  v.sku_compact,
+  v.match_text_norm,
+  v.pares AS quantidade,
+  ROUND(v.receita_bruta, 2) AS valor_bruto_item,
+  ROUND(v.desconto, 2) AS desconto_item,
+  ROUND(v.receita_liquida, 2) AS valor_liquido_item
+FROM itens_validos v
+LEFT JOIN itens_classificados_v1 c
+  ON c.order_sk = v.order_sk
+ AND c.line_item_key = v.line_item_key
+WHERE c.line_item_key IS NULL
+  AND REGEXP_CONTAINS(v.match_text_norm, r'(avant|mono|monochrome)')
+ORDER BY v.receita_bruta DESC, v.data, v.order_sk, v.sku
+LIMIT 200`;
+
+  return runBq_(query);
+}
+
+function investigarLinhasSuspeitasComIA_(linhas) {
+  if (!linhas || !linhas.length) return [];
+
+  const apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') || '';
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY nao configurada.');
+
+  const model = getProp_('ANTHROPIC_MODEL', 'claude-sonnet-4-6');
+  const resultados = [];
+  const lotes = dividirEmLotes_(linhas, 15);
+
+  lotes.forEach((lote, loteIndex) => {
+    const body = {
+      model,
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: montarPromptInvestigacaoMonochrome_(lote)
+      }]
+    };
+
+    const response = urlFetchComRetry_('https://api.anthropic.com/v1/messages', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      payload: JSON.stringify(body),
+      muteHttpExceptions: true
+    }, `Anthropic investigacao_linhas_suspeitas lote ${loteIndex + 1}/${lotes.length}`);
+
+    const code = response.getResponseCode();
+    const text = response.getContentText();
+    if (code < 200 || code >= 300) {
+      throw new Error(`Anthropic retornou HTTP ${code}: ${text.slice(0, 400)}`);
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (error) {
+      throw new Error(`Anthropic retornou JSON invalido: ${error.message}`);
+    }
+
+    const output = extrairTextoAnthropic_(payload);
+    const parsed = parseAnthropicJsonArray_(output);
+    resultados.push(...normalizarResultadoInvestigacaoLote_(lote, parsed));
+
+    if (loteIndex < lotes.length - 1) Utilities.sleep(500);
+  });
+
+  return resultados;
+}
+
+function montarPromptInvestigacaoMonochrome_(lote) {
+  const linhas = lote.map(row => ({
+    sku: row.sku || null,
+    item_name: row.item_name || null,
+    item_name_norm: row.item_name_norm || null,
+    sku_compact: row.sku_compact || null,
+    quantidade: numberOrNull_(row.quantidade),
+    valor_bruto_item: numberOrNull_(row.valor_bruto_item),
+    data_venda: row.data_venda || null
+  }));
+
+  return [
+    'Voce e um auditor de classificacao de produtos da Reise.',
+    'Contexto: as linhas abaixo apareceram em pedidos validos, contem termos como avant, mono ou monochrome, mas NAO foram classificadas por itens_classificados_v1 como nenhum lancamento.',
+    'Objetivo: decidir se cada linha provavelmente e RS8 Avant Monochrome perdida pela regra atual, se e outro produto, ou se e indeterminada.',
+    '',
+    'Regras atuais copiadas literalmente da CTE central itensClassificadosV1CteSql_:',
+    '```sql',
+    regrasClassificacaoMonochromePrompt_(),
+    '```',
+    '',
+    'Responda somente com um JSON array valido, sem markdown, sem texto antes ou depois.',
+    'A resposta deve ter exatamente o mesmo numero de itens e a mesma ordem das linhas de entrada.',
+    'Campos obrigatorios por item:',
+    '- sku: string ou null',
+    '- classificacao: "provavel_monochrome", "outro_produto" ou "indeterminado"',
+    '- confianca: "alta", "media" ou "baixa"',
+    '- justificativa: 1 ou 2 frases especificas em portugues, explicando sku/nome e por que a regra atual pegou ou nao pegou.',
+    '',
+    'Linhas para analisar:',
+    JSON.stringify(linhas, null, 2)
+  ].join('\n');
+}
+
+function regrasClassificacaoMonochromePrompt_() {
+  return itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' });
+}
+
+function extrairTextoAnthropic_(payload) {
+  const content = Array.isArray(payload && payload.content) ? payload.content : [];
+  return content
+    .map(part => part && part.type === 'text' ? String(part.text || '') : '')
+    .join('\n')
+    .trim();
+}
+
+function parseAnthropicJsonArray_(text) {
+  const raw = String(text || '').trim();
+  const semCerca = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```$/i, '')
+    .trim();
+
+  try {
+    const parsed = JSON.parse(semCerca);
+    if (!Array.isArray(parsed)) throw new Error('resposta nao e array');
+    return parsed;
+  } catch (error) {
+    const start = semCerca.indexOf('[');
+    const end = semCerca.lastIndexOf(']');
+    if (start >= 0 && end > start) {
+      const parsed = JSON.parse(semCerca.slice(start, end + 1));
+      if (!Array.isArray(parsed)) throw new Error('resposta extraida nao e array');
+      return parsed;
+    }
+    throw new Error(`Nao consegui interpretar JSON array da IA: ${error.message}`);
+  }
+}
+
+function normalizarResultadoInvestigacaoLote_(lote, parsed) {
+  if (!Array.isArray(parsed)) throw new Error('Resultado da IA precisa ser um array.');
+  if (parsed.length !== lote.length) {
+    Logger.log(`investigacao_linhas_suspeitas: lote retornou ${parsed.length} analises para ${lote.length} linhas; faltantes serao marcadas como indeterminado.`);
+  }
+
+  return lote.map((linha, index) => {
+    const raw = parsed[index] || {};
+    const sku = String(raw.sku || linha.sku || '').trim() || null;
+    const classificacao = normalizarClassificacaoInvestigacao_(raw.classificacao);
+    const confianca = normalizarConfiancaInvestigacao_(raw.confianca);
+    const justificativa = String(raw.justificativa || '').trim()
+      || `Resposta da IA ausente ou sem justificativa para sku ${linha.sku || 'sem_sku'}; revisar manualmente.`;
+
+    return { sku, classificacao, confianca, justificativa };
+  });
+}
+
+function montarRelatorioInvestigacaoMonochrome_(linhas, analises) {
+  const resumo = {
+    provavel_monochrome: 0,
+    outro_produto: 0,
+    indeterminado: 0,
+    por_confianca: { alta: 0, media: 0, baixa: 0 },
+    receita_provavel_monochrome_perdida: 0,
+    receita_provavel_monochrome_perdida_por_confianca: {
+      alta: 0,
+      media: 0,
+      baixa: 0,
+      alta_media: 0
+    }
+  };
+  const receitaPorConfianca = { alta: 0, media: 0, baixa: 0 };
+
+  const linhasRelatorio = (linhas || []).map((linha, index) => {
+    const analise = analises[index] || {};
+    const classificacao = normalizarClassificacaoInvestigacao_(analise.classificacao);
+    const confianca = normalizarConfiancaInvestigacao_(analise.confianca);
+    const receita = numberOrNull_(linha.valor_bruto_item) || 0;
+    const justificativa = String(analise.justificativa || '').trim()
+      || `Linha sem analise da IA para sku ${linha.sku || 'sem_sku'}; revisar manualmente.`;
+
+    resumo[classificacao] = (resumo[classificacao] || 0) + 1;
+    resumo.por_confianca[confianca] = (resumo.por_confianca[confianca] || 0) + 1;
+    if (classificacao === 'provavel_monochrome') {
+      receitaPorConfianca[confianca] += receita;
+    }
+
+    return {
+      linha_idx: Number(linha.linha_idx || index + 1),
+      data_venda: linha.data_venda || null,
+      pedido: linha.pedido || null,
+      order_sk: linha.order_sk || null,
+      line_item_id: linha.line_item_id || null,
+      dedupe_key: linha.dedupe_key || null,
+      sku: linha.sku || null,
+      item_name: linha.item_name || null,
+      item_name_norm: linha.item_name_norm || null,
+      sku_compact: linha.sku_compact || null,
+      match_text_norm: linha.match_text_norm || null,
+      quantidade: numberOrNull_(linha.quantidade),
+      valor_bruto_item: numberOrNull_(linha.valor_bruto_item),
+      desconto_item: numberOrNull_(linha.desconto_item),
+      valor_liquido_item: numberOrNull_(linha.valor_liquido_item),
+      classificacao,
+      confianca,
+      justificativa
+    };
+  });
+
+  resumo.receita_provavel_monochrome_perdida_por_confianca = {
+    alta: round2_(receitaPorConfianca.alta),
+    media: round2_(receitaPorConfianca.media),
+    baixa: round2_(receitaPorConfianca.baixa),
+    alta_media: round2_(receitaPorConfianca.alta + receitaPorConfianca.media)
+  };
+  resumo.receita_provavel_monochrome_perdida = resumo.receita_provavel_monochrome_perdida_por_confianca.alta_media;
+
+  return {
+    gerado_em: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+    modelo_id: 'rs8_monochrome',
+    fonte: 'reise-ssot.core.order_item + core.order',
+    regra_base: 'itens_classificados_v1 sem alteracao; relatorio apenas investigativo',
+    total_analisado: linhasRelatorio.length,
+    resumo,
+    linhas: linhasRelatorio
+  };
+}
+
+function normalizarClassificacaoInvestigacao_(value) {
+  const clean = String(value || '').trim().toLowerCase();
+  if (clean === 'provavel_monochrome' || clean === 'outro_produto' || clean === 'indeterminado') return clean;
+  return 'indeterminado';
+}
+
+function normalizarConfiancaInvestigacao_(value) {
+  const clean = String(value || '').trim().toLowerCase();
+  if (clean === 'alta' || clean === 'media' || clean === 'baixa') return clean;
+  return 'baixa';
+}
+
+function dividirEmLotes_(rows, size) {
+  const chunks = [];
+  for (let i = 0; i < (rows || []).length; i += size) {
+    chunks.push(rows.slice(i, i + size));
+  }
+  return chunks;
 }
 
 function compararMonochromeExportAuditoria_(produtosDia, auditoria) {
@@ -1731,7 +2192,7 @@ function exportarShareTrajetoriaSeDisponivel_(modelos) {
     const share = consultarShareTrajetoria_(modelos);
     escreverJsonGitHub_('share_trajetoria.json', share.payload);
     Logger.log(`share_trajetoria.json exportado com ${share.rows} pontos para ${Object.keys(share.payload.modelos).length} modelos.`);
-    return { status: 'exported', rows: share.rows, dependencies: dependencias };
+    return { status: 'exported', rows: share.rows, dependencies: dependencias, payload: share.payload };
   } catch (error) {
     const resumoErro = resumirErro_(error);
     Logger.log(`share_trajetoria.json nao exportado; mantendo arquivo atual. Erro: ${resumoErro}`);
@@ -1926,6 +2387,7 @@ SELECT
   TO_JSON_STRING(ARRAY_AGG(STRUCT(
     dias_desde_lancamento,
     CAST(data_calendario AS STRING) AS data_calendario,
+    receita_produto,
     receita_empresa,
     pedidos_empresa,
     share_do_dia,
@@ -1955,6 +2417,7 @@ ORDER BY modelo_id`;
     const pontos = JSON.parse(row.pontos_json || '[]').map(point => ({
       dias_desde_lancamento: Number(point.dias_desde_lancamento),
       data_calendario: point.data_calendario || null,
+      receita_produto: numberOrNull_(point.receita_produto),
       receita_empresa: numberOrNull_(point.receita_empresa),
       pedidos_empresa: numberOrNull_(point.pedidos_empresa),
       share_do_dia: numberOrNull_(point.share_do_dia),
@@ -1990,11 +2453,11 @@ ORDER BY modelo_id`;
   return { payload, rows: pointCount };
 }
 
-function exportarMidiaPagaSeConfigurada_(modelos) {
+function exportarMidiaPagaSeConfigurada_(modelos, shareTrajetoria) {
   const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
   if (!spreadsheetId) {
     Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo midia_paga.json atual');
-    return { status: 'skipped', rows: 'skipped' };
+    return { status: 'skipped', rows: 'skipped', payload: [] };
   }
 
   try {
@@ -2002,24 +2465,24 @@ function exportarMidiaPagaSeConfigurada_(modelos) {
     const sheet = ss.getSheetByName('midia_paga');
     if (!sheet) {
       Logger.log('Aba midia_paga nao encontrada; mantendo midia_paga.json atual');
-      return { status: 'skipped', rows: 'skipped' };
+      return { status: 'skipped', rows: 'skipped', payload: [] };
     }
 
-    const midia = normalizeMidiaPaga_(sheetToObjects_(sheet), modelos);
+    const midia = calcularImpactoMidiaPaga_(normalizeMidiaPaga_(sheetToObjects_(sheet), modelos), shareTrajetoria);
     escreverJsonGitHub_('midia_paga.json', midia);
     Logger.log(`midia_paga.json exportado com ${midia.length} linhas.`);
-    return { status: 'exported', rows: midia.length };
+    return { status: 'exported', rows: midia.length, payload: midia };
   } catch (error) {
     Logger.log(`midia_paga.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
-    return { status: 'skipped', rows: 'skipped', error: error.message };
+    return { status: 'skipped', rows: 'skipped', error: error.message, payload: [] };
   }
 }
 
-function exportarCrmSeConfigurado_() {
+function exportarCrmSeConfigurado_(shareTrajetoria) {
   const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
   if (!spreadsheetId) {
     Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo crm_disparos.json atual');
-    return { status: 'skipped', rows: 'skipped' };
+    return { status: 'skipped', rows: 'skipped', payload: [] };
   }
 
   try {
@@ -2027,16 +2490,16 @@ function exportarCrmSeConfigurado_() {
     const sheet = ss.getSheetByName('crm_disparos');
     if (!sheet) {
       Logger.log('Aba crm_disparos nao encontrada; mantendo crm_disparos.json atual');
-      return { status: 'skipped', rows: 'skipped' };
+      return { status: 'skipped', rows: 'skipped', payload: [] };
     }
 
-    const crm = normalizeCrmDisparos_(sheetToObjects_(sheet));
+    const crm = calcularImpactoCrmDisparos_(normalizeCrmDisparos_(sheetToObjects_(sheet)), shareTrajetoria);
     escreverJsonGitHub_('crm_disparos.json', crm);
     Logger.log(`crm_disparos.json exportado com ${crm.length} linhas.`);
-    return { status: 'exported', rows: crm.length };
+    return { status: 'exported', rows: crm.length, payload: crm };
   } catch (error) {
     Logger.log(`crm_disparos.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
-    return { status: 'skipped', rows: 'skipped', error: error.message };
+    return { status: 'skipped', rows: 'skipped', error: error.message, payload: [] };
   }
 }
 
@@ -2104,6 +2567,361 @@ function normalizeCrmDisparos_(rows) {
     observacao: row.observacao || null,
     status: row.status || null
   }));
+}
+
+function janelaEmDias_(janelaStr) {
+  const match = String(janelaStr || '').match(/(\d+)d/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function validarJanelaMidia_(registro) {
+  if (!registro.data_inicio || !registro.data_fim) {
+    return { valida: false, motivo: 'data_inicio_ou_fim_ausente' };
+  }
+
+  const inicio = dateOnly_(registro.data_inicio);
+  const fim = dateOnly_(registro.data_fim);
+  if (!inicio || !fim) {
+    return { valida: false, motivo: 'data_inicio_ou_fim_invalida' };
+  }
+
+  const diasReais = Math.round((fim - inicio) / 86400000);
+  const diasDeclarados = janelaEmDias_(registro.janela);
+  if (diasReais < 0) {
+    return { valida: false, motivo: 'data_fim_anterior_a_data_inicio' };
+  }
+  if (diasDeclarados !== null && Math.abs(diasReais - diasDeclarados) > 5) {
+    return { valida: false, motivo: `janela_declarada_${diasDeclarados}d_mas_intervalo_real_${diasReais}d` };
+  }
+
+  return { valida: true };
+}
+
+function marcarQualidadeMidiaPaga_(registrosMidia) {
+  const rows = (registrosMidia || []).map(row => {
+    const janela = validarJanelaMidia_(row);
+    return {
+      ...row,
+      data_suspeita: !janela.valida,
+      data_suspeita_motivo: janela.valida ? null : janela.motivo,
+      valor_suspeito: Boolean(row.valor_suspeito),
+      valor_suspeito_motivo: row.valor_suspeito_motivo || null
+    };
+  });
+
+  const byModelo = {};
+  rows.forEach((row, index) => {
+    const modeloId = String(row.modelo_id || '').trim();
+    const dias = janelaEmDias_(row.janela);
+    const investimento = numberOrNull_(row.investimento);
+    if (!modeloId || dias === null || investimento === null) return;
+    if (!byModelo[modeloId]) byModelo[modeloId] = [];
+    byModelo[modeloId].push({ index, dias, investimento });
+  });
+
+  Object.keys(byModelo).forEach(modeloId => {
+    const items = byModelo[modeloId].sort((a, b) => a.dias - b.dias || a.index - b.index);
+    items.forEach(item => {
+      const lowerDays = items
+        .filter(other => other.dias < item.dias)
+        .map(other => other.dias)
+        .sort((a, b) => b - a)[0];
+      const higherDays = items
+        .filter(other => other.dias > item.dias)
+        .map(other => other.dias)
+        .sort((a, b) => a - b)[0];
+      const lowerMax = lowerDays === undefined ? null : Math.max(...items
+        .filter(other => other.dias === lowerDays)
+        .map(other => other.investimento));
+      const higherMax = higherDays === undefined ? null : Math.max(...items
+        .filter(other => other.dias === higherDays)
+        .map(other => other.investimento));
+
+      if (higherMax !== null && item.investimento > higherMax) {
+        marcarValorSuspeitoMidia_(rows[item.index], 'investimento_maior_que_janela_mais_longa');
+      } else if (lowerMax !== null && lowerMax > 0 && item.investimento > lowerMax * 5) {
+        marcarValorSuspeitoMidia_(rows[item.index], 'investimento_desproporcional_a_janela_adjacente');
+      }
+    });
+  });
+
+  return rows;
+}
+
+function marcarValorSuspeitoMidia_(row, motivo) {
+  row.valor_suspeito = true;
+  row.valor_suspeito_motivo = row.valor_suspeito_motivo || motivo;
+}
+
+function midiaValidaParaImpacto_(row) {
+  return !row.data_suspeita && !row.valor_suspeito;
+}
+
+function marcarReceitaDuplicadaMidiaPaga_(registrosMidia) {
+  const rows = (registrosMidia || []).map(row => ({ ...row }));
+  const grupos = {};
+  rows.forEach((row, index) => {
+    const key = `${row.modelo_id || 'sem_modelo'}::${row.janela || 'sem_janela'}`;
+    if (!grupos[key]) grupos[key] = [];
+    grupos[key].push({ row, index });
+  });
+
+  Object.keys(grupos).forEach(key => {
+    const itens = grupos[key].filter(item => (
+      midiaValidaParaImpacto_(item.row)
+      && item.row.receita_atribuida !== null
+      && item.row.receita_atribuida !== undefined
+    ));
+    const canais = {};
+    const receitas = {};
+    itens.forEach(item => {
+      canais[String(item.row.canal || item.row.campanha || '').trim().toLowerCase()] = true;
+      receitas[String(Math.round(Number(item.row.receita_atribuida || 0) * 100) / 100)] = true;
+    });
+    const canaisCount = Object.keys(canais).filter(Boolean).length;
+    const receitaKeys = Object.keys(receitas);
+    if (itens.length < 2 || canaisCount < 2 || receitaKeys.length !== 1) return;
+
+    const receitaJanela = Number(receitaKeys[0]);
+    itens.forEach(item => {
+      const row = rows[item.index];
+      row.receita_janela_agregada = receitaJanela;
+      row.pedidos_janela_agregados = row.pedidos;
+      row.receita_atribuida = null;
+      row.pedidos = null;
+      row.roas = null;
+      row.cpa = null;
+      row.atribuicao_bloqueada = true;
+      row.metodologia = 'receita_janela_agregada';
+      row.aviso = 'Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use leitura agregada ate existir atribuicao real por pedido.';
+    });
+  });
+
+  return rows;
+}
+
+function calcularImpactoMidiaPaga_(registrosMidia) {
+  return marcarReceitaDuplicadaMidiaPaga_(marcarQualidadeMidiaPaga_(registrosMidia)).map(row => {
+    const investimento = numberOrNull_(row.investimento);
+    const receita = numberOrNull_(row.receita_atribuida);
+    const pedidos = numberOrNull_(row.pedidos);
+    const roas = roasOrNull_(row.roas);
+    const cpa = numberOrNull_(row.cpa);
+
+    return {
+      ...row,
+      roas: row.atribuicao_bloqueada ? null : (roas ?? (investimento && investimento > 0 && receita !== null ? round6_(receita / investimento) : null)),
+      cpa: row.atribuicao_bloqueada ? null : (cpa ?? (investimento && investimento > 0 && pedidos ? round2_(investimento / pedidos) : null)),
+      metodologia: row.metodologia || null,
+      aviso: row.aviso || null
+    };
+  });
+}
+
+function calcularImpactoCrmDisparos_(registrosCrm, shareTrajetoria) {
+  return (registrosCrm || []).map(row => {
+    const dataInicio = dateIsoKey_(row.data_disparo);
+    const dataFim = dataInicio ? addDaysIso_(dataInicio, 2) : null;
+    const janela = pontosShareJanela_(shareTrajetoria, row.modelo_id, dataInicio, dataFim);
+    const receitaDia = somarReceitaProdutoPontos_(janela);
+    const pedidos = somarPedidosProdutoPontos_(janela);
+    const investimento = numberOrNull_(row.investimento);
+
+    return {
+      ...row,
+      receita_dia: receitaDia,
+      pedidos,
+      roas: investimento && investimento > 0 && receitaDia !== null ? round6_(receitaDia / investimento) : null,
+      cpa: investimento && investimento > 0 && pedidos ? round2_(investimento / pedidos) : null,
+      metodologia: METODOLOGIA_INVESTIMENTO,
+      aviso: AVISO_INVESTIMENTO
+    };
+  });
+}
+
+function calcularImpactoAgregadoSeDisponivel_(registrosMidia, registrosCrm, shareTrajetoria) {
+  const midia = marcarQualidadeMidiaPaga_(registrosMidia || []);
+  const crm = registrosCrm || [];
+  if (!midia.length && !crm.length) {
+    Logger.log('impacto_investimento nao exportado: sem registros de midia paga ou CRM.');
+    return { status: 'skipped', rows: 'skipped', error_summary: 'sem registros de midia paga ou CRM' };
+  }
+
+  if (!shareTrajetoria || !shareTrajetoria.modelos) {
+    Logger.log('impacto_investimento nao exportado: share_trajetoria indisponivel.');
+    return { status: 'skipped', rows: 'skipped', error_summary: 'share_trajetoria indisponivel' };
+  }
+
+  try {
+    const payload = calcularImpactoAgregadoInvestimento_(midia, crm, shareTrajetoria);
+    const modelos = Object.keys(payload.modelos || {});
+    if (!modelos.length) {
+      Logger.log('impacto_investimento nao exportado: nenhum modelo com campanhas e pontos de share validos.');
+      return { status: 'skipped', rows: 'skipped', error_summary: 'nenhum modelo com campanhas e pontos de share validos', payload };
+    }
+
+    escreverJsonGitHub_('impacto_investimento.json', payload);
+    Logger.log(`impacto_investimento.json exportado com ${modelos.length} modelos.`);
+    return { status: 'exported', rows: modelos.length, payload };
+  } catch (error) {
+    const resumoErro = resumirErro_(error);
+    Logger.log(`impacto_investimento.json nao exportado; mantendo arquivo atual. Erro: ${resumoErro}`);
+    return { status: 'failed', rows: 'failed', error: error.message, error_summary: resumoErro };
+  }
+}
+
+function calcularImpactoAgregadoInvestimento_(registrosMidia, registrosCrm, shareTrajetoria) {
+  const janelasPorModelo = {};
+  (registrosMidia || []).forEach(row => {
+    if (!midiaValidaParaImpacto_(row)) return;
+    adicionarJanelaInvestimento_(janelasPorModelo, row.modelo_id, row.data_inicio, row.data_fim || row.data_inicio);
+  });
+  (registrosCrm || []).forEach(row => {
+    const dataInicio = dateIsoKey_(row.data_disparo);
+    adicionarJanelaInvestimento_(janelasPorModelo, row.modelo_id, dataInicio, dataInicio ? addDaysIso_(dataInicio, 2) : null);
+  });
+
+  const payload = {
+    generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+    metodologia: METODOLOGIA_INVESTIMENTO,
+    aviso: 'Nao mede atribuicao real de clique/conversao. Mostra apenas se dias com investimento ativo tiveram share medio maior que dias sem, no mesmo lancamento.',
+    modelos: {}
+  };
+
+  Object.keys(janelasPorModelo).forEach(modeloId => {
+    const pontos = pontosShareModelo_(shareTrajetoria, modeloId);
+    if (!pontos || !pontos.length) return;
+
+    const comInvestimento = [];
+    const semInvestimento = [];
+    pontos.forEach(point => {
+      const data = dateIsoKey_(point.data_calendario);
+      const share = numberOrNull_(point.share_do_dia);
+      if (!data || share === null) return;
+      if (janelasPorModelo[modeloId].some(janela => data >= janela.inicio && data <= janela.fim)) {
+        comInvestimento.push(share);
+      } else {
+        semInvestimento.push(share);
+      }
+    });
+
+    if (!comInvestimento.length && !semInvestimento.length) return;
+
+    payload.modelos[modeloId] = {
+      share_medio_dias_com_investimento: mediaOuNull_(comInvestimento),
+      share_medio_dias_sem_investimento: mediaOuNull_(semInvestimento),
+      dias_com_investimento: comInvestimento.length,
+      dias_sem_investimento: semInvestimento.length,
+      metodologia: METODOLOGIA_INVESTIMENTO,
+      aviso: payload.aviso
+    };
+  });
+
+  return payload;
+}
+
+function adicionarJanelaInvestimento_(janelasPorModelo, modeloId, inicio, fim) {
+  const id = String(modeloId || '').trim();
+  const start = dateIsoKey_(inicio);
+  const end = dateIsoKey_(fim || inicio);
+  if (!id || !start || !end) return;
+  if (!janelasPorModelo[id]) janelasPorModelo[id] = [];
+  janelasPorModelo[id].push({
+    inicio: start <= end ? start : end,
+    fim: start <= end ? end : start
+  });
+}
+
+function pontosShareJanela_(shareTrajetoria, modeloId, inicio, fim) {
+  const pontos = pontosShareModelo_(shareTrajetoria, modeloId);
+  const start = dateIsoKey_(inicio);
+  const end = dateIsoKey_(fim || inicio);
+  if (!pontos || !start || !end) return { calculavel: false, pontos: [] };
+
+  const dataInicio = start <= end ? start : end;
+  const dataFim = start <= end ? end : start;
+  return {
+    calculavel: true,
+    pontos: pontos.filter(point => {
+      const data = dateIsoKey_(point.data_calendario);
+      return data && data >= dataInicio && data <= dataFim;
+    })
+  };
+}
+
+function pontosShareModelo_(shareTrajetoria, modeloId) {
+  const id = String(modeloId || '').trim();
+  const modelo = id && shareTrajetoria && shareTrajetoria.modelos ? shareTrajetoria.modelos[id] : null;
+  return modelo && Array.isArray(modelo.pontos) ? modelo.pontos : null;
+}
+
+function somarReceitaProdutoPontos_(janela) {
+  if (!janela || !janela.calculavel) return null;
+  if (!janela.pontos.length) return 0;
+
+  let total = 0;
+  let temCampoReceita = false;
+  janela.pontos.forEach(point => {
+    if (Object.prototype.hasOwnProperty.call(point, 'receita_produto')) {
+      temCampoReceita = true;
+      total += Number(point.receita_produto || 0);
+      return;
+    }
+
+    const share = numberOrNull_(point.share_do_dia);
+    const receitaEmpresa = numberOrNull_(point.receita_empresa);
+    if (share !== null && receitaEmpresa !== null) {
+      temCampoReceita = true;
+      total += share * receitaEmpresa;
+    }
+  });
+
+  return temCampoReceita ? round2_(total) : null;
+}
+
+function somarPedidosProdutoPontos_(janela) {
+  if (!janela || !janela.calculavel || !janela.pontos.length) return null;
+
+  let total = 0;
+  let temPedidos = false;
+  janela.pontos.forEach(point => {
+    const value = primeiroNumeroDisponivel_(point, ['pedidos_produto', 'pedidos_lancamento', 'pedidos']);
+    if (value !== null) {
+      temPedidos = true;
+      total += value;
+    }
+  });
+
+  return temPedidos ? total : null;
+}
+
+function primeiroNumeroDisponivel_(obj, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    if (Object.prototype.hasOwnProperty.call(obj || {}, key)) {
+      const value = numberOrNull_(obj[key]);
+      if (value !== null) return value;
+    }
+  }
+  return null;
+}
+
+function mediaOuNull_(values) {
+  const valid = (values || []).map(Number).filter(value => Number.isFinite(value));
+  if (!valid.length) return null;
+  return round6_(valid.reduce((acc, value) => acc + value, 0) / valid.length);
+}
+
+function dateIsoKey_(value) {
+  const date = dateOnly_(value);
+  return date ? Utilities.formatDate(date, CONFIG.timeZone, 'yyyy-MM-dd') : null;
+}
+
+function addDaysIso_(value, days) {
+  const date = dateOnly_(value);
+  if (!date) return null;
+  date.setDate(date.getDate() + Number(days || 0));
+  return Utilities.formatDate(date, CONFIG.timeZone, 'yyyy-MM-dd');
 }
 
 function inferJanelaMidia_(row, modelo) {

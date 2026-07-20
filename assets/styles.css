@@ -403,6 +403,258 @@ body.share-drawer-open .share-drawer {
   padding: 6px 10px;
   font-size: .68rem;
 }
+.drill-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 40px 14px 0;
+  color: var(--txt-muted);
+  font-size: .72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.drill-breadcrumb button,
+.drill-breadcrumb span {
+  border: 0;
+  background: transparent;
+  color: var(--txt-secondary);
+  padding: 0;
+  font: inherit;
+}
+.drill-breadcrumb button:hover {
+  color: var(--orange);
+}
+.drill-breadcrumb i {
+  color: var(--txt-muted);
+  font-style: normal;
+}
+.drill-head {
+  align-items: flex-start;
+}
+.drill-control {
+  display: grid;
+  gap: 6px;
+  min-width: min(220px, 100%);
+  color: var(--txt-muted);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.drill-control select {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--txt-primary);
+  padding: 6px 10px;
+  outline: none;
+}
+.drill-control select:focus {
+  border-color: var(--orange);
+}
+.drill-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.drill-section-title {
+  margin-bottom: 10px;
+  color: var(--txt-primary);
+  font-size: .82rem;
+  font-weight: 900;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.drill-chart {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 12px;
+}
+.drill-chart svg {
+  display: block;
+  width: 100%;
+  height: 180px;
+}
+.drill-grid-line {
+  stroke: var(--border-2);
+  stroke-width: 1;
+}
+.drill-line {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.drill-line--projection {
+  stroke: var(--warning);
+  stroke-dasharray: 7 6;
+  opacity: .9;
+}
+.drill-marker {
+  fill: var(--orange);
+  vector-effect: non-scaling-stroke;
+}
+.drill-marker--seasonal {
+  fill: var(--warning);
+}
+.drill-marker--commercial {
+  fill: var(--positive);
+}
+.drill-chart-foot,
+.drill-event-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 9px;
+  color: var(--txt-muted);
+  font-size: .72rem;
+}
+.drill-event-note {
+  color: var(--txt-secondary);
+}
+.drill-company,
+.drill-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.drill-impact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.drill-company > div,
+.drill-impact-grid > div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 12px;
+}
+.drill-company span,
+.drill-impact-grid span {
+  display: block;
+  color: var(--txt-muted);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.drill-company strong,
+.drill-impact-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--txt-primary);
+  font-size: 1.08rem;
+}
+.drill-company small,
+.drill-impact-grid small {
+  display: block;
+  margin-top: 4px;
+  color: var(--txt-secondary);
+  font-size: .72rem;
+}
+.drill-positive {
+  color: var(--positive) !important;
+}
+.drill-negative-text {
+  color: var(--negative) !important;
+}
+.drill-visible-warning {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--bg-card-2);
+  color: var(--txt-secondary);
+  padding: 10px 12px;
+  font-size: .76rem;
+}
+.drill-visible-warning strong {
+  color: var(--warning);
+}
+.drill-ranking {
+  display: grid;
+  gap: 9px;
+}
+.drill-rank-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) minmax(120px, 2fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+.drill-rank-row.is-focus {
+  border-color: var(--orange);
+}
+.drill-rank-row span {
+  color: var(--txt-secondary);
+  font-weight: 800;
+}
+.drill-rank-row strong {
+  color: var(--txt-primary);
+  white-space: nowrap;
+}
+.drill-rank-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--neutral);
+  overflow: hidden;
+}
+.drill-rank-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--orange);
+}
+.drill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.drill-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+.drill-empty {
+  color: var(--txt-secondary);
+  font-size: .84rem;
+}
+.drill-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.drill-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  background: var(--bg-card);
+}
+.drill-table th,
+.drill-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.drill-table th {
+  color: var(--txt-muted);
+  font-size: .68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.drill-table td {
+  color: var(--txt-secondary);
+}
+.drill-table tr:last-child td {
+  border-bottom: 0;
+}
+.drill-table tr.drill-negative td {
+  color: var(--negative);
+}
 .ti-chart-line::before {
   content: "↗";
   color: var(--orange);
@@ -1554,6 +1806,40 @@ body.stock-detail-open .stock-detail-drawer {
 
 .size-ranking-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; }
 .size-model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.cut-promoters-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.cut-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--txt-secondary);
+  margin-bottom: 8px;
+}
+.cut-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .9fr) minmax(78px, 1fr) minmax(96px, auto);
+  gap: 10px;
+  align-items: center;
+  margin: 9px 0;
+}
+.cut-row-label { font-size: 13px; }
+.cut-row-value { font-size: 13px; text-align: right; white-space: nowrap; }
+.bar-fill.positive { background: var(--positive); }
+.bar-fill.negative { background: var(--negative); }
+.delta-pos { color: var(--positive); }
+.delta-neg { color: var(--negative); }
+.cut-empty { font-size: 13px; color: var(--txt-secondary); }
+.cut-note {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--txt-secondary);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
 
 .calendar-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .calendar-summary {
@@ -2031,7 +2317,7 @@ body.stock-detail-open .stock-detail-drawer {
   .selector-panel .selector-block:last-child { grid-column: 1 / -1; }
   .analysis-context-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-6, .grid-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .size-ranking-grid, .size-model-grid { grid-template-columns: 1fr 1fr; }
+  .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .size-ranking-grid, .size-model-grid, .cut-promoters-grid { grid-template-columns: 1fr 1fr; }
   .stock-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
@@ -2071,11 +2357,16 @@ body.stock-detail-open .stock-detail-drawer {
   .share-company-values { grid-template-columns: 1fr; }
   .share-chart-canvas { height: 240px; }
   .share-chart-title { display: block; }
+  .drill-head { display: grid; }
+  .drill-company, .drill-impact-grid { grid-template-columns: 1fr; }
+  .drill-rank-row { grid-template-columns: 1fr; }
+  .drill-chart svg { height: 150px; }
+  .drill-control { width: 100%; }
   .share-entry-row { justify-content: stretch; }
   .share-open-button { width: 100%; justify-content: center; }
   .calendar-summary { grid-template-columns: 1fr; }
   .seasonal-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grid-6, .grid-5, .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .future-box, .size-ranking-grid, .size-model-grid { grid-template-columns: 1fr; }
+  .grid-6, .grid-5, .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .future-box, .size-ranking-grid, .size-model-grid, .cut-promoters-grid { grid-template-columns: 1fr; }
   .method-item { grid-template-columns: 1fr; gap: 5px; }
   .insight { grid-template-columns: 1fr; }
   .footer { display: block; }

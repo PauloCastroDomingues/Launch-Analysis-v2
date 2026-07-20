@@ -5,6 +5,7 @@
     'lancamentos_produtos_dia',
     'midia_paga',
     'crm_disparos',
+    'sub_modelos_dia',
     'estoque',
     'calendario_br',
     'share_trajetoria',
@@ -423,11 +424,11 @@
   function extractColor(row, model = {}) {
     const modelId = row.modelo_id || model.modelo_id || '';
 
-    const skuColor = colorFromSku(row.sku, modelId);
-    if (skuColor) return skuColor;
-
     const storedColor = normalizeColorValue(row.cor, modelId, true);
     if (storedColor) return storedColor;
+
+    const skuColor = colorFromSku(row.sku, modelId);
+    if (skuColor) return skuColor;
 
     const explicitFields = [row.variant_title, row.nome_produto];
     for (const field of explicitFields) {
@@ -1162,6 +1163,9 @@
     updateMainDrawerOverlay();
     state.shareChart?.destroy?.();
     state.shareChart = null;
+    if (isAnalysisDrillHash()) {
+      history.pushState(null, '', `${location.pathname}${location.search}`);
+    }
     if (restoreFocus && shareDrawerReturnFocus?.focus) shareDrawerReturnFocus.focus({ preventScroll: true });
     shareDrawerReturnFocus = null;
   }
@@ -1756,7 +1760,685 @@
     });
   }
 
+  const DRILL_SUBMODEL_LABELS = {
+    rs8avantmc: 'RS8 Avant MC',
+    rs8avantab: 'RS8 Avant AB',
+    rs8avantct: 'RS8 Avant CT',
+    rs8avantcf: 'RS8 Avant CF',
+    rs8mono: 'RS8 Mono',
+    rs8_monochrome_sem_prefixo: 'Monochrome sem prefixo',
+    phteasy: 'Phantom Easy',
+    phtslip: 'Phantom Slip',
+    phtknit: 'Phantom Knit',
+    phantom_sem_prefixo: 'Phantom sem prefixo',
+    rs6gt: 'RS6 GT',
+    '911gt': '911 GT',
+    knitgt: 'KNIT GT',
+    gt_sem_prefixo: 'GT sem prefixo',
+    rs6avant: 'RS6 Avant',
+    rs7avant: 'RS7 Avant',
+    rs8avant: 'RS8 Avant',
+    avant_sem_prefixo: 'Avant sem prefixo'
+  };
+
+  function analysisParamsFromHash() {
+    const raw = String(location.hash || '').replace(/^#/, '');
+    if (!raw) return {};
+    const params = new URLSearchParams(raw);
+    const nivel = params.get('nivel');
+    if (!nivel) return {};
+    return {
+      nivel,
+      linha: params.get('linha') || '',
+      sub: params.get('sub') || ''
+    };
+  }
+
+  function isAnalysisDrillHash() {
+    return Boolean(analysisParamsFromHash().nivel);
+  }
+
+  function analysisHash(nivel, linha, sub = '') {
+    const params = new URLSearchParams();
+    params.set('nivel', nivel);
+    if (linha) params.set('linha', linha);
+    if (sub) params.set('sub', sub);
+    return `#${params.toString()}`;
+  }
+
+  function lineLaunchById(modelId) {
+    return state.launches.find((launch) => launch.modelo_id === modelId) || null;
+  }
+
+  function drillLineOptions() {
+    const modelos = state.data?.share_trajetoria?.modelos || {};
+    const ids = Object.keys(modelos);
+    return state.launches
+      .filter((launch) => ids.includes(launch.modelo_id))
+      .sort((a, b) => a.order - b.order);
+  }
+
+  function shareModelForLine(modelId) {
+    return state.data?.share_trajetoria?.modelos?.[modelId] || null;
+  }
+
+  function sharePointsForLine(modelId) {
+    const points = shareModelForLine(modelId)?.pontos;
+    return Array.isArray(points)
+      ? points.slice().sort((a, b) => Number(a.dias_desde_lancamento || 0) - Number(b.dias_desde_lancamento || 0))
+      : [];
+  }
+
+  function drillWindowBadge(model) {
+    if (!model) return badge('parcial', 'Share indisponivel');
+    if (model.janela_completa === true) return badge('pipeline', 'Janela completa');
+    if (model.janela_completa === false) {
+      const done = numberOrNull(model.dias_disponiveis);
+      const target = numberOrNull(model.janela_alvo_dias) || 90;
+      return badge('parcial', `Parcial - D+${fmtNum(done)} de ${fmtNum(target)}`);
+    }
+    return badge('parcial', 'Janela indefinida');
+  }
+
+  function compactSkuText(value) {
+    return normalizeText(value).replace(/[^a-z0-9]+/g, '');
+  }
+
+  function inferSubModelIdFromSku(row, modelId) {
+    const compact = compactSkuText([
+      row?.sku,
+      row?.sub_modelo,
+      row?.nome_produto,
+      row?.item_name,
+      row?.product_title
+    ].filter(Boolean).join(' '));
+    const id = String(modelId || row?.modelo_id || '').trim();
+
+    if (id === 'rs8_monochrome') {
+      if (compact.startsWith('rs8avantmc')) return 'rs8avantmc';
+      if (compact.startsWith('rs8avantab')) return 'rs8avantab';
+      if (compact.startsWith('rs8avantct')) return 'rs8avantct';
+      if (compact.startsWith('rs8avantcf')) return 'rs8avantcf';
+      if (compact.startsWith('rs8avantmono') || compact.startsWith('rs8mono')) return 'rs8mono';
+      return 'rs8_monochrome_sem_prefixo';
+    }
+    if (id === 'phantom') {
+      if (compact.startsWith('phteasy') || compact.startsWith('phantomeasy')) return 'phteasy';
+      if (compact.startsWith('phtslip') || compact.startsWith('phantomslip')) return 'phtslip';
+      if (compact.startsWith('phtknit') || compact.startsWith('phantomknit')) return 'phtknit';
+      return 'phantom_sem_prefixo';
+    }
+    if (id === 'gt') {
+      if (compact.startsWith('rs6gt')) return 'rs6gt';
+      if (compact.startsWith('911gt')) return '911gt';
+      if (compact.startsWith('knitgt')) return 'knitgt';
+      return 'gt_sem_prefixo';
+    }
+    if (id === 'avant') {
+      if (compact.startsWith('rs6avant')) return 'rs6avant';
+      if (compact.startsWith('rs7avant')) return 'rs7avant';
+      if (compact.startsWith('rs8avant')) return 'rs8avant';
+      return 'avant_sem_prefixo';
+    }
+    return id || null;
+  }
+
+  function rowSubModelId(row, modelId = '') {
+    return row?.sub_modelo_id || inferSubModelIdFromSku(row, modelId || row?.modelo_id);
+  }
+
+  function subModelLabel(subId) {
+    return DRILL_SUBMODEL_LABELS[subId] || String(subId || 'Sub-modelo').replace(/_/g, ' ').toUpperCase();
+  }
+
+  function subModelDailyRows(modelId) {
+    const exported = state.data?.sub_modelos_dia;
+    if (Array.isArray(exported) && exported.length) {
+      return exported
+        .filter((row) => row.modelo_id === modelId && row.sub_modelo_id)
+        .map((row) => ({
+          modelo_id: row.modelo_id,
+          sub_modelo_id: row.sub_modelo_id,
+          data: row.data_venda || row.data,
+          pares: Number(row.pares || 0),
+          receita: Number(row.receita || 0)
+        }))
+        .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+    }
+
+    const grouped = new Map();
+    (state.data?.lancamentos_produtos_dia || [])
+      .filter((row) => row.modelo_id === modelId)
+      .forEach((row) => {
+        const subId = rowSubModelId(row, modelId);
+        const data = row.data || row.data_venda;
+        if (!subId || !data) return;
+        const key = `${subId}|${data}`;
+        const current = grouped.get(key) || {
+          modelo_id: modelId,
+          sub_modelo_id: subId,
+          data,
+          pares: 0,
+          receita: 0
+        };
+        current.pares += Number(row.pares || row.quantidade || 0);
+        current.receita += Number((row.receita_bruta ?? row.receita) || 0);
+        grouped.set(key, current);
+      });
+
+    return [...grouped.values()].sort((a, b) => (
+      a.sub_modelo_id.localeCompare(b.sub_modelo_id) || String(a.data).localeCompare(String(b.data))
+    ));
+  }
+
+  function subModelTotals(modelId) {
+    const grouped = new Map();
+    subModelDailyRows(modelId).forEach((row) => {
+      const current = grouped.get(row.sub_modelo_id) || {
+        sub_modelo_id: row.sub_modelo_id,
+        pares: 0,
+        receita: 0,
+        dias: 0
+      };
+      current.pares += Number(row.pares || 0);
+      current.receita += Number(row.receita || 0);
+      current.dias += 1;
+      grouped.set(row.sub_modelo_id, current);
+    });
+    return [...grouped.values()].sort((a, b) => b.receita - a.receita);
+  }
+
+  function bestSubModelId(modelId) {
+    return subModelTotals(modelId)[0]?.sub_modelo_id || '';
+  }
+
+  function svgPath(points) {
+    return points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ');
+  }
+
+  function linearProjection(points, valueField, targetDay = 90) {
+    const valid = points
+      .map((point) => ({
+        day: Number(point.dias_desde_lancamento ?? point.day),
+        value: numberOrNull(point[valueField])
+      }))
+      .filter((point) => Number.isFinite(point.day) && point.value !== null)
+      .slice(-10);
+
+    if (valid.length < 2) return [];
+    const n = valid.length;
+    const sumX = valid.reduce((acc, point) => acc + point.day, 0);
+    const sumY = valid.reduce((acc, point) => acc + point.value, 0);
+    const sumXY = valid.reduce((acc, point) => acc + point.day * point.value, 0);
+    const sumXX = valid.reduce((acc, point) => acc + point.day * point.day, 0);
+    const denominator = n * sumXX - sumX * sumX;
+    if (!denominator) return [];
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
+    const intercept = (sumY - slope * sumX) / n;
+    const lastDay = valid[valid.length - 1].day;
+    const endDay = Math.max(lastDay, Number(targetDay || 90));
+    const projected = [];
+    for (let day = lastDay; day <= endDay; day += Math.max(1, Math.ceil((endDay - lastDay) / 12))) {
+      projected.push({ day, value: Math.max(0, intercept + slope * day) });
+    }
+    if (projected[projected.length - 1]?.day !== endDay) {
+      projected.push({ day: endDay, value: Math.max(0, intercept + slope * endDay) });
+    }
+    return projected;
+  }
+
+  function chartPointPositions(rows, valueField, width, height, maxDayOverride = null, maxValueOverride = null) {
+    const valid = rows
+      .map((row) => ({
+        row,
+        day: Number(row.dias_desde_lancamento ?? row.day),
+        value: numberOrNull(row[valueField])
+      }))
+      .filter((point) => Number.isFinite(point.day) && point.value !== null);
+    const maxDay = Math.max(1, maxDayOverride ?? Math.max(...valid.map((point) => point.day), 1));
+    const maxValue = maxValueOverride || Math.max(...valid.map((point) => point.value), 0.01);
+    return valid.map((point) => ({
+      ...point,
+      x: 28 + (point.day / maxDay) * (width - 48),
+      y: 16 + (1 - (point.value / maxValue)) * (height - 34)
+    }));
+  }
+
+  function drillShareSvg(points, model) {
+    const width = 560;
+    const height = 190;
+    const targetDay = numberOrNull(model?.janela_alvo_dias) || 90;
+    const projectionRaw = linearProjection(points, 'share_do_dia', targetDay);
+    const maxValue = Math.max(
+      ...points.map((point) => numberOrNull(point.share_do_dia)).filter((value) => value !== null),
+      ...projectionRaw.map((point) => point.value),
+      0.01
+    );
+    const real = chartPointPositions(points, 'share_do_dia', width, height, targetDay, maxValue);
+    const projection = chartPointPositions(
+      projectionRaw.map((point) => ({ day: point.day, share_do_dia: point.value })),
+      'share_do_dia',
+      width,
+      height,
+      targetDay,
+      maxValue
+    );
+    const hasEvents = points.some((point) => hasSeasonalEvent(point) || hasCommercialEvent(point));
+    const markers = real.map((point) => {
+      if (hasCommercialEvent(point.row)) {
+        return `<rect class="drill-marker drill-marker--commercial" x="${(point.x - 4).toFixed(1)}" y="${(point.y - 4).toFixed(1)}" width="8" height="8" />`;
+      }
+      if (hasSeasonalEvent(point.row)) {
+        return `<rect class="drill-marker drill-marker--seasonal" x="${(point.x - 4).toFixed(1)}" y="${(point.y - 4).toFixed(1)}" width="8" height="8" transform="rotate(45 ${point.x.toFixed(1)} ${point.y.toFixed(1)})" />`;
+      }
+      return '';
+    }).join('');
+
+    return `
+      <div class="drill-chart" role="img" aria-label="Curva de share diario da linha">
+        <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+          <line class="drill-grid-line" x1="28" y1="${height - 18}" x2="${width - 20}" y2="${height - 18}" />
+          <path class="drill-line" d="${svgPath(real)}" />
+          ${projection.length > 1 ? `<path class="drill-line drill-line--projection" d="${svgPath(projection)}" />` : ''}
+          ${markers}
+        </svg>
+        <div class="drill-chart-foot">
+          <span>Projecao tracejada: estimativa por regressao simples dos ultimos 10 dias, nao meta.</span>
+          <span>Meta nao cadastrada.</span>
+        </div>
+        <div class="drill-event-note">${hasEvents ? 'Marcadores: losango para sazonalidade, quadrado para evento comercial.' : 'sem data sazonal/comercial registrada'}</div>
+      </div>
+    `;
+  }
+
+  function drillRevenueSvg(rows) {
+    const normalized = rows.map((row) => ({
+      day: Number(row.dia_desde_d0 ?? row.day),
+      receita: Number(row.receita || 0)
+    }));
+    const width = 560;
+    const height = 170;
+    const maxDay = Math.max(1, ...normalized.map((row) => row.day));
+    const positions = chartPointPositions(normalized, 'receita', width, height, maxDay);
+    return `
+      <div class="drill-chart" role="img" aria-label="Curva de receita diaria do sub-modelo">
+        <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
+          <line class="drill-grid-line" x1="28" y1="${height - 18}" x2="${width - 20}" y2="${height - 18}" />
+          <path class="drill-line" d="${svgPath(positions)}" />
+        </svg>
+        <div class="drill-chart-foot">
+          <span>Receita e pares absolutos desde o D0 da linha.</span>
+          <span>Sem share por sub-modelo.</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function companyMomentBlock(model) {
+    const pre = numberOrNull(model?.receita_empresa_pre_periodo);
+    const pos = numberOrNull(model?.receita_empresa_pos_periodo);
+    const days = numberOrNull(model?.dias_pos_disponiveis);
+    const variation = numberOrNull(model?.variacao_receita_empresa_pct);
+    if (pre === null || pos === null || !days) {
+      return `
+        <section class="drill-section">
+          <div class="drill-section-title">Momento da empresa</div>
+          <p class="drill-empty">comparativo indisponivel</p>
+        </section>
+      `;
+    }
+    const d0 = model.data_lancamento;
+    const preStart = toIsoDate(addDays(d0, -days));
+    const preEnd = toIsoDate(addDays(d0, -1));
+    const posEnd = toIsoDate(addDays(d0, days - 1));
+    const className = variation > 0 ? 'drill-positive' : (variation < 0 ? 'drill-negative-text' : '');
+    const arrow = variation > 0 ? '+' : (variation < 0 ? '-' : '');
+    return `
+      <section class="drill-section">
+        <div class="drill-section-title">Momento da empresa</div>
+        <div class="drill-company">
+          <div><span>Antes</span><strong>${fmtBRL(pre)}</strong><small>${fmtDateSlash(preStart)} a ${fmtDateSlash(preEnd)}</small></div>
+          <div><span>Depois</span><strong>${fmtBRL(pos)}</strong><small>${fmtDateSlash(d0)} a ${fmtDateSlash(posEnd)}</small></div>
+          <div><span>Variacao</span><strong class="${className}">${arrow} ${fmtPct(variation, 1)}</strong><small>${fmtNum(days)} dias comparaveis</small></div>
+        </div>
+      </section>
+    `;
+  }
+
+  function impactInvestmentBlock(modelId) {
+    const launch = lineLaunchById(modelId);
+    const mediaRows = launch
+      ? enrichMediaEstimates((state.data?.midia_paga || [])
+        .filter((row) => row.modelo_id === modelId)
+        .map((row) => normalizeMediaRow(row, launch)), launch)
+      : [];
+    const aggregate = aggregateMediaRows(mediaRows, launch)[0] || null;
+    const paidRevenue = numberOrNull(launch?.receita_paga);
+    const organicRevenue = numberOrNull(launch?.receita_organica);
+
+    if (paidRevenue !== null || organicRevenue !== null) {
+      const total = Number(paidRevenue || 0) + Number(organicRevenue || 0);
+      return `
+        <section class="drill-section">
+          <div class="drill-section-title">Atribuicao por canal</div>
+          <div class="drill-impact-grid">
+            <div><span>Receita paga</span><strong>${fmtBRL(paidRevenue)}</strong><small>${fmtPct(total ? paidRevenue / total : null, 1)} do total atribuido</small></div>
+            <div><span>Receita organica</span><strong>${fmtBRL(organicRevenue)}</strong><small>${fmtPct(total ? organicRevenue / total : null, 1)} do total atribuido</small></div>
+          </div>
+        </section>
+      `;
+    }
+
+    return `
+      <section class="drill-section">
+        <div class="drill-section-title">Atribuicao comercial</div>
+        <div class="drill-impact-grid">
+          <div><span>Investimento agregado</span><strong>${fmtBRL(aggregate?.investimento)}</strong><small>${escapeHtml(aggregate?.janela || 'sem janela')}</small></div>
+          <div><span>ROAS agregado</span><strong>${roasValue(aggregate?.roas)}</strong><small>sem divisao por canal</small></div>
+        </div>
+        <div class="drill-visible-warning">
+          <strong>Atribuicao real pendente</strong>
+          <span>O dashboard nao usa mais correlacao dias-com-investimento vs dias-sem como impacto. Ate a view por pedido entrar no payload, midia fica agregada por janela e ROAS por canal fica bloqueado quando a receita for repetida.</span>
+        </div>
+      </section>
+    `;
+  }
+
+  function shareRankingBlock(focusId) {
+    const rows = drillLineOptions().map((launch) => {
+      const model = shareModelForLine(launch.modelo_id);
+      return {
+        id: launch.modelo_id,
+        label: model?.linha || launch.linha || launch.modelo,
+        value: numberOrNull(model?.share_acumulado_atual)
+      };
+    }).filter((row) => row.value !== null).sort((a, b) => b.value - a.value);
+    const max = Math.max(...rows.map((row) => row.value), 0.01);
+    return `
+      <section class="drill-section">
+        <div class="drill-section-title">Ranking por share</div>
+        <div class="drill-ranking">
+          ${rows.map((row) => `
+            <div class="drill-rank-row ${row.id === focusId ? 'is-focus' : ''}">
+              <span>${escapeHtml(row.label)}</span>
+              <div class="drill-rank-track"><i style="width:${Math.max(2, (row.value / max) * 100).toFixed(1)}%"></i></div>
+              <strong>${fmtPct(row.value, 1)}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function lineSelectHtml(currentId) {
+    return `
+      <label class="drill-control">
+        <span>Trocar linha</span>
+        <select data-drill-line-select>
+          ${drillLineOptions().map((launch) => `<option value="${escapeHtml(launch.modelo_id)}"${launch.modelo_id === currentId ? ' selected' : ''}>${escapeHtml(shareModelForLine(launch.modelo_id)?.linha || launch.linha || launch.modelo)}</option>`).join('')}
+        </select>
+      </label>
+    `;
+  }
+
+  function subSelectHtml(modelId, currentSubId) {
+    const options = subModelTotals(modelId);
+    return `
+      <label class="drill-control">
+        <span>Trocar sub-modelo</span>
+        <select data-drill-sub-select>
+          ${options.map((row) => `<option value="${escapeHtml(row.sub_modelo_id)}"${row.sub_modelo_id === currentSubId ? ' selected' : ''}>${escapeHtml(subModelLabel(row.sub_modelo_id))}</option>`).join('')}
+        </select>
+      </label>
+    `;
+  }
+
+  function breadcrumbHtml(level, launch, subId = '') {
+    const lineLabel = shareModelForLine(launch.modelo_id)?.linha || launch.linha || launch.modelo;
+    const parts = [
+      `<button type="button" data-drill-navigate data-level="linha" data-line="${escapeHtml(launch.modelo_id)}">Linha: ${escapeHtml(lineLabel)}</button>`
+    ];
+    if (level === 'submodelo' || level === 'sku') {
+      if (subId) {
+        parts.push(`<button type="button" data-drill-navigate data-level="submodelo" data-line="${escapeHtml(launch.modelo_id)}" data-sub="${escapeHtml(subId)}">Sub-modelo: ${escapeHtml(subModelLabel(subId))}</button>`);
+      }
+    }
+    if (level === 'sku') parts.push('<span>SKU / cor</span>');
+    return `<nav class="drill-breadcrumb" aria-label="Caminho da analise">${parts.join('<i>/</i>')}</nav>`;
+  }
+
+  function renderLineLevel(launch) {
+    const model = shareModelForLine(launch.modelo_id);
+    const points = sharePointsForLine(launch.modelo_id).filter((point) => numberOrNull(point.share_do_dia) !== null);
+    const bestSub = bestSubModelId(launch.modelo_id);
+    if (!model || !points.length) return shareDrawerError('share_trajetoria nao tem pontos validos para esta linha.', launch);
+    const lineLabel = model.linha || launch.linha || launch.modelo;
+
+    return `
+      ${breadcrumbHtml('linha', launch)}
+      <div class="share-drawer-head drill-head">
+        <div>
+          <div class="share-drawer-kicker">Analise por niveis</div>
+          <h3>${escapeHtml(lineLabel)}</h3>
+          <p>D0 ${fmtDate(model.data_lancamento || launch.d0)} · dado ate ${fmtDateSlash(shareDataUntil(model, points))}</p>
+        </div>
+        ${lineSelectHtml(launch.modelo_id)}
+      </div>
+      <div class="share-badges">${drillWindowBadge(model)}</div>
+      <section class="drill-section">
+        <div class="drill-section-title">Curva de share diario</div>
+        ${drillShareSvg(points, model)}
+      </section>
+      ${companyMomentBlock(model)}
+      ${impactInvestmentBlock(launch.modelo_id)}
+      ${shareRankingBlock(launch.modelo_id)}
+      <div class="drill-actions">
+        <button class="share-open-button" type="button" data-drill-navigate data-level="submodelo" data-line="${escapeHtml(launch.modelo_id)}" data-sub="${escapeHtml(bestSub)}"${bestSub ? '' : ' disabled'}>Ver por sub-modelo</button>
+        <button class="share-open-button" type="button" data-drill-navigate data-level="sku" data-line="${escapeHtml(launch.modelo_id)}">Ver detalhe por cor</button>
+      </div>
+    `;
+  }
+
+  function renderSubModelLevel(launch, subId) {
+    const model = shareModelForLine(launch.modelo_id);
+    const selectedSub = subId || bestSubModelId(launch.modelo_id);
+    const rows = subModelDailyRows(launch.modelo_id)
+      .filter((row) => row.sub_modelo_id === selectedSub)
+      .map((row) => ({
+        ...row,
+        day: dayIndex(model?.data_lancamento || launch.d0, row.data)
+      }))
+      .filter((row) => Number.isFinite(row.day));
+    const totals = subModelTotals(launch.modelo_id);
+    const max = Math.max(...totals.map((row) => row.receita), 0.01);
+
+    return `
+      ${breadcrumbHtml('submodelo', launch, selectedSub)}
+      <div class="share-drawer-head drill-head">
+        <div>
+          <div class="share-drawer-kicker">Sub-modelo</div>
+          <h3>${escapeHtml(subModelLabel(selectedSub))}</h3>
+          <p>${escapeHtml(model?.linha || launch.linha || launch.modelo)} - D0 ${fmtDate(model?.data_lancamento || launch.d0)}</p>
+        </div>
+        ${subSelectHtml(launch.modelo_id, selectedSub)}
+      </div>
+      <div class="share-badges">${drillWindowBadge(model)}</div>
+      <section class="drill-section">
+        <div class="drill-section-title">Curva de receita/vendas do sub-modelo</div>
+        ${rows.length ? drillRevenueSvg(rows.map((row) => ({ day: row.day, receita: row.receita }))) : '<p class="drill-empty">Sem venda diaria para este sub-modelo.</p>'}
+      </section>
+      <section class="drill-section">
+        <div class="drill-section-title">Comparacao entre sub-modelos da linha</div>
+        <div class="drill-ranking">
+          ${totals.map((row) => `
+            <div class="drill-rank-row ${row.sub_modelo_id === selectedSub ? 'is-focus' : ''}">
+              <span>${escapeHtml(subModelLabel(row.sub_modelo_id))}</span>
+              <div class="drill-rank-track"><i style="width:${Math.max(2, (row.receita / max) * 100).toFixed(1)}%"></i></div>
+              <strong>${fmtBRL(row.receita, true)}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+      <div class="drill-actions">
+        <button class="share-open-button" type="button" data-drill-navigate data-level="sku" data-line="${escapeHtml(launch.modelo_id)}" data-sub="${escapeHtml(selectedSub)}">Ver detalhe por cor</button>
+      </div>
+    `;
+  }
+
+  function colorFromStockRow(row, modelId) {
+    return normalizeColorValue(row.cor, modelId, true)
+      || colorFromSku(row.sub_modelo, modelId)
+      || normalizeColorValue(row.sub_modelo, modelId, true)
+      || UNKNOWN_COLOR_LABEL;
+  }
+
+  function skuColorRows(launch, subId = '') {
+    const modelId = launch.modelo_id;
+    const model = shareModelForLine(modelId);
+    const d0 = model?.data_lancamento || launch.d0;
+    const daysObserved = Math.max(1, (numberOrNull(model?.dias_pos_disponiveis) || launch.dPlus || 0) + 1);
+    const grouped = new Map();
+    const ensure = (color) => {
+      const key = color || UNKNOWN_COLOR_LABEL;
+      if (!grouped.has(key)) {
+        grouped.set(key, { cor: key, pares: 0, receita: 0, estoque_atual: 0, estoque_tem_dado: false });
+      }
+      return grouped.get(key);
+    };
+
+    (state.data?.lancamentos_produtos_dia || [])
+      .filter((row) => row.modelo_id === modelId)
+      .filter((row) => !subId || rowSubModelId(row, modelId) === subId)
+      .forEach((row) => {
+        const color = extractColor(row, launch);
+        const item = ensure(color);
+        item.pares += Number(row.pares || row.quantidade || 0);
+        item.receita += Number((row.receita_bruta ?? row.receita) || 0);
+      });
+
+    (state.data?.estoque || [])
+      .filter((row) => row.modelo_id === modelId)
+      .filter((row) => !subId || inferSubModelIdFromSku(row, modelId) === subId)
+      .forEach((row) => {
+        const color = colorFromStockRow(row, modelId);
+        const item = ensure(color);
+        item.estoque_atual += Number(row.estoque_atual || 0);
+        item.estoque_tem_dado = true;
+      });
+
+    return [...grouped.values()].map((row) => {
+      const dailyPace = row.pares > 0 ? row.pares / daysObserved : null;
+      const coverage = dailyPace ? row.estoque_atual / dailyPace : null;
+      return { ...row, cobertura_dias: coverage };
+    }).sort((a, b) => {
+      const aCov = a.cobertura_dias === null ? Infinity : a.cobertura_dias;
+      const bCov = b.cobertura_dias === null ? Infinity : b.cobertura_dias;
+      return aCov - bCov || b.pares - a.pares;
+    });
+  }
+
+  function renderSkuLevel(launch, subId = '') {
+    const model = shareModelForLine(launch.modelo_id);
+    const rows = skuColorRows(launch, subId);
+    const title = subId ? `${subModelLabel(subId)} por cor` : `${model?.linha || launch.linha || launch.modelo} por cor`;
+    return `
+      ${breadcrumbHtml('sku', launch, subId)}
+      <div class="share-drawer-head drill-head">
+        <div>
+          <div class="share-drawer-kicker">SKU / cor</div>
+          <h3>${escapeHtml(title)}</h3>
+          <p>${subId ? 'Filtro aplicado ao sub-modelo selecionado.' : 'Visao da linha inteira, sem filtro de sub-modelo.'}</p>
+        </div>
+      </div>
+      <div class="share-badges">${drillWindowBadge(model)}</div>
+      <section class="drill-section">
+        <div class="drill-section-title">Tabela por cor</div>
+        <div class="drill-table-wrap">
+          <table class="drill-table">
+            <thead>
+              <tr>
+                <th>Cor</th>
+                <th>Vendas no periodo</th>
+                <th>Estoque atual</th>
+                <th>Cobertura projetada</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((row) => `
+                <tr class="${row.cobertura_dias !== null && row.cobertura_dias < 7 ? 'drill-negative' : ''}">
+                  <td>${escapeHtml(row.cor)}</td>
+                  <td>${fmtNum(row.pares)} pares</td>
+                  <td>${row.estoque_tem_dado ? fmtNum(row.estoque_atual) : '&mdash;'}</td>
+                  <td>${stockCoverageLabel(row.cobertura_dias, 0)}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="4">Sem dados de cor para este recorte.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  function attachDrillEvents(content) {
+    content.querySelectorAll('[data-drill-navigate]').forEach((button) => {
+      button.addEventListener('click', () => {
+        navigateAnalysisDrill(button.dataset.level, button.dataset.line, button.dataset.sub || '', button);
+      });
+    });
+    const lineSelect = content.querySelector('[data-drill-line-select]');
+    if (lineSelect) {
+      lineSelect.addEventListener('change', (event) => {
+        navigateAnalysisDrill('linha', event.currentTarget.value, '', event.currentTarget);
+      });
+    }
+    const subSelect = content.querySelector('[data-drill-sub-select]');
+    if (subSelect) {
+      subSelect.addEventListener('change', (event) => {
+        const params = analysisParamsFromHash();
+        navigateAnalysisDrill('submodelo', params.linha, event.currentTarget.value, event.currentTarget);
+      });
+    }
+  }
+
+  function renderAnalysisDrillFromHash() {
+    if (!state.data) return;
+    const params = analysisParamsFromHash();
+    if (!params.nivel) {
+      if (document.body.classList.contains('share-drawer-open')) closeShareDrawer(false);
+      return;
+    }
+
+    const content = $('share-drawer-content');
+    if (!content) return;
+    const fallbackLaunch = drillLineOptions()[0] || comparableLaunches()[0] || state.launches[0];
+    const launch = lineLaunchById(params.linha) || fallbackLaunch;
+    if (!launch) return;
+    const level = ['linha', 'submodelo', 'sku'].includes(params.nivel) ? params.nivel : 'linha';
+    const subId = params.sub || (level === 'submodelo' ? bestSubModelId(launch.modelo_id) : '');
+
+    if (level === 'submodelo') content.innerHTML = renderSubModelLevel(launch, subId);
+    else if (level === 'sku') content.innerHTML = renderSkuLevel(launch, subId);
+    else content.innerHTML = renderLineLevel(launch);
+
+    attachDrillEvents(content);
+    setShareDrawerOpen(true);
+  }
+
+  function navigateAnalysisDrill(level, modelId, subId = '', returnFocus) {
+    const launch = lineLaunchById(modelId) || drillLineOptions()[0] || comparableLaunches()[0] || state.launches[0];
+    if (!launch) return;
+    shareDrawerReturnFocus = returnFocus || shareDrawerReturnFocus || document.activeElement;
+    const nextHash = analysisHash(level || 'linha', launch.modelo_id, subId || '');
+    if (location.hash === nextHash) renderAnalysisDrillFromHash();
+    else location.hash = nextHash;
+  }
+
   function openShareDrawer(selected, returnFocus) {
+    if (selected) {
+      navigateAnalysisDrill('linha', selected.modelo_id, '', returnFocus || document.activeElement);
+      return;
+    }
     const content = $('share-drawer-content');
     if (!content || !selected) return;
 
@@ -2067,6 +2749,7 @@
   }
 
   function renderDplusComparison(selected) {
+    if (!$('dplus-table')) return;
     const day = comparisonDay(selected);
     if (day === null || day === undefined || selected.isFuture) {
       $('dplus-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: comparativo D+n fica fora da análise até D0 e dados reais.</td></tr>`;
@@ -2102,6 +2785,7 @@
   }
 
   function renderRankings(selected) {
+    if (!$('ranking-grid')) return;
     const rankingDefs = [
       { title: 'Faturamento D+7', get: (l) => getWindow(l, '7d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+7. So entra quem tem a janela fechada ou historico cadastrado.' },
       { title: 'Faturamento D+15', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+15. Para ativos, depende do snapshot ja ter alcancado D+15.' },
@@ -2148,6 +2832,7 @@
   }
 
   function renderHistoricalAverage(selected) {
+    if (!$('historical-average')) return;
     if (selected.isFuture) {
       $('historical-average').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Lançamento planejado.</strong>Comparativo contra média histórica fica fora da análise até D0 e dados reais.</div></div>`;
       return;
@@ -2206,9 +2891,29 @@
   function renderComparison() {
     const launches = selectedCompareLaunches();
     if (!launches.length) {
-      $('comparison-table').innerHTML = comparisonEmptyMessage(10);
+      $('comparison-table').innerHTML = comparisonEmptyMessage(13);
       return;
     }
+
+    const selected = state.launches.find((l) => l.modelo_id === state.primaryModelId) || launches[0];
+    const day = comparisonDay(selected);
+    const referencePool = launches.some(isHistoricalLaunch)
+      ? launches
+      : comparableLaunches();
+    const historicalRefs = referencePool.filter((l) => isHistoricalLaunch(l));
+    let averageLabel = day !== null && day !== undefined ? `D+${day}` : 'D+30';
+    let averageValues = day !== null && day !== undefined
+      ? historicalRefs.map((launch) => cumulativeAt(launch, day)?.receita).filter((value) => value !== null && value !== undefined)
+      : [];
+
+    if (!averageValues.length) {
+      averageLabel = 'D+30';
+      averageValues = historicalRefs.map((launch) => getWindow(launch, '30d')?.receita).filter((value) => value !== null && value !== undefined);
+    }
+
+    const historicalAverage = averageValues.length
+      ? averageValues.reduce((acc, value) => acc + value, 0) / averageValues.length
+      : null;
 
     const rows = launches.map((launch) => {
       const j7 = getWindow(launch, '7d');
@@ -2216,22 +2921,28 @@
       const j30 = getWindow(launch, '30d');
       const j60 = getWindow(launch, '60d');
       const j90 = getWindow(launch, '90d');
-      const mult = launch.multiplicadores?.m90_30;
+      const dplus = day !== null && day !== undefined ? cumulativeAt(launch, day) : null;
+      const best = bestWindow(launch);
+      const velocity = dplus?.velocidade ?? windowVelocity(launch);
+      const deltaBase = averageLabel.startsWith('D+') ? dplus?.receita : j30?.receita;
       return `
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
+          <td>${fmtBRL(dplus?.receita)}<div class="metric-sub">${day !== null && day !== undefined ? `D+${day}` : 'sem D+n'}</div></td>
           <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
           <td>${fmtBRL(j60?.receita)}<div>${coverageBadge(launch, '60d')}</div></td>
           <td>${fmtBRL(j90?.receita)}<div>${coverageBadge(launch, '90d')}</div></td>
           <td class="num">${fmtBRL(j30?.ticket)}</td>
+          <td class="num">${fmtNum(j30?.pares)}</td>
           <td class="num">${fmtPct(j30?.novos_pct, 1)}</td>
-          <td class="num">${mult ? `${fmtNum(mult, 2)}×` : '—'}</td>
+          <td class="num">${velocity == null ? '&mdash;' : `${fmtBRL(velocity)}/dia`}<div class="metric-sub">${escapeHtml(best.key ? windowLabel(best.key) : '')}</div></td>
+          <td class="num">${historicalAverage === null ? '&mdash;' : metricDelta(deltaBase, historicalAverage, fmtBRL)}<div class="metric-sub">vs media ${escapeHtml(averageLabel)}</div></td>
           <td>${sourceBadge(launch)}</td>
         </tr>`;
     }).join('');
-    $('comparison-table').innerHTML = rows || `<tr><td colspan="10" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
+    $('comparison-table').innerHTML = rows || `<tr><td colspan="13" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
   }
 
   function renderCharts(selected) {
@@ -2914,6 +3625,77 @@
       </div>`;
   }
 
+  function computeCutDeviation(rows, keyField) {
+    const map = new Map();
+    rows.forEach((row) => {
+      const key = row[keyField] || 'sem_dado';
+      map.set(key, (map.get(key) || 0) + Number(row.pares || 0));
+    });
+    const entries = [...map.entries()].filter(([key]) => {
+      const normalized = normalizeText(key);
+      return key !== 'sem_dado'
+        && key !== 'sem_cor'
+        && normalized !== 'sem dado'
+        && normalized !== 'sem cor'
+        && normalized !== 'sem tamanho'
+        && !isUnknownColor(key);
+    });
+    const total = entries.reduce((acc, [, pares]) => acc + pares, 0);
+    if (entries.length < 2 || !total) return [];
+    const avgShare = 1 / entries.length;
+    return entries
+      .map(([key, pares]) => {
+        const share = pares / total;
+        return { key, pares, share, deltaPp: (share - avgShare) * 100 };
+      })
+      .sort((a, b) => b.deltaPp - a.deltaPp);
+  }
+
+  function renderCutPromotersDetractors(selected) {
+    const container = $('cut-promoters-detractors');
+    if (!container) return;
+
+    const coresRows = (selected?.cores || []).map((row) => ({
+      ...row,
+      cor: extractColor({ ...row, modelo_id: selected.modelo_id }, selected)
+    }));
+    const tamanhoRows = selected?.tamanhos || [];
+
+    const coresDeviation = computeCutDeviation(coresRows, 'cor');
+    const tamanhoDeviation = computeCutDeviation(tamanhoRows, 'tamanho');
+    const allCuts = [
+      ...coresDeviation.map((row) => ({ ...row, dimensao: 'Cor' })),
+      ...tamanhoDeviation.map((row) => ({ ...row, dimensao: 'Tamanho' }))
+    ].sort((a, b) => b.deltaPp - a.deltaPp);
+
+    if (!allCuts.length) {
+      container.innerHTML = `<div class="empty-state"><div><strong>Sem cortes suficientes.</strong>Precisa de ao menos 2 cores ou tamanhos classificados no lancamento.</div></div>`;
+      return;
+    }
+
+    const promoters = allCuts.filter((row) => row.deltaPp > 0).slice(0, 3);
+    const detractors = allCuts.filter((row) => row.deltaPp < 0).slice(-3).reverse();
+
+    const barRow = (row) => `
+      <div class="cut-row">
+        <div class="cut-row-label">${escapeHtml(row.dimensao)} &middot; ${escapeHtml(String(row.key))}</div>
+        <div class="bar-track"><div class="bar-fill ${row.deltaPp >= 0 ? 'positive' : 'negative'}" style="width:${Math.min(100, row.share * 200).toFixed(1)}%"></div></div>
+        <div class="cut-row-value">${fmtPct(row.share, 0)} <span class="${row.deltaPp >= 0 ? 'delta-pos' : 'delta-neg'}">${row.deltaPp >= 0 ? '+' : ''}${fmtNum(row.deltaPp, 1)}pp</span></div>
+      </div>`;
+
+    container.innerHTML = `
+      <div class="cut-group">
+        <div class="cut-group-title">Promotores</div>
+        ${promoters.length ? promoters.map(barRow).join('') : '<div class="cut-empty">Sem corte acima da media.</div>'}
+      </div>
+      <div class="cut-group">
+        <div class="cut-group-title">Ofensores</div>
+        ${detractors.length ? detractors.map(barRow).join('') : '<div class="cut-empty">Sem corte abaixo da media.</div>'}
+      </div>
+      <p class="cut-note">Canal (organico vs pago) entra quando a atribuicao real de midia estiver plugada; hoje midia_paga.json nao tem grao por pedido para sustentar esse corte.</p>
+    `;
+  }
+
   function seasonalWeight(peso) {
     const key = normalizeText(peso);
     if (key === 'forte') return 3;
@@ -3090,6 +3872,76 @@
     return badge('pipeline', 'Eficiente', 'ROAS acima de 3x: a receita atribuida/informada supera o investimento com folga.');
   }
 
+  function metodologiaComercialBadge(row) {
+    const metodologia = String(row?.metodologia || '').trim();
+    const aviso = String(row?.aviso || '').trim();
+    if (!metodologia && !aviso) return '';
+    const label = metodologia === 'correlacao_por_janela_calendario' ? 'correl.' : 'metod.';
+    const text = `${aviso || 'Leitura comercial estimada; nao representa atribuicao real de clique/conversao.'} Metodologia: ${metodologia || 'nao informada'}.`;
+    return ` ${badge('parcial', label, text)}`;
+  }
+
+  function suspeitaComercialBadge(row) {
+    const parts = [];
+    if (row?.data_suspeita) parts.push(`Data suspeita: ${row.data_suspeita_motivo || 'sem motivo informado'}.`);
+    if (row?.valor_suspeito) parts.push(`Valor suspeito: ${row.valor_suspeito_motivo || 'sem motivo informado'}.`);
+    return parts.length ? ` ${badge('neg', 'revisar', parts.join(' '))}` : '';
+  }
+
+  function janelaEmDias(janelaStr) {
+    const match = String(janelaStr || '').match(/(\d+)d/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+
+  function validarJanelaMidia(row) {
+    if (!row.data_inicio || !row.data_fim) return { valida: false, motivo: 'data_inicio_ou_fim_ausente' };
+    const inicio = toDate(row.data_inicio);
+    const fim = toDate(row.data_fim);
+    if (!inicio || !fim) return { valida: false, motivo: 'data_inicio_ou_fim_invalida' };
+    const diasReais = Math.round((fim - inicio) / 86400000);
+    const diasDeclarados = janelaEmDias(row.janela);
+    if (diasReais < 0) return { valida: false, motivo: 'data_fim_anterior_a_data_inicio' };
+    if (diasDeclarados !== null && Math.abs(diasReais - diasDeclarados) > 5) {
+      return { valida: false, motivo: `janela_declarada_${diasDeclarados}d_mas_intervalo_real_${diasReais}d` };
+    }
+    return { valida: true };
+  }
+
+  function marcarQualidadeValorMidia(rows) {
+    const out = rows.map((row) => ({ ...row }));
+    const byModel = new Map();
+    out.forEach((row, index) => {
+      const dias = janelaEmDias(row.janela);
+      if (!row.modelo_id || dias === null || row.investimento === null || row.investimento === undefined) return;
+      const current = byModel.get(row.modelo_id) || [];
+      current.push({ index, dias, investimento: Number(row.investimento || 0) });
+      byModel.set(row.modelo_id, current);
+    });
+
+    byModel.forEach((items) => {
+      const ordered = items.sort((a, b) => a.dias - b.dias || a.index - b.index);
+      ordered.forEach((item) => {
+        const lowerDays = [...new Set(ordered.filter((other) => other.dias < item.dias).map((other) => other.dias))].sort((a, b) => b - a)[0];
+        const higherDays = [...new Set(ordered.filter((other) => other.dias > item.dias).map((other) => other.dias))].sort((a, b) => a - b)[0];
+        const lowerMax = lowerDays === undefined ? null : Math.max(...ordered.filter((other) => other.dias === lowerDays).map((other) => other.investimento));
+        const higherMax = higherDays === undefined ? null : Math.max(...ordered.filter((other) => other.dias === higherDays).map((other) => other.investimento));
+        if (higherMax !== null && item.investimento > higherMax) {
+          out[item.index].valor_suspeito = true;
+          out[item.index].valor_suspeito_motivo = out[item.index].valor_suspeito_motivo || 'investimento_maior_que_janela_mais_longa';
+        } else if (lowerMax !== null && lowerMax > 0 && item.investimento > lowerMax * 5) {
+          out[item.index].valor_suspeito = true;
+          out[item.index].valor_suspeito_motivo = out[item.index].valor_suspeito_motivo || 'investimento_desproporcional_a_janela_adjacente';
+        }
+      });
+    });
+
+    return out;
+  }
+
+  function midiaValidaParaImpacto(row) {
+    return !row?.data_suspeita && !row?.valor_suspeito;
+  }
+
   function inferMediaWindow(row, launch) {
     if (row.janela) return row.janela;
     const end = toDate(row.data_fim || row.data_inicio);
@@ -3121,19 +3973,32 @@
     const pedidos = numberOrNull(row.pedidos);
     const roas = rowRoas(row);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
+    const janela = inferMediaWindow(row, launch);
+    const validacaoData = validarJanelaMidia({ ...row, janela });
     return {
       modelo_id: launch.modelo_id,
       modelo: launch.modelo,
       campanha: row.campanha || 'Campanha sem nome',
-      janela: inferMediaWindow(row, launch),
+      janela,
+      data_inicio: row.data_inicio || null,
+      data_fim: row.data_fim || null,
       canal: row.canal || '—',
       investimento,
       receita_atribuida: receitaBase.value,
+      receita_janela_agregada: numberOrNull(row.receita_janela_agregada),
       receita_source: receitaBase.source,
       pedidos,
+      pedidos_janela_agregados: numberOrNull(row.pedidos_janela_agregados),
       roas,
       cpa,
-      status: row.status || ''
+      status: row.status || '',
+      metodologia: row.metodologia || '',
+      aviso: row.aviso || '',
+      data_suspeita: row.data_suspeita !== undefined ? Boolean(row.data_suspeita) : !validacaoData.valida,
+      data_suspeita_motivo: row.data_suspeita_motivo || (validacaoData.valida ? null : validacaoData.motivo),
+      valor_suspeito: Boolean(row.valor_suspeito),
+      valor_suspeito_motivo: row.valor_suspeito_motivo || null,
+      atribuicao_bloqueada: Boolean(row.atribuicao_bloqueada)
     };
   }
 
@@ -3143,48 +4008,47 @@
     return null;
   }
 
-  function enrichMediaEstimates(rows, launch) {
+  function markDuplicatedMediaAttribution(rows) {
+    const out = rows.map((row) => ({ ...row }));
     const groups = new Map();
-    rows.forEach((row) => {
-      const key = String(row.janela || 'sem_janela');
+    out.forEach((row, index) => {
+      const key = `${row.modelo_id || 'sem_modelo'}::${row.janela || 'sem_janela'}`;
       const current = groups.get(key) || [];
-      current.push(row);
+      current.push({ row, index });
       groups.set(key, current);
     });
 
-    const enriched = [];
-    groups.forEach((group) => {
-      const metric = mediaWindowMetric(group[0], launch);
-      const receitaModelo = numberOrNull(metric?.receita);
-      const pedidosModelo = numberOrNull(metric?.pedidos);
-      const receitaExplicit = group.reduce((acc, row) => acc + (row.receita_atribuida !== null && row.receita_atribuida !== undefined ? Number(row.receita_atribuida || 0) : 0), 0);
-      const pedidosExplicit = group.reduce((acc, row) => acc + (row.pedidos !== null && row.pedidos !== undefined ? Number(row.pedidos || 0) : 0), 0);
-      const missingRows = group.filter((row) => row.investimento !== null && row.investimento > 0 && (row.receita_atribuida === null || row.receita_atribuida === undefined || row.pedidos === null || row.pedidos === undefined));
-      const missingInvestment = missingRows.reduce((acc, row) => acc + Number(row.investimento || 0), 0);
-      const receitaDisponivel = receitaModelo !== null ? Math.max(0, receitaModelo - receitaExplicit) : null;
-      const pedidosDisponiveis = pedidosModelo !== null ? Math.max(0, pedidosModelo - pedidosExplicit) : null;
+    groups.forEach((items) => {
+      const withRevenue = items.filter(({ row }) => (
+        midiaValidaParaImpacto(row)
+        && row.receita_atribuida !== null
+        && row.receita_atribuida !== undefined
+      ));
+      const channels = new Set(withRevenue.map(({ row }) => normalizeText(row.canal || row.campanha)).filter(Boolean));
+      const revenueValues = [...new Set(withRevenue.map(({ row }) => Math.round(Number(row.receita_atribuida || 0) * 100) / 100))];
+      if (withRevenue.length < 2 || channels.size < 2 || revenueValues.length !== 1) return;
 
-      group.forEach((row) => {
-        const out = { ...row };
-        const share = missingInvestment && out.investimento ? Number(out.investimento) / missingInvestment : null;
-        if ((out.receita_atribuida === null || out.receita_atribuida === undefined) && receitaDisponivel !== null && share !== null) {
-          out.receita_atribuida = receitaDisponivel * share;
-          out.receita_source = 'modelo_rateado';
-        }
-        if ((out.pedidos === null || out.pedidos === undefined) && pedidosDisponiveis !== null && share !== null) {
-          out.pedidos = pedidosDisponiveis * share;
-          out.pedidos_source = 'modelo_rateado';
-        }
-        if ((out.roas === null || out.roas === undefined) && out.receita_atribuida !== null && out.receita_atribuida !== undefined && out.investimento) {
-          out.roas = out.receita_atribuida / out.investimento;
-        }
-        if ((out.cpa === null || out.cpa === undefined) && out.pedidos) {
-          out.cpa = out.investimento / out.pedidos;
-        }
-        enriched.push(out);
+      const janelaRevenue = revenueValues[0];
+      withRevenue.forEach(({ index }) => {
+        out[index].receita_janela_agregada = janelaRevenue;
+        out[index].pedidos_janela_agregados = out[index].pedidos ?? null;
+        out[index].receita_atribuida = null;
+        out[index].pedidos = null;
+        out[index].roas = null;
+        out[index].cpa = null;
+        out[index].receita_source = 'bloqueada_por_duplicidade';
+        out[index].pedidos_source = 'bloqueada_por_duplicidade';
+        out[index].atribuicao_bloqueada = true;
+        out[index].metodologia = 'receita_janela_agregada';
+        out[index].aviso = 'Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use a linha agregada ate existir atribuicao real por pedido.';
       });
     });
-    return enriched;
+
+    return out;
+  }
+
+  function enrichMediaEstimates(rows, launch) {
+    return markDuplicatedMediaAttribution(marcarQualidadeValorMidia(rows), launch);
   }
 
   function normalizeCrmRow(row) {
@@ -3195,6 +4059,8 @@
     const pedidos = numberOrNull(row.pedidos);
     const roas = rowRoas(row) ?? (investimento && receitaBase !== null ? receitaBase / investimento : null);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
+    const metodologia = row.metodologia || ((receitaBase !== null || roas !== null) ? 'estimativa_dashboard' : '');
+    const aviso = row.aviso || (metodologia ? 'Leitura comercial estimada; nao representa atribuicao real de clique/conversao.' : '');
     return {
       ...row,
       investimento,
@@ -3203,12 +4069,15 @@
       receita_base: receitaBase,
       pedidos,
       roas,
-      cpa
+      cpa,
+      metodologia,
+      aviso
     };
   }
 
   function weightedRoas(rows) {
     const weighted = rows
+      .filter((row) => midiaValidaParaImpacto(row))
       .map((row) => ({
         roas: rowRoas(row),
         investimento: numberOrNull(row.investimento)
@@ -3221,55 +4090,80 @@
     }
 
     const values = rows
+      .filter((row) => midiaValidaParaImpacto(row))
       .map((row) => rowRoas(row))
       .filter((value) => value !== null && value !== undefined);
 
     return values.length ? values.reduce((acc, value) => acc + value, 0) / values.length : null;
   }
 
-  function aggregateMediaRows(rows) {
+  function aggregateMediaRows(rows, launch = null) {
     const groups = new Map();
     rows.forEach((row) => {
-      const key = `${row.janela}::${row.canal}`;
+      if (!midiaValidaParaImpacto(row)) return;
+      const key = `${row.modelo_id || launch?.modelo_id || 'sem_modelo'}::${row.janela || 'sem_janela'}`;
       const current = groups.get(key) || {
-        campanha: 'Total janela/canal',
+        modelo_id: row.modelo_id || launch?.modelo_id || null,
+        modelo: row.modelo || launch?.modelo || '',
+        campanha: 'Total janela',
         janela: row.janela,
-        canal: row.canal,
+        canal: 'agregado',
+        canais: new Set(),
         investimento: 0,
         receita_atribuida: 0,
         pedidos: 0,
         hasReceitaAtribuida: false,
+        receita_janela_agregada: null,
         hasPedidos: false,
-        roas_weighted: 0,
-        roas_investimento: 0,
+        metodologia: '',
+        aviso: '',
         count: 0,
         aggregate: true
       };
+      if (row.canal) current.canais.add(row.canal);
       current.investimento += row.investimento || 0;
+      if (row.receita_janela_agregada !== null && row.receita_janela_agregada !== undefined) {
+        current.receita_janela_agregada = row.receita_janela_agregada;
+      }
       if (row.receita_atribuida !== null && row.receita_atribuida !== undefined) {
         current.receita_atribuida += row.receita_atribuida || 0;
         current.hasReceitaAtribuida = true;
       }
-      if (row.pedidos !== null && row.pedidos !== undefined) {
-        current.pedidos += row.pedidos || 0;
+      const pedidos = row.pedidos_janela_agregados ?? row.pedidos;
+      if (pedidos !== null && pedidos !== undefined) {
+        current.pedidos += pedidos || 0;
         current.hasPedidos = true;
       }
-      if (row.roas !== null && row.roas !== undefined && row.investimento) {
-        current.roas_weighted += row.roas * row.investimento;
-        current.roas_investimento += row.investimento;
-      }
+      current.metodologia = current.metodologia || row.metodologia || '';
+      current.aviso = current.aviso || row.aviso || '';
       current.count += 1;
       groups.set(key, current);
     });
     return [...groups.values()]
-      .filter((row) => row.count > 1)
-      .map(({ count, roas_weighted, roas_investimento, hasReceitaAtribuida, hasPedidos, ...row }) => ({
-        ...row,
-        receita_atribuida: hasReceitaAtribuida ? row.receita_atribuida : null,
-        pedidos: hasPedidos ? row.pedidos : null,
-        roas: roas_investimento ? roas_weighted / roas_investimento : null,
-        cpa: hasPedidos && row.pedidos ? row.investimento / row.pedidos : null
-      }));
+      .filter((row) => row.count > 1 || row.receita_janela_agregada !== null || row.investimento > 0)
+      .map(({ count, canais, hasReceitaAtribuida, hasPedidos, receita_janela_agregada, ...row }) => {
+        const modelLaunch = launch || lineLaunchById(row.modelo_id);
+        const metric = mediaWindowMetric(row, modelLaunch);
+        const receitaModelo = numberOrNull(metric?.receita);
+        const pedidosModelo = numberOrNull(metric?.pedidos);
+        const receita = receita_janela_agregada ?? (hasReceitaAtribuida ? row.receita_atribuida : receitaModelo);
+        const pedidos = hasPedidos ? row.pedidos : pedidosModelo;
+        const source = receita_janela_agregada !== null && receita_janela_agregada !== undefined
+          ? 'receita_repetida_agregada'
+          : hasReceitaAtribuida ? 'atribuida' : 'modelo_agregado';
+        return {
+          ...row,
+          campanha: count > 1 ? 'Total janela' : row.campanha,
+          canal: canais.size > 1 ? `${fmtNum(canais.size)} canais` : ([...canais][0] || row.canal),
+          receita_atribuida: receita ?? null,
+          receita_source: source,
+          pedidos: pedidos ?? null,
+          roas: row.investimento && receita !== null && receita !== undefined ? receita / row.investimento : null,
+          cpa: row.investimento && pedidos ? row.investimento / pedidos : null,
+          metodologia: row.metodologia || (source === 'modelo_agregado' ? 'leitura_agregada_janela' : ''),
+          aviso: row.aviso || (source === 'modelo_agregado' ? 'Leitura agregada por janela do modelo. Nao divide receita entre canais; use apenas como referencia ate haver atribuicao real por pedido.' : '')
+        };
+      });
   }
 
   function mediaValue(value, formatter) {
@@ -3303,15 +4197,19 @@
       ? `D+${Math.max(0, launch.dPlus ?? 0)}`
       : best.key ? windowLabel(best.key) : '&mdash;';
 
-    const mediaInvestimento = sumKnown(mediaRows, 'investimento');
-    const mediaReceita = sumKnown(mediaRows, 'receita_atribuida');
-    const mediaPedidos = sumKnown(mediaRows, 'pedidos');
+    const mediaRowsImpacto = mediaRows.filter((row) => midiaValidaParaImpacto(row));
+    const mediaAggregateRows = aggregateMediaRows(mediaRowsImpacto, launch);
+    const mediaMetricRows = mediaAggregateRows.length ? mediaAggregateRows : mediaRowsImpacto;
+    const mediaInvestimento = sumKnown(mediaRowsImpacto, 'investimento');
+    const mediaReceita = sumKnown(mediaMetricRows, 'receita_atribuida');
+    const mediaPedidos = sumKnown(mediaMetricRows, 'pedidos');
     const crmInvestimento = sumKnown(crmRows, 'investimento');
     const crmReceita = sumKnown(crmRows, 'receita_base');
     const crmPedidos = sumKnown(crmRows, 'pedidos');
     const crmDisparos = crmRows.length;
     const investimentoTotal = sumValues(mediaInvestimento, crmInvestimento);
     const receitaComercial = sumValues(mediaReceita, crmReceita);
+    const metodologiaRow = [...mediaRows, ...crmRows].find((row) => row.metodologia || row.aviso) || {};
 
     return {
       launch,
@@ -3320,7 +4218,7 @@
       mediaInvestimento,
       mediaReceita,
       mediaPedidos,
-      mediaRoas: weightedRoas(mediaRows),
+      mediaRoas: weightedRoas(mediaMetricRows),
       mediaCpa: ratioOrNull(mediaInvestimento, mediaPedidos),
       crmInvestimento,
       crmReceita,
@@ -3330,7 +4228,9 @@
       crmCpa: ratioOrNull(crmInvestimento, crmPedidos),
       investimentoTotal,
       receitaComercial,
-      roasComercial: weightedRoas([...mediaRows, ...crmRows])
+      roasComercial: weightedRoas([...mediaRows, ...crmRows]),
+      metodologia: metodologiaRow.metodologia || '',
+      aviso: metodologiaRow.aviso || ''
     };
   }
 
@@ -3362,15 +4262,15 @@
                 <td>${escapeHtml(row.janelaModelo)}</td>
                 <td class="num">${mediaValue(row.receitaModelo, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.mediaInvestimento, fmtBRL)}</td>
-                <td class="num">${roasValue(row.mediaRoas)}</td>
+                <td class="num">${roasValue(row.mediaRoas)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${mediaValue(row.mediaCpa, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.crmInvestimento, fmtBRL)}</td>
                 <td class="num">${fmtNum(row.crmDisparos)}</td>
-                <td class="num">${roasValue(row.crmRoas)}</td>
+                <td class="num">${roasValue(row.crmRoas)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${mediaValue(row.crmCpa, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.investimentoTotal, fmtBRL)}</td>
-                <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}</td>
-                <td class="num">${roasValue(row.roasComercial)}</td>
+                <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+                <td class="num">${roasValue(row.roasComercial)}${metodologiaComercialBadge(row)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -3386,15 +4286,15 @@
 
     const mediaRows = (state.data.midia_paga || []).filter((row) => row.modelo_id === selected.modelo_id);
     const detailedRows = enrichMediaEstimates(mediaRows.map((row) => normalizeMediaRow(row, selected)), selected);
-    const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows];
+    const displayRows = [...aggregateMediaRows(detailedRows, selected), ...detailedRows];
     $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
       <tr>
-        <td>${row.aggregate ? `<strong>${escapeHtml(row.campanha)}</strong>` : escapeHtml(row.campanha)}</td>
-        <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}</td>
+        <td>${row.aggregate ? `<strong>${escapeHtml(row.campanha)}</strong>` : escapeHtml(row.campanha)}${suspeitaComercialBadge(row)}</td>
+        <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}${metodologiaComercialBadge(row)}${suspeitaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
-        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}</td>
-        <td class="num">${roasValue(row.roas)}</td>
+        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
         <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
         <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
@@ -3405,11 +4305,11 @@
     $('crm-table').innerHTML = crmRows.length ? crmRows.map((row) => `
       <tr>
         <td>${fmtDate(row.data_disparo)}</td>
-        <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}</td>
+        <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}${metodologiaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${fmtBRL(row.receita_linha)}</td>
-        <td class="num">${mediaValue(row.receita_dia, fmtBRL)}</td>
-        <td class="num">${roasValue(row.roas)}</td>
+        <td class="num">${mediaValue(row.receita_dia, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
         <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="7" class="cell-muted">Sem disparos de CRM cadastrados para este modelo.</td></tr>`;
   }
@@ -3447,17 +4347,17 @@
       crmByModel.get(launch.modelo_id) || []
     )));
 
-    const displayRows = detailedRows
+    const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows]
       .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.janela).localeCompare(String(b.janela)) || a.campanha.localeCompare(b.campanha));
     $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
       <tr>
         <td class="model-name">${escapeHtml(row.modelo)}</td>
-        <td>${escapeHtml(row.campanha)}</td>
-        <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}</td>
+        <td>${escapeHtml(row.campanha)}${suspeitaComercialBadge(row)}</td>
+        <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}${metodologiaComercialBadge(row)}${suspeitaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
-        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}</td>
-        <td class="num">${roasValue(row.roas)}</td>
+        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
         <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
         <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="9" class="cell-muted">Sem midia paga cadastrada para os modelos selecionados.</td></tr>`;
@@ -3468,12 +4368,12 @@
       <tr>
         <td class="model-name">${escapeHtml(row.modelo)}</td>
         <td>${fmtDate(row.data_disparo)}</td>
-        <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}</td>
+        <td title="${escapeHtml(row.campanha || 'Disparo sem nome')}">${escapeHtml(row.campanha || 'Disparo sem nome')}${metodologiaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td class="num">${fmtBRL(row.receita_linha)}</td>
-        <td class="num">${mediaValue(row.receita_dia, fmtBRL)}</td>
-        <td class="num">${roasValue(row.roas)}</td>
+        <td class="num">${mediaValue(row.receita_dia, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
         <td>${roasBadge(row.roas)}</td>
       </tr>`).join('') : `<tr><td colspan="9" class="cell-muted">Sem disparos de CRM cadastrados para os modelos selecionados.</td></tr>`;
   }
@@ -3561,43 +4461,55 @@
 
   function renderInsights(selected) {
     const eligible = comparableLaunches();
-    const bestTicket = eligible
-      .map((launch) => ({ launch, value: getWindow(launch, '30d')?.ticket }))
-      .filter((row) => row.value !== null && row.value !== undefined)
-      .sort((a, b) => b.value - a.value)[0];
     const activeLaunches = eligible.filter((launch) => launch.isActive);
     const backfilled = eligible.filter((launch) => launch.daily_source === 'historico_backfill');
     const noPipelineRows = eligible.filter((launch) => launch.isActive && !hasPipelineRows(launch));
+    const audit = auditQualityForLaunch(selected);
+    const manifestWarnings = Array.isArray(state.data?.manifest?.warnings) ? state.data.manifest.warnings : [];
+    const mediaBlocked = (state.data?.midia_paga || []).filter((row) => row.atribuicao_bloqueada || normalizeText(row.metodologia) === 'receita janela agregada');
 
-    const global = [
-      bestTicket ? {
+    const list = [
+      audit?.status === 'divergente' ? {
+        type: 'neg',
+        title: 'Auditoria divergente',
+        copy: `${selected.modelo} diverge da auditoria independente em pedidos, pares ou receita. Investigue antes de usar a leitura.`
+      } : audit?.status === 'ok' ? {
         type: 'pos',
-        title: 'Maior ticket/pedido 30d',
-        copy: `${bestTicket.launch.modelo} lidera o ticket médio por pedido 30d entre modelos elegíveis, com ${fmtBRL(bestTicket.value)}.`
-      } : null,
-      activeLaunches.length ? {
-        type: 'warn',
-        title: 'Modelo ativo em curso',
-        copy: `${activeLaunches.map((launch) => launch.modelo).join(', ')} ainda deve ser lido por D+n e janelas fechadas, sem transformar ausência em zero.`
-      } : null,
-      backfilled.length ? {
-        type: 'warn',
-        title: 'Backfill diário aplicado',
-        copy: `${backfilled.length} modelo(s) histórico(s) sem diário real receberam backfill a partir das janelas acumuladas para curva e semana a semana.`
+        title: 'Auditoria OK',
+        copy: `${selected.modelo} bate com a auditoria independente do SSOT em pedidos, pares e receita.`
       } : null,
       noPipelineRows.length ? {
         type: 'neg',
         title: 'Pipeline sem linha para ativo',
-        copy: `${noPipelineRows.map((launch) => launch.modelo).join(', ')} está ativo, mas sem linhas no JSON de vendas. Verifique BigQuery, match e exportação.`
+        copy: `${noPipelineRows.map((launch) => launch.modelo).join(', ')} esta ativo, mas sem linhas no JSON de vendas. Verifique BigQuery, match e exportacao.`
+      } : null,
+      activeLaunches.length ? {
+        type: 'warn',
+        title: 'Modelo ativo em curso',
+        copy: `${activeLaunches.map((launch) => launch.modelo).join(', ')} deve ser lido por D+n e janelas fechadas, sem transformar ausencia em zero.`
+      } : null,
+      backfilled.length ? {
+        type: 'warn',
+        title: 'Backfill diario aplicado',
+        copy: `${backfilled.length} modelo(s) historico(s) sem diario real receberam backfill a partir das janelas acumuladas para curva e semana a semana.`
+      } : null,
+      mediaBlocked.length ? {
+        type: 'warn',
+        title: 'Midia sem atribuicao por canal',
+        copy: `${mediaBlocked.length} linha(s) de midia tiveram ROAS por canal bloqueado ou agregado porque a receita nao representa last-click por pedido.`
       } : null,
       {
         type: 'pos',
-        title: 'Cadastro sem código novo',
-        copy: 'Qualquer modelo com status historico ou ativo e day_zero_base válido entra automaticamente nas janelas, curvas e rankings.'
-      }
-    ].filter(Boolean);
-    const modelInsights = (selected.insights || []).map((copy) => ({ type: 'warn', title: selected.modelo, copy }));
-    const list = [...global, ...modelInsights].slice(0, 8);
+        title: 'Cor e tamanho canonicos',
+        copy: 'O export principal passa a priorizar mart_shared.produto_lancamento_v; regex e SKU ficam apenas como fallback para dado antigo.'
+      },
+      ...manifestWarnings.slice(0, 3).map((copy) => ({
+        type: String(copy).includes('ALERTA') || String(copy).includes('falhou') ? 'neg' : 'warn',
+        title: 'Manifest',
+        copy: String(copy)
+      }))
+    ].filter(Boolean).slice(0, 8);
+
     $('insights-list').innerHTML = list.map((item, idx) => `
       <div class="insight ${item.type}">
         <div class="insight-num">${String(idx + 1).padStart(2, '0')}</div>
@@ -3620,13 +4532,11 @@
     renderMethodology(selected);
     renderState(selected);
     renderComparison();
-    renderHistoricalAverage(selected);
-    renderDplusComparison(selected);
-    renderRankings(selected);
     renderCharts(selected);
     renderStock(selected);
     renderColorMix();
     renderSizeRanking();
+    renderCutPromotersDetractors(selected);
     renderCalendar(selected);
     renderActionsComparative();
     renderProjection(selected);
@@ -3673,6 +4583,9 @@
     state.primaryModelId = preferred?.modelo_id;
     state.compareModelIds = comparable.map((launch) => launch.modelo_id);
     renderAll();
+    window.addEventListener('hashchange', renderAnalysisDrillFromHash);
+    window.addEventListener('popstate', renderAnalysisDrillFromHash);
+    renderAnalysisDrillFromHash();
     window.dispatchEvent(new CustomEvent('reise-dashboard-ready', { detail: getDashboardSnapshot() }));
   }
 

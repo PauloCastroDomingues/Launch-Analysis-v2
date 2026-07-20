@@ -224,6 +224,8 @@ preco_medio_par = receita_bruta / pares
 
 Receita de mídia/CRM não substitui receita SSOT do lançamento. Planilhas externas entram apenas como contexto comercial, investimento, ROAS informado e CPA.
 
+No launch dashboard, o rótulo técnico é sempre `CPA` (`investimento / pedidos`). Não use `CPS` no código ou no JSON deste dashboard, porque no roadmap do SSOT geral `CPS` significa custo por sessão.
+
 ### Regra canônica de classificação de SKU/produto
 
 A classificação usada por vendas, auditoria Monochrome e estoque fica centralizada na CTE `itens_classificados_v1` em `apps_script/ExportLaunchAnalysis.gs`.
@@ -310,11 +312,16 @@ Regras:
 - `roas` deve vir informado na planilha em escala de multiplicador (`6,48` = `6,48x`) sempre que houver atribuição real.
 - Se `roas` vier como percentual/texto (`647,8%`) ou como número acima de `100`, o exportador/front normalizam por `/100` para evitar confusão de escala percentual vs. multiplicador.
 - `receita_atribuida`, `receita_linha` e `receita_dia` são contexto/atribuição cadastrada e não substituem o campo `roas`.
-- Quando `midia_paga` trouxer investimento, mas não trouxer `receita_atribuida`, `pedidos`, `roas` ou `cpa`, o dashboard calcula uma leitura estimada da janela do modelo e marca a origem como `modelo_rateado`. Isso não é atribuição real por canal.
+- Quando `midia_paga` repetir a mesma `receita_atribuida` em canais diferentes do mesmo modelo/janela, o dashboard bloqueia ROAS/CPA por canal e mostra apenas uma leitura agregada da janela.
+- Quando houver investimento sem atribuição real por pedido, a leitura pode usar a receita da janela do modelo somente no agregado. Isso não é atribuição real por canal.
 - Para CRM, se `roas` estiver vazio, o dashboard calcula `receita_base / investimento` usando `receita_dia` ou `receita_linha`.
 - `janela` pode ser preenchida manualmente.
 - Se `janela` vier vazia, o Apps Script calcula pela relação entre `data_inicio`/`data_fim` e o D0 do modelo.
 - Se a planilha não estiver configurada, o exportador não apaga os arquivos atuais.
+
+### Atribuição por pedido
+
+`sql/shopify_orders_channel_last_click.sql` cria `reise-ssot.mart_growth_us.shopify_orders_channel_last_click_v` em grão de pedido (`order_name`, `source_order_id`, `canal`, `tipo`). Antes de cruzar com lançamentos, valide no BigQuery se a ponte deve ser direta por `order_name` ou via `mart_growth_us.bridge_orders_customers`, porque `lancamentos_produtos_dia` usa `order_sk` como identificador local.
 
 ## Como Rodar Localmente
 
