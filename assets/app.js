@@ -3352,7 +3352,7 @@
     const rawRows = (state.data?.midia_paga || [])
       .filter((row) => row.modelo_id === launch.modelo_id)
       .map((row) => normalizeMediaRow(row, launch));
-    const detailedRows = enrichMediaEstimates(rawRows, launch).filter((row) => midiaValidaParaImpacto(row));
+    const detailedRows = enrichMediaEstimates(rawRows, launch).filter((row) => midiaValidaParaGraficoComercial(row));
     const pairsByWindow = new Map();
     const clicksByWindow = new Map();
     const cpsByWindow = new Map();
@@ -3370,7 +3370,7 @@
       if (cpc !== null) cpcByWindow.set(key, cpc);
     });
 
-    return aggregateMediaRows(detailedRows, launch)
+    return aggregateMediaRows(detailedRows, launch, midiaValidaParaGraficoComercial)
       .map((row) => {
         const key = commercialWindowKey(row);
         const metricWindow = mediaWindowMetric(row, launch);
@@ -4409,6 +4409,16 @@
     return !row?.data_suspeita && !row?.valor_suspeito;
   }
 
+  function midiaValidaParaGraficoComercial(row) {
+    if (!row || row.valor_suspeito) return false;
+    if (!row.data_suspeita) return true;
+    const hasDeclaredWindow = janelaEmDias(row.janela) !== null;
+    const hasInvestment = numberOrNull(row.investimento) !== null;
+    return hasDeclaredWindow
+      && hasInvestment
+      && String(row.data_suspeita_motivo || '') === 'data_inicio_ou_fim_ausente';
+  }
+
   function inferMediaWindow(row, launch) {
     if (row.janela) return row.janela;
     const end = toDate(row.data_fim || row.data_inicio);
@@ -4568,10 +4578,10 @@
     return values.length ? values.reduce((acc, value) => acc + value, 0) / values.length : null;
   }
 
-  function aggregateMediaRows(rows, launch = null) {
+  function aggregateMediaRows(rows, launch = null, isValidRow = midiaValidaParaImpacto) {
     const groups = new Map();
     rows.forEach((row) => {
-      if (!midiaValidaParaImpacto(row)) return;
+      if (!isValidRow(row)) return;
       const key = `${row.modelo_id || launch?.modelo_id || 'sem_modelo'}::${row.janela || 'sem_janela'}`;
       const current = groups.get(key) || {
         modelo_id: row.modelo_id || launch?.modelo_id || null,
