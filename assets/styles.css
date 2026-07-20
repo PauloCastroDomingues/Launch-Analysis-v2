@@ -162,6 +162,30 @@ body.share-drawer-open .share-drawer {
 .share-drawer:focus {
   outline: none;
 }
+.cannibal-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 61;
+  background: var(--bg-card);
+  width: min(900px, calc(100vw - 24px));
+  padding: 26px 22px;
+  overflow-y: auto;
+  transform: translateX(105%);
+  transition: transform .25s ease;
+  border-left: 1px solid var(--border);
+}
+.cannibal-drawer:focus {
+  outline: none;
+}
+body.cannibal-drawer-open {
+  overflow: hidden;
+}
+body.cannibal-drawer-open .cannibal-drawer {
+  transform: translateX(0);
+  box-shadow: var(--shadow);
+}
 .share-drawer-head {
   display: flex;
   align-items: flex-start;
@@ -1121,6 +1145,14 @@ section {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+}
+.section-title-row h2,
+.selector-title-row h2 {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  word-break: break-word;
 }
 .section-head-actions {
   display: flex;
@@ -2325,9 +2357,9 @@ body.stock-detail-open .stock-detail-drawer {
   .main-toolbar { margin: 0 -16px 20px; padding: 10px 16px; }
   .topbar, .selector-panel, section, .section-head, .card, .compare-selector, .compare-toolbar, .compare-actions, .model-selector { width: 100%; max-width: 100%; min-width: 0; }
   .topbar { display: block; }
-  .section-head { align-items: stretch; }
+  .section-head, .chart-head { flex-direction: column; align-items: stretch; }
   .section-head-actions { justify-content: flex-start; }
-  .section-action-button { width: 100%; justify-content: center; }
+  .section-action-button { width: 100%; justify-content: center; text-align: center; white-space: normal; line-height: 1.25; }
   .section-desc { max-width: 100%; overflow-wrap: anywhere; }
   .eyebrow, h1, h2 { overflow-wrap: anywhere; }
   .top-meta { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: left; margin-top: 16px; }
@@ -2353,6 +2385,7 @@ body.stock-detail-open .stock-detail-drawer {
   .stock-summary-grid, .stock-detail-metrics { grid-template-columns: 1fr; }
   .stock-detail-drawer { width: min(100vw, 430px); padding-inline: 18px; }
   .share-drawer { width: min(100vw, 430px); padding-inline: 18px; }
+  .cannibal-drawer { width: 100vw; padding-inline: 18px; }
   .share-stats { grid-template-columns: 1fr; }
   .share-company-values { grid-template-columns: 1fr; }
   .share-chart-canvas { height: 240px; }

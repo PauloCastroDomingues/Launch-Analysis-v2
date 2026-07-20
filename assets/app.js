@@ -76,6 +76,7 @@
   const $ = (id) => document.getElementById(id);
   let stockDrawerReturnFocus = null;
   let shareDrawerReturnFocus = null;
+  let cannibalDrawerReturnFocus = null;
 
   const fmtBRL = (value, compact = false) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -1060,8 +1061,38 @@
     return badge('parcial', 'Sem dados', 'Fonte insuficiente para classificar a leitura.');
   }
 
+  const launchCheckpointPlugin = {
+    id: 'launchCheckpoints',
+    afterDraw(chart, args, opts) {
+      const checkpoints = opts?.checkpoints || [];
+      if (!checkpoints.length) return;
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales.x;
+      ctx.save();
+      checkpoints.forEach((cp) => {
+        const idx = chart.data.labels.indexOf(cp.dateLabel);
+        if (idx === -1) return;
+        const x = xScale.getPixelForValue(idx);
+        ctx.strokeStyle = cp.color || 'rgba(255,255,255,0.4)';
+        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = cp.color || '#fff';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(cp.text, x + 4, chartArea.top + 12);
+      });
+      ctx.restore();
+    }
+  };
+
   function configureChartDefaults() {
     if (!window.Chart) return;
+    Chart.register(launchCheckpointPlugin);
     Chart.defaults.font.family = 'Inter, "Segoe UI", Arial, sans-serif';
     Chart.defaults.font.size = 11;
     Chart.defaults.color = 'rgba(255,255,255,0.55)';
@@ -1185,6 +1216,7 @@
   function configureShareDrawer() {
     const close = $('share-drawer-close');
     const topOpen = $('share-drawer-open-top');
+    const momentoOpen = $('momento-context-open');
     if (close) close.addEventListener('click', () => closeShareDrawer());
     if (topOpen) {
       topOpen.addEventListener('click', (event) => {
@@ -1192,6 +1224,55 @@
         openShareDrawer(selected, event.currentTarget);
       });
     }
+    if (momentoOpen) {
+      momentoOpen.addEventListener('click', (event) => {
+        const selected = state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
+        openShareDrawer(selected, event.currentTarget);
+      });
+    }
+  }
+
+  function closeCannibalDrawer() {
+    const drawer = $('cannibal-drawer');
+    const overlay = $('cannibal-overlay');
+    if (!drawer || !overlay) return;
+    document.body.classList.remove('cannibal-drawer-open');
+    overlay.hidden = true;
+    drawer.setAttribute('aria-hidden', 'true');
+    drawer.setAttribute('inert', '');
+    state.charts['chart-cannibal']?.destroy?.();
+    delete state.charts['chart-cannibal'];
+    if (cannibalDrawerReturnFocus?.focus) cannibalDrawerReturnFocus.focus({ preventScroll: true });
+    cannibalDrawerReturnFocus = null;
+  }
+
+  function openCannibalDrawer(returnFocusEl) {
+    const drawer = $('cannibal-drawer');
+    const overlay = $('cannibal-overlay');
+    if (!drawer || !overlay) return;
+    cannibalDrawerReturnFocus = returnFocusEl || null;
+    overlay.hidden = false;
+    drawer.removeAttribute('inert');
+    drawer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('cannibal-drawer-open');
+    renderCannibalChart();
+    drawer.focus({ preventScroll: true });
+  }
+
+  function configureCannibalDrawer() {
+    const drawer = $('cannibal-drawer');
+    const overlay = $('cannibal-overlay');
+    const close = $('cannibal-drawer-close');
+    const open = $('open-cannibal-chart');
+    if (!drawer || !overlay || !close) return;
+    close.addEventListener('click', closeCannibalDrawer);
+    overlay.addEventListener('click', closeCannibalDrawer);
+    if (open) open.addEventListener('click', (event) => openCannibalDrawer(event.currentTarget));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && document.body.classList.contains('cannibal-drawer-open')) {
+        closeCannibalDrawer();
+      }
+    });
   }
 
   function closeStockDrawer() {
@@ -2106,6 +2187,35 @@
     `;
   }
 
+  function renderMomentoContext(selected) {
+    const container = $('momento-context');
+    if (!container) return;
+    const model = shareModelForLine(selected.modelo_id);
+    if (!model) {
+      container.innerHTML = `<div class="empty-state"><div><strong>Sem dado de momento.</strong>share_trajetoria ainda nao tem este lancamento classificado.</div></div>`;
+      return;
+    }
+    const seasonalWarning = model.d0_coincide_com_sazonalidade === true
+      ? `<div class="share-warning"><span class="share-note-icon ti ti-alert-triangle" aria-hidden="true">!</span><span>Lancamento nasce em cima de data sazonal; nao comparavel 1:1 com os demais.</span></div>`
+      : '';
+    container.innerHTML = `
+      ${seasonalWarning}
+      <div class="grid grid-2" style="margin-bottom:14px">
+        <div class="share-stat">
+          <span>Share do faturamento</span>
+          <strong>${fmtPct(model.share_acumulado_atual, 1)}</strong>
+          <small>do faturamento total da Reise no periodo coberto</small>
+        </div>
+        <div class="share-stat">
+          <span>Eventos comerciais</span>
+          <strong>${fmtNum(model.eventos_comerciais_cadastrados || 0)}</strong>
+          <small>cadastrados para este lancamento</small>
+        </div>
+      </div>
+      ${companyMomentBlock(model)}
+    `;
+  }
+
   function impactInvestmentBlock(modelId) {
     const launch = lineLaunchById(modelId);
     const mediaRows = launch
@@ -2698,6 +2808,87 @@
     return primary ? [primary] : [];
   }
 
+  function dailyCalendarDate(launch, row) {
+    if (row?.data) return row.data;
+    if (row?.day === null || row?.day === undefined || !launch?.d0) return null;
+    return toIsoDate(addDays(launch.d0, Number(row.day || 0)));
+  }
+
+  function buildCannibalTimelineData(launches) {
+    const eligible = launches
+      .map((launch) => {
+        const points = (launch.daily || [])
+          .map((row) => ({ ...row, data_calendario: dailyCalendarDate(launch, row) }))
+          .filter((row) => row.data_calendario);
+        return { launch, points };
+      })
+      .filter((item) => item.points.length);
+    const dateSet = new Set();
+    eligible.forEach((item) => {
+      item.points.forEach((row) => dateSet.add(row.data_calendario));
+    });
+    const dates = [...dateSet].sort();
+
+    const checkpoints = eligible
+      .map(({ launch }, index) => ({
+        dateLabel: launch.d0,
+        text: launch.modelo,
+        color: colorFor(launch.modelo_id, index)
+      }))
+      .filter((cp) => cp.dateLabel && dates.includes(cp.dateLabel));
+
+    const datasets = eligible.map(({ launch, points }, index) => {
+      const byDate = new Map(points.map((row) => [row.data_calendario, numberOrNull(row.receita)]));
+      return {
+        label: launch.modelo,
+        data: dates.map((date) => (byDate.has(date) ? byDate.get(date) : null)),
+        borderColor: colorFor(launch.modelo_id, index),
+        backgroundColor: fillFor(launch.modelo_id, index),
+        spanGaps: true,
+        tension: 0.25,
+        pointRadius: 0,
+        pointHoverRadius: 4
+      };
+    });
+
+    return { dates, datasets, checkpoints };
+  }
+
+  function renderCannibalChart() {
+    const canvas = $('chart-cannibal');
+    if (!canvas) return;
+    const { dates, datasets, checkpoints } = buildCannibalTimelineData(comparableLaunches());
+    state.charts['chart-cannibal']?.destroy?.();
+    delete state.charts['chart-cannibal'];
+    if (!dates.length || !datasets.length) return;
+    createChart('chart-cannibal', {
+      type: 'line',
+      data: { labels: dates, datasets },
+      options: chartOptions({
+        plugins: {
+          legend: { position: 'bottom' },
+          launchCheckpoints: { checkpoints },
+          tooltip: {
+            callbacks: {
+              title: (items) => fmtDateSlash(items[0]?.label),
+              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { autoSkip: true, maxRotation: 0, callback: (_, idx) => fmtDateSlash(dates[idx]) }
+          },
+          y: {
+            ticks: { callback: (v) => fmtBRL(v, true) },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
+        }
+      })
+    });
+  }
+
   function hasEnoughComparison() {
     return selectedCompareLaunches().length >= 1;
   }
@@ -3199,8 +3390,8 @@
           legend: { position: 'bottom' },
           tooltip: {
             callbacks: {
-              title: (items) => `${items[0].dataset.label} · ${items[0].label}`,
-              label: (ctx) => `Receita acumulada: ${fmtBRL(ctx.parsed.y)}`,
+              title: (items) => items[0]?.label || '',
+              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
               afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}. A curva e acumulada desde D0; linhas tracejadas indicam agregado/backfill.`
             }
           }
@@ -4531,6 +4722,7 @@
     renderAnalysisContext(selected);
     renderMethodology(selected);
     renderState(selected);
+    renderMomentoContext(selected);
     renderComparison();
     renderCharts(selected);
     renderStock(selected);
@@ -4573,6 +4765,7 @@
     configureDrawer();
     configureShareDrawer();
     configureStockDrawer();
+    configureCannibalDrawer();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();
