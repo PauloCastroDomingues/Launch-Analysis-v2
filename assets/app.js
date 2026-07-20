@@ -197,6 +197,18 @@
   const labelTip = (label, text) => `<span class="label-with-tip"><span>${escapeHtml(label)}</span>${tip(text)}</span>`;
   const thTip = (label, text, cls = '') => `<th${cls ? ` class="${cls}"` : ''}>${labelTip(label, text)}</th>`;
   const badge = (type, label, text = '') => `<span class="badge badge--${type}"${text ? ` tabindex="0" data-tooltip="${tooltipAttr(text)}"` : ''}>${escapeHtml(label)}</span>`;
+  const isPlainObject = (value) => Boolean(value)
+    && typeof value === 'object'
+    && !Array.isArray(value);
+  const mergePlainObjects = (base, extra) => {
+    if (!isPlainObject(extra)) return base;
+    return Object.entries(extra).reduce((acc, [key, value]) => {
+      acc[key] = isPlainObject(value) && isPlainObject(acc[key])
+        ? mergePlainObjects(acc[key], value)
+        : value;
+      return acc;
+    }, { ...base });
+  };
 
   const colorFor = (id, index = 0) => CORES_MODELO[id]?.line || CORES_MODELO._fallback[index % CORES_MODELO._fallback.length];
   const fillFor = (id, index = 0) => CORES_MODELO[id]?.fill || `${CORES_MODELO._fallback[index % CORES_MODELO._fallback.length]}33`;
@@ -1110,6 +1122,9 @@
     Chart.defaults.plugins.tooltip.bodyColor = 'rgba(255,255,255,0.70)';
     Chart.defaults.plugins.tooltip.cornerRadius = 6;
     Chart.defaults.plugins.tooltip.padding = 10;
+    Chart.defaults.plugins.tooltip.bodySpacing = 3;
+    Chart.defaults.plugins.tooltip.titleMarginBottom = 6;
+    Chart.defaults.plugins.tooltip.caretPadding = 8;
   }
 
   function destroyCharts() {
@@ -1118,20 +1133,51 @@
   }
 
   function chartOptions(extra = {}) {
-    return {
+    const base = {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 8, right: 12, bottom: 2, left: 2 } },
       plugins: {
-        legend: { position: 'bottom', labels: { padding: 16 } },
-        tooltip: { enabled: true }
+        legend: {
+          position: 'bottom',
+          align: 'center',
+          labels: {
+            padding: 14,
+            boxWidth: 8,
+            boxHeight: 8,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          enabled: true,
+          filter: (item) => {
+            const parsedValue = isPlainObject(item.parsed)
+              ? item.chart?.options?.indexAxis === 'y'
+                ? item.parsed.x
+                : (item.parsed.y ?? item.parsed.x)
+              : item.parsed;
+            const value = parsedValue ?? item.raw;
+            return value !== null
+              && value !== undefined
+              && !(typeof value === 'number' && Number.isNaN(value));
+          }
+        }
       },
       scales: {
-        x: { grid: { display: false } },
-        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }
-      },
-      ...extra
+        x: {
+          grid: { display: false },
+          ticks: { maxRotation: 0, padding: 8 }
+        },
+        y: {
+          beginAtZero: true,
+          grace: '8%',
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { maxTicksLimit: 5 }
+        }
+      }
     };
+    return mergePlainObjects(base, extra);
   }
 
   function createChart(id, cfg) {
@@ -3460,32 +3506,42 @@
             borderColor: colorFor(launch.modelo_id, index),
             borderWidth: isSelected ? 3 : 2,
             borderRadius: metric.type === 'bar' ? 4 : 0,
-            tension: 0.28,
-            pointRadius: metric.type === 'line' ? (isSelected ? 4 : 3) : 0,
+            fill: false,
+            tension: metric.type === 'line' ? 0.18 : 0,
+            pointRadius: metric.type === 'line' ? (isSelected ? 3.5 : 3) : 0,
             pointHoverRadius: 6,
+            pointHitRadius: 12,
             spanGaps: true
           };
         })
       },
       options: chartOptions({
+        interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
+        layout: { padding: { top: 10, right: 16, bottom: 6, left: 4 } },
         plugins: {
-          legend: { position: 'bottom' },
+          legend: {
+            position: 'bottom',
+            labels: {
+              padding: 16,
+              pointStyle: metric.type === 'line' ? 'circle' : 'rectRounded'
+            }
+          },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${formatCommercialMetric(ctx.parsed.y, metric)}`,
+              title: (items) => {
+                const item = items[0];
+                return item ? `${item.dataset.label} · ${item.label}` : '';
+              },
+              label: (ctx) => `${metric.short}: ${formatCommercialMetric(ctx.parsed.y, metric)}`,
               afterLabel: (ctx) => {
                 const key = windowKeys[ctx.dataIndex];
                 const row = ctx.dataset.metricRows?.get(key);
-                if (!row) return 'Sem linha de midia para esta janela.';
+                if (!row) return 'Sem midia para esta janela.';
                 return [
-                  `Invest.: ${formatCommercialMetric(row.investimento, commercialMetricConfig('investimento'))}`,
-                  `Receita: ${formatCommercialMetric(row.receita, commercialMetricConfig('receita'))}`,
-                  `ROAS: ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))}`,
-                  `CPA: ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))}`,
-                  `CPS: ${formatCommercialMetric(row.cps, commercialMetricConfig('cps'))}`,
-                  `CPC: ${formatCommercialMetric(row.cpc, commercialMetricConfig('cpc'))}`,
-                  `Base: ${fmtNum(row.pedidos)} pedidos · ${fmtNum(row.pares)} pares · ${fmtNum(row.cliques)} cliques`,
-                  row.source ? `Fonte: ${row.source}` : 'Fonte: midia_paga + janela do modelo'
+                  `Invest. ${formatCommercialMetric(row.investimento, commercialMetricConfig('investimento'))} · Receita ${formatCommercialMetric(row.receita, commercialMetricConfig('receita'))}`,
+                  `ROAS ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))} · CPA ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))} · CPS ${formatCommercialMetric(row.cps, commercialMetricConfig('cps'))}`,
+                  `Base ${fmtNum(row.pedidos)} ped. · ${fmtNum(row.pares)} pares · CPC ${formatCommercialMetric(row.cpc, commercialMetricConfig('cpc'))}`,
+                  row.source ? `Fonte ${row.source}` : 'Fonte midia_paga + janela'
                 ];
               }
             }
@@ -3494,7 +3550,9 @@
         scales: {
           x: { grid: { display: false } },
           y: {
+            grace: metric.unit === 'ratio' ? '14%' : '10%',
             ticks: {
+              maxTicksLimit: 5,
               callback: (value) => metric.unit === 'ratio' ? `${fmtNum(Number(value), 1)}x` : fmtBRL(Number(value), true)
             },
             grid: { color: 'rgba(255,255,255,0.045)' }
