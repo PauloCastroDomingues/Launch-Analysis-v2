@@ -1460,6 +1460,36 @@ h2 {
 .table-wrap::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,.24);
 }
+.collapsible-list.is-collapsed > :nth-child(n+6) {
+  display: none !important;
+}
+.collapsible-list-control {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0 0;
+}
+.table-wrap + .collapsible-list-control,
+.drill-table-wrap + .collapsible-list-control {
+  margin-top: 8px;
+}
+.collapsible-list-toggle {
+  min-height: 32px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--bg-card-2);
+  color: var(--txt-secondary);
+  padding: 7px 12px;
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.collapsible-list-toggle:hover,
+.collapsible-list-toggle:focus-visible {
+  border-color: rgba(240,120,0,0.55);
+  color: var(--txt-primary);
+  outline: none;
+}
 .actions-comparison {
   margin: 0 0 14px;
 }

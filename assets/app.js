@@ -58,6 +58,17 @@
     { key: 'all', label: 'Todas' }
   ];
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
+  const COLLAPSIBLE_LIST_LIMIT = 5;
+  const COLLAPSIBLE_LIST_SELECTORS = [
+    '.table-wrap tbody',
+    '.drill-table-wrap tbody',
+    '.method-list',
+    '.insights-list',
+    '.client-mix-list',
+    '.event-list',
+    '.drill-ranking',
+    '.stock-detail-list'
+  ];
 
   const state = {
     data: null,
@@ -79,6 +90,7 @@
   const $ = (id) => document.getElementById(id);
   let stockDrawerReturnFocus = null;
   let shareDrawerReturnFocus = null;
+  let collapsibleListSequence = 0;
 
   const fmtBRL = (value, compact = false) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -1185,6 +1197,73 @@
     if (!canvas || !window.Chart) return null;
     state.charts[id] = new Chart(canvas, cfg);
     return state.charts[id];
+  }
+
+  function collapsibleListItems(container) {
+    return [...(container?.children || [])].filter((child) => {
+      if (child.hidden || child.matches('[data-collapsible-control], .empty-state')) return false;
+      if (container.tagName === 'TBODY') return child.tagName === 'TR';
+      return true;
+    });
+  }
+
+  function collapsibleListLabel(container) {
+    return container.tagName === 'TBODY' ? 'linhas' : 'itens';
+  }
+
+  function setCollapsibleListState(container, button, expanded, total) {
+    const label = collapsibleListLabel(container);
+    const hiddenCount = Math.max(0, total - COLLAPSIBLE_LIST_LIMIT);
+    const hiddenLabel = hiddenCount === 1
+      ? (label === 'linhas' ? 'linha' : 'item')
+      : label;
+    container.classList.toggle('is-collapsed', !expanded);
+    button.setAttribute('aria-expanded', String(expanded));
+    button.textContent = expanded
+      ? `Recolher para ${COLLAPSIBLE_LIST_LIMIT} ${label}`
+      : `Mostrar mais ${hiddenCount} ${hiddenLabel}`;
+  }
+
+  function applyCollapsibleLists(root = document) {
+    root.querySelectorAll('[data-collapsible-control]').forEach((control) => control.remove());
+    root.querySelectorAll('.collapsible-list').forEach((container) => {
+      container.classList.remove('collapsible-list', 'is-collapsed');
+      container.removeAttribute('data-collapsible-total');
+    });
+
+    COLLAPSIBLE_LIST_SELECTORS.forEach((selector) => {
+      root.querySelectorAll(selector).forEach((container) => {
+        if (container.closest('.nav-list, .compare-menu, .topic-tabs, .selector-panel')) return;
+        const items = collapsibleListItems(container);
+        if (items.length <= COLLAPSIBLE_LIST_LIMIT) return;
+
+        if (!container.id) {
+          collapsibleListSequence += 1;
+          container.id = `collapsible-list-${collapsibleListSequence}`;
+        }
+
+        container.classList.add('collapsible-list', 'is-collapsed');
+        container.dataset.collapsibleTotal = String(items.length);
+
+        const control = document.createElement('div');
+        control.className = 'collapsible-list-control';
+        control.dataset.collapsibleControl = '';
+
+        const button = document.createElement('button');
+        button.className = 'collapsible-list-toggle';
+        button.type = 'button';
+        button.setAttribute('aria-controls', container.id);
+
+        setCollapsibleListState(container, button, false, items.length);
+        button.addEventListener('click', () => {
+          setCollapsibleListState(container, button, container.classList.contains('is-collapsed'), items.length);
+        });
+
+        control.appendChild(button);
+        const anchor = container.tagName === 'TBODY' ? container.closest('.table-wrap, .drill-table-wrap') : container;
+        anchor?.insertAdjacentElement('afterend', control);
+      });
+    });
   }
 
   function updateMainDrawerOverlay() {
@@ -2598,6 +2677,7 @@
     else content.innerHTML = renderLineLevel(launch);
 
     attachDrillEvents(content);
+    applyCollapsibleLists(content);
     setShareDrawerOpen(true);
   }
 
@@ -3886,6 +3966,7 @@
         <div><span>Atualizado em</span><strong>${escapeHtml(updatedAt)}</strong></div>
       </div>
     `;
+    applyCollapsibleLists(content);
 
     document.body.classList.add('stock-detail-open');
     overlay.hidden = false;
@@ -4371,7 +4452,7 @@
           </div>
           <p>${escapeHtml(win.read)}</p>
         </div>
-        ${win.events.length ? win.events.map((event) => {
+        ${win.events.length ? `<div class="event-list">${win.events.map((event) => {
           const meta = seasonalMeta(event.tipo);
           const impact = event.score > 0 ? `+${event.score}` : String(event.score);
           return `<div class="event event--${meta.cls}">
@@ -4386,7 +4467,7 @@
               ${event.observacao ? `<div class="event-copy">${escapeHtml(event.observacao)}</div>` : ''}
             </div>
           </div>`;
-        }).join('') : `<div class="empty-state seasonal-empty"><div><strong>Janela limpa.</strong>Sem evento cadastrado entre D0 e D+${fmtNum(win.end)}.</div></div>`}
+        }).join('')}</div>` : `<div class="empty-state seasonal-empty"><div><strong>Janela limpa.</strong>Sem evento cadastrado entre D0 e D+${fmtNum(win.end)}.</div></div>`}
       </div>`).join('')}`;
   }
 
@@ -5082,6 +5163,7 @@
     renderActionsComparative();
     renderProjection(selected);
     renderInsights(selected);
+    applyCollapsibleLists(document);
   }
 
   function getDashboardSnapshot() {
