@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260720-topic-mosaics-media" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260720-media-efficiency" />
 </head>
 <body>
   <div class="app-shell">
@@ -322,8 +322,18 @@
         <div class="chart-card wide" style="margin-bottom:18px">
           <div class="chart-head">
             <div>
-              <div class="chart-title chart-title--with-tip"><span>Curva multiuso · contexto de investimento</span></div>
-              <div class="chart-sub" id="chart-normalized-media-sub">Mesma curva do topo da página, replicada aqui pra ler ao lado do investimento</div>
+              <div class="chart-title chart-title--with-tip"><span>Acumulado de investimento e eficiência</span></div>
+              <div class="chart-sub" id="chart-normalized-media-sub">Investimento, receita atribuída/estimada, ROAS, CPA, CPS e CPC por janela acumulada</div>
+            </div>
+            <div class="chart-mode-controls commercial-chart-controls">
+              <div class="chart-mode-toggle" role="group" aria-label="Métrica do gráfico comercial">
+                <button type="button" class="chart-mode-btn is-active" data-commercial-chart-metric="investimento">Invest.</button>
+                <button type="button" class="chart-mode-btn" data-commercial-chart-metric="receita">Receita</button>
+                <button type="button" class="chart-mode-btn" data-commercial-chart-metric="roas">ROAS</button>
+                <button type="button" class="chart-mode-btn" data-commercial-chart-metric="cpa">CPA</button>
+                <button type="button" class="chart-mode-btn" data-commercial-chart-metric="cps">CPS</button>
+                <button type="button" class="chart-mode-btn" data-commercial-chart-metric="cpc">CPC</button>
+              </div>
             </div>
           </div>
           <div class="chart-canvas tall"><canvas id="chart-normalized-media"></canvas></div>
@@ -460,7 +470,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="assets/embedded-data.js?v=20260716-share-drawer-context"></script>
-  <script src="assets/app.js?v=20260720-topic-mosaics-media"></script>
+  <script src="assets/app.js?v=20260720-media-efficiency"></script>
   <script src="assets/presentation.js?v=20260716-compact-overview"></script>
 </body>
 </html>

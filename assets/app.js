@@ -70,6 +70,7 @@
     stockPageSize: '10',
     snapshotClock: null,
     normalizedChartMode: 'linha',
+    commercialChartMetric: 'investimento',
     canibalLineFilter: null,
     charts: {},
     shareChart: null
@@ -1249,7 +1250,7 @@
   }
 
   function configureNormalizedChartModeToggle() {
-    const buttons = [...document.querySelectorAll('.chart-mode-btn')];
+    const buttons = [...document.querySelectorAll('[data-chart-mode]')];
     const lineSelect = $('cannibal-line-select');
     if (!buttons.length) return;
 
@@ -1266,7 +1267,6 @@
         }
         const selected = currentSelected();
         renderNormalizedChart(selected);
-        renderNormalizedChart(selected, 'chart-normalized-media', 'chart-normalized-media-sub');
       });
     });
 
@@ -1275,9 +1275,23 @@
         state.canibalLineFilter = lineSelect.value;
         const selected = currentSelected();
         renderNormalizedChart(selected);
-        renderNormalizedChart(selected, 'chart-normalized-media', 'chart-normalized-media-sub');
       });
     }
+  }
+
+  function configureCommercialChartMetricToggle() {
+    const buttons = [...document.querySelectorAll('[data-commercial-chart-metric]')];
+    if (!buttons.length) return;
+
+    const currentSelected = () => state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        buttons.forEach((button) => button.classList.toggle('is-active', button === btn));
+        state.commercialChartMetric = btn.dataset.commercialChartMetric || 'investimento';
+        renderCommercialEfficiencyChart(currentSelected());
+      });
+    });
   }
 
   function configureTopicTabs() {
@@ -3311,6 +3325,204 @@
     tbody.innerHTML = rows || `<tr><td colspan="13" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
   }
 
+  function firstKnownCommercialNumber(row, keys) {
+    for (const key of keys) {
+      if (!row || !(key in row)) continue;
+      const value = key === 'roas' ? roasNumberOrNull(row[key]) : numberOrNull(row[key]);
+      if (value !== null && value !== undefined) return value;
+    }
+    return null;
+  }
+
+  function commercialMetricConfig(key = state.commercialChartMetric) {
+    const configs = {
+      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Soma do investimento de midia paga por janela acumulada.' },
+      receita: { key: 'receita', label: 'Receita atribuida/estimada', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuida na planilha ou estimada pela janela do modelo quando so ha investimento.' },
+      roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita / investimento. Usa ROAS informado ou a leitura agregada da janela.' },
+      cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos da campanha ou da janela agregada.' },
+      cps: { key: 'cps', label: 'CPS', short: 'CPS', type: 'line', unit: 'currency', help: 'Investimento / pares vendidos na janela. No dashboard, CPS = custo por par.' },
+      cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. So aparece quando o JSON trouxer cliques ou CPC.' }
+    };
+    return configs[key] || configs.investimento;
+  }
+
+  function commercialWindowKey(row) {
+    const raw = String(row?.janela || '').trim().toLowerCase();
+    if (WINDOW_KEYS.includes(raw)) return raw;
+    return raw || 'sem_janela';
+  }
+
+  function commercialWindowLabel(key) {
+    if (WINDOW_LABELS[key]) return WINDOW_LABELS[key];
+    if (key === 'pre-d0') return 'Pre-D0';
+    if (key === 'sem_janela') return 'Sem janela';
+    const days = janelaEmDias(key);
+    return days !== null ? `D+${days}` : String(key || 'Sem janela');
+  }
+
+  function commercialWindowRank(key) {
+    if (WINDOW_KEYS.includes(key)) return WINDOW_KEYS.indexOf(key);
+    const days = janelaEmDias(key);
+    if (key === 'pre-d0') return -1;
+    return days === null ? 999 : days;
+  }
+
+  function commercialMetricRowsForLaunch(launch) {
+    const rawRows = (state.data?.midia_paga || [])
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .map((row) => normalizeMediaRow(row, launch));
+    const detailedRows = enrichMediaEstimates(rawRows, launch).filter((row) => midiaValidaParaImpacto(row));
+    const pairsByWindow = new Map();
+    const clicksByWindow = new Map();
+    const cpsByWindow = new Map();
+    const cpcByWindow = new Map();
+
+    detailedRows.forEach((row) => {
+      const key = commercialWindowKey(row);
+      const pares = firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']);
+      const clicks = firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']);
+      const cps = firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']);
+      const cpc = firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']);
+      if (pares !== null) pairsByWindow.set(key, (pairsByWindow.get(key) || 0) + pares);
+      if (clicks !== null) clicksByWindow.set(key, (clicksByWindow.get(key) || 0) + clicks);
+      if (cps !== null) cpsByWindow.set(key, cps);
+      if (cpc !== null) cpcByWindow.set(key, cpc);
+    });
+
+    return aggregateMediaRows(detailedRows, launch)
+      .map((row) => {
+        const key = commercialWindowKey(row);
+        const metricWindow = mediaWindowMetric(row, launch);
+        const investimento = numberOrNull(row.investimento);
+        const receita = numberOrNull(row.receita_atribuida);
+        const pedidos = numberOrNull(row.pedidos);
+        const pares = firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']) ?? pairsByWindow.get(key) ?? numberOrNull(metricWindow?.pares);
+        const cliques = firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? clicksByWindow.get(key) ?? null;
+        const roas = rowRoas(row) ?? (investimento && receita !== null ? receita / investimento : null);
+        const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
+        const cps = firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']) ?? cpsByWindow.get(key) ?? (investimento !== null && pares ? investimento / pares : null);
+        const cpc = firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']) ?? cpcByWindow.get(key) ?? (investimento !== null && cliques ? investimento / cliques : null);
+        return {
+          launch,
+          key,
+          label: commercialWindowLabel(key),
+          investimento,
+          receita,
+          pedidos,
+          pares,
+          cliques,
+          roas,
+          cpa,
+          cps,
+          cpc,
+          source: row.receita_source || row.metodologia || ''
+        };
+      })
+      .sort((a, b) => commercialWindowRank(a.key) - commercialWindowRank(b.key));
+  }
+
+  function commercialMetricValue(row, metricKey) {
+    if (!row) return null;
+    return row[metricKey] ?? null;
+  }
+
+  function formatCommercialMetric(value, metric) {
+    if (value === null || value === undefined || Number.isNaN(value)) return 'sem dado';
+    if (metric.unit === 'ratio') return `${fmtNum(value, 2)}x`;
+    return fmtBRL(value);
+  }
+
+  function renderCommercialEfficiencyChart(selected) {
+    const canvasId = 'chart-normalized-media';
+    const canvas = $(canvasId);
+    if (!canvas || !window.Chart) return;
+
+    state.charts[canvasId]?.destroy?.();
+    delete state.charts[canvasId];
+
+    const subText = $('chart-normalized-media-sub');
+    const metric = commercialMetricConfig();
+    const launches = selectedCompareLaunches()
+      .filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
+    const rowsByLaunch = new Map(launches.map((launch) => [launch.modelo_id, commercialMetricRowsForLaunch(launch)]));
+    const allRows = [...rowsByLaunch.values()].flat();
+    const windowKeys = [...new Set(allRows.map((row) => row.key))]
+      .sort((a, b) => commercialWindowRank(a) - commercialWindowRank(b));
+
+    if (!allRows.length || !windowKeys.length) {
+      if (subText) subText.textContent = 'Sem midia paga cadastrada para os modelos selecionados.';
+      return;
+    }
+
+    const hasAnyMetricValue = allRows.some((row) => commercialMetricValue(row, metric.key) !== null);
+    if (subText) {
+      subText.textContent = hasAnyMetricValue
+        ? `${metric.label} por janela acumulada de midia paga. Tooltip mostra investimento, receita, ROAS, CPA, CPS e CPC quando houver base.`
+        : `${metric.label}: ainda sem base suficiente no JSON. ${metric.key === 'cpc' ? 'Inclua cliques ou CPC na exportacao para habilitar esta leitura.' : 'Ausencia fica vazia, nao vira zero.'}`;
+    }
+
+    const chartLaunches = launches.filter((launch) => (rowsByLaunch.get(launch.modelo_id) || []).length);
+    createChart(canvasId, {
+      type: metric.type,
+      data: {
+        labels: windowKeys.map(commercialWindowLabel),
+        datasets: chartLaunches.map((launch, index) => {
+          const rows = rowsByLaunch.get(launch.modelo_id) || [];
+          const rowByWindow = new Map(rows.map((row) => [row.key, row]));
+          const data = windowKeys.map((key) => commercialMetricValue(rowByWindow.get(key), metric.key));
+          const isSelected = launch.modelo_id === selected?.modelo_id;
+          return {
+            label: launch.modelo,
+            data,
+            metricRows: rowByWindow,
+            backgroundColor: metric.type === 'bar' ? colorFor(launch.modelo_id, index) : fillFor(launch.modelo_id, index),
+            borderColor: colorFor(launch.modelo_id, index),
+            borderWidth: isSelected ? 3 : 2,
+            borderRadius: metric.type === 'bar' ? 4 : 0,
+            tension: 0.28,
+            pointRadius: metric.type === 'line' ? (isSelected ? 4 : 3) : 0,
+            pointHoverRadius: 6,
+            spanGaps: true
+          };
+        })
+      },
+      options: chartOptions({
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${formatCommercialMetric(ctx.parsed.y, metric)}`,
+              afterLabel: (ctx) => {
+                const key = windowKeys[ctx.dataIndex];
+                const row = ctx.dataset.metricRows?.get(key);
+                if (!row) return 'Sem linha de midia para esta janela.';
+                return [
+                  `Invest.: ${formatCommercialMetric(row.investimento, commercialMetricConfig('investimento'))}`,
+                  `Receita: ${formatCommercialMetric(row.receita, commercialMetricConfig('receita'))}`,
+                  `ROAS: ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))}`,
+                  `CPA: ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))}`,
+                  `CPS: ${formatCommercialMetric(row.cps, commercialMetricConfig('cps'))}`,
+                  `CPC: ${formatCommercialMetric(row.cpc, commercialMetricConfig('cpc'))}`,
+                  `Base: ${fmtNum(row.pedidos)} pedidos · ${fmtNum(row.pares)} pares · ${fmtNum(row.cliques)} cliques`,
+                  row.source ? `Fonte: ${row.source}` : 'Fonte: midia_paga + janela do modelo'
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            ticks: {
+              callback: (value) => metric.unit === 'ratio' ? `${fmtNum(Number(value), 1)}x` : fmtBRL(Number(value), true)
+            },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
+        }
+      })
+    });
+  }
+
   function renderCharts(selected) {
     destroyCharts();
     if (!window.Chart) return;
@@ -3494,7 +3706,7 @@
     });
 
     renderNormalizedChart(selected);
-    renderNormalizedChart(selected, 'chart-normalized-media', 'chart-normalized-media-sub');
+    renderCommercialEfficiencyChart(selected);
   }
 
   function stockNumber(value) {
@@ -4263,8 +4475,12 @@
       receita_source: receitaBase.source,
       pedidos,
       pedidos_janela_agregados: numberOrNull(row.pedidos_janela_agregados),
+      pares: firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']),
+      cliques: firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']),
       roas,
       cpa,
+      cps: firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']),
+      cpc: firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']),
       status: row.status || '',
       metodologia: row.metodologia || '',
       aviso: row.aviso || '',
@@ -4850,6 +5066,7 @@
     configureShareDrawer();
     configureStockDrawer();
     configureNormalizedChartModeToggle();
+    configureCommercialChartMetricToggle();
     configureTopicTabs();
     configureTooltips();
     configureChartDefaults();
