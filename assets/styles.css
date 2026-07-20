@@ -1468,9 +1468,12 @@ h2 {
   justify-content: center;
   margin: 10px 0 0;
 }
-.table-wrap + .collapsible-list-control,
-.drill-table-wrap + .collapsible-list-control {
-  margin-top: 8px;
+.table-wrap > .collapsible-list-control,
+.drill-table-wrap > .collapsible-list-control {
+  margin: 0;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  background: rgba(255,255,255,0.015);
 }
 .collapsible-list-toggle {
   min-height: 32px;

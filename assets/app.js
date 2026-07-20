@@ -63,7 +63,6 @@
     '.table-wrap tbody',
     '.drill-table-wrap tbody',
     '.method-list',
-    '.insights-list',
     '.client-mix-list',
     '.event-list',
     '.drill-ranking',
@@ -1260,8 +1259,9 @@
         });
 
         control.appendChild(button);
-        const anchor = container.tagName === 'TBODY' ? container.closest('.table-wrap, .drill-table-wrap') : container;
-        anchor?.insertAdjacentElement('afterend', control);
+        const tableWrap = container.tagName === 'TBODY' ? container.closest('.table-wrap, .drill-table-wrap') : null;
+        if (tableWrap) tableWrap.appendChild(control);
+        else container.insertAdjacentElement('afterend', control);
       });
     });
   }
