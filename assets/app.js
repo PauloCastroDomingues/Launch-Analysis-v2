@@ -5051,32 +5051,6 @@
         <p class="section-desc">Cenários usam multiplicadores 90÷30 dos modelos históricos elegíveis. Leia como referência de amplitude, não como previsão automática.</p>
       </div>`;
 
-    createChart('chart-projection', {
-      type: 'bar',
-      data: {
-        labels: scenarios.map((s) => s.name),
-        datasets: [{
-          label: 'Faturamento estimado',
-          data: scenarios.map((s) => s.value),
-          backgroundColor: scenarios.map((s) => s.base ? '#F07800' : 'rgba(240,120,0,.32)'),
-          borderColor: '#F07800',
-          borderWidth: 1,
-          borderRadius: 4
-        }]
-      },
-      options: chartOptions({
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => fmtBRL(ctx.parsed.y),
-              afterLabel: (ctx) => `Cenario ${ctx.label}: base 30d x multiplicador historico. Nao e previsao automatica.`
-            }
-          }
-        },
-        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtBRL(v, true) } } }
-      })
-    });
   }
 
   function renderInsights(selected) {
