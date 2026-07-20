@@ -859,6 +859,42 @@ h1 {
   justify-content: flex-end;
   flex: 0 0 auto;
 }
+.hero-chart-wrap {
+  margin: 18px 0 8px;
+}
+.hero-chart-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--txt-muted);
+  margin: 0 0 8px;
+}
+.topic-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 4px 0 22px;
+}
+.topic-tab {
+  background: var(--bg-card);
+  border: 1px solid var(--border-2);
+  color: var(--txt-secondary);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.topic-tab.is-active {
+  background: var(--orange-dim);
+  color: var(--orange);
+  border-color: rgba(240,120,0,0.4);
+}
+section[data-topic] {
+  display: none;
+}
+section[data-topic].is-active-topic {
+  display: block;
+}
 .selector-title {
   color: var(--txt-secondary);
   font-size: 0.68rem;
@@ -2400,8 +2436,10 @@ body.stock-detail-open .stock-detail-drawer {
   .stock-detail-drawer { width: min(100vw, 430px); padding-inline: 18px; }
   .share-drawer { width: min(100vw, 430px); padding-inline: 18px; }
   .chart-mode-controls { width: 100%; }
-  .chart-mode-toggle { flex: 1; }
-  .chart-mode-btn { flex: 1; }
+  .chart-mode-toggle { flex: 1 1 100%; flex-wrap: wrap; width: 100%; }
+  .chart-mode-btn { flex: 1 1 33.333%; min-width: 0; white-space: normal; line-height: 1.2; }
+  .cannibal-line-select { width: 100%; }
+  .topic-tab { flex: 1 1 calc(50% - 6px); text-align: center; white-space: normal; }
   .share-stats { grid-template-columns: 1fr; }
   .share-company-values { grid-template-columns: 1fr; }
   .share-chart-canvas { height: 240px; }

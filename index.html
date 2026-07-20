@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260720-cannibal-toggle" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260720-topic-tabs" />
 </head>
 <body>
   <div class="app-shell">
@@ -98,7 +98,37 @@
       </div>
       <div id="analysis-context" class="analysis-context" aria-live="polite"></div>
 
-      <section id="estado">
+      <div class="hero-chart-wrap">
+        <p class="hero-chart-label">Curva multiuso · sempre visível, fora dos tópicos</p>
+        <div class="chart-card wide">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title chart-title--with-tip"><span>Curva normalizada D0 → D90</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa. Ativos mostram somente dias ja observados no snapshot; historicos usam os dados disponiveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div>
+              <div class="chart-sub" id="chart-normalized-sub">Faturamento acumulado por dia desde o lançamento</div>
+            </div>
+            <div class="chart-mode-controls">
+              <div class="chart-mode-toggle" role="group" aria-label="Modo do grafico de curva">
+                <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 → D90</button>
+                <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
+                <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
+              </div>
+              <select id="cannibal-line-select" class="cannibal-line-select" hidden></select>
+            </div>
+          </div>
+          <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
+        </div>
+      </div>
+
+      <div class="topic-tabs" role="tablist" aria-label="Topicos do dashboard">
+        <button type="button" class="topic-tab is-active" data-topic="visao-geral" role="tab" aria-selected="true">Visão geral</button>
+        <button type="button" class="topic-tab" data-topic="comparacao" role="tab" aria-selected="false">Comparação</button>
+        <button type="button" class="topic-tab" data-topic="produto" role="tab" aria-selected="false">Produto</button>
+        <button type="button" class="topic-tab" data-topic="canal-midia" role="tab" aria-selected="false">Canal e mídia</button>
+        <button type="button" class="topic-tab" data-topic="operacao" role="tab" aria-selected="false">Operação</button>
+        <button type="button" class="topic-tab" data-topic="projecao-dado" role="tab" aria-selected="false">Projeção e dado</button>
+      </div>
+
+      <section id="estado" data-topic="visao-geral">
         <div class="section-head">
           <div>
             <div class="section-kicker">01 · Estado do lançamento</div>
@@ -120,7 +150,7 @@
         <div id="launch-state"></div>
       </section>
 
-      <section id="contexto-momento">
+      <section id="contexto-momento" data-topic="visao-geral">
         <div class="section-head">
           <div>
             <div class="section-kicker">02 · Contexto do momento</div>
@@ -137,7 +167,7 @@
         <div id="momento-context"></div>
       </section>
 
-      <section id="comparativo">
+      <section id="comparativo" data-topic="comparacao">
         <div class="section-head">
           <div>
             <div class="section-kicker">03 · Comparativo por janela</div>
@@ -171,7 +201,7 @@
         </div>
       </section>
 
-      <section id="curvas">
+      <section id="curvas" data-topic="comparacao">
         <div class="section-head">
           <div>
             <div class="section-kicker">04 · Curvas de aceleração</div>
@@ -205,27 +235,10 @@
             <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span id="weekly-title">Semana a semana</span><button class="help-button help-button--mini" type="button" data-tooltip="Agrupa vendas reais por semana relativa ao D0 do modelo em foco. Fonte principal: lancamentos_produtos_dia.json; historicos agregados podem nao ter granularidade semanal." aria-label="Ajuda sobre semana a semana">i</button></div><div class="chart-sub">Faturamento + pedidos</div></div></div>
             <div class="chart-canvas"><canvas id="chart-weekly"></canvas></div>
           </div>
-          <div class="chart-card wide">
-            <div class="chart-head">
-              <div>
-                <div class="chart-title chart-title--with-tip"><span>Curva normalizada D0 → D90</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa. Ativos mostram somente dias ja observados no snapshot; historicos usam os dados disponiveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div>
-                <div class="chart-sub" id="chart-normalized-sub">Faturamento acumulado por dia desde o lançamento</div>
-              </div>
-              <div class="chart-mode-controls">
-                <div class="chart-mode-toggle" role="group" aria-label="Modo do grafico de curva">
-                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 → D90</button>
-                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
-                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
-                </div>
-                <select id="cannibal-line-select" class="cannibal-line-select" hidden></select>
-              </div>
-            </div>
-            <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
-          </div>
         </div>
       </section>
 
-      <section id="estoque">
+      <section id="estoque" data-topic="operacao">
         <div class="section-head">
           <div>
             <div class="section-kicker">05 · Estoque</div>
@@ -245,7 +258,7 @@
         <div id="stock-detail-content"></div>
       </aside>
 
-      <section id="cores">
+      <section id="cores" data-topic="produto">
         <div class="section-head">
           <div>
             <div class="section-kicker">06 · Mix de cores</div>
@@ -263,7 +276,7 @@
         <div id="size-ranking"></div>
       </section>
 
-      <section id="promotores-cortes">
+      <section id="promotores-cortes" data-topic="produto">
         <div class="section-head">
           <div>
             <div class="section-kicker">07 · Promotores e ofensores por corte</div>
@@ -277,7 +290,7 @@
         <div id="cut-promoters-detractors" class="cut-promoters-grid"></div>
       </section>
 
-      <section id="calendario">
+      <section id="calendario" data-topic="operacao">
         <div class="section-head">
           <div>
             <div class="section-kicker">08 · Calendário sazonal</div>
@@ -290,7 +303,7 @@
         <div id="calendar-grid" class="calendar-grid"></div>
       </section>
 
-      <section id="acoes">
+      <section id="acoes" data-topic="canal-midia">
         <div class="section-head">
           <div>
             <div class="section-kicker">09 · Ações comerciais</div>
@@ -355,7 +368,7 @@
         </div>
       </section>
 
-      <section id="projecao">
+      <section id="projecao" data-topic="projecao-dado">
         <div class="section-head">
           <div>
             <div class="section-kicker">10 · Projeção de cenários</div>
@@ -372,7 +385,7 @@
         </div>
       </section>
 
-      <section id="insights">
+      <section id="insights" data-topic="projecao-dado">
         <div class="section-head">
           <div>
             <div class="section-kicker">11 · Qualidade do dado</div>
@@ -409,7 +422,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="assets/embedded-data.js?v=20260716-share-drawer-context"></script>
-  <script src="assets/app.js?v=20260720-cannibal-toggle"></script>
+  <script src="assets/app.js?v=20260720-topic-tabs"></script>
   <script src="assets/presentation.js?v=20260716-compact-overview"></script>
 </body>
 </html>

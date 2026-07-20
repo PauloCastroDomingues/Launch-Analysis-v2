@@ -1276,6 +1276,43 @@
     }
   }
 
+  function configureTopicTabs() {
+    const tabs = [...document.querySelectorAll('.topic-tab')];
+    if (!tabs.length) return;
+    const sections = [...document.querySelectorAll('section[data-topic]')];
+
+    const activate = (topic) => {
+      tabs.forEach((tab) => {
+        const active = tab.dataset.topic === topic;
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
+      sections.forEach((section) => {
+        section.classList.toggle('is-active-topic', section.dataset.topic === topic);
+      });
+      requestAnimationFrame(() => {
+        Object.values(state.charts).forEach((chart) => chart?.resize?.());
+      });
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activate(tab.dataset.topic));
+    });
+
+    activate('visao-geral');
+  }
+
+  function configureNavTopicLinks() {
+    document.querySelectorAll('.nav-list a[href^="#"]').forEach((link) => {
+      link.addEventListener('click', () => {
+        const id = link.getAttribute('href').slice(1);
+        const target = document.getElementById(id);
+        const topic = target?.dataset?.topic;
+        if (topic) document.querySelector(`.topic-tab[data-topic="${topic}"]`)?.click();
+      });
+    });
+  }
+
   function closeStockDrawer() {
     const drawer = $('stock-detail-drawer');
     const overlay = $('stock-detail-overlay');
@@ -4832,6 +4869,8 @@
     configureShareDrawer();
     configureStockDrawer();
     configureNormalizedChartModeToggle();
+    configureTopicTabs();
+    configureNavTopicLinks();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();
