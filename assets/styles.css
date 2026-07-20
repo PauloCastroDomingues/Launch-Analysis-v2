@@ -889,11 +889,19 @@ h1 {
   color: var(--orange);
   border-color: rgba(240,120,0,0.4);
 }
-section[data-topic] {
-  display: none;
+.topic-divider {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--txt-muted);
+  margin: 32px 0 4px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
-section[data-topic].is-active-topic {
-  display: block;
+.topic-divider:first-of-type {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
 }
 .selector-title {
   color: var(--txt-secondary);
@@ -2411,6 +2419,7 @@ body.stock-detail-open .stock-detail-drawer {
   .section-head-actions { justify-content: flex-start; }
   .section-action-button { width: 100%; justify-content: center; text-align: center; white-space: normal; line-height: 1.25; }
   .section-desc { max-width: 100%; overflow-wrap: anywhere; }
+  .topbar .section-desc { white-space: normal; }
   .eyebrow, h1, h2 { overflow-wrap: anywhere; }
   .top-meta { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: left; margin-top: 16px; }
   .selector-panel { grid-template-columns: 1fr; overflow: visible; }
@@ -2435,11 +2444,12 @@ body.stock-detail-open .stock-detail-drawer {
   .stock-summary-grid, .stock-detail-metrics { grid-template-columns: 1fr; }
   .stock-detail-drawer { width: min(100vw, 430px); padding-inline: 18px; }
   .share-drawer { width: min(100vw, 430px); padding-inline: 18px; }
-  .chart-mode-controls { width: 100%; }
-  .chart-mode-toggle { flex: 1 1 100%; flex-wrap: wrap; width: 100%; }
-  .chart-mode-btn { flex: 1 1 33.333%; min-width: 0; white-space: normal; line-height: 1.2; }
+  .chart-mode-controls { width: 100%; min-width: 0; }
+  .chart-mode-toggle { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
+  .chart-mode-btn { min-width: 0; width: 100%; padding-inline: 6px; white-space: normal; line-height: 1.2; overflow-wrap: anywhere; }
   .cannibal-line-select { width: 100%; }
-  .topic-tab { flex: 1 1 calc(50% - 6px); text-align: center; white-space: normal; }
+  .topic-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .topic-tab { min-width: 0; text-align: center; white-space: normal; overflow-wrap: anywhere; }
   .share-stats { grid-template-columns: 1fr; }
   .share-company-values { grid-template-columns: 1fr; }
   .share-chart-canvas { height: 240px; }

@@ -1264,51 +1264,26 @@
           lineSelect.hidden = !showSelect;
           if (showSelect) populateCannibalLineSelect();
         }
-        renderNormalizedChart(currentSelected());
+        const selected = currentSelected();
+        renderNormalizedChart(selected);
+        renderNormalizedChart(selected, 'chart-normalized-media', 'chart-normalized-media-sub');
       });
     });
 
     if (lineSelect) {
       lineSelect.addEventListener('change', () => {
         state.canibalLineFilter = lineSelect.value;
-        renderNormalizedChart(currentSelected());
+        const selected = currentSelected();
+        renderNormalizedChart(selected);
+        renderNormalizedChart(selected, 'chart-normalized-media', 'chart-normalized-media-sub');
       });
     }
   }
 
   function configureTopicTabs() {
-    const tabs = [...document.querySelectorAll('.topic-tab')];
-    if (!tabs.length) return;
-    const sections = [...document.querySelectorAll('section[data-topic]')];
-
-    const activate = (topic) => {
-      tabs.forEach((tab) => {
-        const active = tab.dataset.topic === topic;
-        tab.classList.toggle('is-active', active);
-        tab.setAttribute('aria-selected', String(active));
-      });
-      sections.forEach((section) => {
-        section.classList.toggle('is-active-topic', section.dataset.topic === topic);
-      });
-      requestAnimationFrame(() => {
-        Object.values(state.charts).forEach((chart) => chart?.resize?.());
-      });
-    };
-
-    tabs.forEach((tab) => {
-      tab.addEventListener('click', () => activate(tab.dataset.topic));
-    });
-
-    activate('visao-geral');
-  }
-
-  function configureNavTopicLinks() {
-    document.querySelectorAll('.nav-list a[href^="#"]').forEach((link) => {
-      link.addEventListener('click', () => {
-        const id = link.getAttribute('href').slice(1);
-        const target = document.getElementById(id);
-        const topic = target?.dataset?.topic;
-        if (topic) document.querySelector(`.topic-tab[data-topic="${topic}"]`)?.click();
+    document.querySelectorAll('.topic-tab').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        $(`topic-${tab.dataset.topic}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
   }
@@ -2936,18 +2911,20 @@
     return { dates, datasets, checkpoints };
   }
 
-  function renderNormalizedChart(selected) {
-    const canvas = $('chart-normalized');
+  function renderNormalizedChart(selected, canvasId = 'chart-normalized', subTextId = 'chart-normalized-sub') {
+    const canvas = $(canvasId);
     if (!canvas || !selected) return;
-    state.charts['chart-normalized']?.destroy?.();
-    delete state.charts['chart-normalized'];
+    state.charts[canvasId]?.destroy?.();
+    delete state.charts[canvasId];
 
-    const subText = $('chart-normalized-sub');
-    const lineSelect = $('cannibal-line-select');
+    const subText = $(subTextId);
     const mode = state.normalizedChartMode || 'linha';
-    if (lineSelect) {
-      lineSelect.hidden = mode !== 'canibal-submodelos';
-      if (mode === 'canibal-submodelos') populateCannibalLineSelect();
+    if (canvasId === 'chart-normalized') {
+      const lineSelect = $('cannibal-line-select');
+      if (lineSelect) {
+        lineSelect.hidden = mode !== 'canibal-submodelos';
+        if (mode === 'canibal-submodelos') populateCannibalLineSelect();
+      }
     }
 
     if (mode === 'linha') {
@@ -2959,7 +2936,7 @@
         if (b.modelo_id === selected.modelo_id) return 1;
         return a.order - b.order;
       });
-      createChart('chart-normalized', {
+      createChart(canvasId, {
         type: 'line',
         data: {
           labels: normalizedLabels,
@@ -3071,7 +3048,7 @@
       if (subText) subText.textContent = 'Faturamento diário por linha, alinhado por data real (não por D+n)';
       const { dates, datasets, checkpoints } = buildCannibalTimelineData(comparableLaunches());
       if (!dates.length || !datasets.length) return;
-      createChart('chart-normalized', { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
+      createChart(canvasId, { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
       return;
     }
 
@@ -3081,7 +3058,7 @@
       if (subText) subText.textContent = `Sub-produtos dentro de ${lineLaunch?.linha || lineLaunch?.modelo || lineId} · faturamento diário real`;
       const { dates, datasets, checkpoints } = buildCannibalSubmodelData(lineId);
       if (!dates.length || !datasets.length) return;
-      createChart('chart-normalized', { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
+      createChart(canvasId, { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
     }
   }
 
@@ -3275,10 +3252,12 @@
       </div>`;
   }
 
-  function renderComparison() {
+  function renderComparison(tbodyId = 'comparison-table') {
+    const tbody = $(tbodyId);
+    if (!tbody) return;
     const launches = selectedCompareLaunches();
     if (!launches.length) {
-      $('comparison-table').innerHTML = comparisonEmptyMessage(13);
+      tbody.innerHTML = comparisonEmptyMessage(13);
       return;
     }
 
@@ -3329,7 +3308,7 @@
           <td>${sourceBadge(launch)}</td>
         </tr>`;
     }).join('');
-    $('comparison-table').innerHTML = rows || `<tr><td colspan="13" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
+    tbody.innerHTML = rows || `<tr><td colspan="13" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
   }
 
   function renderCharts(selected) {
@@ -3515,6 +3494,7 @@
     });
 
     renderNormalizedChart(selected);
+    renderNormalizedChart(selected, 'chart-normalized-media', 'chart-normalized-media-sub');
   }
 
   function stockNumber(value) {
@@ -4827,6 +4807,7 @@
     renderState(selected);
     renderMomentoContext(selected);
     renderComparison();
+    renderComparison('comparison-table-media');
     renderCharts(selected);
     renderStock(selected);
     renderColorMix();
@@ -4870,7 +4851,6 @@
     configureStockDrawer();
     configureNormalizedChartModeToggle();
     configureTopicTabs();
-    configureNavTopicLinks();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();
