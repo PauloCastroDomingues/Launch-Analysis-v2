@@ -127,14 +127,14 @@ classificados AS (
 classificados_com_catalogo AS (
   SELECT
     c.*,
-    pl.variant_title AS variant_title_catalogo,
+    c.variant_title AS variant_title_catalogo,
     COALESCE(
       NULLIF(TRIM(pl.cor), ''),
       NULLIF(REGEXP_EXTRACT(c.item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
       'sem_cor'
     ) AS cor,
     COALESCE(
-      NULLIF(TRIM(pl.tamanho), ''),
+      NULLIF(TRIM(CAST(pl.tamanho AS STRING)), ''),
       NULLIF(REGEXP_EXTRACT(c.sku, r'-(3[3-9]|4[0-8])$'), ''),
       NULLIF(REGEXP_EXTRACT(c.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
     ) AS tamanho

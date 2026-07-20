@@ -272,7 +272,7 @@ itens_classificados AS (
 itens_com_flags AS (
   SELECT
     ic.*,
-    pl.variant_title AS variant_title_catalogo,
+    ic.variant_title AS variant_title_catalogo,
     ROW_NUMBER() OVER (
       PARTITION BY ic.modelo_id, ic.order_sk
       ORDER BY ic.data, ic.line_item_key
@@ -284,7 +284,7 @@ itens_com_flags AS (
       'sem_cor'
     ) AS cor_detectada,
     COALESCE(
-      NULLIF(TRIM(pl.tamanho), ''),
+      NULLIF(TRIM(CAST(pl.tamanho AS STRING)), ''),
       NULLIF(REGEXP_EXTRACT(ic.sku, r'-(3[3-9]|4[0-8])$'), ''),
       NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
     ) AS tamanho_detectado

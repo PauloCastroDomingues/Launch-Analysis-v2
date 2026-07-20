@@ -825,7 +825,7 @@ itens_classificados AS (
 itens_com_flags AS (
   SELECT
     ic.*,
-    pl.variant_title AS variant_title_catalogo,
+    ic.variant_title AS variant_title_catalogo,
     ROW_NUMBER() OVER (
       PARTITION BY ic.modelo_id, ic.order_sk
       ORDER BY ic.data, ic.line_item_key
@@ -837,7 +837,7 @@ itens_com_flags AS (
       'sem_cor'
     ) AS cor_detectada,
     COALESCE(
-      NULLIF(TRIM(pl.tamanho), ''),
+      NULLIF(TRIM(CAST(pl.tamanho AS STRING)), ''),
       NULLIF(REGEXP_EXTRACT(ic.sku, r'-(3[3-9]|4[0-8])$'), ''),
       NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
     ) AS tamanho_detectado
@@ -1052,13 +1052,13 @@ classificadas_raw AS (
       'sem_cor'
     ) AS cor,
     COALESCE(
-      NULLIF(TRIM(pl.tamanho_catalogo), ''),
+      NULLIF(TRIM(CAST(pl.tamanho_catalogo AS STRING)), ''),
       NULLIF(REGEXP_EXTRACT(sku, r'-(3[3-9]|4[0-8])$'), ''),
       NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
     ) AS tamanho
   FROM itens_candidatos_v1
   LEFT JOIN (
-    SELECT sku AS pl_sku, cor AS cor_catalogo, tamanho AS tamanho_catalogo
+    SELECT sku AS pl_sku, cor AS cor_catalogo, CAST(tamanho AS STRING) AS tamanho_catalogo
     FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
   ) pl
     ON UPPER(TRIM(pl.pl_sku)) = UPPER(TRIM(sku))
@@ -1085,13 +1085,13 @@ classificadas_raw AS (
       'sem_cor'
     ) AS cor,
     COALESCE(
-      NULLIF(TRIM(pl.tamanho_catalogo), ''),
+      NULLIF(TRIM(CAST(pl.tamanho_catalogo AS STRING)), ''),
       NULLIF(REGEXP_EXTRACT(sku, r'-(3[3-9]|4[0-8])$'), ''),
       NULLIF(REGEXP_EXTRACT(item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
     ) AS tamanho
   FROM itens_classificados_v1
   LEFT JOIN (
-    SELECT sku AS pl_sku, cor AS cor_catalogo, tamanho AS tamanho_catalogo
+    SELECT sku AS pl_sku, cor AS cor_catalogo, CAST(tamanho AS STRING) AS tamanho_catalogo
     FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
   ) pl
     ON UPPER(TRIM(pl.pl_sku)) = UPPER(TRIM(sku))
