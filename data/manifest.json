@@ -1,19 +1,21 @@
 {
-  "generated_at": "2026-07-21T07:12:04-03:00",
+  "generated_at": "2026-07-21T09:53:34-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
   "active_models": [
-    "rs8_monochrome"
+    "rs8_monochrome",
+    "series_2"
   ],
   "exported_models": [
     "gt",
     "avant",
     "phantom",
-    "rs8_monochrome"
+    "rs8_monochrome",
+    "series_2"
   ],
   "row_counts": {
-    "linha_cadastro": 5,
+    "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
     "lancamentos_produtos_dia": 7138,
