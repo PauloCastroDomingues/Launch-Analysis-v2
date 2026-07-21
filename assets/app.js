@@ -1662,6 +1662,15 @@
     return /^\d{4}-\d{2}/.test(text) ? text.slice(0, 7) : '';
   }
 
+  function fmtMonthKey(value) {
+    const month = monthKeyFromIso(value);
+    if (!month) return '-';
+    const [year, monthNum] = month.split('-').map(Number);
+    if (!year || !monthNum) return month;
+    return new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' })
+      .format(new Date(year, monthNum - 1, 1));
+  }
+
   function metaMonthKey(row) {
     return monthKeyFromIso(row.mes || row.competencia || row.month || row.data || row.data_inicio);
   }
@@ -1674,15 +1683,59 @@
     const scored = rows
       .map((row) => {
         const rowMonth = metaMonthKey(row);
-        if (rowMonth !== month) return null;
         const rowModel = String(row.modelo_id || '').trim();
         const modelScore = rowModel && rowModel === launch.modelo_id ? 2 : rowModel ? -1 : 1;
-        return modelScore < 0 ? null : { row, score: modelScore };
+        if (modelScore < 0) return null;
+        return rowMonth ? { row, rowMonth, score: modelScore } : null;
       })
-      .filter(Boolean)
-      .sort((a, b) => b.score - a.score);
+      .filter(Boolean);
 
-    return scored[0]?.row || null;
+    const exact = scored
+      .filter((item) => item.rowMonth === month)
+      .sort((a, b) => b.score - a.score)[0];
+    if (exact) return exact.row;
+
+    const fallback = scored
+      .filter((item) => item.rowMonth < month)
+      .sort((a, b) => b.rowMonth.localeCompare(a.rowMonth) || b.score - a.score)[0];
+
+    if (!fallback) return null;
+    return {
+      ...fallback.row,
+      __meta_status: 'month_open',
+      __requested_month: month,
+      __fallback_month: fallback.rowMonth
+    };
+  }
+
+  function metaNarrative(meta) {
+    if (!meta) {
+      return {
+        label: 'Pendente',
+        value: 'Sem meta',
+        copy: 'Contrato esperado: mes, meta_receita e realizado_receita; modelo_id opcional.'
+      };
+    }
+    const target = firstKnownCommercialNumber(meta, ['meta_receita', 'meta_faturamento', 'meta']);
+    const actual = firstKnownCommercialNumber(meta, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+    const pct = roasNumberOrNull(meta.atingimento) ?? ratioOrNull(actual, target);
+
+    if (meta.__meta_status === 'month_open') {
+      const requestedLabel = fmtMonthKey(meta.__requested_month);
+      const fallbackLabel = fmtMonthKey(meta.__fallback_month || metaMonthKey(meta));
+      const summary = pct !== null ? fmtPct(pct, 1) : fmtBRL(target);
+      return {
+        label: `${requestedLabel} em aberto`,
+        value: 'M\u00eas em aberto',
+        copy: `\u00daltimo fechado: ${fallbackLabel} \u00b7 ${summary} \u00b7 meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}`
+      };
+    }
+
+    return {
+      label: metaMonthKey(meta) || 'Meta mensal',
+      value: pct !== null ? fmtPct(pct, 1) : fmtBRL(target),
+      copy: `Meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}`
+    };
   }
 
   function campaignRevenueRowsForLaunch(launch) {
@@ -1724,24 +1777,6 @@
       })
       .filter(Boolean)
       .sort((a, b) => b.score - a.score)[0]?.candidate || null;
-  }
-
-  function metaNarrative(meta) {
-    if (!meta) {
-      return {
-        label: 'Pendente',
-        value: 'Sem meta',
-        copy: 'Contrato esperado: mes, meta_receita e realizado_receita; modelo_id opcional.'
-      };
-    }
-    const target = firstKnownCommercialNumber(meta, ['meta_receita', 'meta_faturamento', 'meta']);
-    const actual = firstKnownCommercialNumber(meta, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
-    const pct = roasNumberOrNull(meta.atingimento) ?? ratioOrNull(actual, target);
-    return {
-      label: metaMonthKey(meta) || 'Meta mensal',
-      value: pct !== null ? fmtPct(pct, 1) : fmtBRL(target),
-      copy: `Meta ${fmtBRL(target)} · realizado ${fmtBRL(actual)}`
-    };
   }
 
   function campaignNarrative(launch) {
@@ -1871,6 +1906,7 @@
     const campaignRevenue = campaignRevenueValues.length ? campaignRevenueValues.reduce((acc, value) => acc + value, 0) : null;
     const campaignCount = new Set(campaignRows.map((row) => normalizeText(row.campanha || row.campaign || row.utm_campaign)).filter(Boolean)).size || campaignRows.length;
     const metaPending = meta.label === 'Pendente';
+    const metaOpen = metaRow?.__meta_status === 'month_open';
     const campaignPending = campaign.label === 'Pendente';
     const signal = storySignal({ share, companyVariation, metaPending, campaignPending });
     const selectedPeriod = ANALYSIS_PERIODS.find((item) => item.key === state.analysisPeriodKey)?.label || state.analysisPeriodKey;
@@ -1939,8 +1975,8 @@
         value: meta.value,
         detail: meta.copy,
         width: metaWidth,
-        state: metaPending ? 'pending' : 'ok',
-        tooltip: 'Cruza o mês do lançamento com metas_mensais. Quando houver meta e realizado, mostra atingimento; quando não houver JSON exportado, sinaliza pendência.'
+        state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
+        tooltip: 'Cruza o mes do lancamento com metas_mensais. Se o mes ainda esta aberto, mostra o ultimo mes fechado como contexto; quando nao houver JSON exportado, sinaliza pendencia.'
       }),
       storyMetricHtml({
         label: 'Campanhas',
@@ -1969,9 +2005,17 @@
       {
         title: 'Próxima integração',
         tooltip: 'Mostra quais dados ainda faltam para fechar a história com mais segurança, principalmente metas mensais e faturamento por campanha.',
-        copy: metaPending || campaignPending
-          ? 'Metas mensais e faturamento por campanha ainda completam a história de eficiência.'
-          : 'Cruzar meta, campanha e estoque para decidir reforço, pausa ou redistribuição.'
+        copy: campaignPending && metaOpen
+          ? 'Faturamento por campanha ainda completa a historia; meta do mes corrente entra quando o mes fechar.'
+          : metaPending && campaignPending
+            ? 'Metas mensais e faturamento por campanha ainda completam a historia de eficiencia.'
+            : metaPending
+              ? 'Metas mensais ainda completam a historia de eficiencia.'
+              : campaignPending
+                ? 'Faturamento por campanha ainda completa a historia de eficiencia.'
+                : metaOpen
+                  ? 'Meta do mes corrente entra quando o mes fechar; por enquanto a tela usa o ultimo fechado como contexto.'
+                  : 'Cruzar meta, campanha e estoque para decidir reforco, pausa ou redistribuicao.'
       }
     ];
 
@@ -2000,8 +2044,8 @@
         value: meta.value,
         label: meta.label,
         copy: meta.copy,
-        state: meta.label === 'Pendente' ? 'pending' : 'ok',
-        tooltip: 'Evidência técnica de meta: mês, meta esperada, realizado e atingimento quando metas_mensais estiver exportado.'
+        state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
+        tooltip: 'Evidencia tecnica de meta: mes do lancamento, meta esperada e realizado. Se o mes ainda esta aberto, usa o ultimo mes fechado como contexto.'
       },
       {
         step: '04',
