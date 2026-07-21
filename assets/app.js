@@ -4034,7 +4034,7 @@
       receita: { key: 'receita', label: 'Receita atribuida/estimada', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuida na planilha ou estimada pela janela do modelo quando so ha investimento.' },
       roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita / investimento. Usa ROAS informado ou a leitura agregada da janela.' },
       cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos da campanha ou da janela agregada.' },
-      cps: { key: 'cps', label: 'CPS', short: 'CPS', type: 'line', unit: 'currency', help: 'Investimento / pares vendidos na janela. No dashboard, CPS = custo por par.' },
+      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares vendidos na janela (custo por par). Mantem a leitura separada de custo por sessao, que so existe se a planilha de midia ganhar uma coluna de sessoes por campanha.' },
       cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. So aparece quando o JSON trouxer cliques ou CPC.' }
     };
     return configs[key] || configs.investimento;
@@ -4068,18 +4068,18 @@
     const detailedRows = enrichMediaEstimates(rawRows, launch).filter((row) => midiaValidaParaGraficoComercial(row));
     const pairsByWindow = new Map();
     const clicksByWindow = new Map();
-    const cpsByWindow = new Map();
+    const cppByWindow = new Map();
     const cpcByWindow = new Map();
 
     detailedRows.forEach((row) => {
       const key = commercialWindowKey(row);
       const pares = firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']);
       const clicks = firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']);
-      const cps = firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']);
+      const cpp = firstKnownCommercialNumber(row, ['cpp', 'custo_por_par', 'custo_par']);
       const cpc = firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']);
       if (pares !== null) pairsByWindow.set(key, (pairsByWindow.get(key) || 0) + pares);
       if (clicks !== null) clicksByWindow.set(key, (clicksByWindow.get(key) || 0) + clicks);
-      if (cps !== null) cpsByWindow.set(key, cps);
+      if (cpp !== null) cppByWindow.set(key, cpp);
       if (cpc !== null) cpcByWindow.set(key, cpc);
     });
 
@@ -4094,7 +4094,7 @@
         const cliques = firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? clicksByWindow.get(key) ?? null;
         const roas = rowRoas(row) ?? (investimento && receita !== null ? receita / investimento : null);
         const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
-        const cps = firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']) ?? cpsByWindow.get(key) ?? (investimento !== null && pares ? investimento / pares : null);
+        const cpp = firstKnownCommercialNumber(row, ['cpp', 'custo_por_par', 'custo_par']) ?? cppByWindow.get(key) ?? (investimento !== null && pares ? investimento / pares : null);
         const cpc = firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']) ?? cpcByWindow.get(key) ?? (investimento !== null && cliques ? investimento / cliques : null);
         return {
           launch,
@@ -4107,7 +4107,7 @@
           cliques,
           roas,
           cpa,
-          cps,
+          cpp,
           cpc,
           source: row.receita_source || row.metodologia || ''
         };
@@ -4151,7 +4151,7 @@
     const hasAnyMetricValue = allRows.some((row) => commercialMetricValue(row, metric.key) !== null);
     if (subText) {
       subText.textContent = hasAnyMetricValue
-        ? `${metric.label} por janela acumulada de midia paga. Tooltip mostra investimento, receita, ROAS, CPA, CPS e CPC quando houver base.`
+        ? `${metric.label} por janela acumulada de midia paga. Tooltip mostra investimento, receita, ROAS, CPA, CPP e CPC quando houver base.`
         : `${metric.label}: ainda sem base suficiente no JSON. ${metric.key === 'cpc' ? 'Inclua cliques ou CPC na exportacao para habilitar esta leitura.' : 'Ausencia fica vazia, nao vira zero.'}`;
     }
 
@@ -4206,7 +4206,7 @@
                 if (!row) return 'Sem midia para esta janela.';
                 return [
                   `Invest. ${formatCommercialMetric(row.investimento, commercialMetricConfig('investimento'))} · Receita ${formatCommercialMetric(row.receita, commercialMetricConfig('receita'))}`,
-                  `ROAS ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))} · CPA ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))} · CPS ${formatCommercialMetric(row.cps, commercialMetricConfig('cps'))}`,
+                  `ROAS ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))} · CPA ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))} · CPP ${formatCommercialMetric(row.cpp, commercialMetricConfig('cpp'))}`,
                   `Base ${fmtNum(row.pedidos)} ped. · ${fmtNum(row.pares)} pares · CPC ${formatCommercialMetric(row.cpc, commercialMetricConfig('cpc'))}`,
                   row.source ? `Fonte ${row.source}` : 'Fonte midia_paga + janela'
                 ];
@@ -5202,7 +5202,7 @@
       cliques: firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? firstKnownCommercialNumber(campaignRevenue, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']),
       roas,
       cpa,
-      cps: firstKnownCommercialNumber(row, ['cps', 'custo_por_par', 'custo_par']),
+      cpp: firstKnownCommercialNumber(row, ['cpp', 'custo_por_par', 'custo_par']),
       cpc: firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']),
       status: row.status || '',
       metodologia: row.metodologia || (receitaSource === 'faturamento_campanha' ? 'faturamento_campanha' : ''),

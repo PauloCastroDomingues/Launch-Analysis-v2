@@ -348,7 +348,7 @@ itens_com_flags AS (
     ) AS cliente_row_num,
     DATE_DIFF(ic.data, ic.d0, DAY) AS dia_desde_d0,
     COALESCE(
-      NULLIF(TRIM(pl.cor), ''),
+      NULLIF(REGEXP_REPLACE(TRIM(pl.cor), r'^\d+$', ''), ''),
       NULLIF(REGEXP_EXTRACT(ic.match_text_norm, r'(?:^| )(all black|off white|azul marinho|whisky|whiskey|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
       'sem_cor'
     ) AS cor_detectada,
