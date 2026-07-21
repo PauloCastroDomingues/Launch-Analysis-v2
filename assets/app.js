@@ -1771,10 +1771,14 @@
     const pos = numberOrNull(model?.receita_empresa_pos_periodo);
     const days = numberOrNull(model?.dias_pos_disponiveis);
     if (variation === null && pre === null && pos === null) {
+      return { label: 'Momento', value: 'Sem contexto', copy: 'share_trajetoria ainda nao trouxe a leitura antes/depois da empresa.' };
+    }
+    const baselineInsuficiente = pre !== null && pos !== null && pre < Math.max(1000, pos * 0.01);
+    if (baselineInsuficiente) {
       return {
-        label: 'Momento',
-        value: 'Sem contexto',
-        copy: 'share_trajetoria ainda nao trouxe a leitura antes/depois da empresa.'
+        label: 'Sem base comparável',
+        value: fmtBRL(pos),
+        copy: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''} — período anterior sem receita suficiente pra calcular variação (dado incompleto ou empresa ainda não operava nesse volume).`
       };
     }
     const direction = variation > 0.05 ? 'Empresa acelerando' : variation < -0.05 ? 'Empresa pressionada' : 'Empresa estavel';
@@ -2287,6 +2291,8 @@
     const posRevenue = numberOrNull(model.receita_empresa_pos_periodo);
     const variation = numberOrNull(model.variacao_receita_empresa_pct);
     const days = numberOrNull(model.dias_pos_disponiveis);
+    const moment = companyMomentNarrative(model);
+    const baselineInsuficiente = moment.label === 'Sem base comparável';
 
     if (preRevenue === null || posRevenue === null) {
       return `
@@ -2306,7 +2312,7 @@
           <strong>${fmtBRL(posRevenue)}</strong>
         </div>
       </div>
-      <em class="${shareVariationClass(variation)}">Variacao ${fmtPct(variation, 1)} em ${fmtNum(days)} dia(s) comparaveis</em>
+      <em class="${baselineInsuficiente ? 'share-stat-delta' : shareVariationClass(variation)}">${baselineInsuficiente ? `${escapeHtml(moment.label)} · ${escapeHtml(moment.copy)}` : `Variacao ${fmtPct(variation, 1)} em ${fmtNum(days)} dia(s) comparaveis`}</em>
     `;
   }
 
@@ -2743,6 +2749,8 @@
     const pos = numberOrNull(model?.receita_empresa_pos_periodo);
     const days = numberOrNull(model?.dias_pos_disponiveis);
     const variation = numberOrNull(model?.variacao_receita_empresa_pct);
+    const moment = companyMomentNarrative(model);
+    const baselineInsuficiente = moment.label === 'Sem base comparável';
     if (pre === null || pos === null || !days) {
       return `
         <section class="drill-section">
@@ -2755,15 +2763,15 @@
     const preStart = toIsoDate(addDays(d0, -days));
     const preEnd = toIsoDate(addDays(d0, -1));
     const posEnd = toIsoDate(addDays(d0, days - 1));
-    const className = variation > 0 ? 'drill-positive' : (variation < 0 ? 'drill-negative-text' : '');
-    const arrow = variation > 0 ? '+' : (variation < 0 ? '-' : '');
+    const className = baselineInsuficiente ? '' : (variation > 0 ? 'drill-positive' : (variation < 0 ? 'drill-negative-text' : ''));
+    const arrow = baselineInsuficiente ? '' : (variation > 0 ? '+' : (variation < 0 ? '-' : ''));
     return `
       <section class="drill-section">
         <div class="drill-section-title">Momento da empresa</div>
         <div class="drill-company">
           <div><span>Antes</span><strong>${fmtBRL(pre)}</strong><small>${fmtDateSlash(preStart)} a ${fmtDateSlash(preEnd)}</small></div>
           <div><span>Depois</span><strong>${fmtBRL(pos)}</strong><small>${fmtDateSlash(d0)} a ${fmtDateSlash(posEnd)}</small></div>
-          <div><span>Variacao</span><strong class="${className}">${arrow} ${fmtPct(variation, 1)}</strong><small>${fmtNum(days)} dias comparaveis</small></div>
+          <div><span>${baselineInsuficiente ? 'Leitura' : 'Variacao'}</span><strong class="${className}">${baselineInsuficiente ? escapeHtml(moment.label) : `${arrow} ${fmtPct(variation, 1)}`}</strong><small>${baselineInsuficiente ? escapeHtml(moment.copy) : `${fmtNum(days)} dias comparaveis`}</small></div>
         </div>
       </section>
     `;
