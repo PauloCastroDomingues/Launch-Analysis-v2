@@ -1832,7 +1832,7 @@
     };
   }
 
-  function storyMetricHtml({ label, value, detail, width, state = 'ok', tooltip = '' }) {
+  function storyMetricHtml({ label, value, detail, width, state = 'ok', tooltip = '', extraHtml = '' }) {
     return `
       <div class="story-visual-metric story-visual-metric--${escapeHtml(state)}">
         <div class="story-visual-metric-head">
@@ -1841,6 +1841,7 @@
         </div>
         <div class="story-visual-track" aria-hidden="true"><i style="width:${boundedPct(width).toFixed(1)}%"></i></div>
         <p>${escapeHtml(detail)}</p>
+        ${extraHtml}
       </div>
     `;
   }
@@ -1887,6 +1888,21 @@
       .sort((a, b) => b.share - a.share);
     const rank = comparisonRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
     const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo comparado` : 'Ranking depende de share_trajetoria.';
+    const topShareRows = comparisonRows.slice(0, 3);
+    const topShareHtml = topShareRows.length
+      ? `
+        <div class="story-top-caption">Top 3 produtos por share</div>
+        <ol class="story-top-list" aria-label="Top 3 produtos por representatividade">
+          ${topShareRows.map((row, index) => `
+            <li class="${row.launch.modelo_id === selected.modelo_id ? 'is-selected' : ''}">
+              <b>${fmtNum(index + 1)}º</b>
+              <span title="${escapeHtml(row.launch.modelo)}">${escapeHtml(row.launch.modelo)}</span>
+              <em>${escapeHtml(fmtPct(row.share, 1))}</em>
+            </li>
+          `).join('')}
+        </ol>
+      `
+      : '<div class="story-empty-note">Top 3 depende de share_trajetoria.</div>';
     const thesis = share !== null
       ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
       : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
@@ -1903,7 +1919,8 @@
         detail: rankCopy,
         width: shareWidth,
         state: share !== null && share >= 0.12 ? 'focus' : 'ok',
-        tooltip: 'Mostra quanto o lançamento pesou no faturamento da empresa no período coberto. A barra é uma escala visual de peso relativo; não é meta nem forecast.'
+        tooltip: 'Mostra quanto o lançamento pesou no faturamento da empresa no período coberto. A barra é uma escala visual de peso relativo; não é meta nem forecast.',
+        extraHtml: topShareHtml
       }),
       storyMetricHtml({
         label: 'Momento da empresa',
@@ -2032,7 +2049,7 @@
           </div>
         </div>
         <details class="story-step-details">
-          <summary data-tooltip="${tooltipAttr('Abre os quatro cards técnicos que sustentam o resumo executivo. Ficam recolhidos para poupar espaço e manter a narrativa principal em evidência.')}">Ver evidências da leitura</summary>
+          <summary><span>Ver evidências da leitura</span>${tip('Abre os quatro cards técnicos que sustentam o resumo executivo. Ficam recolhidos para poupar espaço e manter a narrativa principal em evidência.')}</summary>
           <div class="story-step-grid">
             ${cards.map((card) => `
               <div class="story-step story-step--${card.state}">

@@ -1041,6 +1041,7 @@ h1 {
   margin: 8px 0 0;
   color: var(--txt-secondary);
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 .story-brief-verdict {
   min-width: 0;
@@ -1061,6 +1062,7 @@ h1 {
   color: var(--txt-primary);
   font-size: 1rem;
   line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 .story-brief .label-with-tip {
   gap: 6px;
@@ -1197,6 +1199,58 @@ h1 {
   font-size: .75rem;
   line-height: 1.35;
 }
+.story-top-list {
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  margin: 5px 0 0;
+  padding: 0;
+}
+.story-top-caption {
+  margin-top: 10px;
+  color: var(--txt-muted);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.story-top-list li {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  background: rgba(255,255,255,.025);
+  padding: 6px 8px;
+}
+.story-top-list li.is-selected {
+  border-color: rgba(240,120,0,.44);
+  background: rgba(240,120,0,.08);
+}
+.story-top-list b,
+.story-top-list em {
+  color: var(--txt-primary);
+  font-size: .72rem;
+  font-style: normal;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.story-top-list span {
+  min-width: 0;
+  color: var(--txt-secondary);
+  font-size: .74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.story-empty-note {
+  margin-top: 10px;
+  color: var(--txt-muted);
+  font-size: .74rem;
+}
 .story-decision-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1223,6 +1277,9 @@ h1 {
 }
 .story-step-details summary {
   width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   cursor: pointer;
   border: 1px solid var(--border-2);
   border-radius: 8px;
