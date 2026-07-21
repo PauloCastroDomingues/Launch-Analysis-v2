@@ -1832,11 +1832,11 @@
     };
   }
 
-  function storyMetricHtml({ label, value, detail, width, state = 'ok' }) {
+  function storyMetricHtml({ label, value, detail, width, state = 'ok', tooltip = '' }) {
     return `
       <div class="story-visual-metric story-visual-metric--${escapeHtml(state)}">
         <div class="story-visual-metric-head">
-          <span>${escapeHtml(label)}</span>
+          ${labelTip(label, tooltip)}
           <strong>${escapeHtml(value)}</strong>
         </div>
         <div class="story-visual-track" aria-hidden="true"><i style="width:${boundedPct(width).toFixed(1)}%"></i></div>
@@ -1890,51 +1890,64 @@
     const thesis = share !== null
       ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
       : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
+    const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, se existe meta/campanha para explicar o resultado e qual recorte investigar em seguida.';
+    const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, metas mensais e faturamento por campanha disponíveis.';
+    const signalTooltip = 'Resumo automático do momento do lançamento. Não é previsão fechada: é uma síntese para orientar a análise antes de entrar nos gráficos e tabelas.';
+    const periodTooltip = 'Janela principal escolhida no filtro Período. Muda a leitura de KPIs, curva, comparativos e cards de contexto.';
+    const dTooltip = 'Idade analítica do lançamento no snapshot atual. Ativos mostram até onde o dado real já chegou; planejados ou incompletos ficam como leitura parcial.';
+    const revenueTooltip = 'Faturamento do lançamento usado como base da leitura executiva, vindo de share_trajetoria ou da janela selecionada quando o share ainda não está disponível.';
     const evidence = [
       storyMetricHtml({
         label: 'Representatividade',
         value: fmtPct(share, 1),
         detail: rankCopy,
         width: shareWidth,
-        state: share !== null && share >= 0.12 ? 'focus' : 'ok'
+        state: share !== null && share >= 0.12 ? 'focus' : 'ok',
+        tooltip: 'Mostra quanto o lançamento pesou no faturamento da empresa no período coberto. A barra é uma escala visual de peso relativo; não é meta nem forecast.'
       }),
       storyMetricHtml({
         label: 'Momento da empresa',
         value: company.value,
         detail: company.copy,
         width: companyWidth,
-        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'
+        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok',
+        tooltip: 'Compara o faturamento da empresa antes e depois do D0. Serve para separar performance do produto de contexto geral da empresa, como aceleração ou pressão.'
       }),
       storyMetricHtml({
         label: 'Meta mensal',
         value: meta.value,
         detail: meta.copy,
         width: metaWidth,
-        state: metaPending ? 'pending' : 'ok'
+        state: metaPending ? 'pending' : 'ok',
+        tooltip: 'Cruza o mês do lançamento com metas_mensais. Quando houver meta e realizado, mostra atingimento; quando não houver JSON exportado, sinaliza pendência.'
       }),
       storyMetricHtml({
         label: 'Campanhas',
         value: campaign.value,
         detail: campaignRows.length ? `${fmtNum(campaignCount)} campanha(s) mapeada(s)` : campaign.copy,
         width: campaignWidth,
-        state: campaignPending ? 'pending' : 'ok'
+        state: campaignPending ? 'pending' : 'ok',
+        tooltip: 'Mostra se existe faturamento por campanha associado ao lançamento. Ajuda a separar venda orgânica, CRM, mídia paga e ações comerciais atribuídas.'
       })
     ];
     const decisionNotes = [
       {
         title: 'Onde olhar primeiro',
+        tooltip: 'Indica o próximo recorte que mais reduz incerteza: curva, mix por cor/submodelo, estoque ou comparativo histórico.',
         copy: share !== null && share >= 0.08
           ? 'Abrir representatividade, mix por cor/submodelo e estoque para entender o que carregou a receita.'
           : 'Comparar a curva com os lançamentos históricos antes de tratar o sinal como material.'
       },
       {
         title: 'Risco executivo',
+        tooltip: 'Aponta a principal armadilha de interpretação. Exemplo: achar que o lançamento cresceu a empresa quando ele pode só ter deslocado receita interna.',
         copy: companyVariation !== null && companyVariation < -0.05
           ? 'Separar crescimento real de possível deslocamento interno em uma empresa pressionada.'
           : 'Confirmar se o lançamento está acelerando a empresa ou apenas seguindo o contexto.'
       },
       {
         title: 'Próxima integração',
+        tooltip: 'Mostra quais dados ainda faltam para fechar a história com mais segurança, principalmente metas mensais e faturamento por campanha.',
         copy: metaPending || campaignPending
           ? 'Metas mensais e faturamento por campanha ainda completam a história de eficiência.'
           : 'Cruzar meta, campanha e estoque para decidir reforço, pausa ou redistribuição.'
@@ -1948,7 +1961,8 @@
         value: company.value,
         label: company.label,
         copy: company.copy,
-        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'
+        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok',
+        tooltip: 'Evidência técnica do contexto: receita antes vs depois do lançamento e variação percentual da empresa.'
       },
       {
         step: '02',
@@ -1956,7 +1970,8 @@
         value: fmtPct(share, 1),
         label: fmtBRL(launchRevenue),
         copy: rankCopy,
-        state: 'focus'
+        state: 'focus',
+        tooltip: 'Evidência técnica do peso do lançamento: share acumulado, faturamento do lançamento e posição no universo comparado.'
       },
       {
         step: '03',
@@ -1964,7 +1979,8 @@
         value: meta.value,
         label: meta.label,
         copy: meta.copy,
-        state: meta.label === 'Pendente' ? 'pending' : 'ok'
+        state: meta.label === 'Pendente' ? 'pending' : 'ok',
+        tooltip: 'Evidência técnica de meta: mês, meta esperada, realizado e atingimento quando metas_mensais estiver exportado.'
       },
       {
         step: '04',
@@ -1972,7 +1988,8 @@
         value: campaign.value,
         label: campaign.label,
         copy: campaign.copy,
-        state: campaign.label === 'Pendente' ? 'pending' : 'ok'
+        state: campaign.label === 'Pendente' ? 'pending' : 'ok',
+        tooltip: 'Evidência técnica de atribuição comercial: campanhas cadastradas, receita atribuída e quantidade de linhas disponíveis.'
       }
     ];
 
@@ -1980,24 +1997,24 @@
       <div class="story-brief-panel story-brief-panel--${escapeHtml(signal.state)}">
         <div class="story-brief-head">
           <div>
-            <div class="section-kicker">Leitura executiva</div>
+            <div class="section-kicker story-kicker">${labelTip('Leitura executiva', storyIntroTooltip)}</div>
             <h2>A história do lançamento</h2>
             <p>${escapeHtml(thesis)} A tela deve contar se o lançamento foi relevante para a empresa, se performou contra meta e se a campanha explica o resultado.</p>
           </div>
           <div class="story-brief-verdict">
-            <span>Pergunta central</span>
+            ${labelTip('Pergunta central', centralQuestionTooltip)}
             <strong>${escapeHtml(signal.question)}</strong>
           </div>
         </div>
         <div class="story-visual-grid">
           <div class="story-hero-signal">
-            <span>Sinal executivo</span>
+            ${labelTip('Sinal executivo', signalTooltip)}
             <strong>${escapeHtml(signal.title)}</strong>
             <p>${escapeHtml(signal.copy)}</p>
             <div class="story-signal-meta">
-              <i>${escapeHtml(selectedPeriod)}</i>
-              <i>${escapeHtml(dLabel)}</i>
-              <i>${escapeHtml(fmtBRL(launchRevenue))}</i>
+              <i tabindex="0" data-tooltip="${tooltipAttr(periodTooltip)}">${escapeHtml(selectedPeriod)}</i>
+              <i tabindex="0" data-tooltip="${tooltipAttr(dTooltip)}">${escapeHtml(dLabel)}</i>
+              <i tabindex="0" data-tooltip="${tooltipAttr(revenueTooltip)}">${escapeHtml(fmtBRL(launchRevenue))}</i>
             </div>
           </div>
           <div>
@@ -2007,7 +2024,7 @@
             <div class="story-decision-grid">
               ${decisionNotes.map((item) => `
                 <div class="story-decision-card">
-                  <span>${escapeHtml(item.title)}</span>
+                  ${labelTip(item.title, item.tooltip)}
                   <p>${escapeHtml(item.copy)}</p>
                 </div>
               `).join('')}
@@ -2015,13 +2032,13 @@
           </div>
         </div>
         <details class="story-step-details">
-          <summary>Ver evidências da leitura</summary>
+          <summary data-tooltip="${tooltipAttr('Abre os quatro cards técnicos que sustentam o resumo executivo. Ficam recolhidos para poupar espaço e manter a narrativa principal em evidência.')}">Ver evidências da leitura</summary>
           <div class="story-step-grid">
             ${cards.map((card) => `
               <div class="story-step story-step--${card.state}">
                 <div class="story-step-num">${escapeHtml(card.step)}</div>
                 <div>
-                  <span>${escapeHtml(card.title)}</span>
+                  ${labelTip(card.title, card.tooltip)}
                   <strong>${escapeHtml(card.value)}</strong>
                   <em>${escapeHtml(card.label)}</em>
                   <p>${escapeHtml(card.copy)}</p>

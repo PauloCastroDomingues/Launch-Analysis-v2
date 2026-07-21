@@ -1062,6 +1062,28 @@ h1 {
   font-size: 1rem;
   line-height: 1.18;
 }
+.story-brief .label-with-tip {
+  gap: 6px;
+}
+.story-brief .help-button--mini {
+  width: 16px;
+  height: 16px;
+  font-size: .55rem;
+  transform: none;
+}
+.story-kicker .label-with-tip {
+  align-items: center;
+}
+.story-brief-verdict .label-with-tip,
+.story-hero-signal .label-with-tip,
+.story-decision-card .label-with-tip,
+.story-step .label-with-tip {
+  align-items: center;
+}
+.story-visual-metric-head .label-with-tip {
+  flex: 1 1 auto;
+  align-items: center;
+}
 .story-visual-grid {
   display: grid;
   grid-template-columns: minmax(230px, .32fr) minmax(0, 1fr);
@@ -1122,7 +1144,7 @@ h1 {
 }
 .story-visual-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 .story-visual-metric {
