@@ -1785,6 +1785,66 @@
     };
   }
 
+  function boundedPct(value, fallback = 0) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    return Math.max(0, Math.min(100, num));
+  }
+
+  function storySignal({ share, companyVariation, metaPending, campaignPending }) {
+    if (share === null) {
+      return {
+        state: 'pending',
+        title: 'Leitura em construção',
+        copy: 'Falta share_trajetoria para transformar a leitura em decisão executiva.',
+        question: 'Qual é o peso real no faturamento?'
+      };
+    }
+    if (companyVariation !== null && companyVariation < -0.05 && share >= 0.08) {
+      return {
+        state: 'warn',
+        title: 'Peso relevante em empresa pressionada',
+        copy: 'O lançamento aparece material, mas precisa ser lido contra a queda ou pressão do faturamento total.',
+        question: 'Compensou o contexto ou deslocou receita interna?'
+      };
+    }
+    if (share >= 0.12) {
+      return {
+        state: 'focus',
+        title: 'Lançamento com peso executivo',
+        copy: 'A representatividade já é suficiente para orientar leitura de mix, campanha e estoque.',
+        question: 'Como preservar a rampa sem canibalizar a linha?'
+      };
+    }
+    if (metaPending || campaignPending) {
+      return {
+        state: 'pending',
+        title: 'Sinal comercial incompleto',
+        copy: 'O dado de venda existe, mas meta ou campanha ainda limitam a leitura de eficiência.',
+        question: 'O desempenho está acima da expectativa planejada?'
+      };
+    }
+    return {
+      state: 'ok',
+      title: 'Sinal em acompanhamento',
+      copy: 'A leitura está suficiente para acompanhamento, mas ainda pede comparação por janela e mix.',
+      question: 'O ritmo sustenta as próximas janelas?'
+    };
+  }
+
+  function storyMetricHtml({ label, value, detail, width, state = 'ok' }) {
+    return `
+      <div class="story-visual-metric story-visual-metric--${escapeHtml(state)}">
+        <div class="story-visual-metric-head">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+        <div class="story-visual-track" aria-hidden="true"><i style="width:${boundedPct(width).toFixed(1)}%"></i></div>
+        <p>${escapeHtml(detail)}</p>
+      </div>
+    `;
+  }
+
   function renderStoryBrief(selected) {
     const wrap = $('story-brief');
     if (!wrap || !selected) return;
@@ -1792,10 +1852,32 @@
     const model = shareModelForLine(selected.modelo_id);
     const selectedWindow = selectedAnalysisWindow(selected);
     const company = companyMomentNarrative(model);
-    const meta = metaNarrative(metaMensalForLaunch(selected));
+    const metaRow = metaMensalForLaunch(selected);
+    const meta = metaNarrative(metaRow);
     const campaign = campaignNarrative(selected);
     const share = numberOrNull(model?.share_acumulado_atual);
     const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
+    const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
+    const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
+    const metaActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+    const metaPct = roasNumberOrNull(metaRow?.atingimento) ?? ratioOrNull(metaActual, metaTarget);
+    const campaignRows = campaignRevenueRowsForLaunch(selected);
+    const campaignRevenueValues = campaignRows.map(campaignRevenueValue).filter((value) => value !== null);
+    const campaignRevenue = campaignRevenueValues.length ? campaignRevenueValues.reduce((acc, value) => acc + value, 0) : null;
+    const campaignCount = new Set(campaignRows.map((row) => normalizeText(row.campanha || row.campaign || row.utm_campaign)).filter(Boolean)).size || campaignRows.length;
+    const metaPending = meta.label === 'Pendente';
+    const campaignPending = campaign.label === 'Pendente';
+    const signal = storySignal({ share, companyVariation, metaPending, campaignPending });
+    const selectedPeriod = ANALYSIS_PERIODS.find((item) => item.key === state.analysisPeriodKey)?.label || state.analysisPeriodKey;
+    const dLabel = selected.isFuture
+      ? `D${selected.dPlus}`
+      : `D+${Math.max(0, selected.dPlus ?? 0)}`;
+    const shareWidth = share === null ? 0 : Math.max(4, Math.min(100, (share / 0.18) * 100));
+    const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
+    const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
+    const campaignWidth = campaignRevenue === null || !launchRevenue
+      ? (campaignRows.length ? 24 : 0)
+      : Math.max(6, Math.min(100, (campaignRevenue / launchRevenue) * 100));
     const comparisonRows = selectedCompareLaunches()
       .map((launch) => ({
         launch,
@@ -1806,8 +1888,58 @@
     const rank = comparisonRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
     const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo comparado` : 'Ranking depende de share_trajetoria.';
     const thesis = share !== null
-      ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no periodo coberto.`
-      : `${selected.modelo} ainda nao tem leitura de representatividade carregada.`;
+      ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
+      : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
+    const evidence = [
+      storyMetricHtml({
+        label: 'Representatividade',
+        value: fmtPct(share, 1),
+        detail: rankCopy,
+        width: shareWidth,
+        state: share !== null && share >= 0.12 ? 'focus' : 'ok'
+      }),
+      storyMetricHtml({
+        label: 'Momento da empresa',
+        value: company.value,
+        detail: company.copy,
+        width: companyWidth,
+        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'
+      }),
+      storyMetricHtml({
+        label: 'Meta mensal',
+        value: meta.value,
+        detail: meta.copy,
+        width: metaWidth,
+        state: metaPending ? 'pending' : 'ok'
+      }),
+      storyMetricHtml({
+        label: 'Campanhas',
+        value: campaign.value,
+        detail: campaignRows.length ? `${fmtNum(campaignCount)} campanha(s) mapeada(s)` : campaign.copy,
+        width: campaignWidth,
+        state: campaignPending ? 'pending' : 'ok'
+      })
+    ];
+    const decisionNotes = [
+      {
+        title: 'Onde olhar primeiro',
+        copy: share !== null && share >= 0.08
+          ? 'Abrir representatividade, mix por cor/submodelo e estoque para entender o que carregou a receita.'
+          : 'Comparar a curva com os lançamentos históricos antes de tratar o sinal como material.'
+      },
+      {
+        title: 'Risco executivo',
+        copy: companyVariation !== null && companyVariation < -0.05
+          ? 'Separar crescimento real de possível deslocamento interno em uma empresa pressionada.'
+          : 'Confirmar se o lançamento está acelerando a empresa ou apenas seguindo o contexto.'
+      },
+      {
+        title: 'Próxima integração',
+        copy: metaPending || campaignPending
+          ? 'Metas mensais e faturamento por campanha ainda completam a história de eficiência.'
+          : 'Cruzar meta, campanha e estoque para decidir reforço, pausa ou redistribuição.'
+      }
+    ];
 
     const cards = [
       {
@@ -1816,7 +1948,7 @@
         value: company.value,
         label: company.label,
         copy: company.copy,
-        state: numberOrNull(model?.variacao_receita_empresa_pct) < -0.05 ? 'warn' : 'ok'
+        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'
       },
       {
         step: '02',
@@ -1845,29 +1977,59 @@
     ];
 
     wrap.innerHTML = `
-      <div class="story-brief-head">
-        <div>
-          <div class="section-kicker">Leitura executiva</div>
-          <h2>A história do lançamento</h2>
-          <p>${escapeHtml(thesis)} A leitura principal cruza momento da empresa, peso no faturamento, meta mensal e eficiencia por campanha.</p>
+      <div class="story-brief-panel story-brief-panel--${escapeHtml(signal.state)}">
+        <div class="story-brief-head">
+          <div>
+            <div class="section-kicker">Leitura executiva</div>
+            <h2>A história do lançamento</h2>
+            <p>${escapeHtml(thesis)} A tela deve contar se o lançamento foi relevante para a empresa, se performou contra meta e se a campanha explica o resultado.</p>
+          </div>
+          <div class="story-brief-verdict">
+            <span>Pergunta central</span>
+            <strong>${escapeHtml(signal.question)}</strong>
+          </div>
         </div>
-        <div class="story-brief-verdict">
-          <span>Pergunta central</span>
-          <strong>${share !== null ? 'Peso relevante ou efeito de contexto?' : 'Contexto ainda incompleto'}</strong>
-        </div>
-      </div>
-      <div class="story-step-grid">
-        ${cards.map((card) => `
-          <div class="story-step story-step--${card.state}">
-            <div class="story-step-num">${escapeHtml(card.step)}</div>
-            <div>
-              <span>${escapeHtml(card.title)}</span>
-              <strong>${escapeHtml(card.value)}</strong>
-              <em>${escapeHtml(card.label)}</em>
-              <p>${escapeHtml(card.copy)}</p>
+        <div class="story-visual-grid">
+          <div class="story-hero-signal">
+            <span>Sinal executivo</span>
+            <strong>${escapeHtml(signal.title)}</strong>
+            <p>${escapeHtml(signal.copy)}</p>
+            <div class="story-signal-meta">
+              <i>${escapeHtml(selectedPeriod)}</i>
+              <i>${escapeHtml(dLabel)}</i>
+              <i>${escapeHtml(fmtBRL(launchRevenue))}</i>
             </div>
           </div>
-        `).join('')}
+          <div>
+            <div class="story-visual-metrics">
+              ${evidence.join('')}
+            </div>
+            <div class="story-decision-grid">
+              ${decisionNotes.map((item) => `
+                <div class="story-decision-card">
+                  <span>${escapeHtml(item.title)}</span>
+                  <p>${escapeHtml(item.copy)}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        <details class="story-step-details">
+          <summary>Ver evidências da leitura</summary>
+          <div class="story-step-grid">
+            ${cards.map((card) => `
+              <div class="story-step story-step--${card.state}">
+                <div class="story-step-num">${escapeHtml(card.step)}</div>
+                <div>
+                  <span>${escapeHtml(card.title)}</span>
+                  <strong>${escapeHtml(card.value)}</strong>
+                  <em>${escapeHtml(card.label)}</em>
+                  <p>${escapeHtml(card.copy)}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </details>
       </div>
     `;
   }
