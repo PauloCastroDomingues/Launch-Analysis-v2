@@ -565,9 +565,10 @@ function modelosNormCteSql_() {
     *,
     CASE modelo_id
       WHEN 'rs8_monochrome' THEN 1
-      WHEN 'phantom' THEN 2
-      WHEN 'gt' THEN 3
-      WHEN 'avant' THEN 4
+      WHEN 'series_2' THEN 2
+      WHEN 'phantom' THEN 3
+      WHEN 'gt' THEN 4
+      WHEN 'avant' THEN 5
       ELSE 99
     END AS prioridade_modelo,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
@@ -604,6 +605,19 @@ function itensClassificadosV1CteSql_(options) {
       WHEN m.modelo_id = 'rs8_monochrome' AND STARTS_WITH(i.sku_compact, 'rs8avantcf') THEN 'rs8avantcf'
       WHEN m.modelo_id = 'rs8_monochrome' AND (STARTS_WITH(i.sku_compact, 'rs8avantmono') OR STARTS_WITH(i.sku_compact, 'rs8mono')) THEN 'rs8mono'
       WHEN m.modelo_id = 'rs8_monochrome' THEN 'rs8_monochrome_sem_prefixo'
+      WHEN m.modelo_id = 'series_2' AND (
+        REGEXP_CONTAINS(i.match_text_norm, r'(^| )(whisky|whiskey)( |$)')
+        OR REGEXP_CONTAINS(i.sku_compact, r'^(rs8avant|series2|s2)(whisky|whiskey|wh|wk|wky|ws)')
+      ) THEN 'series2_whisky'
+      WHEN m.modelo_id = 'series_2' AND (
+        REGEXP_CONTAINS(i.match_text_norm, r'(^| )(off white|offwhite)( |$)')
+        OR REGEXP_CONTAINS(i.sku_compact, r'^(rs8avant|series2|s2)(ow|offwhite)')
+      ) THEN 'series2_off_white'
+      WHEN m.modelo_id = 'series_2' AND (
+        REGEXP_CONTAINS(i.match_text_norm, r'(^| )(azul marinho|marinho)( |$)')
+        OR REGEXP_CONTAINS(i.sku_compact, r'^(rs8avant|series2|s2)(azulmarinho|marinho|mr|am)')
+      ) THEN 'series2_azul_marinho'
+      WHEN m.modelo_id = 'series_2' THEN 'series2_sem_cor'
       WHEN m.modelo_id = 'phantom' AND STARTS_WITH(i.sku_compact, 'phteasy') THEN 'phteasy'
       WHEN m.modelo_id = 'phantom' AND STARTS_WITH(i.sku_compact, 'phtslip') THEN 'phtslip'
       WHEN m.modelo_id = 'phantom' AND STARTS_WITH(i.sku_compact, 'phtknit') THEN 'phtknit'
@@ -621,6 +635,7 @@ function itensClassificadosV1CteSql_(options) {
     END AS sub_modelo_id,
     CASE
       WHEN m.modelo_id = 'rs8_monochrome' THEN 'regra_monochrome'
+      WHEN m.modelo_id = 'series_2' THEN 'regra_series_2_cores'
       WHEN m.modelo_id = 'phantom' THEN 'regra_phantom'
       WHEN m.modelo_id = 'gt' THEN 'regra_gt'
       WHEN m.modelo_id = 'avant' THEN 'regra_avant'
@@ -641,6 +656,20 @@ function itensClassificadosV1CteSql_(options) {
         OR STARTS_WITH(i.sku_compact, 'rs8mono')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )rs8 avant monochrome( |$)')
         OR REGEXP_CONTAINS(i.item_name_norm, r'(^| )(monochrome|monocrome)( |$)')
+      )
+    )
+    OR (
+      m.modelo_id = 'series_2'
+      AND (
+        STARTS_WITH(i.sku_compact, 'rs8avant')
+        OR STARTS_WITH(i.sku_compact, 'series2')
+        OR STARTS_WITH(i.sku_compact, 'series')
+        OR STARTS_WITH(i.sku_compact, 's2')
+        OR REGEXP_CONTAINS(i.match_text_norm, r'(^| )(rs8 avant|series 2|series2|serie 2)( |$)')
+      )
+      AND (
+        REGEXP_CONTAINS(i.match_text_norm, r'(^| )(whisky|whiskey|off white|offwhite|azul marinho|marinho)( |$)')
+        OR REGEXP_CONTAINS(i.sku_compact, r'^(rs8avant|series2|s2)(whisky|whiskey|wh|wk|wky|ws|ow|offwhite|azulmarinho|marinho|mr|am)')
       )
     )
     OR (
@@ -682,7 +711,7 @@ function itensClassificadosV1CteSql_(options) {
       )
     )
     OR (
-      m.modelo_id NOT IN ('rs8_monochrome', 'phantom', 'gt', 'avant')
+      m.modelo_id NOT IN ('rs8_monochrome', 'series_2', 'phantom', 'gt', 'avant')
       AND (
         EXISTS (
           SELECT 1
@@ -765,10 +794,19 @@ itens_validos AS (
     SAFE_CAST(i.line_gross_amount - IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS receita_liquida,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
     REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
-    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM \`reise-ssot.mart_shared.fct_order_item\` i
   LEFT JOIN \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
     ON CAST(o.order_sk AS STRING) = CAST(i.order_sk AS STRING)
+  LEFT JOIN (
+    SELECT
+      UPPER(TRIM(sku)) AS sku_key,
+      ARRAY_AGG(NULLIF(TRIM(cor), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS cor
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+    WHERE NULLIF(TRIM(sku), '') IS NOT NULL
+    GROUP BY 1
+  ) pl_match
+    ON pl_match.sku_key = UPPER(TRIM(i.sku))
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
     AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
@@ -841,7 +879,7 @@ itens_com_flags AS (
     DATE_DIFF(ic.data, ic.d0, DAY) AS dia_desde_d0,
     COALESCE(
       NULLIF(TRIM(pl.cor), ''),
-      NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(all black|off white|azul marinho|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
+      NULLIF(REGEXP_EXTRACT(ic.match_text_norm, r'(?:^| )(all black|off white|azul marinho|whisky|whiskey|caqui|cinza|marrom|preto|branco|camurca)(?: |$)'), ''),
       'sem_cor'
     ) AS cor_detectada,
     COALESCE(
@@ -850,8 +888,16 @@ itens_com_flags AS (
       NULLIF(REGEXP_EXTRACT(ic.item_name_norm, r'(?:^| )(3[3-9]|4[0-8])(?: |$)'), '')
     ) AS tamanho_detectado
   FROM itens_classificados ic
-  LEFT JOIN \`reise-ssot.mart_shared.produto_lancamento_v\` pl
-    ON UPPER(TRIM(pl.sku)) = UPPER(TRIM(ic.sku))
+  LEFT JOIN (
+    SELECT
+      UPPER(TRIM(sku)) AS sku_key,
+      ARRAY_AGG(NULLIF(TRIM(cor), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS cor,
+      ARRAY_AGG(NULLIF(TRIM(CAST(tamanho AS STRING)), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS tamanho
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+    WHERE NULLIF(TRIM(sku), '') IS NOT NULL
+    GROUP BY 1
+  ) pl
+    ON pl.sku_key = UPPER(TRIM(ic.sku))
 )
 SELECT
   modelo_id,
@@ -959,8 +1005,17 @@ itens_validos AS (
     SAFE_CAST(i.line_gross_amount AS NUMERIC) AS valor_bruto_item,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
     REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
-    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  LEFT JOIN (
+    SELECT
+      UPPER(TRIM(sku)) AS sku_key,
+      ARRAY_AGG(NULLIF(TRIM(cor), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS cor
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+    WHERE NULLIF(TRIM(sku), '') IS NOT NULL
+    GROUP BY 1
+  ) pl_match
+    ON pl_match.sku_key = UPPER(TRIM(i.sku))
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
     AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
@@ -1152,7 +1207,7 @@ classificadas_raw AS (
 SELECT TO_JSON_STRING(STRUCT(
   'rs8_monochrome' AS modelo_id,
   'reise-ssot.core.order_item + core.order' AS fonte,
-  'itens_classificados_v1: prioridade rs8_monochrome > phantom > gt > avant > cadastro_generico; janela D0 a D+90' AS regra_match,
+  'itens_classificados_v1: prioridade rs8_monochrome > series_2 > phantom > gt > avant > cadastro_generico; janela D0 a D+90' AS regra_match,
   STRUCT(
     CAST((SELECT d0 FROM modelos_norm) AS STRING) AS inicio,
     CAST(DATE_ADD((SELECT d0 FROM modelos_norm), INTERVAL 90 DAY) AS STRING) AS fim
@@ -1813,7 +1868,7 @@ function logProdutosDiaExport_(modelos, produtosDia) {
 
   Logger.log(`exportarTudo: ${produtosDia.length} linhas em lancamentos_produtos_dia.json.`);
   Logger.log(`exportarTudo: tabelas consultadas = ${tables.join(', ')}`);
-  Logger.log('exportarTudo: classificacao canonica em BigQuery por SKU/nome, prioridade Monochrome > Phantom > GT > Avant > cadastro generico.');
+  Logger.log('exportarTudo: classificacao canonica em BigQuery por SKU/nome/cor, prioridade Monochrome > Series 2 > Phantom > GT > Avant > cadastro generico.');
   Logger.log(`exportarTudo: linhas por modelo = ${JSON.stringify(byModelo)}`);
   Logger.log(`exportarTudo: linhas por origem = ${JSON.stringify(byOrigem)}`);
 
@@ -2242,8 +2297,17 @@ itens_validos AS (
     SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita_bruta,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
     REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
-    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  LEFT JOIN (
+    SELECT
+      UPPER(TRIM(sku)) AS sku_key,
+      ARRAY_AGG(NULLIF(TRIM(cor), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS cor
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+    WHERE NULLIF(TRIM(sku), '') IS NOT NULL
+    GROUP BY 1
+  ) pl_match
+    ON pl_match.sku_key = UPPER(TRIM(i.sku))
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
     AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)

@@ -294,7 +294,8 @@
   const COLOR_DEFS = [
     { label: 'All Black', norm: 'all black', end: /\s+all\s+black$/i },
     { label: 'Off White', norm: 'off white', end: /\s+off\s+white$/i },
-    { label: 'Azul-marinho', norm: 'azul marinho', end: /\s+azul[-\s]+marinho$/i },
+    { label: 'Azul Marinho', norm: 'azul marinho', end: /\s+azul[-\s]+marinho$/i },
+    { label: 'Whisky', norm: 'whisky', end: /\s+whisk(?:y|ey)$/i },
     { label: 'Caqui', norm: 'caqui', end: /\s+caqui$/i },
     { label: 'Cinza', norm: 'cinza', end: /\s+cinza$/i },
     { label: 'Marrom', norm: 'marrom', end: /\s+marrom$/i },
@@ -327,7 +328,8 @@
   const NORMALIZED_COLOR_DEFS = [
     { label: 'All Black', norm: 'all black', aliases: ['all black'] },
     { label: 'Off White', norm: 'off white', aliases: ['off white', 'offwhite'] },
-    { label: 'Azul-marinho', norm: 'azul marinho', aliases: ['azul marinho', 'marinho'] },
+    { label: 'Azul Marinho', norm: 'azul marinho', aliases: ['azul marinho', 'marinho'] },
+    { label: 'Whisky', norm: 'whisky', aliases: ['whisky', 'whiskey'] },
     { label: 'Caqui', norm: 'caqui', aliases: ['caqui'] },
     { label: 'Cinza', norm: 'cinza', aliases: ['cinza'] },
     { label: 'Marrom', norm: 'marrom', aliases: ['marrom'] },
@@ -350,7 +352,11 @@
     PT: 'Preto',
     AB: 'All Black',
     M: 'Marrom',
-    MR: 'Azul-marinho',
+    MR: 'Azul Marinho',
+    AM: 'Azul Marinho',
+    WH: 'Whisky',
+    WK: 'Whisky',
+    WS: 'Whisky',
     C: 'Cinza',
     O: 'Oliva'
   };
@@ -2218,6 +2224,10 @@
     rs8avantcf: 'RS8 Avant CF',
     rs8mono: 'RS8 Mono',
     rs8_monochrome_sem_prefixo: 'Monochrome sem prefixo',
+    series2_whisky: 'Whisky',
+    series2_off_white: 'Off White',
+    series2_azul_marinho: 'Azul Marinho',
+    series2_sem_cor: 'Series 2 sem cor',
     phteasy: 'Phantom Easy',
     phtslip: 'Phantom Slip',
     phtknit: 'Phantom Knit',
@@ -2312,6 +2322,12 @@
       if (compact.startsWith('rs8avantcf')) return 'rs8avantcf';
       if (compact.startsWith('rs8avantmono') || compact.startsWith('rs8mono')) return 'rs8mono';
       return 'rs8_monochrome_sem_prefixo';
+    }
+    if (id === 'series_2') {
+      if (/whisky|whiskey|^(rs8avant|series2|s2)(wh|wk|wky|ws)/.test(compact)) return 'series2_whisky';
+      if (/offwhite|^(rs8avant|series2|s2)(ow|offwhite)/.test(compact)) return 'series2_off_white';
+      if (/azulmarinho|marinho|^(rs8avant|series2|s2)(mr|am|azulmarinho|marinho)/.test(compact)) return 'series2_azul_marinho';
+      return 'series2_sem_cor';
     }
     if (id === 'phantom') {
       if (compact.startsWith('phteasy') || compact.startsWith('phantomeasy')) return 'phteasy';

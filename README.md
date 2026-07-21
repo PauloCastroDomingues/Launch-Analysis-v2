@@ -43,7 +43,7 @@ Os modelos ficam em `data/lancamentos_modelos.json`.
 | `avant` | Avant | `historico` | `2025-12-14` | Histórico recalculado pelo SSOT com pedidos válidos. |
 | `phantom` | Phantom | `historico` | `2026-04-16` | Histórico estático; 90d ainda não consolidado. |
 | `rs8_monochrome` | RS8 Avant Monochrome | `ativo` | `2026-06-25` | Exportado pelo Apps Script/BigQuery. |
-| `series_2` | Series 2 | `ativo` | `2026-07-21` | Aguardando nova exportação pelo Apps Script/BigQuery. |
+| `series_2` | Series 2 | `ativo` | `2026-07-21` | Relançamento RS8 Avant por cores: Whisky, Off White e Azul Marinho. |
 | `pais_2026` | Lançamento Dia dos Pais | `planejado` | `2026-08-10` | Benchmark e planejamento antes do D0. |
 
 ## Benchmarks Auditados
@@ -231,13 +231,15 @@ No launch dashboard, o rótulo técnico é sempre `CPA` (`investimento / pedidos
 
 A classificação usada por vendas, auditoria Monochrome e estoque fica centralizada na CTE `itens_classificados_v1` em `apps_script/ExportLaunchAnalysis.gs`.
 
-Para `modelo_id IN ('rs8_monochrome', 'phantom', 'gt', 'avant')`, o match é uma regra fixa de SKU/nome com prioridade:
+Para `modelo_id IN ('rs8_monochrome', 'series_2', 'phantom', 'gt', 'avant')`, o match é uma regra fixa de SKU/nome/cor com prioridade:
 
 ```txt
-rs8_monochrome > phantom > gt > avant > cadastro_generico
+rs8_monochrome > series_2 > phantom > gt > avant > cadastro_generico
 ```
 
-Nesses quatro modelos, os campos `sku_prefixos` e `termos_busca` de `data/lancamentos_modelos.json` são cadastro descritivo e apoio operacional; eles não controlam sozinhos o match efetivo. Alterar a regra de match de `rs8_monochrome`, `phantom`, `gt` ou `avant` exige editar a CTE `itens_classificados_v1`, e portar a mesma regra para `reise-ssot.mart_shared.produto_lancamento_v` quando a regra tiver impacto no catálogo canônico.
+Nesses modelos, os campos `sku_prefixos` e `termos_busca` de `data/lancamentos_modelos.json` são cadastro descritivo e apoio operacional; eles não controlam sozinhos o match efetivo. Alterar a regra de match de `rs8_monochrome`, `series_2`, `phantom`, `gt` ou `avant` exige editar a CTE `itens_classificados_v1`, e portar a mesma regra para `reise-ssot.mart_shared.produto_lancamento_v` quando a regra tiver impacto no catálogo canônico.
+
+`series_2` é um recorte do RS8 Avant relançado em cores específicas. O exportador classifica como Series 2 apenas itens RS8 Avant/Series 2 com cor Whisky, Off White ou Azul Marinho; esses itens entram antes do Avant comum e abrem sub-modelos `series2_whisky`, `series2_off_white` e `series2_azul_marinho`.
 
 Para modelos fora dessa lista fixa, o match genérico continua usando `sku_prefixos` e `termos_busca` do JSON.
 
