@@ -43,6 +43,7 @@ Os modelos ficam em `data/lancamentos_modelos.json`.
 | `avant` | Avant | `historico` | `2025-12-14` | Histórico recalculado pelo SSOT com pedidos válidos. |
 | `phantom` | Phantom | `historico` | `2026-04-16` | Histórico estático; 90d ainda não consolidado. |
 | `rs8_monochrome` | RS8 Avant Monochrome | `ativo` | `2026-06-25` | Exportado pelo Apps Script/BigQuery. |
+| `series_2` | Series 2 | `ativo` | `2026-07-21` | Aguardando nova exportação pelo Apps Script/BigQuery. |
 | `pais_2026` | Lançamento Dia dos Pais | `planejado` | `2026-08-10` | Benchmark e planejamento antes do D0. |
 
 ## Benchmarks Auditados

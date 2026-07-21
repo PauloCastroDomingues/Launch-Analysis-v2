@@ -49,6 +49,18 @@ window.REISE_FALLBACK_DATA = {
       "observacao": "Em curso. Dados devem entrar via lancamentos_produtos_dia.json gerado pelo Apps Script/BigQuery."
     },
     {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "linha": "Series 2",
+      "data_lancamento": "2026-07-21",
+      "data_oficial": "2026-07-21",
+      "day_zero_base": "2026-07-21",
+      "termos_busca": "Series 2|Series2|Serie 2",
+      "sku_prefixos": "SERIES-2,SERIES2,S2",
+      "status": "ativo",
+      "observacao": "Novo lancamento ativo. Dados devem entrar via exportarTudo usando match generico por termos_busca/sku_prefixos."
+    },
+    {
       "modelo_id": "pais_2026",
       "modelo": "Lançamento Dia dos Pais",
       "linha": "Dia dos Pais 2026",

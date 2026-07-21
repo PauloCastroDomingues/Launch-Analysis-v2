@@ -20,6 +20,7 @@
     avant: { line: '#4C9F6A', fill: 'rgba(76,159,106,0.12)' },
     phantom: { line: '#7B8FE0', fill: 'rgba(123,143,224,0.12)' },
     rs8_monochrome: { line: '#E0B84C', fill: 'rgba(224,184,76,0.12)' },
+    series_2: { line: '#E05252', fill: 'rgba(224,82,82,0.12)' },
     pais_2026: { line: '#5BB8D4', fill: 'rgba(91,184,212,0.12)' },
     _fallback: ['#E05252', '#5BB8D4', '#A87FD4', '#8FBD56']
   };
