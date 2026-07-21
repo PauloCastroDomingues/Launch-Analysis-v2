@@ -1834,21 +1834,49 @@
     const pos = numberOrNull(model?.receita_empresa_pos_periodo);
     const days = numberOrNull(model?.dias_pos_disponiveis);
     if (variation === null && pre === null && pos === null) {
-      return { label: 'Momento', value: 'Sem contexto', copy: 'share_trajetoria ainda nao trouxe a leitura antes/depois da empresa.' };
+      return {
+        label: 'Sem contexto',
+        value: 'Sem contexto',
+        copy: 'Ainda nao ha leitura antes/depois da empresa para separar efeito do lancamento de contexto geral.',
+        evidence: 'share_trajetoria ainda nao trouxe a leitura antes/depois da empresa.',
+        state: 'pending',
+        facts: []
+      };
     }
     const baselineInsuficiente = pre !== null && pos !== null && pre < Math.max(1000, pos * 0.01);
     if (baselineInsuficiente) {
       return {
         label: 'Sem base comparável',
         value: fmtBRL(pos),
-        copy: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''} — período anterior sem receita suficiente pra calcular variação (dado incompleto ou empresa ainda não operava nesse volume).`
+        copy: 'Nao conclua aceleracao da empresa por esse percentual. A essencia aqui e qualidade/contexto: o periodo anterior esta baixo demais para sustentar comparacao, entao o lancamento deve ser lido por representatividade, mix e curva.',
+        evidence: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''} - periodo anterior sem receita suficiente para calcular variacao.`,
+        state: 'warn',
+        baselineInsuficiente: true,
+        facts: [
+          { label: 'Antes', value: fmtBRL(pre) },
+          { label: 'Depois', value: fmtBRL(pos) },
+          { label: 'Janela', value: days !== null ? `${fmtNum(days)} dias` : 'sem janela' }
+        ]
       };
     }
     const direction = variation > 0.05 ? 'Empresa acelerando' : variation < -0.05 ? 'Empresa pressionada' : 'Empresa estavel';
+    const essence = variation > 0.05
+      ? 'Contexto favoravel: a empresa cresceu no entorno do lancamento, entao parte da rampa pode vir do momento geral e nao so do produto.'
+      : variation < -0.05
+        ? 'Contexto pressionado: se o lancamento performou bem, ele pode ter compensado queda geral ou deslocado receita interna.'
+        : 'Contexto neutro: a empresa ficou relativamente estavel, entao a leitura do lancamento tende a depender mais de mix, campanha e estoque.';
     return {
       label: direction,
       value: fmtPct(variation, 1),
-      copy: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''}`
+      copy: essence,
+      evidence: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''}`,
+      state: variation < -0.05 ? 'warn' : variation > 0.05 ? 'focus' : 'ok',
+      baselineInsuficiente: false,
+      facts: [
+        { label: 'Antes', value: fmtBRL(pre) },
+        { label: 'Depois', value: fmtBRL(pos) },
+        { label: 'Variacao', value: fmtPct(variation, 1) }
+      ]
     };
   }
 
@@ -1899,14 +1927,29 @@
     };
   }
 
-  function storyMetricHtml({ label, value, detail, width, state = 'ok', tooltip = '', extraHtml = '' }) {
+  function storyFactChips(items = []) {
+    const validItems = items.filter((item) => item && item.value !== undefined && item.value !== null);
+    if (!validItems.length) return '';
+    return `
+      <div class="story-visual-facts">
+        ${validItems.map((item) => `
+          <i>
+            <span>${escapeHtml(item.label)}</span>
+            <b>${escapeHtml(item.value)}</b>
+          </i>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function storyMetricHtml({ label, value, detail, width, state = 'ok', tooltip = '', extraHtml = '', showTrack = true }) {
     return `
       <div class="story-visual-metric story-visual-metric--${escapeHtml(state)}">
         <div class="story-visual-metric-head">
           ${labelTip(label, tooltip)}
           <strong>${escapeHtml(value)}</strong>
         </div>
-        <div class="story-visual-track" aria-hidden="true"><i style="width:${boundedPct(width).toFixed(1)}%"></i></div>
+        ${showTrack ? `<div class="story-visual-track" aria-hidden="true"><i style="width:${boundedPct(width).toFixed(1)}%"></i></div>` : ''}
         <p>${escapeHtml(detail)}</p>
         ${extraHtml}
       </div>
@@ -2003,11 +2046,13 @@
       }),
       storyMetricHtml({
         label: 'Momento da empresa',
-        value: company.value,
+        value: company.label,
         detail: company.copy,
         width: companyWidth,
-        state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok',
-        tooltip: 'Compara o faturamento da empresa antes e depois do D0. Serve para separar performance do produto de contexto geral da empresa, como aceleração ou pressão.'
+        state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
+        tooltip: 'Traduz o contexto da empresa em leitura executiva. A ideia nao e medir uma barra, e sim dizer se o lancamento nasceu com vento a favor, pressao geral ou base historica insuficiente.',
+        extraHtml: storyFactChips(company.facts),
+        showTrack: false
       }),
       storyMetricHtml({
         label: 'Meta mensal da empresa',
@@ -2375,7 +2420,7 @@
     const variation = numberOrNull(model.variacao_receita_empresa_pct);
     const days = numberOrNull(model.dias_pos_disponiveis);
     const moment = companyMomentNarrative(model);
-    const baselineInsuficiente = moment.label === 'Sem base comparável';
+    const baselineInsuficiente = Boolean(moment.baselineInsuficiente);
 
     if (preRevenue === null || posRevenue === null) {
       return `
@@ -2833,7 +2878,7 @@
     const days = numberOrNull(model?.dias_pos_disponiveis);
     const variation = numberOrNull(model?.variacao_receita_empresa_pct);
     const moment = companyMomentNarrative(model);
-    const baselineInsuficiente = moment.label === 'Sem base comparável';
+    const baselineInsuficiente = Boolean(moment.baselineInsuficiente);
     if (pre === null || pos === null || !days) {
       return `
         <section class="drill-section">

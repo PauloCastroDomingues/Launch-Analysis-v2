@@ -1199,6 +1199,41 @@ h1 {
   font-size: .75rem;
   line-height: 1.35;
 }
+.story-visual-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.story-visual-facts i {
+  min-width: 92px;
+  flex: 1 1 92px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 7px;
+  background: rgba(255,255,255,.035);
+  color: var(--txt-secondary);
+  font-style: normal;
+  padding: 7px 8px;
+}
+.story-visual-facts span,
+.story-visual-facts b {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.story-visual-facts span {
+  color: var(--txt-muted);
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.story-visual-facts b {
+  margin-top: 3px;
+  color: var(--txt-primary);
+  font-size: .78rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
 .story-top-list {
   display: grid;
   gap: 5px;
