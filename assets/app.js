@@ -1721,6 +1721,13 @@
     const pct = roasNumberOrNull(meta.atingimento) ?? ratioOrNull(actual, target);
     const productShare = numberOrNull(context.launchShare);
     const shareCopy = productShare !== null ? ` \u00b7 share produto ${fmtPct(productShare, 1)}` : '';
+    const launchMonth = context.launchD0 ? monthKeyFromIso(context.launchD0) : null;
+    const metaMonth = meta ? metaMonthKey(meta) : null;
+    const monthsAlign = meta && !meta.__meta_status && launchMonth && metaMonth && launchMonth === metaMonth;
+    const contribution = monthsAlign && actual ? ratioOrNull(context.launchRevenue, actual) : null;
+    const contributionCopy = contribution !== null
+      ? ` \u00b7 seu lancamento respondeu por ${fmtPct(contribution, 1)} do realizado desse mes`
+      : '';
 
     if (meta.__meta_status === 'month_open') {
       const requestedLabel = fmtMonthKey(meta.__requested_month);
@@ -1729,15 +1736,34 @@
       return {
         label: `${requestedLabel} em aberto`,
         value: 'M\u00eas em aberto',
-        copy: `\u00daltimo fechado: ${fallbackLabel} \u00b7 ${summary} \u00b7 meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}`
+        copy: `\u00daltimo fechado: ${fallbackLabel} \u00b7 ${summary} \u00b7 meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}${contributionCopy}`
       };
     }
 
     return {
-      label: metaMonthKey(meta) || 'Meta mensal',
+      label: metaMonthKey(meta) ? `Meta mensal da empresa \u2014 ${metaMonthKey(meta)}` : 'Meta mensal da empresa',
       value: pct !== null ? fmtPct(pct, 1) : fmtBRL(target),
-      copy: `Meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}`
+      copy: `Meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}${contributionCopy}`
     };
+  }
+
+  function evidenceSourceLine(key, context = {}) {
+    const specs = {
+      momento: { file: 'share_trajetoria.json', row: context.model, fields: ['receita_empresa_pre_periodo', 'receita_empresa_pos_periodo', 'variacao_receita_empresa_pct'] },
+      representatividade: { file: 'share_trajetoria.json', row: context.model, fields: ['share_acumulado_atual', 'receita_lancamento_periodo'] },
+      meta: { file: 'metas_mensais.json', row: context.metaRow, fields: ['meta_receita', 'realizado_receita', 'atingimento'] },
+      campanha: { file: 'faturamento_campanha.json', row: (context.campaignRows || [])[0] || null, fields: ['receita_atribuida', 'investimento', 'pedidos'] }
+    };
+    const spec = specs[key];
+    if (!spec) return '';
+    if (!spec.row) return `<code class="story-step-source">${escapeHtml(spec.file)} \u2192 sem linha carregada</code>`;
+    const raw = spec.fields
+      .map((field) => `${field}=${spec.row[field] === undefined || spec.row[field] === null ? 'null' : spec.row[field]}`)
+      .join(' \u00b7 ');
+    const extra = key === 'campanha' && context.campaignRows && context.campaignRows.length > 1
+      ? ` (+${context.campaignRows.length - 1} linha(s))`
+      : '';
+    return `<code class="story-step-source">${escapeHtml(spec.file)} \u2192 ${escapeHtml(raw)}${escapeHtml(extra)}</code>`;
   }
 
   function campaignRevenueRowsForLaunch(launch) {
@@ -1897,7 +1923,7 @@
     const metaRow = metaMensalForLaunch(selected);
     const share = numberOrNull(model?.share_acumulado_atual);
     const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
-    const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue });
+    const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue, launchD0: selected.d0 });
     const campaign = campaignNarrative(selected);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
@@ -1931,6 +1957,10 @@
     const rank = comparisonRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
     const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo comparado` : 'Ranking depende de share_trajetoria.';
     const topShareRows = comparisonRows.slice(0, 3);
+    const selectedInTopShare = topShareRows.some((row) => row.launch.modelo_id === selected.modelo_id);
+    const selectedShareRow = comparisonRows.find((row) => row.launch.modelo_id === selected.modelo_id);
+    const pinnedRow = (!selectedInTopShare && selectedShareRow) ? selectedShareRow : null;
+    const pinnedIndex = pinnedRow ? comparisonRows.indexOf(pinnedRow) : -1;
     const topShareHtml = topShareRows.length
       ? `
         <div class="story-top-caption">Top 3 produtos por share</div>
@@ -1942,6 +1972,13 @@
               <em>${escapeHtml(fmtPct(row.share, 1))}</em>
             </li>
           `).join('')}
+          ${pinnedRow ? `
+            <li class="is-selected is-pinned">
+              <b>${fmtNum(pinnedIndex + 1)}\u00ba</b>
+              <span title="${escapeHtml(pinnedRow.launch.modelo)}">${escapeHtml(pinnedRow.launch.modelo)} (seu lancamento)</span>
+              <em>${escapeHtml(fmtPct(pinnedRow.share, 1))}</em>
+            </li>
+          ` : ''}
         </ol>
       `
       : '<div class="story-empty-note">Top 3 depende de share_trajetoria.</div>';
@@ -1973,7 +2010,7 @@
         tooltip: 'Compara o faturamento da empresa antes e depois do D0. Serve para separar performance do produto de contexto geral da empresa, como aceleração ou pressão.'
       }),
       storyMetricHtml({
-        label: 'Meta mensal',
+        label: 'Meta mensal da empresa',
         value: meta.value,
         detail: meta.copy,
         width: metaWidth,
@@ -2027,7 +2064,7 @@
         title: 'Momento da empresa',
         value: company.value,
         label: company.label,
-        copy: company.copy,
+        copy: evidenceSourceLine('momento', { model }),
         state: companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok',
         tooltip: 'Evidência técnica do contexto: receita antes vs depois do lançamento e variação percentual da empresa.'
       },
@@ -2036,16 +2073,16 @@
         title: 'Representatividade',
         value: fmtPct(share, 1),
         label: fmtBRL(launchRevenue),
-        copy: rankCopy,
+        copy: evidenceSourceLine('representatividade', { model }),
         state: 'focus',
         tooltip: 'Evidência técnica do peso do lançamento: share acumulado, faturamento do lançamento e posição no universo comparado.'
       },
       {
         step: '03',
-        title: 'Meta mensal',
+        title: 'Meta mensal da empresa',
         value: meta.value,
         label: meta.label,
-        copy: meta.copy,
+        copy: evidenceSourceLine('meta', { metaRow }),
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
         tooltip: 'Evidencia tecnica de meta: mes do lancamento, meta esperada, realizado e share do produto no periodo coberto. Se o mes ainda esta aberto, usa o ultimo mes fechado como contexto.'
       },
@@ -2054,7 +2091,7 @@
         title: 'Campanha',
         value: campaign.value,
         label: campaign.label,
-        copy: campaign.copy,
+        copy: evidenceSourceLine('campanha', { campaignRows }),
         state: campaign.label === 'Pendente' ? 'pending' : 'ok',
         tooltip: 'Evidência técnica de atribuição comercial: campanhas cadastradas, receita atribuída e quantidade de linhas disponíveis.'
       }
@@ -2108,7 +2145,7 @@
                   ${labelTip(card.title, card.tooltip)}
                   <strong>${escapeHtml(card.value)}</strong>
                   <em>${escapeHtml(card.label)}</em>
-                  <p>${escapeHtml(card.copy)}</p>
+                  <p>${card.copy}</p>
                 </div>
               </div>
             `).join('')}

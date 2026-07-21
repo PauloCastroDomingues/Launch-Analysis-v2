@@ -1229,6 +1229,11 @@ h1 {
   border-color: rgba(240,120,0,.44);
   background: rgba(240,120,0,.08);
 }
+.story-top-list li.is-pinned {
+  border-top: 1px dashed var(--border-2);
+  margin-top: 6px;
+  padding-top: 6px;
+}
 .story-top-list b,
 .story-top-list em {
   color: var(--txt-primary);
@@ -1364,6 +1369,18 @@ h1 {
   color: var(--txt-secondary);
   font-size: .74rem;
   line-height: 1.35;
+}
+.story-step code.story-step-source {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--txt-secondary);
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 4px;
+  white-space: normal;
+  word-break: break-word;
 }
 .hero-chart-wrap {
   margin: 18px 0 8px;
