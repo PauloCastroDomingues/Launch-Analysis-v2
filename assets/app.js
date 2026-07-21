@@ -1365,7 +1365,7 @@
     const lineSelect = $('cannibal-line-select');
     if (!lineSelect) return;
     const lines = [...new Set((state.launches || []).map((launch) => launch.modelo_id))]
-      .filter((modelId) => modelId !== 'rs8_monochrome' && familiesForModel(modelId).length > 1);
+      .filter((modelId) => familiesForModel(modelId).length > 1);
     lineSelect.innerHTML = lines.map((modelId) => {
       const launch = state.launches.find((item) => item.modelo_id === modelId);
       return `<option value="${escapeHtml(modelId)}">${escapeHtml(launch?.linha || launch?.modelo || modelId)}</option>`;
@@ -1708,7 +1708,7 @@
     };
   }
 
-  function metaNarrative(meta) {
+  function metaNarrative(meta, context = {}) {
     if (!meta) {
       return {
         label: 'Pendente',
@@ -1719,6 +1719,8 @@
     const target = firstKnownCommercialNumber(meta, ['meta_receita', 'meta_faturamento', 'meta']);
     const actual = firstKnownCommercialNumber(meta, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
     const pct = roasNumberOrNull(meta.atingimento) ?? ratioOrNull(actual, target);
+    const productShare = numberOrNull(context.launchShare);
+    const shareCopy = productShare !== null ? ` \u00b7 share produto ${fmtPct(productShare, 1)}` : '';
 
     if (meta.__meta_status === 'month_open') {
       const requestedLabel = fmtMonthKey(meta.__requested_month);
@@ -1727,14 +1729,14 @@
       return {
         label: `${requestedLabel} em aberto`,
         value: 'M\u00eas em aberto',
-        copy: `\u00daltimo fechado: ${fallbackLabel} \u00b7 ${summary} \u00b7 meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}`
+        copy: `\u00daltimo fechado: ${fallbackLabel} \u00b7 ${summary} \u00b7 meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}`
       };
     }
 
     return {
       label: metaMonthKey(meta) || 'Meta mensal',
       value: pct !== null ? fmtPct(pct, 1) : fmtBRL(target),
-      copy: `Meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}`
+      copy: `Meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}`
     };
   }
 
@@ -1893,10 +1895,10 @@
     const selectedWindow = selectedAnalysisWindow(selected);
     const company = companyMomentNarrative(model);
     const metaRow = metaMensalForLaunch(selected);
-    const meta = metaNarrative(metaRow);
-    const campaign = campaignNarrative(selected);
     const share = numberOrNull(model?.share_acumulado_atual);
     const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
+    const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue });
+    const campaign = campaignNarrative(selected);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
     const metaActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
@@ -1976,7 +1978,7 @@
         detail: meta.copy,
         width: metaWidth,
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Cruza o mes do lancamento com metas_mensais. Se o mes ainda esta aberto, mostra o ultimo mes fechado como contexto; quando nao houver JSON exportado, sinaliza pendencia.'
+        tooltip: 'Cruza o mes do lancamento com metas_mensais. Se o mes ainda esta aberto, mostra o ultimo mes fechado como contexto. Share produto vem de share_trajetoria e mostra o peso do lancamento no periodo coberto.'
       }),
       storyMetricHtml({
         label: 'Campanhas',
@@ -2045,7 +2047,7 @@
         label: meta.label,
         copy: meta.copy,
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Evidencia tecnica de meta: mes do lancamento, meta esperada e realizado. Se o mes ainda esta aberto, usa o ultimo mes fechado como contexto.'
+        tooltip: 'Evidencia tecnica de meta: mes do lancamento, meta esperada, realizado e share do produto no periodo coberto. Se o mes ainda esta aberto, usa o ultimo mes fechado como contexto.'
       },
       {
         step: '04',
