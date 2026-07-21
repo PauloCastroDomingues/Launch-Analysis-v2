@@ -397,11 +397,98 @@ body.share-drawer-open .share-drawer {
 .share-open-button:hover {
   border-color: var(--orange);
 }
+.share-open-button:focus-visible,
+.section-action-button:focus-visible,
+.stock-detail-button:focus-visible,
+.topic-tab:focus-visible,
+.chart-mode-btn:focus-visible,
+.compare-action:focus-visible,
+.compare-dropdown summary:focus-visible,
+.drill-back-button:focus-visible,
+.drill-breadcrumb button:focus-visible,
+.drill-action-card:focus-visible,
+.drill-control select:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+.share-open-button:disabled,
+.drill-action-card:disabled {
+  cursor: not-allowed;
+  opacity: .46;
+}
 .share-open-button--compact {
   min-height: 32px;
   margin-left: 4px;
   padding: 6px 10px;
   font-size: .68rem;
+}
+.drill-nav-strip {
+  position: sticky;
+  top: -26px;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: -10px 0 16px;
+  padding: 10px 44px 10px 0;
+  background: linear-gradient(180deg, #1F1F1F 0%, rgba(31,31,31,.96) 82%, rgba(31,31,31,.78) 100%);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(10px);
+}
+.drill-nav-strip .drill-breadcrumb {
+  min-width: 0;
+  margin: 0;
+}
+.drill-nav-spacer {
+  width: 1px;
+}
+.drill-back-button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--txt-primary);
+  padding: 7px 10px;
+  font-size: .72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.drill-back-button:hover,
+.drill-back-button:focus-visible {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.drill-level-pill {
+  min-width: 140px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255,255,255,.035);
+  padding: 8px 10px;
+}
+.drill-level-pill span {
+  display: block;
+  color: var(--orange);
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.drill-level-pill strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--txt-primary);
+  font-size: .78rem;
+}
+.drill-level-pill small {
+  display: block;
+  margin-top: 2px;
+  color: var(--txt-muted);
+  font-size: .64rem;
+  line-height: 1.22;
 }
 .drill-breadcrumb {
   display: flex;
@@ -427,6 +514,58 @@ body.share-drawer-open .share-drawer {
 }
 .drill-breadcrumb i {
   color: var(--txt-muted);
+  font-style: normal;
+}
+.drill-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.drill-action-card {
+  position: relative;
+  min-width: 0;
+  min-height: 104px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--txt-primary);
+  padding: 13px 38px 13px 14px;
+}
+.drill-action-card:hover,
+.drill-action-card:focus-visible {
+  border-color: var(--orange);
+}
+.drill-action-card--primary {
+  border-color: rgba(240,120,0,.56);
+  background: rgba(240,120,0,.09);
+}
+.drill-action-card span {
+  color: var(--txt-muted);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.drill-action-card strong {
+  color: var(--txt-primary);
+  font-size: .94rem;
+  line-height: 1.15;
+}
+.drill-action-card small {
+  color: var(--txt-secondary);
+  font-size: .72rem;
+  line-height: 1.32;
+}
+.drill-action-card em {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: var(--orange);
   font-style: normal;
 }
 .drill-head {
@@ -2611,6 +2750,11 @@ body.stock-detail-open .stock-detail-drawer {
   .share-chart-canvas { height: 240px; }
   .share-chart-title { display: block; }
   .drill-head { display: grid; }
+  .drill-nav-strip { position: static; grid-template-columns: 1fr; padding-right: 0; margin-top: -4px; }
+  .drill-nav-spacer { display: none; }
+  .drill-back-button { width: 100%; justify-content: center; }
+  .drill-level-pill { width: 100%; }
+  .drill-action-grid { grid-template-columns: 1fr; }
   .drill-company, .drill-impact-grid { grid-template-columns: 1fr; }
   .drill-rank-row { grid-template-columns: 1fr; }
   .drill-chart svg { height: 150px; }

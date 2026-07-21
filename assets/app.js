@@ -2687,6 +2687,56 @@
     return `<nav class="drill-breadcrumb" aria-label="Caminho da analise">${parts.join('<i>/</i>')}</nav>`;
   }
 
+  function drillLevelMeta(level) {
+    const meta = {
+      linha: { step: '1 de 3', label: 'Linha', copy: 'Visao macro da representatividade' },
+      submodelo: { step: '2 de 3', label: 'Sub-modelo', copy: 'Familias internas da linha' },
+      sku: { step: '3 de 3', label: 'Cor / SKU', copy: 'Cobertura e venda por cor' }
+    };
+    return meta[level] || meta.linha;
+  }
+
+  function drillBackButtonHtml(level, launch, subId = '') {
+    if (level === 'linha') {
+      return '<span class="drill-nav-spacer" aria-hidden="true"></span>';
+    }
+    const targetLevel = level === 'sku' && subId ? 'submodelo' : 'linha';
+    const targetSub = targetLevel === 'submodelo' ? subId : '';
+    const label = targetLevel === 'submodelo' ? 'Voltar para sub-modelo' : 'Voltar para linha';
+    return `
+      <button class="drill-back-button" type="button" data-drill-navigate data-level="${targetLevel}" data-line="${escapeHtml(launch.modelo_id)}" data-sub="${escapeHtml(targetSub)}">
+        <span aria-hidden="true">←</span>
+        <span>${escapeHtml(label)}</span>
+      </button>
+    `;
+  }
+
+  function drillNavigationHtml(level, launch, subId = '') {
+    const meta = drillLevelMeta(level);
+    return `
+      <div class="drill-nav-strip">
+        ${drillBackButtonHtml(level, launch, subId)}
+        ${breadcrumbHtml(level, launch, subId)}
+        <div class="drill-level-pill">
+          <span>${escapeHtml(meta.step)}</span>
+          <strong>${escapeHtml(meta.label)}</strong>
+          <small>${escapeHtml(meta.copy)}</small>
+        </div>
+      </div>
+    `;
+  }
+
+  function drillActionCardHtml({ level, line, sub = '', kicker, title, copy, disabled = false, variant = '' }) {
+    return `
+      <button class="drill-action-card ${variant ? `drill-action-card--${variant}` : ''}" type="button" data-drill-navigate data-level="${escapeHtml(level)}" data-line="${escapeHtml(line)}" data-sub="${escapeHtml(sub)}"${disabled ? ' disabled' : ''}>
+        <span>${escapeHtml(kicker)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(copy)}</small>
+        <em aria-hidden="true">↗</em>
+      </button>
+    `;
+  }
+
   function renderLineLevel(launch) {
     const model = shareModelForLine(launch.modelo_id);
     const points = sharePointsForLine(launch.modelo_id).filter((point) => numberOrNull(point.share_do_dia) !== null);
@@ -2695,7 +2745,7 @@
     const lineLabel = model.linha || launch.linha || launch.modelo;
 
     return `
-      ${breadcrumbHtml('linha', launch)}
+      ${drillNavigationHtml('linha', launch)}
       <div class="share-drawer-head drill-head">
         <div>
           <div class="share-drawer-kicker">Analise por niveis</div>
@@ -2712,9 +2762,24 @@
       ${companyMomentBlock(model)}
       ${impactInvestmentBlock(launch.modelo_id)}
       ${shareRankingBlock(launch.modelo_id)}
-      <div class="drill-actions">
-        <button class="share-open-button" type="button" data-drill-navigate data-level="submodelo" data-line="${escapeHtml(launch.modelo_id)}" data-sub="${escapeHtml(bestSub)}"${bestSub ? '' : ' disabled'}>Ver por sub-modelo</button>
-        <button class="share-open-button" type="button" data-drill-navigate data-level="sku" data-line="${escapeHtml(launch.modelo_id)}">Ver detalhe por cor</button>
+      <div class="drill-action-grid">
+        ${drillActionCardHtml({
+          level: 'submodelo',
+          line: launch.modelo_id,
+          sub: bestSub,
+          kicker: 'Proximo nivel',
+          title: 'Sub-modelos',
+          copy: 'Compare familias internas antes de abrir SKU/cor.',
+          disabled: !bestSub,
+          variant: 'primary'
+        })}
+        ${drillActionCardHtml({
+          level: 'sku',
+          line: launch.modelo_id,
+          kicker: 'Detalhe operacional',
+          title: 'Cores e estoque',
+          copy: 'Veja venda, estoque atual e cobertura por cor.'
+        })}
       </div>
     `;
   }
@@ -2733,7 +2798,7 @@
     const max = Math.max(...totals.map((row) => row.receita), 0.01);
 
     return `
-      ${breadcrumbHtml('submodelo', launch, selectedSub)}
+      ${drillNavigationHtml('submodelo', launch, selectedSub)}
       <div class="share-drawer-head drill-head">
         <div>
           <div class="share-drawer-kicker">Sub-modelo</div>
@@ -2759,8 +2824,23 @@
           `).join('')}
         </div>
       </section>
-      <div class="drill-actions">
-        <button class="share-open-button" type="button" data-drill-navigate data-level="sku" data-line="${escapeHtml(launch.modelo_id)}" data-sub="${escapeHtml(selectedSub)}">Ver detalhe por cor</button>
+      <div class="drill-action-grid">
+        ${drillActionCardHtml({
+          level: 'linha',
+          line: launch.modelo_id,
+          kicker: 'Voltar',
+          title: 'Linha completa',
+          copy: 'Retorne para share, momento da empresa e ranking geral.'
+        })}
+        ${drillActionCardHtml({
+          level: 'sku',
+          line: launch.modelo_id,
+          sub: selectedSub,
+          kicker: 'Proximo nivel',
+          title: 'Cores deste sub-modelo',
+          copy: 'Abra cobertura e venda por cor dentro do sub-modelo.',
+          variant: 'primary'
+        })}
       </div>
     `;
   }
@@ -2822,7 +2902,7 @@
     const rows = skuColorRows(launch, subId);
     const title = subId ? `${subModelLabel(subId)} por cor` : `${model?.linha || launch.linha || launch.modelo} por cor`;
     return `
-      ${breadcrumbHtml('sku', launch, subId)}
+      ${drillNavigationHtml('sku', launch, subId)}
       <div class="share-drawer-head drill-head">
         <div>
           <div class="share-drawer-kicker">SKU / cor</div>
@@ -2856,6 +2936,22 @@
           </table>
         </div>
       </section>
+      <div class="drill-action-grid">
+        ${subId ? drillActionCardHtml({
+          level: 'submodelo',
+          line: launch.modelo_id,
+          sub: subId,
+          kicker: 'Voltar',
+          title: 'Sub-modelo',
+          copy: 'Retorne para a curva e comparacao entre sub-modelos.'
+        }) : drillActionCardHtml({
+          level: 'linha',
+          line: launch.modelo_id,
+          kicker: 'Voltar',
+          title: 'Linha completa',
+          copy: 'Retorne para a visao macro da linha.'
+        })}
+      </div>
     `;
   }
 
