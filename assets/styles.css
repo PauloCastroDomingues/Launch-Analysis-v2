@@ -2469,20 +2469,48 @@ body.stock-detail-open .stock-detail-drawer {
   margin-top: 18px;
 }
 
-.color-mix { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.color-mix {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+}
 .color-card {
+  min-width: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px;
 }
-.color-title { font-weight: 800; margin-bottom: 12px; }
-.color-row { display: grid; grid-template-columns: minmax(74px, .82fr) minmax(78px, 1fr) minmax(116px, auto); gap: 10px; align-items: center; margin: 9px 0; }
+.color-title {
+  min-width: 0;
+  font-weight: 800;
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
+}
+.color-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: center;
+  margin: 10px 0;
+}
 .color-label { color: var(--txt-secondary); font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar-track { height: 10px; background: rgba(255,255,255,0.06); border-radius: 99px; overflow: hidden; }
+.bar-track {
+  grid-column: 1 / -1;
+  height: 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 99px;
+  overflow: hidden;
+}
 .bar-fill { height: 100%; background: var(--orange); border-radius: 99px; }
 .bar-fill.secondary { background: rgba(240,120,0,0.45); }
-.color-value { color: var(--txt-secondary); font-size: .74rem; text-align: right; font-variant-numeric: tabular-nums; }
+.color-value {
+  color: var(--txt-secondary);
+  font-size: .74rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .color-empty { color: var(--txt-muted); font-size: .78rem; }
 
 .size-ranking-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px; }
@@ -3005,6 +3033,7 @@ body.stock-detail-open .stock-detail-drawer {
   .story-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-6, .grid-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-4, .grid-3, .grid-2, .calendar-grid, .actions-grid, .scenario-grid, .color-mix, .stock-grid, .size-ranking-grid, .size-model-grid, .cut-promoters-grid { grid-template-columns: 1fr 1fr; }
+  .color-mix { grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
   .stock-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
