@@ -55,7 +55,7 @@ WITH modelos AS (
   SELECT
     'series_2' AS modelo_id,
     'Series 2' AS modelo,
-    DATE('2026-07-21') AS d0,
+    DATE('2026-07-16') AS d0,
     'Series 2|Series2|Serie 2|RS8 Avant Whisky|RS8 Avant Off White|RS8 Avant Azul Marinho|Whisky|Off White|Azul Marinho' AS termos_busca,
     'RS8-AVANT|SERIES-2|SERIES2|S2' AS sku_prefixos
 ),
