@@ -1993,7 +1993,6 @@
     const share = numberOrNull(model?.share_acumulado_atual);
     const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
     const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue, launchD0: selected.d0 });
-    const campaign = campaignNarrative(selected);
     const activity = launchActivityNarrative(selected, selectedWindow);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
@@ -2001,12 +2000,7 @@
     const metaPct = roasNumberOrNull(metaRow?.atingimento) ?? ratioOrNull(metaActual, metaTarget);
     const metaPending = meta.label === 'Pendente';
     const metaOpen = metaRow?.__meta_status === 'month_open';
-    const campaignPending = campaign.label === 'Pendente';
     const signal = storySignal({ share, companyVariation, metaPending });
-    const selectedPeriod = ANALYSIS_PERIODS.find((item) => item.key === state.analysisPeriodKey)?.label || state.analysisPeriodKey;
-    const dLabel = selected.isFuture
-      ? `D${selected.dPlus}`
-      : `D+${Math.max(0, selected.dPlus ?? 0)}`;
     const shareWidth = share === null ? 0 : Math.max(4, Math.min(100, (share / 0.18) * 100));
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
@@ -2050,10 +2044,7 @@
       : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
-    const signalTooltip = 'Resumo automático do momento do lançamento. Não é previsão fechada: é uma síntese para orientar a análise antes de entrar nos gráficos e tabelas.';
-    const periodTooltip = 'Janela principal escolhida no filtro Período. Muda a leitura de KPIs, curva, comparativos e cards de contexto.';
-    const dTooltip = 'Idade analítica do lançamento no snapshot atual. Ativos mostram até onde o dado real já chegou; planejados ou incompletos ficam como leitura parcial.';
-    const revenueTooltip = 'Faturamento do lançamento usado como base da leitura executiva, vindo de share_trajetoria ou da janela selecionada quando o share ainda não está disponível.';
+    const activityTooltip = 'Resumo operacional desde o D0 usado na analise. Mostra quantos dias o lancamento ja tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
     const evidence = [
       storyMetricHtml({
         label: 'Representatividade',
@@ -2081,16 +2072,6 @@
         width: metaWidth,
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
         tooltip: 'Cruza o mes do lancamento com metas_mensais. Se o mes ainda esta aberto, mostra o ultimo mes fechado como contexto. Share produto vem de share_trajetoria e mostra o peso do lancamento no periodo coberto.'
-      }),
-      storyMetricHtml({
-        label: 'Atividade desde D0',
-        value: activity.value,
-        detail: activity.copy,
-        width: 0,
-        state: activity.state,
-        tooltip: 'Mostra a tração real desde o dia de lançamento: dias corridos com base no D0, faturamento acumulado e pedidos do modelo.',
-        extraHtml: storyFactChips(activity.facts),
-        showTrack: false
       })
     ];
     const decisionNotes = [
@@ -2109,19 +2090,13 @@
           : 'Confirmar se o lançamento está acelerando a empresa ou apenas seguindo o contexto.'
       },
       {
-        title: 'Próxima integração',
-        tooltip: 'Mostra quais dados ainda faltam para fechar a história com mais segurança, principalmente metas mensais e faturamento por campanha.',
-        copy: campaignPending && metaOpen
-          ? 'Faturamento por campanha ainda completa a historia; meta do mes corrente entra quando o mes fechar.'
-          : metaPending && campaignPending
-            ? 'Metas mensais e faturamento por campanha ainda completam a historia de eficiencia.'
-            : metaPending
-              ? 'Metas mensais ainda completam a historia de eficiencia.'
-              : campaignPending
-                ? 'Faturamento por campanha ainda completa a historia de eficiencia.'
-                : metaOpen
-                  ? 'Meta do mes corrente entra quando o mes fechar; por enquanto a tela usa o ultimo fechado como contexto.'
-                  : 'Cruzar meta, campanha e estoque para decidir reforco, pausa ou redistribuicao.'
+        title: 'Próximo passo',
+        tooltip: 'Mostra o melhor proximo recorte depois de entender atividade desde D0, representatividade e contexto da empresa.',
+        copy: metaOpen
+          ? 'Meta do mes corrente entra quando o mes fechar; por enquanto acompanhe atividade desde D0, curva, mix e estoque.'
+          : metaPending
+            ? 'Meta mensal ainda completa a historia de eficiencia; ate la, use atividade desde D0, curva, mix e estoque.'
+            : 'Cruzar atividade desde D0, meta, mix e estoque para decidir reforco, pausa ou redistribuicao.'
       }
     ];
 
@@ -2178,18 +2153,14 @@
           </div>
         </div>
         <div class="story-visual-grid">
-          <div class="story-hero-signal">
-            ${labelTip('Sinal executivo', signalTooltip)}
-            <strong>${escapeHtml(signal.title)}</strong>
-            <p>${escapeHtml(signal.copy)}</p>
-            <div class="story-signal-meta">
-              <i tabindex="0" data-tooltip="${tooltipAttr(periodTooltip)}">${escapeHtml(selectedPeriod)}</i>
-              <i tabindex="0" data-tooltip="${tooltipAttr(dTooltip)}">${escapeHtml(dLabel)}</i>
-              <i tabindex="0" data-tooltip="${tooltipAttr(revenueTooltip)}">${escapeHtml(fmtBRL(launchRevenue))}</i>
-            </div>
+          <div class="story-hero-signal story-hero-signal--activity">
+            ${labelTip('Atividade desde D0', activityTooltip)}
+            <strong>${escapeHtml(activity.value)}</strong>
+            <p>${escapeHtml(activity.copy)}</p>
+            ${storyFactChips(activity.facts)}
           </div>
           <div>
-            <div class="story-visual-metrics">
+            <div class="story-visual-metrics story-visual-metrics--three">
               ${evidence.join('')}
             </div>
             <div class="story-decision-grid">
