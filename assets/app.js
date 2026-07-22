@@ -1723,14 +1723,6 @@
     };
   }
 
-  function addMonthsToMonthKey(month, offset = 0) {
-    const base = monthKeyFromIso(month);
-    if (!base) return '';
-    const [year, monthNum] = base.split('-').map(Number);
-    if (!year || !monthNum) return '';
-    return toIsoDate(new Date(year, monthNum - 1 + offset, 1, 12, 0, 0)).slice(0, 7);
-  }
-
   function metaMensalForMonth(month, launch) {
     const rows = optionalRows('metas_mensais');
     const targetMonth = monthKeyFromIso(month);
@@ -1748,11 +1740,88 @@
       .sort((a, b) => b.score - a.score)[0]?.row || null;
   }
 
-  function launchRevenueForMonth(launch, month) {
+  function daysInMonthKey(month) {
     const targetMonth = monthKeyFromIso(month);
-    const rows = optionalRows('lancamentos_produtos_dia').filter((row) => (
-      row.modelo_id === launch?.modelo_id && monthKeyFromIso(row.data) === targetMonth
-    ));
+    if (!targetMonth) return null;
+    const [year, monthNum] = targetMonth.split('-').map(Number);
+    if (!year || !monthNum) return null;
+    return new Date(year, monthNum, 0).getDate();
+  }
+
+  function inclusiveDays(startDate, endDate) {
+    if (!startDate || !endDate) return 0;
+    return Math.max(0, Math.floor((endDate - startDate) / 86400000) + 1);
+  }
+
+  function goalMetaForRange(startIso, endIso, launch) {
+    const start = toDate(startIso);
+    const end = toDate(endIso);
+    if (!start || !end || end < start) {
+      return { target: null, actual: null, totalDays: 0, targetDays: 0, actualDays: 0, complete: false };
+    }
+
+    let cursor = start;
+    let target = 0;
+    let actual = 0;
+    let targetDays = 0;
+    let actualDays = 0;
+    let totalDays = 0;
+    const parts = [];
+
+    while (cursor <= end) {
+      const month = toIsoDate(cursor).slice(0, 7);
+      const [year, monthNum] = month.split('-').map(Number);
+      const monthEnd = new Date(year, monthNum, 0, 12, 0, 0);
+      const segmentEnd = monthEnd < end ? monthEnd : end;
+      const days = inclusiveDays(cursor, segmentEnd);
+      const monthDays = daysInMonthKey(month) || days;
+      const metaRow = metaMensalForMonth(month, launch);
+      const monthTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
+      const monthActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+      const targetPart = monthTarget !== null ? (monthTarget / monthDays) * days : null;
+      const actualPart = monthActual !== null ? (monthActual / monthDays) * days : null;
+
+      totalDays += days;
+      if (targetPart !== null) {
+        target += targetPart;
+        targetDays += days;
+      }
+      if (actualPart !== null) {
+        actual += actualPart;
+        actualDays += days;
+      }
+      parts.push({ month, days, target: targetPart, actual: actualPart });
+
+      cursor = new Date(segmentEnd);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return {
+      target: targetDays ? target : null,
+      actual: actualDays ? actual : null,
+      totalDays,
+      targetDays,
+      actualDays,
+      complete: targetDays === totalDays,
+      parts
+    };
+  }
+
+  function latestLaunchDataDay(launch) {
+    const days = optionalRows('lancamentos_produtos_dia')
+      .filter((row) => row.modelo_id === launch?.modelo_id)
+      .map((row) => dayIndex(launch?.d0 || launch?.day_zero_base, row.data))
+      .filter((idx) => idx !== null && idx >= 0);
+    return days.length ? Math.max(...days) : null;
+  }
+
+  function launchRevenueForDayRange(launch, startDay, endDay) {
+    const d0 = launch?.d0 || launch?.day_zero_base;
+    const rows = optionalRows('lancamentos_produtos_dia').filter((row) => {
+      if (row.modelo_id !== launch?.modelo_id) return false;
+      const idx = dayIndex(d0, row.data);
+      return idx !== null && idx >= startDay && idx <= endDay;
+    });
     if (!rows.length) {
       return { receita: null, pedidos: null, pares: null, row: null };
     }
@@ -1769,23 +1838,52 @@
       receita,
       pedidos,
       pares,
-      row: { mes: targetMonth, receita, pedidos, pares, linhas: rows.length }
+      row: { start_day: startDay, end_day: endDay, receita, pedidos, pares, linhas: rows.length }
     };
   }
 
   function representationGoalRows(launch) {
-    const launchMonth = monthKeyFromIso(launch?.d0 || launch?.day_zero_base);
-    if (!launchMonth) return [];
-    return [0, 1, 2].map((offset) => {
-      const month = addMonthsToMonthKey(launchMonth, offset);
-      const metaRow = metaMensalForMonth(month, launch);
-      const target = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
-      const actual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
-      const sales = launchRevenueForMonth(launch, month);
+    const d0 = launch?.d0 || launch?.day_zero_base;
+    if (!d0) return [];
+    const latestDay = latestLaunchDataDay(launch);
+    const dPlus = numberOrNull(launch?.dPlus);
+    const availableDay = [latestDay, dPlus].filter((value) => value !== null).reduce((acc, value) => (
+      acc === null ? value : Math.min(acc, value)
+    ), null);
+    const windows = [
+      { index: 1, startDay: 0, endDay: 30 },
+      { index: 2, startDay: 31, endDay: 60 },
+      { index: 3, startDay: 61, endDay: 90 }
+    ];
+
+    return windows.map((window) => {
+      const dataEndDay = availableDay === null ? window.endDay : Math.min(window.endDay, availableDay);
+      const notStarted = dataEndDay < window.startDay;
+      const observedStartDay = window.startDay;
+      const observedEndDay = notStarted ? null : dataEndDay;
+      const startIso = toIsoDate(addDays(d0, window.startDay));
+      const plannedEndIso = toIsoDate(addDays(d0, window.endDay));
+      const observedEndIso = observedEndDay !== null ? toIsoDate(addDays(d0, observedEndDay)) : null;
+      const metaInfo = observedEndIso ? goalMetaForRange(startIso, observedEndIso, launch) : null;
+      const target = metaInfo?.target ?? null;
+      const actual = metaInfo?.actual ?? null;
+      const sales = observedEndDay !== null
+        ? launchRevenueForDayRange(launch, observedStartDay, observedEndDay)
+        : { receita: null, pedidos: null, pares: null, row: null };
       return {
-        index: offset + 1,
-        month,
-        metaRow,
+        index: window.index,
+        startDay: window.startDay,
+        endDay: window.endDay,
+        observedEndDay,
+        startIso,
+        endIso: observedEndIso || plannedEndIso,
+        plannedEndIso,
+        notStarted,
+        complete: observedEndDay !== null && observedEndDay >= window.endDay,
+        metaComplete: Boolean(metaInfo?.complete),
+        metaDays: metaInfo?.targetDays ?? 0,
+        totalDays: metaInfo?.totalDays ?? 0,
+        metaParts: metaInfo?.parts || [],
         target,
         actual,
         receita: sales.receita,
@@ -1798,16 +1896,37 @@
     });
   }
 
+  function goalDayLabel(day) {
+    return day === 0 ? 'D0' : `D+${fmtNum(day)}`;
+  }
+
+  function goalRangeLabel(row) {
+    if (!row) return '';
+    const endDay = row.observedEndDay ?? row.endDay;
+    const suffix = row.notStarted ? ' · nao iniciado' : row.complete ? '' : ' · em curso';
+    return `${goalDayLabel(row.startDay)}-${goalDayLabel(endDay)}${suffix}`;
+  }
+
+  function goalDateRangeLabel(row) {
+    if (!row) return '';
+    return `${fmtDateSlash(row.startIso)} a ${fmtDateSlash(row.endIso)}`;
+  }
+
+  function goalMetaLabel(row) {
+    if (!row || row.target === null) return 'meta nao carregada';
+    return `${row.metaComplete ? 'meta' : 'meta parcial'} ${fmtBRL(row.target)}`;
+  }
+
   function representationGoalSummary(rows) {
     const first = rows[0];
     if (!first) return 'Meta mensal ainda nao conectada para este lancamento.';
     if (first.pctMeta !== null) {
-      return `M1 ${fmtMonthKey(first.month)}: ${fmtPct(first.pctMeta, 1)} da meta mensal.`;
+      return `M1 ${goalRangeLabel(first)}: ${fmtPct(first.pctMeta, 1)} ${first.metaComplete ? 'da meta' : 'da meta parcial'}.`;
     }
     if (first.target === null) {
-      return `M1 ${fmtMonthKey(first.month)}: meta ainda nao carregada.`;
+      return `M1 ${goalRangeLabel(first)}: meta ainda nao carregada.`;
     }
-    return `M1 ${fmtMonthKey(first.month)}: sem venda carregada contra a meta.`;
+    return `M1 ${goalRangeLabel(first)}: sem venda carregada contra a meta.`;
   }
 
   function storyGoalContributionHtml(rows = []) {
@@ -1819,21 +1938,26 @@
           const hasMeta = row.target !== null;
           const hasSales = row.receita !== null;
           const pctText = row.pctMeta !== null
-            ? `${fmtPct(row.pctMeta, 1)} da meta`
-            : hasMeta
+            ? `${fmtPct(row.pctMeta, 1)} ${row.metaComplete ? 'da meta' : 'meta parcial'}`
+            : row.notStarted
+              ? 'nao iniciado'
+              : hasMeta
               ? 'sem venda'
               : 'sem meta';
+          const rangeText = `${goalRangeLabel(row)} · ${goalDateRangeLabel(row)}`;
           const detail = hasMeta
-            ? `${fmtBRL(row.receita)} / meta ${fmtBRL(row.target)}`
+            ? `${fmtBRL(row.receita)} / ${goalMetaLabel(row)}`
             : hasSales
               ? `${fmtBRL(row.receita)} vendido · meta nao carregada`
-              : 'meta nao carregada';
+              : row.notStarted
+                ? `Janela prevista: ${goalDateRangeLabel(row)}`
+                : 'meta nao carregada';
           const width = row.pctMeta !== null ? Math.min(100, Math.max(3, row.pctMeta * 100)) : 0;
           const state = row.pctMeta === null ? 'pending' : row.pctMeta >= 0.12 ? 'focus' : 'ok';
           return `
             <div class="story-goal-row story-goal-row--${escapeHtml(state)}">
               <div class="story-goal-row-head">
-                <span>M${fmtNum(row.index)} <small>${escapeHtml(fmtMonthKey(row.month))}</small></span>
+                <span>M${fmtNum(row.index)} <small>${escapeHtml(rangeText)}</small></span>
                 <strong>${escapeHtml(pctText)}</strong>
               </div>
               <div class="story-goal-track" aria-hidden="true"><i style="width:${width.toFixed(1)}%"></i></div>
@@ -1848,8 +1972,9 @@
   function representationGoalEvidence(rows = []) {
     if (!rows.length) return '';
     const summary = rows.map((row) => {
-      const pct = row.pctMeta !== null ? fmtPct(row.pctMeta, 1) : 'sem meta';
-      return `M${row.index} ${row.month}: receita=${fmtBRL(row.receita)} meta=${fmtBRL(row.target)} pct=${pct}`;
+      const pct = row.pctMeta !== null ? fmtPct(row.pctMeta, 1) : row.notStarted ? 'nao iniciado' : 'sem meta';
+      const metaStatus = row.target === null ? 'sem meta' : row.metaComplete ? 'meta completa' : `meta parcial ${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias`;
+      return `M${row.index} ${goalRangeLabel(row)} ${goalDateRangeLabel(row)}: receita=${fmtBRL(row.receita)} meta=${fmtBRL(row.target)} pct=${pct} (${metaStatus})`;
     }).join(' | ');
     return `<code class="story-step-source">metas_mensais.json + lancamentos_produtos_dia.json → ${escapeHtml(summary)}</code>`;
   }
@@ -2208,7 +2333,7 @@
         detail: representationDetail,
         width: firstGoalPct !== null ? firstGoalPct * 100 : 0,
         state: firstGoalPct === null ? 'pending' : firstGoalPct >= 0.12 ? 'focus' : 'ok',
-        tooltip: 'Mostra quanto o produto cobriu da meta mensal da empresa no mes do D0 e nos dois meses seguintes. O ranking abaixo preserva a leitura de share geral do lancamento.',
+        tooltip: 'Mostra quanto o produto cobriu da meta proporcional nas janelas M1 D0-D+30, M2 D+31-D+60 e M3 D+61-D+90. O ranking abaixo preserva a leitura de share geral do lancamento.',
         extraHtml: `${representationGoalHtml}${topShareHtml}`
       }),
       storyMetricHtml({
@@ -2273,7 +2398,7 @@
         label: representationGoalSummary(goalRows),
         copy: `${representationGoalEvidence(goalRows)}${evidenceSourceLine('representatividade', { model })}`,
         state: 'focus',
-        tooltip: 'Evidência técnica do peso do lançamento: produto contra meta mensal M1/M2/M3, share acumulado e posição no universo comparado.'
+        tooltip: 'Evidência técnica do peso do lançamento: produto contra meta proporcional por janelas D+n, share acumulado e posição no universo comparado.'
       },
       {
         step: '03',
