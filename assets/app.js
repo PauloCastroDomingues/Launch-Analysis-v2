@@ -2258,6 +2258,34 @@
     `;
   }
 
+  function shareRankingCutoffDate(selected) {
+    const d0 = selected?.d0 || selected?.day_zero_base;
+    if (!d0) return null;
+    const latestDay = latestLaunchDataDay(selected);
+    const dPlus = numberOrNull(selected?.dPlus);
+    const day = selected?.isActive
+      ? Math.max(0, dPlus ?? latestDay ?? 0)
+      : Math.min(90, Math.max(0, latestDay ?? dPlus ?? 90));
+    return addDays(d0, day);
+  }
+
+  function launchStartedByDate(launch, cutoffDate) {
+    if (!cutoffDate) return true;
+    const d0 = toDate(launch?.d0 || launch?.day_zero_base);
+    return Boolean(d0) && d0 <= cutoffDate;
+  }
+
+  function historicalShareUniverse(selected) {
+    const cutoffDate = shareRankingCutoffDate(selected);
+    const byId = new Map();
+    [selected, ...selectedCompareLaunches()].filter(Boolean).forEach((launch) => {
+      if (!isEligibleLaunch(launch) || isPlannedStatus(launch.status)) return;
+      if (!launchStartedByDate(launch, cutoffDate)) return;
+      byId.set(launch.modelo_id, launch);
+    });
+    return { launches: [...byId.values()], cutoffDate };
+  }
+
   function renderStoryBrief(selected) {
     const wrap = $('story-brief');
     if (!wrap || !selected) return;
@@ -2284,7 +2312,9 @@
     const signal = storySignal({ share, companyVariation, metaPending });
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
-    const comparisonRows = selectedCompareLaunches()
+    const historicalUniverse = historicalShareUniverse(selected);
+    const rankCutoffLabel = historicalUniverse.cutoffDate ? `ate ${fmtDateSlash(toIsoDate(historicalUniverse.cutoffDate))}` : 'no periodo historico';
+    const comparisonRows = historicalUniverse.launches
       .map((launch) => ({
         launch,
         share: numberOrNull(shareModelForLine(launch.modelo_id)?.share_acumulado_atual)
@@ -2292,7 +2322,7 @@
       .filter((row) => row.share !== null)
       .sort((a, b) => b.share - a.share);
     const rank = comparisonRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
-    const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo comparado` : 'Ranking depende de share_trajetoria.';
+    const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo historico (${rankCutoffLabel})` : 'Ranking depende de share_trajetoria.';
     const topShareRows = comparisonRows.slice(0, 3);
     const selectedInTopShare = topShareRows.some((row) => row.launch.modelo_id === selected.modelo_id);
     const selectedShareRow = comparisonRows.find((row) => row.launch.modelo_id === selected.modelo_id);
@@ -2300,7 +2330,7 @@
     const pinnedIndex = pinnedRow ? comparisonRows.indexOf(pinnedRow) : -1;
     const topShareHtml = topShareRows.length
       ? `
-        <div class="story-top-caption">Ranking por share geral</div>
+        <div class="story-top-caption">Ranking por share geral · ${escapeHtml(rankCutoffLabel)}</div>
         <ol class="story-top-list" aria-label="Top 3 produtos por representatividade">
           ${topShareRows.map((row, index) => `
             <li class="${row.launch.modelo_id === selected.modelo_id ? 'is-selected' : ''}">
@@ -2318,7 +2348,7 @@
           ` : ''}
         </ol>
       `
-      : '<div class="story-empty-note">Top 3 depende de share_trajetoria.</div>';
+      : '<div class="story-empty-note">Ranking historico depende de share_trajetoria.</div>';
     const thesis = share !== null
       ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
       : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
