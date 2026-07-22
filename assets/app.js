@@ -1752,6 +1752,7 @@
       momento: { file: 'share_trajetoria.json', row: context.model, fields: ['receita_empresa_pre_periodo', 'receita_empresa_pos_periodo', 'variacao_receita_empresa_pct'] },
       representatividade: { file: 'share_trajetoria.json', row: context.model, fields: ['share_acumulado_atual', 'receita_lancamento_periodo'] },
       meta: { file: 'metas_mensais.json', row: context.metaRow, fields: ['meta_receita', 'realizado_receita', 'atingimento'] },
+      atividade: { file: 'lancamentos_produtos_dia.json', row: context.activityRow, fields: ['day', 'receita', 'pedidos', 'pares'] },
       campanha: { file: 'faturamento_campanha.json', row: (context.campaignRows || [])[0] || null, fields: ['receita_atribuida', 'investimento', 'pedidos'] }
     };
     const spec = specs[key];
@@ -1828,6 +1829,31 @@
     };
   }
 
+  function launchActivityNarrative(launch, selectedWindow = {}) {
+    const current = launch?.acumulado_atual || selectedWindow.data || null;
+    const day = numberOrNull(current?.day) ?? numberOrNull(launch?.dPlus);
+    const daysActive = day !== null ? Math.max(1, day + 1) : null;
+    const receita = numberOrNull(current?.receita);
+    const pedidos = numberOrNull(current?.pedidos);
+    const pares = numberOrNull(current?.pares);
+    const sourceLabel = launch?.acumulado_atual ? `D0 a D+${Math.max(0, day ?? 0)}` : (selectedWindow.label || 'janela disponivel');
+    const facts = [
+      { label: 'Dias ativo', value: daysActive !== null ? fmtNum(daysActive) : 'sem dado' },
+      { label: 'Faturamento', value: fmtBRL(receita) },
+      { label: 'Pedidos', value: fmtNum(pedidos) }
+    ];
+    if (pares !== null) facts.push({ label: 'Pares', value: fmtNum(pares) });
+    return {
+      label: sourceLabel,
+      value: daysActive !== null ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'}` : 'Sem atividade',
+      copy: receita !== null || pedidos !== null
+        ? `Desde o lançamento: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.`
+        : 'Ainda sem acumulado de atividade desde o lançamento.',
+      facts,
+      state: receita !== null || pedidos !== null ? 'ok' : 'pending'
+    };
+  }
+
   function companyMomentNarrative(model) {
     const variation = numberOrNull(model?.variacao_receita_empresa_pct);
     const pre = numberOrNull(model?.receita_empresa_pre_periodo);
@@ -1886,7 +1912,7 @@
     return Math.max(0, Math.min(100, num));
   }
 
-  function storySignal({ share, companyVariation, metaPending, campaignPending }) {
+  function storySignal({ share, companyVariation, metaPending }) {
     if (share === null) {
       return {
         state: 'pending',
@@ -1911,11 +1937,11 @@
         question: 'Como preservar a rampa sem canibalizar a linha?'
       };
     }
-    if (metaPending || campaignPending) {
+    if (metaPending) {
       return {
         state: 'pending',
         title: 'Sinal comercial incompleto',
-        copy: 'O dado de venda existe, mas meta ou campanha ainda limitam a leitura de eficiência.',
+        copy: 'O dado de venda existe, mas a meta ainda limita a leitura de eficiência.',
         question: 'O desempenho está acima da expectativa planejada?'
       };
     }
@@ -1968,18 +1994,15 @@
     const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
     const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue, launchD0: selected.d0 });
     const campaign = campaignNarrative(selected);
+    const activity = launchActivityNarrative(selected, selectedWindow);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
     const metaActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
     const metaPct = roasNumberOrNull(metaRow?.atingimento) ?? ratioOrNull(metaActual, metaTarget);
-    const campaignRows = campaignRevenueRowsForLaunch(selected);
-    const campaignRevenueValues = campaignRows.map(campaignRevenueValue).filter((value) => value !== null);
-    const campaignRevenue = campaignRevenueValues.length ? campaignRevenueValues.reduce((acc, value) => acc + value, 0) : null;
-    const campaignCount = new Set(campaignRows.map((row) => normalizeText(row.campanha || row.campaign || row.utm_campaign)).filter(Boolean)).size || campaignRows.length;
     const metaPending = meta.label === 'Pendente';
     const metaOpen = metaRow?.__meta_status === 'month_open';
     const campaignPending = campaign.label === 'Pendente';
-    const signal = storySignal({ share, companyVariation, metaPending, campaignPending });
+    const signal = storySignal({ share, companyVariation, metaPending });
     const selectedPeriod = ANALYSIS_PERIODS.find((item) => item.key === state.analysisPeriodKey)?.label || state.analysisPeriodKey;
     const dLabel = selected.isFuture
       ? `D${selected.dPlus}`
@@ -1987,9 +2010,6 @@
     const shareWidth = share === null ? 0 : Math.max(4, Math.min(100, (share / 0.18) * 100));
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
-    const campaignWidth = campaignRevenue === null || !launchRevenue
-      ? (campaignRows.length ? 24 : 0)
-      : Math.max(6, Math.min(100, (campaignRevenue / launchRevenue) * 100));
     const comparisonRows = selectedCompareLaunches()
       .map((launch) => ({
         launch,
@@ -2028,8 +2048,8 @@
     const thesis = share !== null
       ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
       : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
-    const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, se existe meta/campanha para explicar o resultado e qual recorte investigar em seguida.';
-    const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, metas mensais e faturamento por campanha disponíveis.';
+    const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
+    const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const signalTooltip = 'Resumo automático do momento do lançamento. Não é previsão fechada: é uma síntese para orientar a análise antes de entrar nos gráficos e tabelas.';
     const periodTooltip = 'Janela principal escolhida no filtro Período. Muda a leitura de KPIs, curva, comparativos e cards de contexto.';
     const dTooltip = 'Idade analítica do lançamento no snapshot atual. Ativos mostram até onde o dado real já chegou; planejados ou incompletos ficam como leitura parcial.';
@@ -2063,12 +2083,14 @@
         tooltip: 'Cruza o mes do lancamento com metas_mensais. Se o mes ainda esta aberto, mostra o ultimo mes fechado como contexto. Share produto vem de share_trajetoria e mostra o peso do lancamento no periodo coberto.'
       }),
       storyMetricHtml({
-        label: 'Campanhas',
-        value: campaign.value,
-        detail: campaignRows.length ? `${fmtNum(campaignCount)} campanha(s) mapeada(s)` : campaign.copy,
-        width: campaignWidth,
-        state: campaignPending ? 'pending' : 'ok',
-        tooltip: 'Mostra se existe faturamento por campanha associado ao lançamento. Ajuda a separar venda orgânica, CRM, mídia paga e ações comerciais atribuídas.'
+        label: 'Atividade desde D0',
+        value: activity.value,
+        detail: activity.copy,
+        width: 0,
+        state: activity.state,
+        tooltip: 'Mostra a tração real desde o dia de lançamento: dias corridos com base no D0, faturamento acumulado e pedidos do modelo.',
+        extraHtml: storyFactChips(activity.facts),
+        showTrack: false
       })
     ];
     const decisionNotes = [
@@ -2133,12 +2155,12 @@
       },
       {
         step: '04',
-        title: 'Campanha',
-        value: campaign.value,
-        label: campaign.label,
-        copy: evidenceSourceLine('campanha', { campaignRows }),
-        state: campaign.label === 'Pendente' ? 'pending' : 'ok',
-        tooltip: 'Evidência técnica de atribuição comercial: campanhas cadastradas, receita atribuída e quantidade de linhas disponíveis.'
+        title: 'Atividade desde D0',
+        value: activity.value,
+        label: activity.label,
+        copy: evidenceSourceLine('atividade', { activityRow: selected.acumulado_atual || selectedWindow.data }),
+        state: activity.state,
+        tooltip: 'Evidência técnica da atividade acumulada desde o lançamento: dia analítico, faturamento, pedidos e pares.'
       }
     ];
 
@@ -2148,7 +2170,7 @@
           <div>
             <div class="section-kicker story-kicker">${labelTip('Leitura executiva', storyIntroTooltip)}</div>
             <h2>A história do lançamento</h2>
-            <p>${escapeHtml(thesis)} A tela deve contar se o lançamento foi relevante para a empresa, se performou contra meta e se a campanha explica o resultado.</p>
+            <p>${escapeHtml(thesis)} A tela deve contar se o lançamento foi relevante para a empresa, se performou contra meta e se a atividade desde D0 sustenta o sinal.</p>
           </div>
           <div class="story-brief-verdict">
             ${labelTip('Pergunta central', centralQuestionTooltip)}
