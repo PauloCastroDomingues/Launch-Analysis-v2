@@ -3323,15 +3323,23 @@
     const aggregate = aggregateMediaRows(mediaRows, launch)[0] || null;
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
+    const paidOrders = numberOrNull(launch?.pedidos_pagos);
+    const organicOrders = numberOrNull(launch?.pedidos_organicos);
 
-    if (paidRevenue !== null || organicRevenue !== null) {
+    if (paidRevenue !== null || organicRevenue !== null || paidOrders !== null || organicOrders !== null) {
       const total = Number(paidRevenue || 0) + Number(organicRevenue || 0);
+      const channelMeta = (revenue, orders, label) => {
+        const parts = [];
+        parts.push(total && revenue !== null ? `${fmtPct(revenue / total, 1)} do total atribuido` : 'receita aguardando');
+        parts.push(orders !== null ? `${fmtNum(orders)} ${label}` : `${label} aguardando`);
+        return parts.join(' · ');
+      };
       return `
         <section class="drill-section">
           <div class="drill-section-title">Atribuicao por canal</div>
           <div class="drill-impact-grid">
-            <div><span>Receita paga</span><strong>${fmtBRL(paidRevenue)}</strong><small>${fmtPct(total ? paidRevenue / total : null, 1)} do total atribuido</small></div>
-            <div><span>Receita organica</span><strong>${fmtBRL(organicRevenue)}</strong><small>${fmtPct(total ? organicRevenue / total : null, 1)} do total atribuido</small></div>
+            <div><span>Receita paga</span><strong>${fmtBRL(paidRevenue)}</strong><small>${channelMeta(paidRevenue, paidOrders, 'pedidos pagos')}</small></div>
+            <div><span>Receita organica</span><strong>${fmtBRL(organicRevenue)}</strong><small>${channelMeta(organicRevenue, organicOrders, 'pedidos organicos')}</small></div>
           </div>
         </section>
       `;
@@ -5896,6 +5904,13 @@
     return fmtBRL(value);
   }
 
+  function organicPaidOrdersValue(value) {
+    if (value === null || value === undefined) {
+      return '<span class="cell-muted">Aguardando atribuicao real</span>';
+    }
+    return fmtNum(value);
+  }
+
   function mediaRevenueCell(row) {
     const value = numberOrNull(row?.receita_atribuida);
     if (value !== null) return `${fmtBRL(value)}${metodologiaComercialBadge(row)}`;
@@ -6045,7 +6060,9 @@
               ${thTip('Receita comercial', 'Soma das receitas informadas em midia e CRM. Midia sem receita atribuida fica fora da receita comercial.', 'num')}
               ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculavel por receita atribuida real.', 'num')}
               ${thTip('Vendas organicas', 'Receita organica atribuida por pedido via last-click. Fica pendente ate a atribuicao real (Complemento 8) estar validada no BigQuery.', 'num')}
+              ${thTip('Pedidos organicos', 'Pedidos organicos atribuidos via last-click. Fica pendente ate a atribuicao real estar no lancamentos_produtos_dia.json.', 'num')}
               ${thTip('Vendas pagas', 'Receita paga atribuida por pedido via last-click. Fica pendente ate a atribuicao real (Complemento 8) estar validada no BigQuery.', 'num')}
+              ${thTip('Pedidos pagos', 'Pedidos pagos atribuidos via last-click. Fica pendente ate a atribuicao real estar no lancamentos_produtos_dia.json.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -6065,7 +6082,9 @@
                 <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${roasValue(row.roasComercial)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${organicPaidValue(row.launch.receita_organica)}</td>
+                <td class="num">${organicPaidOrdersValue(row.launch.pedidos_organicos)}</td>
                 <td class="num">${organicPaidValue(row.launch.receita_paga)}</td>
+                <td class="num">${organicPaidOrdersValue(row.launch.pedidos_pagos)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
