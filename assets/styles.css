@@ -1930,6 +1930,14 @@ section {
   letter-spacing: 0.12em;
   margin-bottom: 5px;
 }
+.section-transition-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--txt-muted);
+  text-align: center;
+  margin: 4px 0 18px;
+}
 h2 {
   margin: 0;
   font-size: 1.3rem;

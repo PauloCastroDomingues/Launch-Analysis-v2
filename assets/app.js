@@ -3284,35 +3284,6 @@
     `;
   }
 
-  function renderMomentoContext(selected) {
-    const container = $('momento-context');
-    if (!container) return;
-    const model = shareModelForLine(selected.modelo_id);
-    if (!model) {
-      container.innerHTML = `<div class="empty-state"><div><strong>Sem dado de momento.</strong>share_trajetoria ainda nao tem este lancamento classificado.</div></div>`;
-      return;
-    }
-    const seasonalWarning = model.d0_coincide_com_sazonalidade === true
-      ? `<div class="share-warning"><span class="share-note-icon ti ti-alert-triangle" aria-hidden="true">!</span><span>Lancamento nasce em cima de data sazonal; nao comparavel 1:1 com os demais.</span></div>`
-      : '';
-    container.innerHTML = `
-      ${seasonalWarning}
-      <div class="grid grid-2" style="margin-bottom:14px">
-        <div class="share-stat">
-          <span>Share do faturamento</span>
-          <strong>${fmtPct(model.share_acumulado_atual, 1)}</strong>
-          <small>do faturamento total da Reise no periodo coberto</small>
-        </div>
-        <div class="share-stat">
-          <span>Eventos comerciais</span>
-          <strong>${fmtNum(model.eventos_comerciais_cadastrados || 0)}</strong>
-          <small>cadastrados para este lancamento</small>
-        </div>
-      </div>
-      ${companyMomentBlock(model)}
-    `;
-  }
-
   function impactInvestmentBlock(modelId) {
     const launch = lineLaunchById(modelId);
     const mediaRows = launch
@@ -6180,9 +6151,7 @@
     renderStoryBrief(selected);
     renderMethodology(selected);
     renderState(selected);
-    renderMomentoContext(selected);
     renderComparison();
-    renderComparison('comparison-table-media');
     renderCharts(selected);
     renderStock(selected);
     renderColorMix();
