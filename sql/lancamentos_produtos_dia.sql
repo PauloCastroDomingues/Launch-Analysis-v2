@@ -80,6 +80,20 @@ modelos_norm AS (
     ), r'[^a-z0-9|]+', '') AS sku_prefixos_compact
   FROM modelos
 ),
+canal_atribuicao_pedido AS (
+  SELECT
+    email_norm,
+    paid_date_brt,
+    total_amount,
+    ARRAY_AGG(canal IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS canal_real,
+    ARRAY_AGG(tipo IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS tipo_real,
+    COUNT(*) AS canal_real_match_count
+  FROM `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror`
+  WHERE email_norm IS NOT NULL
+    AND paid_date_brt IS NOT NULL
+    AND total_amount IS NOT NULL
+  GROUP BY 1,2,3
+),
 itens_validos AS (
   SELECT
     i.order_partition_date_brt AS data,
@@ -112,6 +126,8 @@ itens_validos AS (
         ), r'\D', ''), ''))
       ELSE NULL
     END AS customer_key,
+    canal_real.canal_real AS canal_real,
+    canal_real.tipo_real AS tipo_real,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
     SAFE_CAST(i.quantity AS INT64) AS pares,
@@ -122,6 +138,12 @@ itens_validos AS (
     REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM `reise-ssot.mart_shared.fct_order_item` i
+  LEFT JOIN `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
+    ON CAST(o.order_sk AS STRING) = CAST(i.order_sk AS STRING)
+  LEFT JOIN canal_atribuicao_pedido canal_real
+    ON canal_real.email_norm = LOWER(TRIM(CAST(o.customer_email AS STRING)))
+   AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
+   AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
   LEFT JOIN (
     SELECT
       UPPER(TRIM(sku)) AS sku_key,
@@ -401,11 +423,30 @@ SELECT
   modelo_id AS modelo_id_detectado,
   ANY_VALUE(d0) AS d0,
   ANY_VALUE(dia_desde_d0) AS dia_desde_d0,
+  ANY_VALUE(canal_real) AS canal_real,
+  ANY_VALUE(tipo_real) AS tipo_real,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(IF(tipo_real = 'paid', receita_bruta, 0)), 2)
+  END AS receita_paga,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(IF(tipo_real = 'organic', receita_bruta, 0)), 2)
+  END AS receita_organica,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(tipo_real = 'paid', order_sk, NULL))
+  END AS pedidos_pagos,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(tipo_real = 'organic', order_sk, NULL))
+  END AS pedidos_organicos,
   COUNT(DISTINCT sku) AS skus_distintos,
   TO_JSON_STRING(STRUCT(
     'fct_order_item' AS fonte_base,
     'is_valid_order = TRUE' AS regra_pedido_valido,
     'receita = receita_bruta' AS regra_receita_dashboard,
+    IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real') AS regra_atribuicao_real,
     ANY_VALUE(regra_classificacao) AS regra_classificacao
   )) AS flags_qualidade,
   'reise-ssot.mart_shared.fct_order_item' AS fonte

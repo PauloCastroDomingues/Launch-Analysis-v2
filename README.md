@@ -120,6 +120,7 @@ reise-launch-dashboard-v2/
 ├── sql/
 │   ├── auditoria_historico_gt_avant.sql
 │   ├── auditoria_lancamentos_ssot.sql
+│   ├── canal_atribuicao_pedido_mirror.sql
 │   ├── diagnostico_monochrome.sql
 │   ├── diagnostico_monochrome_amplo.sql
 │   ├── diagnostico_rs8_monochrome.sql
@@ -143,6 +144,7 @@ reise-launch-dashboard-v2/
 | `data/manifest.json` | Snapshot da última exportação e `data_quality`. |
 | `sql/auditoria_historico_gt_avant.sql` | Auditoria correta para GT e Avant. |
 | `sql/auditoria_lancamentos_ssot.sql` | Auditoria canônica para todos os modelos usando `fct_order_item`, `order_sk`, pedidos válidos e receita bruta/líquida. |
+| `sql/canal_atribuicao_pedido_mirror.sql` | SQL operacional da replica cross-region de atribuicao last-click por email + data + valor. |
 | `sql/lancamentos_produtos_dia.sql` | Query-base do pipeline de vendas por lançamento. |
 | `sql/diagnostico_monochrome*.sql` | Diagnóstico de cadastro/match do Monochrome. |
 
@@ -193,8 +195,8 @@ Funções principais:
 - Modelos exportáveis pelo Apps Script precisam estar com `status = historico` ou `status = ativo` e `day_zero_base` válido.
 - Histórico (`status = historico`) também entra como benchmark estático em `lancamentos_historico.json`, mas pode ser reexportado no pipeline diário quando precisa de granularidade por pedido/item.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
-- Rodar queries em `southamerica-east1`.
-- Não criar views ou tabelas no BigQuery para este dashboard.
+- Rodar queries do dashboard em `southamerica-east1`.
+- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region.
 
 ## Pipeline de Vendas por Modelo
 
@@ -206,7 +208,9 @@ Saída esperada por linha:
 modelo_id | data | source_order_id | order_sk | origem | sku | nome_produto
 variant_title | sub_modelo | cor | tamanho | pedidos | pedidos_validos | pares
 receita | receita_bruta | desconto | receita_liquida | novos | recorrentes
-match_text_norm | modelo_id_detectado | d0 | dia_desde_d0 | flags_qualidade | fonte
+match_text_norm | modelo_id_detectado | d0 | dia_desde_d0 | canal_real | tipo_real
+receita_paga | receita_organica | pedidos_pagos | pedidos_organicos
+flags_qualidade | fonte
 ```
 
 ### Regra canônica de venda SSOT

@@ -1,39 +1,32 @@
--- Growth / Marketing (US) - atribuicao Shopify last-click por pedido.
--- Rode em JOB LOCATION = US.
+-- Complemento 8 revisado - mirror de atribuicao real por pedido.
 --
--- Complemento 8 revisado: para o dashboard, use
--- `sql/canal_atribuicao_pedido_mirror.sql`. A chave validada nao e
--- order_name/order_sk; e email_norm + paid_date_brt + total_amount.
+-- Objetivo:
+-- materializar em southamerica-east1 a atribuicao last-click que hoje vive no
+-- dataset mart_growth_us (US), permitindo join local com mart_shared.
 --
--- Esta view expõe o grao por pedido para permitir o cruzamento posterior com
--- os itens classificados por lancamento. Antes de automatizar o join final,
--- valide no BigQuery se lancamentos_produtos_dia/fct_order_item traz order_name
--- ou se sera necessario ligar order_sk via mart_growth_us.bridge_orders_customers.
+-- Rodar a leitura em JOB LOCATION = US. O destino final esperado pelo dashboard e:
+--   `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror`
+--
+-- Se o BigQuery nao permitir escrever direto em dataset de outra regiao, usar o
+-- caminho operacional: query em US -> EXPORT DATA para Cloud Storage -> carga/job
+-- em southamerica-east1 para a tabela acima.
 
-CREATE OR REPLACE VIEW `reise-ssot.mart_growth_us.shopify_orders_channel_last_click_v` AS
+CREATE OR REPLACE TABLE `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` AS
 WITH
-buyers AS (
-  SELECT
-    customer_sk,
-    MIN(paid_date_brt) AS first_paid_date_brt
-  FROM `reise-ssot.mart_growth_us.bridge_orders_customers`
-  GROUP BY 1
-),
 orders AS (
   SELECT
-    b.paid_date_brt AS data,
-    b.order_name,
-    b.source_order_id,
-    b.customer_sk,
-    b.total_amount,
-    IF(b.paid_date_brt = buyers.first_paid_date_brt, 1, 0) AS is_new
+    LOWER(TRIM(b.email_norm)) AS email_norm,
+    b.paid_date_brt,
+    ROUND(CAST(b.total_amount AS NUMERIC), 2) AS total_amount,
+    b.source_order_id
   FROM `reise-ssot.mart_growth_us.bridge_orders_customers` b
-  LEFT JOIN buyers USING (customer_sk)
+  WHERE NULLIF(LOWER(TRIM(b.email_norm)), '') IS NOT NULL
+    AND b.paid_date_brt IS NOT NULL
+    AND b.total_amount IS NOT NULL
 ),
 journey AS (
   SELECT
     order_id,
-    order_name,
     last_source,
     last_source_description,
     last_source_type,
@@ -44,19 +37,16 @@ journey AS (
 ),
 joined AS (
   SELECT
-    o.data,
-    o.order_name,
-    o.source_order_id,
+    o.email_norm,
+    o.paid_date_brt,
     o.total_amount,
-    o.is_new,
-
+    o.source_order_id,
     j.last_source,
     j.last_source_description,
     j.last_source_type,
     j.last_utm_source,
     j.last_utm_medium,
     j.last_utm_campaign,
-
     LOWER(TRIM(COALESCE(j.last_source_description, j.last_utm_source, j.last_source))) AS raw_channel,
     LOWER(TRIM(COALESCE(j.last_utm_medium, ''))) AS raw_medium
   FROM orders o
@@ -65,12 +55,10 @@ joined AS (
 ),
 classified AS (
   SELECT
-    data,
-    order_name,
-    source_order_id,
+    email_norm,
+    paid_date_brt,
     total_amount,
-    is_new,
-
+    source_order_id,
     CASE
       WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
       WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
@@ -86,7 +74,6 @@ classified AS (
       WHEN raw_channel LIKE '%google%' THEN 'Google'
       ELSE INITCAP(raw_channel)
     END AS canal,
-
     CASE
       WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'direct'
       WHEN raw_channel IS NULL OR raw_channel = '' THEN 'unknown'
@@ -99,11 +86,13 @@ classified AS (
   FROM joined
 )
 SELECT
-  data,
-  order_name,
-  source_order_id,
+  email_norm,
+  paid_date_brt,
+  total_amount,
   canal,
-  tipo,
-  CAST(total_amount AS NUMERIC) AS receita_pedido,
-  is_new
-FROM classified;
+  tipo
+FROM classified
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY source_order_id
+  ORDER BY canal, tipo
+) = 1;

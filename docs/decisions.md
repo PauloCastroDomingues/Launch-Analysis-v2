@@ -26,3 +26,4 @@
 24. Quando a mesma `receita_atribuida` aparece em canais diferentes do mesmo modelo/janela, ROAS/CPA por canal sao bloqueados e a UI mostra apenas o total agregado da janela.
 25. O card de promotores/ofensores usa desvios de participacao por cor e tamanho dentro do lancamento selecionado. Canal so entra quando o JSON trouxer atribuicao real por pedido.
 26. Series 2 e um relancamento do RS8 Avant por cor. O match canonico entra antes do Avant comum e so captura RS8 Avant/Series 2 com cor Whisky, Off White ou Azul Marinho, abrindo sub-modelos por cor no export.
+27. Atribuicao real de canal usa chave validada por email normalizado + data paga BRT + valor total arredondado. Como `mart_growth_us` fica em US e `mart_shared` em southamerica-east1, o dashboard espera uma tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`; enquanto ela nao existir, `canal_real`, `tipo_real`, `receita_paga` e `receita_organica` permanecem `null`.

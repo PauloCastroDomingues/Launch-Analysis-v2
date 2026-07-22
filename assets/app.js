@@ -577,6 +577,10 @@
       const novos = sumNullable(filtered, 'novos');
       const recorrentes = sumNullable(filtered, 'recorrentes');
       const clientesClassificados = novos !== null && recorrentes !== null ? novos + recorrentes : null;
+      const receitaPaga = sumNullable(filtered, 'receita_paga');
+      const receitaOrganica = sumNullable(filtered, 'receita_organica');
+      const pedidosPagos = sumNullable(filtered, 'pedidos_pagos');
+      const pedidosOrganicos = sumNullable(filtered, 'pedidos_organicos');
       return {
         receita,
         receita_bruta: receita,
@@ -589,6 +593,10 @@
         novos,
         recorrentes,
         novos_pct: clientesClassificados ? novos / clientesClassificados : null,
+        receita_paga: receitaPaga,
+        receita_organica: receitaOrganica,
+        pedidos_pagos: pedidosPagos,
+        pedidos_organicos: pedidosOrganicos,
         origem,
         day
       };
@@ -701,6 +709,10 @@
       daily,
       acumulado_atual: acumuladoAtual,
       acumulado_lancamento: acumuladoLancamento,
+      receita_paga: acumuladoLancamento?.receita_paga ?? acumuladoAtual?.receita_paga ?? null,
+      receita_organica: acumuladoLancamento?.receita_organica ?? acumuladoAtual?.receita_organica ?? null,
+      pedidos_pagos: acumuladoLancamento?.pedidos_pagos ?? acumuladoAtual?.pedidos_pagos ?? null,
+      pedidos_organicos: acumuladoLancamento?.pedidos_organicos ?? acumuladoAtual?.pedidos_organicos ?? null,
       first_sale_date: firstSaleDate,
       first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(model.day_zero_base, toDate(firstSaleDate)) || 0) : null,
       origem: 'pipeline',
