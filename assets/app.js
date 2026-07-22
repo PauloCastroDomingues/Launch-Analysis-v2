@@ -4537,11 +4537,13 @@
         const key = commercialWindowKey(row);
         const investimento = numberOrNull(row.investimento);
         const receita = numberOrNull(row.receita_atribuida);
+        const receitaIsolada = row.janela_isolada_confiavel ? numberOrNull(row.receita_janela_isolada) : null;
         const pedidos = numberOrNull(row.pedidos);
+        const pedidosIsolados = row.janela_isolada_confiavel ? numberOrNull(row.pedidos_janela_isolados) : null;
         const pares = firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']) ?? pairsByWindow.get(key) ?? null;
         const cliques = firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? clicksByWindow.get(key) ?? null;
-        const roas = rowRoas(row) ?? (investimento && receita !== null ? receita / investimento : null);
-        const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
+        const roas = rowRoas(row) ?? (row.janela_isolada_confiavel ? roasNumberOrNull(row.roas_janela_isolada) : null) ?? (investimento && receita !== null ? receita / investimento : null);
+        const cpa = numberOrNull(row.cpa) ?? (row.janela_isolada_confiavel ? numberOrNull(row.cpa_janela_isolada) : null) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
         const cpp = firstKnownCommercialNumber(row, ['cpp', 'custo_por_par', 'custo_par']) ?? cppByWindow.get(key) ?? (investimento !== null && pares ? investimento / pares : null);
         const cpc = firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']) ?? cpcByWindow.get(key) ?? (investimento !== null && cliques ? investimento / cliques : null);
         return {
@@ -4549,15 +4551,15 @@
           key,
           label: commercialWindowLabel(key),
           investimento,
-          receita,
-          pedidos,
+          receita: receita ?? receitaIsolada,
+          pedidos: pedidos ?? pedidosIsolados,
           pares,
           cliques,
           roas,
           cpa,
           cpp,
           cpc,
-          source: row.receita_source || row.metodologia || ''
+          source: row.receita_source || row.metodologia || (receitaIsolada !== null ? 'janela_isolada' : '')
         };
       })
       .sort((a, b) => commercialWindowRank(a.key) - commercialWindowRank(b.key));
@@ -5517,7 +5519,9 @@
     const metodologia = String(row?.metodologia || '').trim();
     const aviso = String(row?.aviso || '').trim();
     if (!metodologia && !aviso) return '';
-    const label = metodologia === 'correlacao_por_janela_calendario' ? 'correl.' : 'metod.';
+    const label = metodologia === 'correlacao_por_janela_calendario'
+      ? 'correl.'
+      : metodologia === 'janela_isolada' ? 'isolada' : 'metod.';
     const text = `${aviso || 'Leitura comercial estimada; nao representa atribuicao real de clique/conversao.'} Metodologia: ${metodologia || 'nao informada'}.`;
     return ` ${badge('parcial', label, text)}`;
   }
@@ -5644,18 +5648,24 @@
       investimento,
       receita_atribuida: receita,
       receita_janela_agregada: numberOrNull(row.receita_janela_agregada),
+      receita_janela_isolada: numberOrNull(row.receita_janela_isolada),
       receita_source: receitaSource,
       pedidos,
       pedidos_janela_agregados: numberOrNull(row.pedidos_janela_agregados),
+      pedidos_janela_isolados: numberOrNull(row.pedidos_janela_isolados),
       pares: firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']) ?? firstKnownCommercialNumber(campaignRevenue, ['pares', 'quantidade']),
       cliques: firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? firstKnownCommercialNumber(campaignRevenue, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']),
       roas,
       cpa,
+      roas_janela_isolada: roasNumberOrNull(row.roas_janela_isolada),
+      cpa_janela_isolada: numberOrNull(row.cpa_janela_isolada),
       cpp: firstKnownCommercialNumber(row, ['cpp', 'custo_por_par', 'custo_par']),
       cpc: firstKnownCommercialNumber(row, ['cpc', 'custo_por_click', 'custo_por_clique']),
       status: row.status || '',
       metodologia: row.metodologia || (receitaSource === 'faturamento_campanha' ? 'faturamento_campanha' : ''),
       aviso: row.aviso || (receitaSource === 'faturamento_campanha' ? 'Receita atribuida por campanha via data/faturamento_campanha.json.' : ''),
+      janela_isolada_confiavel: Boolean(row.janela_isolada_confiavel),
+      janela_isolada_motivo: row.janela_isolada_motivo || null,
       data_suspeita: row.data_suspeita !== undefined ? Boolean(row.data_suspeita) : !validacaoData.valida,
       data_suspeita_motivo: row.data_suspeita_motivo || (validacaoData.valida ? null : validacaoData.motivo),
       valor_suspeito: Boolean(row.valor_suspeito),
@@ -5776,7 +5786,13 @@
         pedidos: 0,
         hasReceitaAtribuida: false,
         receita_janela_agregada: null,
+        receita_janela_isolada: 0,
+        pedidos_janela_isolados: 0,
+        hasReceitaJanelaIsolada: false,
         hasPedidos: false,
+        hasPedidosJanelaIsolados: false,
+        janela_isolada_confiavel: false,
+        janela_isolada_motivo: '',
         metodologia: '',
         aviso: '',
         count: 0,
@@ -5791,10 +5807,22 @@
         current.receita_atribuida += row.receita_atribuida || 0;
         current.hasReceitaAtribuida = true;
       }
+      if (row.janela_isolada_confiavel && row.receita_janela_isolada !== null && row.receita_janela_isolada !== undefined) {
+        current.receita_janela_isolada += row.receita_janela_isolada || 0;
+        current.hasReceitaJanelaIsolada = true;
+        current.janela_isolada_confiavel = true;
+        current.janela_isolada_motivo = current.janela_isolada_motivo || row.janela_isolada_motivo || '';
+      } else if (row.janela_isolada_confiavel === false && row.janela_isolada_motivo) {
+        current.janela_isolada_motivo = current.janela_isolada_motivo || row.janela_isolada_motivo;
+      }
       const pedidos = row.pedidos_janela_agregados ?? row.pedidos;
       if (pedidos !== null && pedidos !== undefined) {
         current.pedidos += pedidos || 0;
         current.hasPedidos = true;
+      }
+      if (row.janela_isolada_confiavel && row.pedidos_janela_isolados !== null && row.pedidos_janela_isolados !== undefined) {
+        current.pedidos_janela_isolados += row.pedidos_janela_isolados || 0;
+        current.hasPedidosJanelaIsolados = true;
       }
       current.metodologia = current.metodologia || row.metodologia || '';
       current.aviso = current.aviso || row.aviso || '';
@@ -5803,23 +5831,40 @@
     });
     return [...groups.values()]
       .filter((row) => row.count > 1 || row.receita_janela_agregada !== null || row.investimento > 0)
-      .map(({ count, canais, hasReceitaAtribuida, hasPedidos, receita_janela_agregada, ...row }) => {
+      .map(({
+        count,
+        canais,
+        hasReceitaAtribuida,
+        hasReceitaJanelaIsolada,
+        hasPedidos,
+        hasPedidosJanelaIsolados,
+        receita_janela_agregada,
+        ...row
+      }) => {
         const receita = receita_janela_agregada ?? (hasReceitaAtribuida ? row.receita_atribuida : null);
+        const receitaIsolada = receita === null && hasReceitaJanelaIsolada ? row.receita_janela_isolada : null;
         const pedidos = hasPedidos ? row.pedidos : null;
+        const pedidosIsolados = hasPedidosJanelaIsolados ? row.pedidos_janela_isolados : null;
         const source = receita_janela_agregada !== null && receita_janela_agregada !== undefined
           ? 'receita_repetida_agregada'
-          : hasReceitaAtribuida ? 'atribuida' : null;
+          : hasReceitaAtribuida ? 'atribuida' : receitaIsolada !== null ? 'janela_isolada' : null;
+        const metodologia = row.metodologia || (receitaIsolada !== null ? 'janela_isolada' : '');
+        const aviso = row.aviso || (receitaIsolada !== null ? row.janela_isolada_motivo : '');
         return {
           ...row,
           campanha: count > 1 ? 'Total janela' : row.campanha,
           canal: canais.size > 1 ? `${fmtNum(canais.size)} canais` : ([...canais][0] || row.canal),
           receita_atribuida: receita ?? null,
+          receita_janela_isolada: receitaIsolada ?? null,
           receita_source: source,
           pedidos: pedidos ?? null,
+          pedidos_janela_isolados: pedidosIsolados ?? null,
           roas: row.investimento && receita !== null && receita !== undefined ? receita / row.investimento : null,
           cpa: row.investimento && pedidos ? row.investimento / pedidos : null,
-          metodologia: row.metodologia || '',
-          aviso: row.aviso || ''
+          roas_janela_isolada: row.investimento && receitaIsolada !== null && receitaIsolada !== undefined ? receitaIsolada / row.investimento : null,
+          cpa_janela_isolada: row.investimento && pedidosIsolados ? row.investimento / pedidosIsolados : null,
+          metodologia,
+          aviso
         };
       });
   }
@@ -5841,8 +5886,31 @@
 
   function mediaRevenueCell(row) {
     const value = numberOrNull(row?.receita_atribuida);
-    if (value === null) return '<span class="cell-muted">Sem receita atribuida</span>';
-    return `${fmtBRL(value)}${metodologiaComercialBadge(row)}`;
+    if (value !== null) return `${fmtBRL(value)}${metodologiaComercialBadge(row)}`;
+    if (row?.janela_isolada_confiavel && numberOrNull(row?.receita_janela_isolada) !== null) {
+      return `${fmtBRL(row.receita_janela_isolada)} ${badge('parcial', 'isolada', row.janela_isolada_motivo || 'Estimativa isolada por janela unica de campanha.')}`;
+    }
+    return `<span class="cell-muted">Sem receita atribuida</span>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
+  }
+
+  function prepareMediaDisplayRow(row) {
+    if (!row.metodologia && row.janela_isolada_confiavel) {
+      row.metodologia = 'janela_isolada';
+      row.aviso = row.janela_isolada_motivo;
+    }
+    return row;
+  }
+
+  function mediaRoasForDisplay(row) {
+    return row?.roas !== null && row?.roas !== undefined ? row.roas : row?.roas_janela_isolada;
+  }
+
+  function mediaCpaForDisplay(row) {
+    return row?.cpa !== null && row?.cpa !== undefined ? row.cpa : row?.cpa_janela_isolada;
+  }
+
+  function mediaRoasBadgeForDisplay(row) {
+    return roasBadge(mediaRoasForDisplay(row));
   }
 
   function isLineInvestmentMediaRow(row) {
@@ -6003,17 +6071,21 @@
     const mediaRows = (state.data.midia_paga || []).filter((row) => row.modelo_id === selected.modelo_id);
     const detailedRows = enrichMediaEstimates(mediaRows.map((row) => normalizeMediaRow(row, selected)), selected);
     const displayRows = [...aggregateMediaRows(detailedRows, selected), ...detailedRows];
-    $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
+    $('media-table').innerHTML = displayRows.length ? displayRows.map((inputRow) => {
+      const row = prepareMediaDisplayRow(inputRow);
+      const roas = mediaRoasForDisplay(row);
+      return `
       <tr>
         <td>${row.aggregate ? `<strong>${escapeHtml(row.campanha)}</strong>` : escapeHtml(row.campanha)}${suspeitaComercialBadge(row)}</td>
         <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}${metodologiaComercialBadge(row)}${suspeitaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td class="num">${mediaRevenueCell(row)}</td>
-        <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
-        <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
-        <td>${roasBadge(row.roas)}</td>
-      </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
+        <td class="num">${roasValue(roas)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${mediaValue(mediaCpaForDisplay(row), fmtBRL)}</td>
+        <td>${mediaRoasBadgeForDisplay(row)}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="8" class="cell-muted">Sem midia paga cadastrada para este modelo.</td></tr>`;
 
     const crmRows = (state.data.crm_disparos || [])
       .filter((row) => row.modelo_id === selected.modelo_id)
@@ -6066,7 +6138,10 @@
 
     const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows]
       .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.janela).localeCompare(String(b.janela)) || a.campanha.localeCompare(b.campanha));
-    $('media-table').innerHTML = displayRows.length ? displayRows.map((row) => `
+    $('media-table').innerHTML = displayRows.length ? displayRows.map((inputRow) => {
+      const row = prepareMediaDisplayRow(inputRow);
+      const roas = mediaRoasForDisplay(row);
+      return `
       <tr>
         <td class="model-name">${escapeHtml(row.modelo)}</td>
         <td>${escapeHtml(row.campanha)}${suspeitaComercialBadge(row)}</td>
@@ -6074,10 +6149,11 @@
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td class="num">${mediaRevenueCell(row)}</td>
-        <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
-        <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
-        <td>${roasBadge(row.roas)}</td>
-      </tr>`).join('') : `<tr><td colspan="9" class="cell-muted">Sem midia paga cadastrada para os modelos selecionados.</td></tr>`;
+        <td class="num">${roasValue(roas)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${mediaValue(mediaCpaForDisplay(row), fmtBRL)}</td>
+        <td>${mediaRoasBadgeForDisplay(row)}</td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="9" class="cell-muted">Sem midia paga cadastrada para os modelos selecionados.</td></tr>`;
 
     const crmRows = crmRowsAll
       .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.data_disparo || '').localeCompare(String(b.data_disparo || '')));

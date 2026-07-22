@@ -2877,8 +2877,68 @@ function marcarReceitaDuplicadaMidiaPaga_(registrosMidia) {
   return rows;
 }
 
-function calcularImpactoMidiaPaga_(registrosMidia) {
-  return marcarReceitaDuplicadaMidiaPaga_(marcarQualidadeMidiaPaga_(registrosMidia)).map(row => {
+function isolarInvestimentoUnicoNaJanela_(rows, index) {
+  const row = rows[index];
+  const modeloId = String(row.modelo_id || '').trim();
+  if (!modeloId) return false;
+  const inicio = dateOnly_(row.data_inicio);
+  const fim = dateOnly_(row.data_fim || row.data_inicio);
+  if (!inicio || !fim) return false;
+  return !rows.some((other, otherIndex) => {
+    if (otherIndex === index) return false;
+    if (String(other.modelo_id || '').trim() !== modeloId) return false;
+    if (!midiaValidaParaImpacto_(other)) return false;
+    const outroInicio = dateOnly_(other.data_inicio);
+    const outroFim = dateOnly_(other.data_fim || other.data_inicio);
+    if (!outroInicio || !outroFim) return false;
+    return outroInicio <= fim && outroFim >= inicio;
+  });
+}
+
+function estimarReceitaJanelaIsolada_(rows, shareTrajetoria) {
+  return rows.map((row, index) => {
+    if (!midiaValidaParaImpacto_(row)) return row;
+    if (row.receita_atribuida !== null && row.receita_atribuida !== undefined) return row;
+    const investimento = numberOrNull_(row.investimento);
+    if (!investimento || investimento <= 0) return row;
+    const modeloId = String(row.modelo_id || '').trim();
+    if (!modeloId) return row;
+
+    if (!isolarInvestimentoUnicoNaJanela_(rows, index)) {
+      return {
+        ...row,
+        janela_isolada_confiavel: false,
+        janela_isolada_motivo: 'Mais de uma campanha do mesmo modelo com datas sobrepostas nesta janela; nao da para isolar o efeito de cada uma.'
+      };
+    }
+
+    const janela = pontosShareJanela_(shareTrajetoria, modeloId, row.data_inicio, row.data_fim);
+    const receitaJanela = somarReceitaProdutoPontos_(janela);
+    const pedidosJanela = somarPedidosProdutoPontos_(janela);
+    if (receitaJanela === null) {
+      return {
+        ...row,
+        janela_isolada_confiavel: false,
+        janela_isolada_motivo: 'share_trajetoria ainda nao tem dado de receita para essa janela.'
+      };
+    }
+
+    return {
+      ...row,
+      receita_janela_isolada: receitaJanela,
+      pedidos_janela_isolados: pedidosJanela,
+      roas_janela_isolada: round6_(receitaJanela / investimento),
+      cpa_janela_isolada: pedidosJanela ? round2_(investimento / pedidosJanela) : null,
+      janela_isolada_confiavel: true,
+      janela_isolada_motivo: 'Unica campanha do modelo ativa nesta janela - leitura mais confiavel que o agregado, mas ainda mistura organico e pago dentro do periodo.'
+    };
+  });
+}
+
+function calcularImpactoMidiaPaga_(registrosMidia, shareTrajetoria) {
+  const base = marcarReceitaDuplicadaMidiaPaga_(marcarQualidadeMidiaPaga_(registrosMidia));
+  const comIsolamento = shareTrajetoria ? estimarReceitaJanelaIsolada_(base, shareTrajetoria) : base;
+  return comIsolamento.map(row => {
     const investimento = numberOrNull_(row.investimento);
     const receita = numberOrNull_(row.receita_atribuida);
     const pedidos = numberOrNull_(row.pedidos);
