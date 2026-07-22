@@ -82,17 +82,23 @@ modelos_norm AS (
 ),
 canal_atribuicao_pedido AS (
   SELECT
+    NULLIF(TRIM(CAST(source_order_id AS STRING)), '') AS source_order_id_norm,
+    NULLIF(LOWER(TRIM(CAST(order_name AS STRING))), '') AS order_name_norm,
     email_norm,
     paid_date_brt,
     total_amount,
     ARRAY_AGG(canal IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS canal_real,
     ARRAY_AGG(tipo IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS tipo_real,
+    ARRAY_AGG(regra_atribuicao_real IGNORE NULLS ORDER BY regra_atribuicao_real LIMIT 1)[SAFE_OFFSET(0)] AS regra_atribuicao_real,
     COUNT(*) AS canal_real_match_count
   FROM `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror`
-  WHERE email_norm IS NOT NULL
-    AND paid_date_brt IS NOT NULL
-    AND total_amount IS NOT NULL
-  GROUP BY 1,2,3
+  WHERE NULLIF(TRIM(CAST(source_order_id AS STRING)), '') IS NOT NULL
+    OR (
+      email_norm IS NOT NULL
+      AND paid_date_brt IS NOT NULL
+      AND total_amount IS NOT NULL
+    )
+  GROUP BY 1,2,3,4,5
 ),
 itens_validos AS (
   SELECT
@@ -128,6 +134,13 @@ itens_validos AS (
     END AS customer_key,
     canal_real.canal_real AS canal_real,
     canal_real.tipo_real AS tipo_real,
+    canal_real.regra_atribuicao_real AS regra_atribuicao_real,
+    CASE
+      WHEN canal_real.source_order_id_norm IS NOT NULL THEN canal_real.source_order_id_norm
+      WHEN canal_real.order_name_norm IS NOT NULL THEN canal_real.order_name_norm
+      WHEN canal_real.email_norm IS NOT NULL THEN CONCAT(canal_real.email_norm, '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
+      ELSE NULL
+    END AS atribuicao_match_key,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
     SAFE_CAST(i.quantity AS INT64) AS pares,
@@ -141,9 +154,26 @@ itens_validos AS (
   LEFT JOIN `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
     ON CAST(o.order_sk AS STRING) = CAST(i.order_sk AS STRING)
   LEFT JOIN canal_atribuicao_pedido canal_real
-    ON canal_real.email_norm = LOWER(TRIM(CAST(o.customer_email AS STRING)))
-   AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
-   AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    ON (
+      canal_real.source_order_id_norm IS NOT NULL
+      AND canal_real.source_order_id_norm IN (
+        NULLIF(TRIM(CAST(o.source_order_id AS STRING)), ''),
+        NULLIF(TRIM(CAST(o.order_sk AS STRING)), ''),
+        NULLIF(TRIM(CAST(i.order_sk AS STRING)), '')
+      )
+    )
+    OR (
+      canal_real.source_order_id_norm IS NULL
+      AND canal_real.order_name_norm IS NOT NULL
+      AND canal_real.order_name_norm = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
+    )
+    OR (
+      canal_real.source_order_id_norm IS NULL
+      AND canal_real.order_name_norm IS NULL
+      AND canal_real.email_norm = LOWER(TRIM(CAST(o.customer_email AS STRING)))
+      AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
+      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    )
   LEFT JOIN (
     SELECT
       UPPER(TRIM(sku)) AS sku_key,
@@ -425,6 +455,8 @@ SELECT
   ANY_VALUE(dia_desde_d0) AS dia_desde_d0,
   ANY_VALUE(canal_real) AS canal_real,
   ANY_VALUE(tipo_real) AS tipo_real,
+  ANY_VALUE(atribuicao_match_key) AS atribuicao_match_key,
+  ANY_VALUE(regra_atribuicao_real) AS regra_atribuicao_real,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
     ELSE ROUND(SUM(IF(tipo_real = 'paid', receita_bruta, 0)), 2)
@@ -446,7 +478,7 @@ SELECT
     'fct_order_item' AS fonte_base,
     'is_valid_order = TRUE' AS regra_pedido_valido,
     'receita = receita_bruta' AS regra_receita_dashboard,
-    IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real') AS regra_atribuicao_real,
+    COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real')) AS regra_atribuicao_real,
     ANY_VALUE(regra_classificacao) AS regra_classificacao
   )) AS flags_qualidade,
   'reise-ssot.mart_shared.fct_order_item' AS fonte

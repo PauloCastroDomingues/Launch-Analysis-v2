@@ -1,9 +1,10 @@
 -- Growth / Marketing (US) - atribuicao Shopify last-click por pedido.
 -- Rode em JOB LOCATION = US.
 --
--- Complemento 8 revisado: para o dashboard, use
--- `sql/canal_atribuicao_pedido_mirror.sql`. A chave validada nao e
--- order_name/order_sk; e email_norm + paid_date_brt + total_amount.
+-- Para o dashboard, use `sql/canal_atribuicao_pedido_mirror.sql`.
+-- A chave preferencial e `source_order_id`; email_norm + paid_date_brt +
+-- total_amount fica apenas como fallback operacional quando a chave forte
+-- ainda nao estiver disponivel.
 --
 -- Esta view expõe o grao por pedido para permitir o cruzamento posterior com
 -- os itens classificados por lancamento. Antes de automatizar o join final,

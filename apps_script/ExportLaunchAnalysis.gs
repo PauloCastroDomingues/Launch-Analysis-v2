@@ -750,10 +750,10 @@ function consultarProdutosDia_(modelos) {
     const skuPrefixos = skuPrefixos_(m);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
-  const canalAtribuicaoDisponivel = canalAtribuicaoPedidoMirrorDisponivel_();
-  const canalAtribuicaoCteSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoCteSql_() : '';
-  const canalAtribuicaoSelectSql = canalAtribuicaoPedidoSelectSql_(canalAtribuicaoDisponivel);
-  const canalAtribuicaoJoinSql = canalAtribuicaoPedidoJoinSql_(canalAtribuicaoDisponivel);
+  const canalAtribuicaoInfo = canalAtribuicaoPedidoMirrorInfo_();
+  const canalAtribuicaoCteSql = canalAtribuicaoInfo.disponivel ? canalAtribuicaoPedidoCteSql_(canalAtribuicaoInfo) : '';
+  const canalAtribuicaoSelectSql = canalAtribuicaoPedidoSelectSql_(canalAtribuicaoInfo);
+  const canalAtribuicaoJoinSql = canalAtribuicaoPedidoJoinSql_(canalAtribuicaoInfo);
 
   const query = `
 WITH modelos AS (
@@ -942,6 +942,8 @@ SELECT
   ANY_VALUE(dia_desde_d0) AS dia_desde_d0,
   ANY_VALUE(canal_real) AS canal_real,
   ANY_VALUE(tipo_real) AS tipo_real,
+  ANY_VALUE(atribuicao_match_key) AS atribuicao_match_key,
+  ANY_VALUE(regra_atribuicao_real) AS regra_atribuicao_real,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
     ELSE ROUND(SUM(IF(tipo_real = 'paid', receita_bruta, 0)), 2)
@@ -963,7 +965,7 @@ SELECT
     'fct_order_item' AS fonte_base,
     'is_valid_order = TRUE' AS regra_pedido_valido,
     'receita = receita_bruta' AS regra_receita_dashboard,
-    IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real') AS regra_atribuicao_real,
+    COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real')) AS regra_atribuicao_real,
     ANY_VALUE(regra_classificacao) AS regra_classificacao
   )) AS flags_qualidade,
   'reise-ssot.mart_shared.fct_order_item' AS fonte
@@ -2085,46 +2087,118 @@ ORDER BY table_name`;
   return runBq_(query).map(row => String(row.table_name || '').trim()).filter(Boolean);
 }
 
-function canalAtribuicaoPedidoMirrorDisponivel_() {
-  const existentes = consultarTabelasMartShared_([CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE]);
-  const disponivel = existentes.includes(CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE);
-  Logger.log(`atribuicao_real.canal_atribuicao_pedido_mirror=${disponivel ? 'disponivel' : 'ausente'}`);
-  return disponivel;
+function consultarColunasMartShared_(tableName) {
+  const name = String(tableName || '').trim();
+  if (!name) return [];
+
+  const query = `
+SELECT column_name
+FROM \`${CONFIG.bqProjectId}.mart_shared.INFORMATION_SCHEMA.COLUMNS\`
+WHERE table_name = '${sql_(name)}'
+ORDER BY ordinal_position`;
+
+  return runBq_(query).map(row => String(row.column_name || '').trim()).filter(Boolean);
 }
 
-function canalAtribuicaoPedidoCteSql_() {
+function canalAtribuicaoPedidoMirrorInfo_() {
+  const existentes = consultarTabelasMartShared_([CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE]);
+  const disponivel = existentes.includes(CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE);
+  const colunas = disponivel ? consultarColunasMartShared_(CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE) : [];
+  const colunasSet = {};
+  colunas.forEach(name => colunasSet[name] = true);
+  const info = {
+    disponivel,
+    colunas,
+    hasSourceOrderId: !!colunasSet.source_order_id,
+    hasOrderSk: !!colunasSet.order_sk,
+    hasOrderName: !!colunasSet.order_name,
+    hasRegraAtribuicaoReal: !!colunasSet.regra_atribuicao_real
+  };
+  Logger.log(`atribuicao_real.canal_atribuicao_pedido_mirror=${JSON.stringify(info)}`);
+  return info;
+}
+
+function canalAtribuicaoPedidoMirrorDisponivel_() {
+  return canalAtribuicaoPedidoMirrorInfo_().disponivel;
+}
+
+function canalAtribuicaoPedidoCteSql_(info) {
+  info = info || {};
+  const sourceOrderExpr = info.hasSourceOrderId
+    ? `NULLIF(TRIM(CAST(source_order_id AS STRING)), '')`
+    : info.hasOrderSk
+      ? `NULLIF(TRIM(CAST(order_sk AS STRING)), '')`
+      : `CAST(NULL AS STRING)`;
+  const orderNameExpr = info.hasOrderName
+    ? `NULLIF(LOWER(TRIM(CAST(order_name AS STRING))), '')`
+    : `CAST(NULL AS STRING)`;
+  const regraExpr = info.hasRegraAtribuicaoReal
+    ? `ARRAY_AGG(regra_atribuicao_real IGNORE NULLS ORDER BY regra_atribuicao_real LIMIT 1)[SAFE_OFFSET(0)]`
+    : `ARRAY_AGG(IF(${sourceOrderExpr} IS NOT NULL, 'source_order_id_last_click', 'email_data_valor_last_click') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)]`;
   return `
 canal_atribuicao_pedido AS (
   SELECT
+    ${sourceOrderExpr} AS source_order_id_norm,
+    ${orderNameExpr} AS order_name_norm,
     email_norm,
     paid_date_brt,
     total_amount,
     ARRAY_AGG(canal IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS canal_real,
     ARRAY_AGG(tipo IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS tipo_real,
+    ${regraExpr} AS regra_atribuicao_real,
     COUNT(*) AS canal_real_match_count
   FROM \`${CONFIG.bqProjectId}.mart_shared.${CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE}\`
-  WHERE email_norm IS NOT NULL
-    AND paid_date_brt IS NOT NULL
-    AND total_amount IS NOT NULL
-  GROUP BY 1,2,3
+  WHERE ${sourceOrderExpr} IS NOT NULL
+    OR (
+      email_norm IS NOT NULL
+      AND paid_date_brt IS NOT NULL
+      AND total_amount IS NOT NULL
+    )
+  GROUP BY 1,2,3,4,5
 ),`;
 }
 
-function canalAtribuicaoPedidoSelectSql_(disponivel) {
-  return disponivel
+function canalAtribuicaoPedidoSelectSql_(info) {
+  return info && info.disponivel
     ? `canal_real.canal_real AS canal_real,
-    canal_real.tipo_real AS tipo_real,`
+    canal_real.tipo_real AS tipo_real,
+    canal_real.regra_atribuicao_real AS regra_atribuicao_real,
+    CASE
+      WHEN canal_real.source_order_id_norm IS NOT NULL THEN canal_real.source_order_id_norm
+      WHEN canal_real.order_name_norm IS NOT NULL THEN canal_real.order_name_norm
+      WHEN canal_real.email_norm IS NOT NULL THEN CONCAT(canal_real.email_norm, '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
+      ELSE NULL
+    END AS atribuicao_match_key,`
     : `CAST(NULL AS STRING) AS canal_real,
-    CAST(NULL AS STRING) AS tipo_real,`;
+    CAST(NULL AS STRING) AS tipo_real,
+    CAST(NULL AS STRING) AS regra_atribuicao_real,
+    CAST(NULL AS STRING) AS atribuicao_match_key,`;
 }
 
-function canalAtribuicaoPedidoJoinSql_(disponivel) {
-  if (!disponivel) return '';
+function canalAtribuicaoPedidoJoinSql_(info) {
+  if (!info || !info.disponivel) return '';
   return `
   LEFT JOIN canal_atribuicao_pedido canal_real
-    ON canal_real.email_norm = LOWER(TRIM(CAST(o.customer_email AS STRING)))
-   AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
-   AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)`;
+    ON (
+      canal_real.source_order_id_norm IS NOT NULL
+      AND canal_real.source_order_id_norm IN (
+        NULLIF(TRIM(CAST(o.source_order_id AS STRING)), ''),
+        NULLIF(TRIM(CAST(o.order_sk AS STRING)), ''),
+        NULLIF(TRIM(CAST(i.order_sk AS STRING)), '')
+      )
+    )
+    OR (
+      canal_real.source_order_id_norm IS NULL
+      AND canal_real.order_name_norm IS NOT NULL
+      AND canal_real.order_name_norm = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
+    )
+    OR (
+      canal_real.source_order_id_norm IS NULL
+      AND canal_real.order_name_norm IS NULL
+      AND canal_real.email_norm = LOWER(TRIM(CAST(o.customer_email AS STRING)))
+      AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
+      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    )`;
 }
 
 function diagnosticarDependenciasShareTrajetoria_() {

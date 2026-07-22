@@ -1,8 +1,9 @@
--- Complemento 8 revisado - mirror de atribuicao real por pedido.
+-- Mirror de atribuicao real por pedido.
 --
 -- Objetivo:
 -- materializar em southamerica-east1 a atribuicao last-click que hoje vive no
--- dataset mart_growth_us (US), permitindo join local com mart_shared.
+-- dataset mart_growth_us (US), permitindo join local com mart_shared no grao
+-- de pedido antes do rateio por item/produto.
 --
 -- Rodar a leitura em JOB LOCATION = US. O destino final esperado pelo dashboard e:
 --   `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror`
@@ -15,12 +16,14 @@ CREATE OR REPLACE TABLE `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` 
 WITH
 orders AS (
   SELECT
+    NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') AS source_order_id,
+    NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '') AS order_name,
+    NULLIF(TRIM(CAST(b.customer_sk AS STRING)), '') AS customer_sk,
     LOWER(TRIM(b.email_norm)) AS email_norm,
     b.paid_date_brt,
-    ROUND(CAST(b.total_amount AS NUMERIC), 2) AS total_amount,
-    b.source_order_id
+    ROUND(CAST(b.total_amount AS NUMERIC), 2) AS total_amount
   FROM `reise-ssot.mart_growth_us.bridge_orders_customers` b
-  WHERE NULLIF(LOWER(TRIM(b.email_norm)), '') IS NOT NULL
+  WHERE NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
     AND b.paid_date_brt IS NOT NULL
     AND b.total_amount IS NOT NULL
 ),
@@ -37,10 +40,12 @@ journey AS (
 ),
 joined AS (
   SELECT
+    o.source_order_id,
+    o.order_name,
+    o.customer_sk,
     o.email_norm,
     o.paid_date_brt,
     o.total_amount,
-    o.source_order_id,
     j.last_source,
     j.last_source_description,
     j.last_source_type,
@@ -55,10 +60,12 @@ joined AS (
 ),
 classified AS (
   SELECT
+    source_order_id,
+    order_name,
+    customer_sk,
     email_norm,
     paid_date_brt,
     total_amount,
-    source_order_id,
     CASE
       WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
       WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
@@ -86,11 +93,19 @@ classified AS (
   FROM joined
 )
 SELECT
+  source_order_id,
+  order_name,
+  customer_sk,
   email_norm,
   paid_date_brt,
   total_amount,
   canal,
-  tipo
+  tipo,
+  CASE
+    WHEN source_order_id IS NOT NULL THEN 'source_order_id_last_click'
+    WHEN order_name IS NOT NULL THEN 'order_name_last_click'
+    ELSE 'email_data_valor_last_click'
+  END AS regra_atribuicao_real
 FROM classified
 QUALIFY ROW_NUMBER() OVER (
   PARTITION BY source_order_id
