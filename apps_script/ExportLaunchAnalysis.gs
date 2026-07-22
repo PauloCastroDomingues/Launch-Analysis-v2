@@ -17,6 +17,7 @@
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
   bqLocation: 'southamerica-east1',
+  bqUsLocation: 'US',
   githubRepo: normalizeGitHubRepo_(getProp_('GITHUB_REPO', '')),
   githubBranch: getProp_('GITHUB_BRANCH', 'main'),
   dataPath: getProp_('DATA_PATH', 'data'),
@@ -27,8 +28,6 @@ const SHARE_TRAJETORIA_REQUIRED_TABLES = [
   'datas_sazonais',
   'eventos_comerciais_produto'
 ];
-
-const CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE = 'canal_atribuicao_pedido_mirror';
 
 const METODOLOGIA_INVESTIMENTO = 'correlacao_por_janela_calendario';
 const AVISO_INVESTIMENTO = 'Nao mede atribuicao real de clique/conversao. Mostra apenas receita do produto na mesma janela de calendario da acao registrada.';
@@ -750,10 +749,9 @@ function consultarProdutosDia_(modelos) {
     const skuPrefixos = skuPrefixos_(m);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
-  const canalAtribuicaoInfo = canalAtribuicaoPedidoMirrorInfo_();
-  const canalAtribuicaoCteSql = canalAtribuicaoInfo.disponivel ? canalAtribuicaoPedidoCteSql_(canalAtribuicaoInfo) : '';
-  const canalAtribuicaoSelectSql = canalAtribuicaoPedidoSelectSql_(canalAtribuicaoInfo);
-  const canalAtribuicaoJoinSql = canalAtribuicaoPedidoJoinSql_(canalAtribuicaoInfo);
+  const canalAtribuicaoCteSql = '';
+  const canalAtribuicaoSelectSql = canalAtribuicaoPedidoSelectSql_();
+  const canalAtribuicaoJoinSql = '';
 
   const query = `
 WITH modelos AS (
@@ -765,6 +763,8 @@ itens_validos AS (
   SELECT
     i.order_partition_date_brt AS data,
     CAST(i.order_sk AS STRING) AS order_sk,
+    NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '') AS source_order_id_real,
+    NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '') AS order_name_norm,
     COALESCE(
       NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), ''),
       TO_JSON_STRING(STRUCT(
@@ -912,8 +912,9 @@ SELECT
   modelo_id,
   sub_modelo_id,
   data,
-  order_sk AS source_order_id,
+  ANY_VALUE(source_order_id_real) AS source_order_id,
   order_sk,
+  ANY_VALUE(order_name_norm) AS order_name,
   'ssot_fct_order_item' AS origem,
   sku,
   item_name AS nome_produto,
@@ -981,7 +982,201 @@ GROUP BY
   tamanho_detectado
 ORDER BY modelo_id, data, order_sk, sku;`;
 
-  return runBq_(query);
+  const rows = runBq_(query);
+  return enriquecerProdutosDiaComAtribuicaoLastClick_(rows);
+}
+
+function enriquecerProdutosDiaComAtribuicaoLastClick_(rows) {
+  if (!rows || !rows.length) return rows || [];
+
+  try {
+    const datas = rows.map(row => String(row.data || '').slice(0, 10)).filter(Boolean).sort();
+    if (!datas.length) return rows;
+
+    const dataInicio = datas[0];
+    const dataFim = datas[datas.length - 1];
+    const atribuicoes = consultarAtribuicaoLastClickUs_(dataInicio, dataFim);
+    if (!atribuicoes.length) {
+      Logger.log(`atribuicao_real: consulta US retornou 0 linhas entre ${dataInicio} e ${dataFim}; produtos permanecem sem atribuicao.`);
+      return rows;
+    }
+
+    const bySourceOrderId = {};
+    const byOrderName = {};
+    atribuicoes.forEach(attr => {
+      const sourceId = normalizarChaveAtribuicao_(attr.source_order_id);
+      const orderName = normalizarChaveAtribuicao_(attr.order_name);
+      if (sourceId) bySourceOrderId[sourceId] = attr;
+      if (orderName) byOrderName[orderName] = attr;
+    });
+
+    const pedidosCanalContados = {};
+    let matched = 0;
+    const enriched = rows.map(row => {
+      const sourceId = normalizarChaveAtribuicao_(row.source_order_id);
+      const orderSk = normalizarChaveAtribuicao_(row.order_sk);
+      const orderName = normalizarChaveAtribuicao_(row.order_name);
+      const attr = bySourceOrderId[sourceId] || bySourceOrderId[orderSk] || byOrderName[orderName] || null;
+      if (!attr) return marcarSemAtribuicao_(row);
+
+      matched++;
+      const tipo = String(attr.tipo || '').trim().toLowerCase();
+      const receita = numeroOuZero_(row.receita_bruta ?? row.receita);
+      const modeloId = String(row.modelo_id || '');
+      const orderKey = normalizarChaveAtribuicao_(row.order_sk || row.source_order_id || attr.source_order_id || attr.order_name);
+      const contadorKey = `${modeloId}|${orderKey}|${tipo}`;
+      const primeiraLinhaPedidoTipo = !pedidosCanalContados[contadorKey];
+      pedidosCanalContados[contadorKey] = true;
+
+      return {
+        ...row,
+        canal_real: attr.canal || null,
+        tipo_real: attr.tipo || null,
+        atribuicao_match_key: attr.source_order_id || attr.order_name || null,
+        regra_atribuicao_real: attr.regra_atribuicao_real || 'source_order_id_last_click_query_us',
+        receita_paga: tipo === 'paid' ? receita : 0,
+        receita_organica: tipo === 'organic' ? receita : 0,
+        pedidos_pagos: tipo === 'paid' && primeiraLinhaPedidoTipo ? 1 : 0,
+        pedidos_organicos: tipo === 'organic' && primeiraLinhaPedidoTipo ? 1 : 0,
+        flags_qualidade: atualizarFlagsAtribuicao_(row.flags_qualidade, attr.regra_atribuicao_real || 'source_order_id_last_click_query_us')
+      };
+    });
+
+    Logger.log(`atribuicao_real: ${matched}/${rows.length} linhas de produto receberam canal last-click por consulta US em memoria.`);
+    return enriched;
+  } catch (error) {
+    Logger.log(`atribuicao_real: enriquecimento em memoria falhou; produtos permanecem sem atribuicao. Erro: ${resumirErro_(error)}`);
+    return rows;
+  }
+}
+
+function consultarAtribuicaoLastClickUs_(dataInicio, dataFim) {
+  const query = `
+WITH
+orders AS (
+  SELECT
+    NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') AS source_order_id,
+    NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '') AS order_name,
+    b.paid_date_brt,
+    ROUND(CAST(b.total_amount AS NUMERIC), 2) AS total_amount
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.bridge_orders_customers\` b
+  WHERE b.paid_date_brt BETWEEN DATE '${sql_(dataInicio)}' AND DATE '${sql_(dataFim)}'
+    AND NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
+),
+journey AS (
+  SELECT
+    order_id,
+    last_source,
+    last_source_description,
+    last_source_type,
+    last_utm_source,
+    last_utm_medium,
+    last_utm_campaign
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.shopify__orders_journey_latest_v\`
+),
+joined AS (
+  SELECT
+    o.source_order_id,
+    o.order_name,
+    o.paid_date_brt,
+    o.total_amount,
+    j.last_source,
+    j.last_source_description,
+    j.last_source_type,
+    j.last_utm_source,
+    j.last_utm_medium,
+    j.last_utm_campaign,
+    LOWER(TRIM(COALESCE(j.last_source_description, j.last_utm_source, j.last_source))) AS raw_channel,
+    LOWER(TRIM(COALESCE(j.last_utm_medium, ''))) AS raw_medium
+  FROM orders o
+  LEFT JOIN journey j
+    ON j.order_id = o.source_order_id
+),
+classified AS (
+  SELECT
+    source_order_id,
+    order_name,
+    paid_date_brt,
+    total_amount,
+    CASE
+      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
+      WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
+      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'Direct'
+      WHEN raw_channel LIKE '%instagram%' THEN 'Instagram'
+      WHEN raw_channel LIKE '%facebook%' THEN 'Facebook'
+      WHEN raw_channel LIKE '%whatsapp%' THEN 'Whatsapp'
+      WHEN raw_channel LIKE '%tiktok%' THEN 'Tiktok'
+      WHEN raw_channel LIKE '%youtube%' THEN 'Youtube'
+      WHEN raw_channel LIKE '%bing%' THEN 'Bing'
+      WHEN raw_channel LIKE '%rd station%' OR raw_channel LIKE '%rdstation%' THEN 'Rd Station'
+      WHEN raw_channel LIKE '%linktr%' THEN 'Linktr.Ee'
+      WHEN raw_channel LIKE '%google%' THEN 'Google'
+      ELSE INITCAP(raw_channel)
+    END AS canal,
+    CASE
+      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'direct'
+      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'unknown'
+      WHEN raw_medium IN ('organic','seo') THEN 'organic'
+      WHEN raw_medium IN ('cpc','ppc','paid','paid_social','paidsearch','display','affiliate','affiliates') THEN 'paid'
+      WHEN raw_medium IN ('email','newsletter','crm','sms','whatsapp') THEN 'paid'
+      WHEN raw_channel LIKE '%google%' AND raw_medium = '' AND LOWER(TRIM(last_source_type)) IN ('search','referring_site') THEN 'organic'
+      ELSE 'unknown'
+    END AS tipo
+  FROM joined
+)
+SELECT
+  source_order_id,
+  order_name,
+  paid_date_brt,
+  total_amount,
+  canal,
+  tipo,
+  'source_order_id_last_click_query_us' AS regra_atribuicao_real
+FROM classified
+QUALIFY ROW_NUMBER() OVER (
+  PARTITION BY source_order_id
+  ORDER BY canal, tipo
+) = 1`;
+
+  return runBq_(query, CONFIG.bqUsLocation);
+}
+
+function normalizarChaveAtribuicao_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function numeroOuZero_(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function marcarSemAtribuicao_(row) {
+  return {
+    ...row,
+    canal_real: row.canal_real || null,
+    tipo_real: row.tipo_real || null,
+    atribuicao_match_key: row.atribuicao_match_key || null,
+    regra_atribuicao_real: row.regra_atribuicao_real || null,
+    receita_paga: row.receita_paga ?? null,
+    receita_organica: row.receita_organica ?? null,
+    pedidos_pagos: row.pedidos_pagos ?? null,
+    pedidos_organicos: row.pedidos_organicos ?? null,
+    flags_qualidade: atualizarFlagsAtribuicao_(row.flags_qualidade, row.regra_atribuicao_real || 'sem_atribuicao_real')
+  };
+}
+
+function atualizarFlagsAtribuicao_(flagsRaw, regra) {
+  let flags = {};
+  try {
+    flags = flagsRaw ? JSON.parse(flagsRaw) : {};
+  } catch (error) {
+    flags = {};
+  }
+  flags.regra_atribuicao_real = regra || 'sem_atribuicao_real';
+  flags.regra_join_atribuicao = regra && regra !== 'sem_atribuicao_real'
+    ? 'consulta_us_em_memoria_sem_tabela_persistente'
+    : 'sem_match_last_click';
+  return JSON.stringify(flags);
 }
 
 function exportarSubModelosDiaSeDisponivel_(modelos) {
@@ -1912,13 +2107,14 @@ function logProdutosDiaExport_(modelos, produtosDia) {
   });
 }
 
-function runBq_(query) {
-  const request = { query, useLegacySql: false, location: CONFIG.bqLocation };
+function runBq_(query, location) {
+  const jobLocation = location || CONFIG.bqLocation;
+  const request = { query, useLegacySql: false, location: jobLocation };
   let job = BigQuery.Jobs.query(request, CONFIG.bqProjectId);
   const jobId = job.jobReference.jobId;
   while (!job.jobComplete) {
     Utilities.sleep(500);
-    job = BigQuery.Jobs.getQueryResults(CONFIG.bqProjectId, jobId, { location: CONFIG.bqLocation });
+    job = BigQuery.Jobs.getQueryResults(CONFIG.bqProjectId, jobId, { location: jobLocation });
   }
   if (job.errors && job.errors.length) {
     throw new Error(`BigQuery retornou erro: ${JSON.stringify(job.errors.slice(0, 3))}`);
@@ -1928,7 +2124,7 @@ function runBq_(query) {
   const rows = [];
   let pageToken;
   do {
-    const page = BigQuery.Jobs.getQueryResults(CONFIG.bqProjectId, jobId, { location: CONFIG.bqLocation, pageToken });
+    const page = BigQuery.Jobs.getQueryResults(CONFIG.bqProjectId, jobId, { location: jobLocation, pageToken });
     (page.rows || []).forEach(r => {
       const obj = {};
       r.f.forEach((cell, i) => obj[schema[i]] = castBq_(cell.v));
@@ -2087,118 +2283,11 @@ ORDER BY table_name`;
   return runBq_(query).map(row => String(row.table_name || '').trim()).filter(Boolean);
 }
 
-function consultarColunasMartShared_(tableName) {
-  const name = String(tableName || '').trim();
-  if (!name) return [];
-
-  const query = `
-SELECT column_name
-FROM \`${CONFIG.bqProjectId}.mart_shared.INFORMATION_SCHEMA.COLUMNS\`
-WHERE table_name = '${sql_(name)}'
-ORDER BY ordinal_position`;
-
-  return runBq_(query).map(row => String(row.column_name || '').trim()).filter(Boolean);
-}
-
-function canalAtribuicaoPedidoMirrorInfo_() {
-  const existentes = consultarTabelasMartShared_([CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE]);
-  const disponivel = existentes.includes(CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE);
-  const colunas = disponivel ? consultarColunasMartShared_(CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE) : [];
-  const colunasSet = {};
-  colunas.forEach(name => colunasSet[name] = true);
-  const info = {
-    disponivel,
-    colunas,
-    hasSourceOrderId: !!colunasSet.source_order_id,
-    hasOrderSk: !!colunasSet.order_sk,
-    hasOrderName: !!colunasSet.order_name,
-    hasRegraAtribuicaoReal: !!colunasSet.regra_atribuicao_real
-  };
-  Logger.log(`atribuicao_real.canal_atribuicao_pedido_mirror=${JSON.stringify(info)}`);
-  return info;
-}
-
-function canalAtribuicaoPedidoMirrorDisponivel_() {
-  return canalAtribuicaoPedidoMirrorInfo_().disponivel;
-}
-
-function canalAtribuicaoPedidoCteSql_(info) {
-  info = info || {};
-  const sourceOrderExpr = info.hasSourceOrderId
-    ? `NULLIF(TRIM(CAST(source_order_id AS STRING)), '')`
-    : info.hasOrderSk
-      ? `NULLIF(TRIM(CAST(order_sk AS STRING)), '')`
-      : `CAST(NULL AS STRING)`;
-  const orderNameExpr = info.hasOrderName
-    ? `NULLIF(LOWER(TRIM(CAST(order_name AS STRING))), '')`
-    : `CAST(NULL AS STRING)`;
-  const regraExpr = info.hasRegraAtribuicaoReal
-    ? `ARRAY_AGG(regra_atribuicao_real IGNORE NULLS ORDER BY regra_atribuicao_real LIMIT 1)[SAFE_OFFSET(0)]`
-    : `ARRAY_AGG(IF(${sourceOrderExpr} IS NOT NULL, 'source_order_id_last_click', 'email_data_valor_last_click') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)]`;
-  return `
-canal_atribuicao_pedido AS (
-  SELECT
-    ${sourceOrderExpr} AS source_order_id_norm,
-    ${orderNameExpr} AS order_name_norm,
-    email_norm,
-    paid_date_brt,
-    total_amount,
-    ARRAY_AGG(canal IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS canal_real,
-    ARRAY_AGG(tipo IGNORE NULLS ORDER BY canal LIMIT 1)[SAFE_OFFSET(0)] AS tipo_real,
-    ${regraExpr} AS regra_atribuicao_real,
-    COUNT(*) AS canal_real_match_count
-  FROM \`${CONFIG.bqProjectId}.mart_shared.${CANAL_ATRIBUICAO_PEDIDO_MIRROR_TABLE}\`
-  WHERE ${sourceOrderExpr} IS NOT NULL
-    OR (
-      email_norm IS NOT NULL
-      AND paid_date_brt IS NOT NULL
-      AND total_amount IS NOT NULL
-    )
-  GROUP BY 1,2,3,4,5
-),`;
-}
-
-function canalAtribuicaoPedidoSelectSql_(info) {
-  return info && info.disponivel
-    ? `canal_real.canal_real AS canal_real,
-    canal_real.tipo_real AS tipo_real,
-    canal_real.regra_atribuicao_real AS regra_atribuicao_real,
-    CASE
-      WHEN canal_real.source_order_id_norm IS NOT NULL THEN canal_real.source_order_id_norm
-      WHEN canal_real.order_name_norm IS NOT NULL THEN canal_real.order_name_norm
-      WHEN canal_real.email_norm IS NOT NULL THEN CONCAT(canal_real.email_norm, '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
-      ELSE NULL
-    END AS atribuicao_match_key,`
-    : `CAST(NULL AS STRING) AS canal_real,
+function canalAtribuicaoPedidoSelectSql_() {
+  return `CAST(NULL AS STRING) AS canal_real,
     CAST(NULL AS STRING) AS tipo_real,
     CAST(NULL AS STRING) AS regra_atribuicao_real,
     CAST(NULL AS STRING) AS atribuicao_match_key,`;
-}
-
-function canalAtribuicaoPedidoJoinSql_(info) {
-  if (!info || !info.disponivel) return '';
-  return `
-  LEFT JOIN canal_atribuicao_pedido canal_real
-    ON (
-      canal_real.source_order_id_norm IS NOT NULL
-      AND canal_real.source_order_id_norm IN (
-        NULLIF(TRIM(CAST(o.source_order_id AS STRING)), ''),
-        NULLIF(TRIM(CAST(o.order_sk AS STRING)), ''),
-        NULLIF(TRIM(CAST(i.order_sk AS STRING)), '')
-      )
-    )
-    OR (
-      canal_real.source_order_id_norm IS NULL
-      AND canal_real.order_name_norm IS NOT NULL
-      AND canal_real.order_name_norm = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
-    )
-    OR (
-      canal_real.source_order_id_norm IS NULL
-      AND canal_real.order_name_norm IS NULL
-      AND canal_real.email_norm = LOWER(TRIM(CAST(o.customer_email AS STRING)))
-      AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
-      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
-    )`;
 }
 
 function diagnosticarDependenciasShareTrajetoria_() {

@@ -1,18 +1,15 @@
--- Mirror de atribuicao real por pedido.
+-- Consulta de referencia - atribuicao real por pedido.
 --
 -- Objetivo:
--- materializar em southamerica-east1 a atribuicao last-click que hoje vive no
--- dataset mart_growth_us (US), permitindo join local com mart_shared no grao
--- de pedido antes do rateio por item/produto.
+-- inspecionar a atribuicao last-click que vive no dataset mart_growth_us (US).
+-- Esta consulta nao cria tabela, nao cria view e nao grava em mart_shared.
 --
--- Rodar a leitura em JOB LOCATION = US. O destino final esperado pelo dashboard e:
---   `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror`
+-- Rodar a leitura em JOB LOCATION = US.
 --
--- Se o BigQuery nao permitir escrever direto em dataset de outra regiao, usar o
--- caminho operacional: query em US -> EXPORT DATA para Cloud Storage -> carga/job
--- em southamerica-east1 para a tabela acima.
+-- O dashboard nao depende de uma tabela mirror. O Apps Script executa uma
+-- consulta equivalente em US e cruza o resultado em memoria com as vendas por
+-- produto exportadas de mart_shared.
 
-CREATE OR REPLACE TABLE `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` AS
 WITH
 orders AS (
   SELECT

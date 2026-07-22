@@ -1,7 +1,7 @@
 -- Growth / Marketing (US) - atribuicao Shopify last-click por pedido.
 -- Rode em JOB LOCATION = US.
 --
--- Para o dashboard, use `sql/canal_atribuicao_pedido_mirror.sql`.
+-- Consulta de referencia. Nao cria view nem tabela.
 -- A chave preferencial e `source_order_id`; email_norm + paid_date_brt +
 -- total_amount fica apenas como fallback operacional quando a chave forte
 -- ainda nao estiver disponivel.
@@ -11,7 +11,6 @@
 -- valide no BigQuery se lancamentos_produtos_dia/fct_order_item traz order_name
 -- ou se sera necessario ligar order_sk via mart_growth_us.bridge_orders_customers.
 
-CREATE OR REPLACE VIEW `reise-ssot.mart_growth_us.shopify_orders_channel_last_click_v` AS
 WITH
 buyers AS (
   SELECT
