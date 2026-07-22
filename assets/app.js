@@ -602,6 +602,18 @@
     const currentMaxIdx = Math.min(90, Math.max(0, todayIdx ?? 0));
     const acumuladoAtual = buildAggregate(closedRows(currentMaxIdx), 'pipeline_atual', currentMaxIdx);
 
+    const availableIndexes = modelRows
+      .map((row) => dayIndex(model.day_zero_base, row.data))
+      .filter((idx) => idx !== null && idx >= 0 && (todayIdx === null || idx <= todayIdx));
+    const latestAvailableIdx = availableIndexes.length ? Math.max(...availableIndexes) : null;
+    const launchActivityIdx = Math.max(0, todayIdx ?? latestAvailableIdx ?? 0);
+    const acumuladoLancamento = buildAggregate(closedRows(launchActivityIdx), 'pipeline_lancamento', latestAvailableIdx);
+    if (acumuladoLancamento) {
+      acumuladoLancamento.activity_day = launchActivityIdx;
+      acumuladoLancamento.data_day = latestAvailableIdx;
+      acumuladoLancamento.is_partial_data = latestAvailableIdx !== null && latestAvailableIdx < launchActivityIdx;
+    }
+
     const janelas = {};
     WINDOW_KEYS.forEach((key) => {
       const endDay = windowEndDay(key);
@@ -688,6 +700,7 @@
       multiplicadores: { m15_7, m30_15: m30, m60_30, m90_15, m90_30 },
       daily,
       acumulado_atual: acumuladoAtual,
+      acumulado_lancamento: acumuladoLancamento,
       first_sale_date: firstSaleDate,
       first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(model.day_zero_base, toDate(firstSaleDate)) || 0) : null,
       origem: 'pipeline',
@@ -888,6 +901,7 @@
         tamanhos: [],
         daily: [],
         acumulado_atual: null,
+        acumulado_lancamento: null,
         first_sale_date: null,
         first_sale_gap_dias: null,
         origem: isPlannedStatus(model.status) ? 'planejado' : 'pipeline'
@@ -911,6 +925,7 @@
         daily: metrics.daily || [],
         tamanhos: metrics.tamanhos || [],
         acumulado_atual: metrics.acumulado_atual || null,
+        acumulado_lancamento: metrics.acumulado_lancamento || null,
         first_sale_date: metrics.first_sale_date || (metrics.origem === 'historico' ? metrics.day_zero_base : null),
         first_sale_gap_dias: metrics.first_sale_gap_dias ?? (metrics.origem === 'historico' ? Math.max(0, daysBetween(metrics.data_oficial, toDate(metrics.day_zero_base)) || 0) : null),
         isFuture,
@@ -1752,7 +1767,7 @@
       momento: { file: 'share_trajetoria.json', row: context.model, fields: ['receita_empresa_pre_periodo', 'receita_empresa_pos_periodo', 'variacao_receita_empresa_pct'] },
       representatividade: { file: 'share_trajetoria.json', row: context.model, fields: ['share_acumulado_atual', 'receita_lancamento_periodo'] },
       meta: { file: 'metas_mensais.json', row: context.metaRow, fields: ['meta_receita', 'realizado_receita', 'atingimento'] },
-      atividade: { file: 'lancamentos_produtos_dia.json', row: context.activityRow, fields: ['day', 'receita', 'pedidos', 'pares'] },
+      atividade: { file: 'lancamentos_produtos_dia.json', row: context.activityRow, fields: ['activity_day', 'data_day', 'receita', 'pedidos', 'pares'] },
       campanha: { file: 'faturamento_campanha.json', row: (context.campaignRows || [])[0] || null, fields: ['receita_atribuida', 'investimento', 'pedidos'] }
     };
     const spec = specs[key];
@@ -1830,26 +1845,31 @@
   }
 
   function launchActivityNarrative(launch, selectedWindow = {}) {
-    const current = launch?.acumulado_atual || selectedWindow.data || null;
-    const day = numberOrNull(current?.day) ?? numberOrNull(launch?.dPlus);
-    const daysActive = day !== null ? Math.max(1, day + 1) : null;
+    const current = launch?.acumulado_lancamento || launch?.acumulado_atual || selectedWindow.data || null;
+    const activityDay = numberOrNull(current?.activity_day) ?? numberOrNull(launch?.dPlus) ?? numberOrNull(current?.day);
+    const dataDay = numberOrNull(current?.data_day) ?? numberOrNull(current?.day);
+    const daysActive = activityDay !== null ? Math.max(1, activityDay + 1) : null;
     const receita = numberOrNull(current?.receita);
     const pedidos = numberOrNull(current?.pedidos);
     const pares = numberOrNull(current?.pares);
-    const sourceLabel = launch?.acumulado_atual ? `D0 a D+${Math.max(0, day ?? 0)}` : (selectedWindow.label || 'janela disponivel');
+    const sourceLabel = activityDay !== null ? `D0 a D+${Math.max(0, activityDay)}` : (selectedWindow.label || 'janela disponivel');
+    const partialData = dataDay !== null && activityDay !== null && dataDay < activityDay;
+    const dataCoverageCopy = partialData ? ` Dados de venda disponiveis ate D+${fmtNum(Math.max(0, dataDay))}.` : '';
     const facts = [
       { label: 'Dias ativo', value: daysActive !== null ? fmtNum(daysActive) : 'sem dado' },
       { label: 'Faturamento', value: fmtBRL(receita) },
       { label: 'Pedidos', value: fmtNum(pedidos) }
     ];
     if (pares !== null) facts.push({ label: 'Pares', value: fmtNum(pares) });
+    if (partialData) facts.push({ label: 'Dados ate', value: `D+${fmtNum(Math.max(0, dataDay))}` });
     return {
       label: sourceLabel,
       value: daysActive !== null ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'}` : 'Sem atividade',
       copy: receita !== null || pedidos !== null
-        ? `Desde o lançamento: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.`
-        : 'Ainda sem acumulado de atividade desde o lançamento.',
+        ? `Desde o lancamento: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
+        : 'Ainda sem acumulado de atividade desde o lancamento.',
       facts,
+      row: current ? { ...current, activity_day: activityDay, data_day: dataDay } : null,
       state: receita !== null || pedidos !== null ? 'ok' : 'pending'
     };
   }
@@ -2133,9 +2153,9 @@
         title: 'Atividade desde D0',
         value: activity.value,
         label: activity.label,
-        copy: evidenceSourceLine('atividade', { activityRow: selected.acumulado_atual || selectedWindow.data }),
+        copy: evidenceSourceLine('atividade', { activityRow: activity.row || selected.acumulado_lancamento || selected.acumulado_atual || selectedWindow.data }),
         state: activity.state,
-        tooltip: 'Evidência técnica da atividade acumulada desde o lançamento: dia analítico, faturamento, pedidos e pares.'
+        tooltip: 'Evidência técnica da atividade acumulada desde o lançamento: dias ativos, cobertura dos dados, faturamento, pedidos e pares.'
       }
     ];
 
