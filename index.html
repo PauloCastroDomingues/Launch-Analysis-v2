@@ -165,11 +165,13 @@
           </div>
         </div>
         <div class="table-wrap">
-          <table style="min-width:1320px">
+          <table style="min-width:1480px">
             <thead>
               <tr>
                 <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo comparado e D0 analitico usado para alinhar as janelas." aria-label="Ajuda sobre modelo">i</button></span></th>
                 <th><span class="th-label">D+n real <button class="help-button help-button--mini" type="button" data-tooltip="Receita acumulada ate o mesmo D+n do modelo em foco. Ativos usam curva real; historicos usam curva/backfill quando disponivel." aria-label="Ajuda sobre D+n real">i</button></span></th>
+                <th class="num"><span class="th-label">OrgÃ¢nico <button class="help-button help-button--mini" type="button" data-tooltip="Receita e pedidos organicos atribuidos por last-click no periodo do lancamento. Fica pendente ate canal_atribuicao_pedido_mirror alimentar o JSON." aria-label="Ajuda sobre vendas organicas">i</button></span></th>
+                <th class="num"><span class="th-label">Pago <button class="help-button help-button--mini" type="button" data-tooltip="Receita e pedidos pagos atribuidos por last-click no periodo do lancamento. Fica pendente ate canal_atribuicao_pedido_mirror alimentar o JSON." aria-label="Ajuda sobre vendas pagas">i</button></span></th>
                 <th><span class="th-label">D+7 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+7. Nulo significa janela ausente ou ainda aberta." aria-label="Ajuda sobre D+7">i</button></span></th>
                 <th><span class="th-label">D+15 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+15. Para ativos depende do snapshot ja ter chegado a D+15." aria-label="Ajuda sobre D+15">i</button></span></th>
                 <th><span class="th-label">D+30 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita liquida acumulada de D0 ate D+30. E a principal janela de comparacao comercial." aria-label="Ajuda sobre D+30">i</button></span></th>
@@ -456,7 +458,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="assets/embedded-data.js?v=20260721-series2-d0-20260716"></script>
-  <script src="assets/app.js?v=20260722-pedidos-atribuicao-real"></script>
+  <script src="assets/app.js?v=20260722-comparativo-atribuicao"></script>
   <script src="assets/presentation.js?v=20260716-compact-overview"></script>
 </body>
 </html>

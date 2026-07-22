@@ -4434,7 +4434,7 @@
     if (!tbody) return;
     const launches = selectedCompareLaunches();
     if (!launches.length) {
-      tbody.innerHTML = comparisonEmptyMessage(13);
+      tbody.innerHTML = comparisonEmptyMessage(15);
       return;
     }
 
@@ -4472,6 +4472,8 @@
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
           <td>${fmtBRL(dplus?.receita)}<div class="metric-sub">${day !== null && day !== undefined ? `D+${day}` : 'sem D+n'}</div></td>
+          <td class="num">${comparisonAttributionCell(launch.receita_organica, launch.pedidos_organicos, 'ped. organicos')}</td>
+          <td class="num">${comparisonAttributionCell(launch.receita_paga, launch.pedidos_pagos, 'ped. pagos')}</td>
           <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
@@ -4485,7 +4487,16 @@
           <td>${sourceBadge(launch)}</td>
         </tr>`;
     }).join('');
-    tbody.innerHTML = rows || `<tr><td colspan="13" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
+    tbody.innerHTML = rows || `<tr><td colspan="15" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
+  }
+
+  function comparisonAttributionCell(revenue, orders, orderLabel) {
+    const revenueValue = numberOrNull(revenue);
+    const ordersValue = numberOrNull(orders);
+    if (revenueValue === null && ordersValue === null) {
+      return '<span class="cell-muted">Aguardando atribuicao real</span><div class="metric-sub">sem canal no JSON</div>';
+    }
+    return `${organicPaidValue(revenueValue)}<div class="metric-sub">${ordersValue !== null ? `${fmtNum(ordersValue)} ${orderLabel}` : 'pedidos pendentes'}</div>`;
   }
 
   function firstKnownCommercialNumber(row, keys) {
