@@ -1237,6 +1237,87 @@ h1 {
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }
+.story-goal-caption {
+  margin-top: 12px;
+  color: var(--txt-muted);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.story-goal-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 7px;
+}
+.story-goal-row {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 7px;
+  background: rgba(255,255,255,.028);
+  padding: 8px;
+}
+.story-goal-row-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.story-goal-row-head span,
+.story-goal-row-head strong,
+.story-goal-row em {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.story-goal-row-head span {
+  color: var(--txt-primary);
+  font-size: .72rem;
+  font-weight: 900;
+}
+.story-goal-row-head small {
+  display: block;
+  margin-top: 2px;
+  color: var(--txt-muted);
+  font-size: .58rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.story-goal-row-head strong {
+  color: var(--txt-primary);
+  font-size: .78rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.story-goal-track {
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+}
+.story-goal-track i {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--green);
+}
+.story-goal-row--focus .story-goal-track i {
+  background: var(--orange);
+}
+.story-goal-row--pending .story-goal-track i {
+  background: #E8A020;
+}
+.story-goal-row em {
+  display: block;
+  margin-top: 6px;
+  color: var(--txt-secondary);
+  font-size: .68rem;
+  font-style: normal;
+  line-height: 1.25;
+}
 .story-top-list {
   display: grid;
   gap: 5px;

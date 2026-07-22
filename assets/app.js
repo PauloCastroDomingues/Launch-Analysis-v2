@@ -1723,6 +1723,137 @@
     };
   }
 
+  function addMonthsToMonthKey(month, offset = 0) {
+    const base = monthKeyFromIso(month);
+    if (!base) return '';
+    const [year, monthNum] = base.split('-').map(Number);
+    if (!year || !monthNum) return '';
+    return toIsoDate(new Date(year, monthNum - 1 + offset, 1, 12, 0, 0)).slice(0, 7);
+  }
+
+  function metaMensalForMonth(month, launch) {
+    const rows = optionalRows('metas_mensais');
+    const targetMonth = monthKeyFromIso(month);
+    if (!rows.length || !targetMonth) return null;
+
+    return rows
+      .map((row) => {
+        const rowMonth = metaMonthKey(row);
+        const rowModel = String(row.modelo_id || '').trim();
+        const modelScore = rowModel && rowModel === launch?.modelo_id ? 2 : rowModel ? -1 : 1;
+        if (modelScore < 0 || rowMonth !== targetMonth) return null;
+        return { row, score: modelScore };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score)[0]?.row || null;
+  }
+
+  function launchRevenueForMonth(launch, month) {
+    const targetMonth = monthKeyFromIso(month);
+    const rows = optionalRows('lancamentos_produtos_dia').filter((row) => (
+      row.modelo_id === launch?.modelo_id && monthKeyFromIso(row.data) === targetMonth
+    ));
+    if (!rows.length) {
+      return { receita: null, pedidos: null, pares: null, row: null };
+    }
+    const orderIds = new Set(rows.map((row) => row.order_sk || row.source_order_id).filter(Boolean));
+    const pedidosSomados = rows.some((row) => row.pedidos_validos !== null && row.pedidos_validos !== undefined)
+      ? rows.reduce((acc, row) => acc + Number(row.pedidos_validos || 0), 0)
+      : rows.reduce((acc, row) => acc + Number(row.pedidos || 0), 0);
+    const receita = rows.reduce((acc, row) => acc + Number((row.receita_bruta ?? row.receita) || 0), 0);
+    const pares = rows.some((row) => row.pares !== null && row.pares !== undefined)
+      ? rows.reduce((acc, row) => acc + Number(row.pares || 0), 0)
+      : null;
+    const pedidos = orderIds.size || pedidosSomados;
+    return {
+      receita,
+      pedidos,
+      pares,
+      row: { mes: targetMonth, receita, pedidos, pares, linhas: rows.length }
+    };
+  }
+
+  function representationGoalRows(launch) {
+    const launchMonth = monthKeyFromIso(launch?.d0 || launch?.day_zero_base);
+    if (!launchMonth) return [];
+    return [0, 1, 2].map((offset) => {
+      const month = addMonthsToMonthKey(launchMonth, offset);
+      const metaRow = metaMensalForMonth(month, launch);
+      const target = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
+      const actual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+      const sales = launchRevenueForMonth(launch, month);
+      return {
+        index: offset + 1,
+        month,
+        metaRow,
+        target,
+        actual,
+        receita: sales.receita,
+        pedidos: sales.pedidos,
+        pares: sales.pares,
+        pctMeta: ratioOrNull(sales.receita, target),
+        pctRealizado: ratioOrNull(sales.receita, actual),
+        sourceRow: sales.row
+      };
+    });
+  }
+
+  function representationGoalSummary(rows) {
+    const first = rows[0];
+    if (!first) return 'Meta mensal ainda nao conectada para este lancamento.';
+    if (first.pctMeta !== null) {
+      return `M1 ${fmtMonthKey(first.month)}: ${fmtPct(first.pctMeta, 1)} da meta mensal.`;
+    }
+    if (first.target === null) {
+      return `M1 ${fmtMonthKey(first.month)}: meta ainda nao carregada.`;
+    }
+    return `M1 ${fmtMonthKey(first.month)}: sem venda carregada contra a meta.`;
+  }
+
+  function storyGoalContributionHtml(rows = []) {
+    if (!rows.length) return '';
+    return `
+      <div class="story-goal-caption">Produto vs meta mensal desde D0</div>
+      <div class="story-goal-list">
+        ${rows.map((row) => {
+          const hasMeta = row.target !== null;
+          const hasSales = row.receita !== null;
+          const pctText = row.pctMeta !== null
+            ? `${fmtPct(row.pctMeta, 1)} da meta`
+            : hasMeta
+              ? 'sem venda'
+              : 'sem meta';
+          const detail = hasMeta
+            ? `${fmtBRL(row.receita)} / meta ${fmtBRL(row.target)}`
+            : hasSales
+              ? `${fmtBRL(row.receita)} vendido · meta nao carregada`
+              : 'meta nao carregada';
+          const width = row.pctMeta !== null ? Math.min(100, Math.max(3, row.pctMeta * 100)) : 0;
+          const state = row.pctMeta === null ? 'pending' : row.pctMeta >= 0.12 ? 'focus' : 'ok';
+          return `
+            <div class="story-goal-row story-goal-row--${escapeHtml(state)}">
+              <div class="story-goal-row-head">
+                <span>M${fmtNum(row.index)} <small>${escapeHtml(fmtMonthKey(row.month))}</small></span>
+                <strong>${escapeHtml(pctText)}</strong>
+              </div>
+              <div class="story-goal-track" aria-hidden="true"><i style="width:${width.toFixed(1)}%"></i></div>
+              <em>${escapeHtml(detail)}</em>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function representationGoalEvidence(rows = []) {
+    if (!rows.length) return '';
+    const summary = rows.map((row) => {
+      const pct = row.pctMeta !== null ? fmtPct(row.pctMeta, 1) : 'sem meta';
+      return `M${row.index} ${row.month}: receita=${fmtBRL(row.receita)} meta=${fmtBRL(row.target)} pct=${pct}`;
+    }).join(' | ');
+    return `<code class="story-step-source">metas_mensais.json + lancamentos_produtos_dia.json → ${escapeHtml(summary)}</code>`;
+  }
+
   function metaNarrative(meta, context = {}) {
     if (!meta) {
       return {
@@ -2013,6 +2144,11 @@
     const share = numberOrNull(model?.share_acumulado_atual);
     const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
     const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue, launchD0: selected.d0 });
+    const goalRows = representationGoalRows(selected);
+    const firstGoal = goalRows[0];
+    const firstGoalPct = numberOrNull(firstGoal?.pctMeta);
+    const representationValue = firstGoalPct !== null ? fmtPct(firstGoalPct, 1) : firstGoal ? 'Sem meta' : fmtPct(share, 1);
+    const representationDetail = `${representationGoalSummary(goalRows)} Share geral: ${fmtPct(share, 1)}.`;
     const activity = launchActivityNarrative(selected, selectedWindow);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
@@ -2021,7 +2157,6 @@
     const metaPending = meta.label === 'Pendente';
     const metaOpen = metaRow?.__meta_status === 'month_open';
     const signal = storySignal({ share, companyVariation, metaPending });
-    const shareWidth = share === null ? 0 : Math.max(4, Math.min(100, (share / 0.18) * 100));
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
     const comparisonRows = selectedCompareLaunches()
@@ -2040,7 +2175,7 @@
     const pinnedIndex = pinnedRow ? comparisonRows.indexOf(pinnedRow) : -1;
     const topShareHtml = topShareRows.length
       ? `
-        <div class="story-top-caption">Top 3 produtos por share</div>
+        <div class="story-top-caption">Ranking por share geral</div>
         <ol class="story-top-list" aria-label="Top 3 produtos por representatividade">
           ${topShareRows.map((row, index) => `
             <li class="${row.launch.modelo_id === selected.modelo_id ? 'is-selected' : ''}">
@@ -2065,15 +2200,16 @@
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const activityTooltip = 'Resumo operacional desde o D0 usado na analise. Mostra quantos dias o lancamento ja tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
+    const representationGoalHtml = storyGoalContributionHtml(goalRows);
     const evidence = [
       storyMetricHtml({
-        label: 'Representatividade',
-        value: fmtPct(share, 1),
-        detail: rankCopy,
-        width: shareWidth,
-        state: share !== null && share >= 0.12 ? 'focus' : 'ok',
-        tooltip: 'Mostra quanto o lançamento pesou no faturamento da empresa no período coberto. A barra é uma escala visual de peso relativo; não é meta nem forecast.',
-        extraHtml: topShareHtml
+        label: 'Representatividade vs meta',
+        value: representationValue,
+        detail: representationDetail,
+        width: firstGoalPct !== null ? firstGoalPct * 100 : 0,
+        state: firstGoalPct === null ? 'pending' : firstGoalPct >= 0.12 ? 'focus' : 'ok',
+        tooltip: 'Mostra quanto o produto cobriu da meta mensal da empresa no mes do D0 e nos dois meses seguintes. O ranking abaixo preserva a leitura de share geral do lancamento.',
+        extraHtml: `${representationGoalHtml}${topShareHtml}`
       }),
       storyMetricHtml({
         label: 'Momento da empresa',
@@ -2132,12 +2268,12 @@
       },
       {
         step: '02',
-        title: 'Representatividade',
-        value: fmtPct(share, 1),
-        label: fmtBRL(launchRevenue),
-        copy: evidenceSourceLine('representatividade', { model }),
+        title: 'Representatividade vs meta',
+        value: representationValue,
+        label: representationGoalSummary(goalRows),
+        copy: `${representationGoalEvidence(goalRows)}${evidenceSourceLine('representatividade', { model })}`,
         state: 'focus',
-        tooltip: 'Evidência técnica do peso do lançamento: share acumulado, faturamento do lançamento e posição no universo comparado.'
+        tooltip: 'Evidência técnica do peso do lançamento: produto contra meta mensal M1/M2/M3, share acumulado e posição no universo comparado.'
       },
       {
         step: '03',
