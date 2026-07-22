@@ -4480,10 +4480,10 @@
   function commercialMetricConfig(key = state.commercialChartMetric) {
     const configs = {
       investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Soma do investimento de midia paga por janela acumulada.' },
-      receita: { key: 'receita', label: 'Receita atribuida/estimada', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuida na planilha ou estimada pela janela do modelo quando so ha investimento.' },
-      roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita / investimento. Usa ROAS informado ou a leitura agregada da janela.' },
-      cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos da campanha ou da janela agregada.' },
-      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares vendidos na janela (custo por par). Mantem a leitura separada de custo por sessao, que so existe se a planilha de midia ganhar uma coluna de sessoes por campanha.' },
+      receita: { key: 'receita', label: 'Receita atribuida', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuida na planilha ou em faturamento_campanha. Sem receita atribuida, a linha permanece vazia.' },
+      roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita atribuida / investimento. Usa ROAS informado ou receita atribuida real; nao usa faturamento total da janela do modelo.' },
+      cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos informados ou atribuidos na propria linha de midia.' },
+      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares informados na linha de midia. Mantem a leitura separada de custo por sessao, que so existe se a planilha de midia ganhar uma coluna de sessoes por campanha.' },
       cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. So aparece quando o JSON trouxer cliques ou CPC.' }
     };
     return configs[key] || configs.investimento;
@@ -4535,11 +4535,10 @@
     return aggregateMediaRows(detailedRows, launch, midiaValidaParaGraficoComercial)
       .map((row) => {
         const key = commercialWindowKey(row);
-        const metricWindow = mediaWindowMetric(row, launch);
         const investimento = numberOrNull(row.investimento);
         const receita = numberOrNull(row.receita_atribuida);
         const pedidos = numberOrNull(row.pedidos);
-        const pares = firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']) ?? pairsByWindow.get(key) ?? numberOrNull(metricWindow?.pares);
+        const pares = firstKnownCommercialNumber(row, ['pares', 'pares_janela_agregados', 'quantidade']) ?? pairsByWindow.get(key) ?? null;
         const cliques = firstKnownCommercialNumber(row, ['cliques', 'clique', 'clicks', 'link_clicks', 'link_cliques', 'outbound_clicks']) ?? clicksByWindow.get(key) ?? null;
         const roas = rowRoas(row) ?? (investimento && receita !== null ? receita / investimento : null);
         const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
@@ -5636,6 +5635,7 @@
     return {
       modelo_id: launch.modelo_id,
       modelo: launch.modelo,
+      linha: row.linha || launch.linha || null,
       campanha,
       janela,
       data_inicio: row.data_inicio || null,
@@ -5804,15 +5804,11 @@
     return [...groups.values()]
       .filter((row) => row.count > 1 || row.receita_janela_agregada !== null || row.investimento > 0)
       .map(({ count, canais, hasReceitaAtribuida, hasPedidos, receita_janela_agregada, ...row }) => {
-        const modelLaunch = launch || lineLaunchById(row.modelo_id);
-        const metric = mediaWindowMetric(row, modelLaunch);
-        const receitaModelo = numberOrNull(metric?.receita);
-        const pedidosModelo = numberOrNull(metric?.pedidos);
-        const receita = receita_janela_agregada ?? (hasReceitaAtribuida ? row.receita_atribuida : receitaModelo);
-        const pedidos = hasPedidos ? row.pedidos : pedidosModelo;
+        const receita = receita_janela_agregada ?? (hasReceitaAtribuida ? row.receita_atribuida : null);
+        const pedidos = hasPedidos ? row.pedidos : null;
         const source = receita_janela_agregada !== null && receita_janela_agregada !== undefined
           ? 'receita_repetida_agregada'
-          : hasReceitaAtribuida ? 'atribuida' : 'modelo_agregado';
+          : hasReceitaAtribuida ? 'atribuida' : null;
         return {
           ...row,
           campanha: count > 1 ? 'Total janela' : row.campanha,
@@ -5822,8 +5818,8 @@
           pedidos: pedidos ?? null,
           roas: row.investimento && receita !== null && receita !== undefined ? receita / row.investimento : null,
           cpa: row.investimento && pedidos ? row.investimento / pedidos : null,
-          metodologia: row.metodologia || (source === 'modelo_agregado' ? 'leitura_agregada_janela' : ''),
-          aviso: row.aviso || (source === 'modelo_agregado' ? 'Leitura agregada por janela do modelo. Nao divide receita entre canais; use apenas como referencia ate haver atribuicao real por pedido.' : '')
+          metodologia: row.metodologia || '',
+          aviso: row.aviso || ''
         };
       });
   }
@@ -5834,6 +5830,59 @@
 
   function roasValue(value) {
     return value === null || value === undefined ? '&mdash;' : `${fmtNum(value, 2)}&times;`;
+  }
+
+  function organicPaidValue(value) {
+    if (value === null || value === undefined) {
+      return '<span class="cell-muted">Aguardando atribuicao real</span>';
+    }
+    return fmtBRL(value);
+  }
+
+  function mediaRevenueCell(row) {
+    const value = numberOrNull(row?.receita_atribuida);
+    if (value === null) return '<span class="cell-muted">Sem receita atribuida</span>';
+    return `${fmtBRL(value)}${metodologiaComercialBadge(row)}`;
+  }
+
+  function isLineInvestmentMediaRow(row) {
+    return !String(row?.modelo_id || '').trim() && Boolean(String(row?.linha || '').trim());
+  }
+
+  function normalizeLineInvestmentMediaRow(row) {
+    return {
+      campanha: row.campanha || 'Campanha sem nome',
+      linha: row.linha || '',
+      canal: row.canal || '',
+      investimento: numberOrNull(row.investimento),
+      data_inicio: row.data_inicio || null,
+      data_fim: row.data_fim || null,
+      observacao: row.observacao || row.status || ''
+    };
+  }
+
+  function renderLineInvestmentTable() {
+    const tbody = $('line-investment-table');
+    if (!tbody) return;
+    const card = $('line-investment-card');
+    const label = $('line-investment-label');
+    const rows = (state.data.midia_paga || [])
+      .filter(isLineInvestmentMediaRow)
+      .map(normalizeLineInvestmentMediaRow)
+      .sort((a, b) => String(a.linha).localeCompare(String(b.linha)) || String(a.campanha).localeCompare(String(b.campanha)));
+    if (card) card.hidden = !rows.length;
+    if (label) label.hidden = !rows.length;
+    tbody.innerHTML = rows.length ? rows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.campanha)}</td>
+        <td>${escapeHtml(row.linha)}</td>
+        <td>${escapeHtml(row.canal || '—')}</td>
+        <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
+        <td>${fmtDate(row.data_inicio)}</td>
+        <td>${fmtDate(row.data_fim)}</td>
+        <td>${escapeHtml(row.observacao || '—')}</td>
+      </tr>
+    `).join('') : '';
   }
 
   function sumKnown(rows, field) {
@@ -5906,15 +5955,17 @@
               ${thTip('Janela base', 'Janela usada para contextualizar a receita do modelo: acumulado D+n para ativo ou melhor janela fechada/historica.')}
               ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou historico versionado.', 'num')}
               ${thTip('Invest. midia', 'Soma do investimento informado nas campanhas de midia paga cadastradas na planilha.', 'num')}
-              ${thTip('ROAS midia', 'ROAS informado na planilha ou estimado por janela do modelo quando so houver investimento. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
-              ${thTip('CPA midia', 'Formula: investimento de midia / pedidos. Pedidos podem vir da planilha ou do rateio da janela do modelo.', 'num')}
+              ${thTip('ROAS midia', 'ROAS informado na planilha ou calculado apenas quando existe receita atribuida real para a linha. Nao usa faturamento total da janela do modelo.', 'num')}
+              ${thTip('CPA midia', 'Formula: investimento de midia / pedidos informados ou atribuidos na propria linha. Sem rateio pela janela do modelo.', 'num')}
               ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
               ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
               ${thTip('ROAS CRM', 'ROAS informado na planilha de CRM ou calculado por receita base / investimento. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
               ${thTip('CPA CRM', 'Formula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
               ${thTip('Invest. total', 'Soma de investimento de midia paga e CRM.', 'num')}
-              ${thTip('Receita comercial', 'Soma das receitas informadas ou estimadas em midia e CRM. Leituras estimadas aparecem como apoio, nao atribuicao real por canal.', 'num')}
-              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou estimado.', 'num')}
+              ${thTip('Receita comercial', 'Soma das receitas informadas em midia e CRM. Midia sem receita atribuida fica fora da receita comercial.', 'num')}
+              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculavel por receita atribuida real.', 'num')}
+              ${thTip('Vendas organicas', 'Receita organica atribuida por pedido via last-click. Fica pendente ate a atribuicao real (Complemento 8) estar validada no BigQuery.', 'num')}
+              ${thTip('Vendas pagas', 'Receita paga atribuida por pedido via last-click. Fica pendente ate a atribuicao real (Complemento 8) estar validada no BigQuery.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -5933,6 +5984,8 @@
                 <td class="num">${mediaValue(row.investimentoTotal, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${roasValue(row.roasComercial)}${metodologiaComercialBadge(row)}</td>
+                <td class="num">${organicPaidValue(row.launch.receita_organica)}</td>
+                <td class="num">${organicPaidValue(row.launch.receita_paga)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -5940,6 +5993,7 @@
   }
 
   function renderActions(selected) {
+    renderLineInvestmentTable();
     if (selected.isFuture || isPlannedStatus(selected.status)) {
       $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="7" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
@@ -5955,7 +6009,7 @@
         <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}${metodologiaComercialBadge(row)}${suspeitaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
-        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${mediaRevenueCell(row)}</td>
         <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
         <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
         <td>${roasBadge(row.roas)}</td>
@@ -5977,6 +6031,7 @@
   }
 
   function renderActionsComparative() {
+    renderLineInvestmentTable();
     const launches = selectedCompareLaunches().filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
     if (!launches.length) {
       renderActionsComparison([]);
@@ -6018,7 +6073,7 @@
         <td>${escapeHtml(row.janela)}${row.receita_source && row.receita_source !== 'atribuida' ? ` <span class="cell-muted">(${escapeHtml(row.receita_source)})</span>` : ''}${metodologiaComercialBadge(row)}${suspeitaComercialBadge(row)}</td>
         <td>${escapeHtml(row.canal)}</td>
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
-        <td class="num">${mediaValue(row.receita_atribuida, fmtBRL)}${metodologiaComercialBadge(row)}</td>
+        <td class="num">${mediaRevenueCell(row)}</td>
         <td class="num">${roasValue(row.roas)}${metodologiaComercialBadge(row)}</td>
         <td class="num">${mediaValue(row.cpa, fmtBRL)}</td>
         <td>${roasBadge(row.roas)}</td>

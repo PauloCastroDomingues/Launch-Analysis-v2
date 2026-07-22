@@ -2658,6 +2658,7 @@ function normalizeMidiaPaga_(rows, modelos) {
     }
 
     const modeloId = String(row.modelo_id || '').trim();
+    const linha = String(row.linha || '').trim();
     const modelo = modelosById[modeloId] || {};
     const investimento = numberOrNull_(row.investimento);
     const receita = numberOrNull_(row.receita_atribuida);
@@ -2665,11 +2666,12 @@ function normalizeMidiaPaga_(rows, modelos) {
 
     return {
       modelo_id: modeloId || null,
+      linha: linha || null,
       campanha,
       canal: row.canal || null,
       data_inicio: row.data_inicio || null,
       data_fim: row.data_fim || null,
-      janela: row.janela || inferJanelaMidia_(row, modelo),
+      janela: row.janela || (modeloId ? inferJanelaMidia_(row, modelo) : null),
       investimento,
       receita_atribuida: receita,
       pedidos,
@@ -2882,11 +2884,12 @@ function calcularImpactoMidiaPaga_(registrosMidia) {
     const pedidos = numberOrNull_(row.pedidos);
     const roas = roasOrNull_(row.roas);
     const cpa = numberOrNull_(row.cpa);
+    const isLinhaInteira = !String(row.modelo_id || '').trim() && Boolean(String(row.linha || '').trim());
 
     return {
       ...row,
-      roas: row.atribuicao_bloqueada ? null : (roas ?? (investimento && investimento > 0 && receita !== null ? round6_(receita / investimento) : null)),
-      cpa: row.atribuicao_bloqueada ? null : (cpa ?? (investimento && investimento > 0 && pedidos ? round2_(investimento / pedidos) : null)),
+      roas: row.atribuicao_bloqueada ? null : (roas ?? (!isLinhaInteira && investimento && investimento > 0 && receita !== null ? round6_(receita / investimento) : null)),
+      cpa: row.atribuicao_bloqueada ? null : (cpa ?? (!isLinhaInteira && investimento && investimento > 0 && pedidos ? round2_(investimento / pedidos) : null)),
       metodologia: row.metodologia || null,
       aviso: row.aviso || null
     };

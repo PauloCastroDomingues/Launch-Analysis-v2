@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260722-exec-rebalance" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260722-actions-declared-modules" />
 </head>
 <body>
   <div class="app-shell">
@@ -301,14 +301,14 @@
               <h2>Mídia paga e CRM</h2>
               <button class="help-button" type="button" data-tooltip="Compara frentes comerciais por modelo: investimento, receita informada, ROAS, CPA e disparos. Investimento e ROAS vêm das abas midia_paga e crm_disparos exportadas pelo Apps Script." aria-label="Ajuda sobre acoes comerciais">?</button>
             </div>
-            <p class="section-desc">A leitura usa os modelos marcados em Comparar com. ROAS real vem da planilha; quando só há investimento, a tela mostra uma estimativa pela janela do modelo marcada como rateio.</p>
+            <p class="section-desc">A leitura usa os modelos marcados em Comparar com. ROAS/CPA de mídia só aparecem quando houver receita atribuída, ROAS ou pedidos reais na planilha.</p>
           </div>
         </div>
         <div class="chart-card wide" style="margin-bottom:18px">
           <div class="chart-head">
             <div>
               <div class="chart-title chart-title--with-tip"><span>Acumulado de investimento e eficiência</span></div>
-              <div class="chart-sub" id="chart-normalized-media-sub">Investimento, receita atribuída/estimada, ROAS, CPA, CPP e CPC por janela acumulada</div>
+              <div class="chart-sub" id="chart-normalized-media-sub">Investimento, receita atribuída, ROAS, CPA, CPP e CPC por janela acumulada</div>
             </div>
             <div class="chart-mode-controls commercial-chart-controls">
               <div class="chart-mode-toggle" role="group" aria-label="Métrica do gráfico comercial">
@@ -324,12 +324,14 @@
           <div class="chart-canvas tall"><canvas id="chart-normalized-media"></canvas></div>
         </div>
 
+        <p class="actions-module-label">Resumo comercial</p>
         <div id="actions-comparison" class="actions-comparison"></div>
         <div class="actions-grid">
+          <p class="actions-module-label">Mídia paga — detalhe</p>
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
               <span>Mídia paga</span>
-              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/midia_paga.json, exportado da planilha configurada no Apps Script. Investimento vem da planilha; quando receita, pedidos ou ROAS nao vierem, o front estima pela janela do modelo e marca a origem." aria-label="Ajuda sobre midia paga">i</button>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/midia_paga.json, exportado da planilha configurada no Apps Script. Investimento vem da planilha; receita, ROAS e CPA so aparecem quando vierem atribuidos/informados, sem rateio pela janela do modelo." aria-label="Ajuda sobre midia paga">i</button>
             </div>
             <div class="table-wrap">
               <table style="min-width:960px">
@@ -341,8 +343,8 @@
                     <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal/canalizador declarado na planilha, como Facebook ADS, Google ADS ou outro." aria-label="Ajuda sobre canal midia">i</button></span></th>
                     <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Investimento cadastrado. Fonte: planilha; o dashboard nao recalcula gasto de plataformas." aria-label="Ajuda sobre investimento midia">i</button></span></th>
                     <th class="num"><span class="th-label">Receita atribuída <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuida informada na planilha. Quando a receita da janela aparecer repetida entre canais, o ROAS por canal e bloqueado e a leitura fica apenas agregada." aria-label="Ajuda sobre receita midia">i</button></span></th>
-                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS informado na planilha ou estimado por receita da janela / investimento quando a planilha so traz investimento. Percentuais ou valores acima de 100 sao normalizados." aria-label="Ajuda sobre ROAS midia">i</button></span></th>
-                    <th class="num"><span class="th-label">CPA <button class="help-button help-button--mini" type="button" data-tooltip="Formula: investimento / pedidos. CPA por canal so aparece quando os pedidos sao do proprio canal; caso contrario fica agregado por janela." aria-label="Ajuda sobre CPA midia">i</button></span></th>
+                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS informado na planilha ou calculado apenas quando existe receita atribuida real para a linha. Nao usa faturamento total da janela do modelo." aria-label="Ajuda sobre ROAS midia">i</button></span></th>
+                    <th class="num"><span class="th-label">CPA <button class="help-button help-button--mini" type="button" data-tooltip="Formula: investimento / pedidos, apenas quando os pedidos pertencem a esta linha de midia. Sem rateio por janela do modelo." aria-label="Ajuda sobre CPA midia">i</button></span></th>
                     <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Classificacao operacional derivada do ROAS ou informada no cadastro. Serve para leitura rapida, nao substitui auditoria." aria-label="Ajuda sobre status midia">i</button></span></th>
                   </tr>
                 </thead>
@@ -350,6 +352,7 @@
               </table>
             </div>
           </div>
+          <p class="actions-module-label">CRM — detalhe</p>
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
               <span>CRM / disparos</span>
@@ -373,7 +376,31 @@
                 <tbody id="crm-table"></tbody>
               </table>
             </div>
-            <p class="metric-sub">Investimento vem da planilha. ROAS explícito tem prioridade; leituras estimadas são marcadas na janela.</p>
+            <p class="metric-sub">Investimento vem da planilha. ROAS explícito tem prioridade; mídia sem receita atribuída permanece sem eficiência calculada.</p>
+          </div>
+          <p id="line-investment-label" class="actions-module-label" hidden>Investimento de linha</p>
+          <div id="line-investment-card" class="card actions-line-investment-card" hidden>
+            <div class="chart-title chart-title--with-tip" style="margin-bottom:8px">
+              <span>Investimento de linha</span>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas de data/midia_paga.json com linha preenchida e modelo_id vazio. Representam investimento para a linha inteira, sem atribuicao a um lancamento especifico." aria-label="Ajuda sobre investimento de linha">i</button>
+            </div>
+            <p class="metric-sub">Investimento registrado para a linha inteira, não atribuído a um lançamento específico. Não entra no ROAS/CAC de nenhum lançamento individual.</p>
+            <div class="table-wrap">
+              <table style="min-width:900px">
+                <thead>
+                  <tr>
+                    <th><span class="th-label">Campanha</span></th>
+                    <th><span class="th-label">Linha</span></th>
+                    <th><span class="th-label">Canal</span></th>
+                    <th class="num"><span class="th-label">Invest.</span></th>
+                    <th><span class="th-label">Início</span></th>
+                    <th><span class="th-label">Fim</span></th>
+                    <th><span class="th-label">Observação</span></th>
+                  </tr>
+                </thead>
+                <tbody id="line-investment-table"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -429,7 +456,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="assets/embedded-data.js?v=20260721-series2-d0-20260716"></script>
-  <script src="assets/app.js?v=20260722-exec-rebalance"></script>
+  <script src="assets/app.js?v=20260722-actions-declared-modules"></script>
   <script src="assets/presentation.js?v=20260716-compact-overview"></script>
 </body>
 </html>

@@ -2790,7 +2790,19 @@ body.stock-detail-open .stock-detail-drawer {
 .event-copy { color: rgba(255,255,255,.64); font-size: .76rem; margin-top: 4px; }
 .seasonal-empty { min-height: 118px; margin-top: 10px; }
 
-.actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.actions-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.actions-grid > .card { min-width: 0; }
+.actions-module-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--txt-muted);
+  margin: 0 0 8px;
+}
+.actions-line-investment-card {
+  border-left: 3px solid var(--warning);
+  border-radius: 0 8px 8px 0;
+}
 
 .scenario-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .scenario { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
