@@ -2337,6 +2337,42 @@
     `;
   }
 
+  function storyChannelAttributionHtml(launch) {
+    const paidRevenue = numberOrNull(launch?.receita_paga);
+    const organicRevenue = numberOrNull(launch?.receita_organica);
+    const paidOrders = numberOrNull(launch?.pedidos_pagos);
+    const organicOrders = numberOrNull(launch?.pedidos_organicos);
+    const totalRevenue = Number(paidRevenue || 0) + Number(organicRevenue || 0);
+    const hasRealAttribution = paidRevenue !== null || organicRevenue !== null || paidOrders !== null || organicOrders !== null;
+    const channelCell = (label, revenue, orders) => {
+      const revenueValue = revenue !== null ? fmtBRL(revenue) : 'Aguardando';
+      const ordersValue = orders !== null ? `${fmtNum(orders)} pedidos` : 'pedidos aguardando';
+      const shareValue = totalRevenue > 0 && revenue !== null ? `${fmtPct(revenue / totalRevenue, 1)} do atribuido` : 'sem share real';
+      return `
+        <div class="story-channel-item">
+          <em>${escapeHtml(label)}</em>
+          <b>${escapeHtml(revenueValue)}</b>
+          <small>${escapeHtml(ordersValue)} - ${escapeHtml(shareValue)}</small>
+        </div>
+      `;
+    };
+    return `
+      <div class="story-channel-card story-channel-card--${hasRealAttribution ? 'ready' : 'pending'}">
+        <div class="story-channel-head">
+          ${labelTip('Organico x pago', 'Mostra receita e pedidos do lancamento separados por atribuicao real last-click. Se aparecer aguardando, o JSON ainda nao trouxe receita_paga, receita_organica, pedidos_pagos e pedidos_organicos para este lancamento.')}
+          <small>${hasRealAttribution ? 'atribuicao real' : 'aguardando atribuicao real'}</small>
+        </div>
+        <div class="story-channel-grid">
+          ${channelCell('Organico', organicRevenue, organicOrders)}
+          ${channelCell('Pago', paidRevenue, paidOrders)}
+        </div>
+        <p>${hasRealAttribution
+          ? 'Leitura usada para separar tracao organica de resposta paga dentro do lancamento.'
+          : 'Sem canal no JSON ainda. Depois de popular a mirror de atribuicao e rodar exportarTudo, este card troca para os valores reais.'}</p>
+      </div>
+    `;
+  }
+
   function storySourceNote(text) {
     if (!text) return '';
     return `<div class="story-source-note"><span>Origem</span><p>${escapeHtml(text)}</p></div>`;
@@ -2453,6 +2489,7 @@
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const activityTooltip = 'Resumo operacional desde o D0 usado na analise. Mostra quantos dias o lancamento ja tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
+    const channelAttributionHtml = storyChannelAttributionHtml(selected);
     const representationGoalHtml = storyGoalContributionHtml(goalRows);
     const evidence = [
       storyMetricHtml({
@@ -2562,11 +2599,14 @@
           </div>
         </div>
         <div class="story-visual-grid">
-          <div class="story-hero-signal story-hero-signal--activity">
-            ${labelTip('Atividade desde D0', activityTooltip)}
-            <strong>${escapeHtml(activity.value)}</strong>
-            <p>${escapeHtml(activity.copy)}</p>
-            ${storyFactChips(activity.facts)}
+          <div class="story-left-column">
+            <div class="story-hero-signal story-hero-signal--activity">
+              ${labelTip('Atividade desde D0', activityTooltip)}
+              <strong>${escapeHtml(activity.value)}</strong>
+              <p>${escapeHtml(activity.copy)}</p>
+              ${storyFactChips(activity.facts)}
+            </div>
+            ${channelAttributionHtml}
           </div>
           <div>
             <div class="story-visual-metrics story-visual-metrics--three">

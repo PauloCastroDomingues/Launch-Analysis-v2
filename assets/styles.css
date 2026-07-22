@@ -1126,6 +1126,84 @@ h1 {
   font-size: .86rem;
   line-height: 1.45;
 }
+.story-left-column {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-width: 0;
+}
+.story-channel-card {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 8px;
+  background: rgba(0,0,0,.18);
+  padding: 14px;
+}
+.story-channel-card--pending {
+  border-color: rgba(232,160,32,.36);
+  background: rgba(232,160,32,.07);
+}
+.story-channel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.story-channel-head small {
+  color: var(--txt-muted);
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.2;
+  text-align: right;
+  text-transform: uppercase;
+}
+.story-channel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.story-channel-item {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 7px;
+  background: rgba(255,255,255,.035);
+  padding: 9px;
+}
+.story-channel-item em,
+.story-channel-item b,
+.story-channel-item small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.story-channel-item em {
+  color: var(--txt-muted);
+  font-size: .58rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.story-channel-item b {
+  margin-top: 5px;
+  color: var(--txt-primary);
+  font-size: .92rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.story-channel-item small {
+  margin-top: 5px;
+  color: var(--txt-secondary);
+  font-size: .66rem;
+  line-height: 1.25;
+}
+.story-channel-card p {
+  margin: 10px 0 0;
+  color: var(--txt-secondary);
+  font-size: .72rem;
+  line-height: 1.35;
+}
 .story-signal-meta {
   display: flex;
   flex-wrap: wrap;
@@ -3184,6 +3262,9 @@ body.stock-detail-open .stock-detail-drawer {
   .story-visual-grid { padding: 0 16px 16px; }
   .story-visual-metrics { grid-template-columns: 1fr; }
   .story-hero-signal { min-height: 0; }
+  .story-channel-grid { grid-template-columns: 1fr; }
+  .story-channel-head { display: grid; }
+  .story-channel-head small { text-align: left; }
   .story-step-details { margin: 0 16px 16px; }
   .story-step-details summary { width: 100%; text-align: center; white-space: normal; line-height: 1.2; }
   .story-step-grid { grid-template-columns: 1fr; }
