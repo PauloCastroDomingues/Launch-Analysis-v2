@@ -2195,6 +2195,17 @@
     const source = 'Origem: metas_mensais.json calcula meta e faturamento da empresa no periodo; lancamentos_produtos_dia.json calcula receita do produto; share_trajetoria.json mantem o contexto antes/depois.';
 
     if (!firstGoal || (target === null && actual === null)) {
+      if (base.state !== 'pending') {
+        return {
+          label: base.label,
+          value: base.value,
+          copy: `${base.copy} (meta do periodo ainda nao carregada; produto fez ${fmtBRL(revenue)} no ${range}.)`,
+          evidence: `${source} ${base.evidence || ''}`,
+          source,
+          state: base.state,
+          facts: [...(base.facts || []), { label: 'Produto', value: fmtBRL(revenue) }]
+        };
+      }
       return {
         label: 'Meta sem contexto',
         value: 'Sem meta',
@@ -2438,8 +2449,8 @@
         detail: representationDetail,
         width: firstGoalPct !== null ? firstGoalPct * 100 : 0,
         state: firstGoalPct === null ? 'pending' : firstGoalPct >= 0.12 ? 'focus' : 'ok',
-        tooltip: 'Mostra quanto o produto cobriu da meta proporcional nas janelas M1 D0-D+30, M2 D+31-D+60 e M3 D+61-D+90. O ranking abaixo preserva a leitura de share geral do lancamento.',
-        extraHtml: `${representationGoalHtml}${topShareHtml}`
+        tooltip: 'Mostra quanto o produto cobriu da meta proporcional nas janelas M1 D0-D+30, M2 D+31-D+60 e M3 D+61-D+90.',
+        extraHtml: representationGoalHtml
       }),
       storyMetricHtml({
         label: 'Momento da empresa',
@@ -2548,6 +2559,12 @@
           <div>
             <div class="story-visual-metrics story-visual-metrics--three">
               ${evidence.join('')}
+            </div>
+            <div class="story-visual-metric story-visual-metric--wide">
+              <div class="story-visual-metric-head">
+                ${labelTip('Ranking por share geral', 'Share acumulado de cada modelo comparavel ate a data mais recente disponivel, com o lancamento selecionado sempre visivel mesmo fora do top 3.')}
+              </div>
+              ${topShareHtml}
             </div>
             <div class="story-decision-grid">
               ${decisionNotes.map((item) => `

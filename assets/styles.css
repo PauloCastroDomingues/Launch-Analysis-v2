@@ -1088,6 +1088,7 @@ h1 {
 }
 .story-visual-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: minmax(230px, .32fr) minmax(0, 1fr);
   gap: 12px;
   padding: 0 20px 20px;
@@ -1096,8 +1097,7 @@ h1 {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   min-height: 212px;
   border: 1px solid rgba(255,255,255,.13);
   border-radius: 8px;
@@ -1158,6 +1158,9 @@ h1 {
   border-radius: 8px;
   background: rgba(0,0,0,.18);
   padding: 13px;
+}
+.story-visual-metric--wide {
+  margin: 10px 0 0;
 }
 .story-visual-metric-head {
   display: flex;
