@@ -2337,39 +2337,6 @@
     `;
   }
 
-  function storyChannelAttributionHtml(launch) {
-    const paidRevenue = numberOrNull(launch?.receita_paga);
-    const organicRevenue = numberOrNull(launch?.receita_organica);
-    const totalRevenue = Number(paidRevenue || 0) + Number(organicRevenue || 0);
-    const hasRealAttribution = paidRevenue !== null || organicRevenue !== null;
-    const channelCell = (label, revenue) => {
-      const revenueValue = revenue !== null ? fmtBRL(revenue) : 'Aguardando';
-      const shareValue = totalRevenue > 0 && revenue !== null ? `${fmtPct(revenue / totalRevenue, 1)} da venda atribuida` : 'sem venda no JSON';
-      return `
-        <div class="story-channel-item">
-          <em>${escapeHtml(label)}</em>
-          <b>${escapeHtml(revenueValue)}</b>
-          <small>${escapeHtml(shareValue)}</small>
-        </div>
-      `;
-    };
-    return `
-      <div class="story-channel-card story-channel-card--${hasRealAttribution ? 'ready' : 'pending'}">
-        <div class="story-channel-head">
-          ${labelTip('Organico x pago', 'Mostra as vendas do lancamento separadas por atribuicao real last-click. Se aparecer aguardando, o JSON ainda nao trouxe receita_paga e receita_organica para este lancamento.')}
-          <small>${hasRealAttribution ? 'vendas atribuidas' : 'aguardando vendas atribuidas'}</small>
-        </div>
-        <div class="story-channel-grid">
-          ${channelCell('Organico', organicRevenue)}
-          ${channelCell('Pago', paidRevenue)}
-        </div>
-        <p>${hasRealAttribution
-          ? 'Leitura usada para separar venda organica de venda paga dentro do lancamento.'
-          : 'Sem vendas por canal no JSON ainda. Depois de rodar exportarTudo com a consulta US, este card troca para os valores reais.'}</p>
-      </div>
-    `;
-  }
-
   function storySourceNote(text) {
     if (!text) return '';
     return `<div class="story-source-note"><span>Origem</span><p>${escapeHtml(text)}</p></div>`;
@@ -2486,7 +2453,6 @@
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const activityTooltip = 'Resumo operacional desde o D0 usado na analise. Mostra quantos dias o lancamento ja tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
-    const channelAttributionHtml = storyChannelAttributionHtml(selected);
     const representationGoalHtml = storyGoalContributionHtml(goalRows);
     const evidence = [
       storyMetricHtml({
@@ -2603,7 +2569,6 @@
               <p>${escapeHtml(activity.copy)}</p>
               ${storyFactChips(activity.facts)}
             </div>
-            ${channelAttributionHtml}
           </div>
           <div>
             <div class="story-visual-metrics story-visual-metrics--three">
