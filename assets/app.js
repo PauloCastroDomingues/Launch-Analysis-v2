@@ -1113,7 +1113,7 @@
     const quality = auditQualityForLaunch(launch);
     if (!quality) return null;
     if (quality.status === 'ok' && quality.auditado !== false) return badge('pipeline', 'Auditado', 'Auditoria independente do SSOT bateu com o export do dashboard em pedidos, pares e receita. Use como dado real auditado.');
-    if (quality.status === 'divergente') return badge('neg', 'Divergente', 'A auditoria independente nao bate com o JSON exportado. Nao use esta leitura para decisao antes de investigar pedidos, pares e receita.');
+    if (quality.status === 'divergente') return badge('neg', 'Divergente', 'A auditoria independente não bate com o JSON exportado. Não use esta leitura para decisão antes de investigar pedidos, pares e receita.');
     return null;
   }
 
@@ -1146,10 +1146,10 @@
   function coverageBadge(launch, key) {
     const win = getWindow(launch, key);
     if (!win) return '—';
-    if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.', 'Historico agregado foi distribuido entre marcos para permitir curva visual. Nao e dado diario real.');
-    if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Benchmark estatico vindo de data/lancamentos_historico.json. Use para comparacao, nao como pipeline em tempo real.');
+    if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.', 'Histórico agregado foi distribuído entre marcos para permitir curva visual. Não é dado diário real.');
+    if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Benchmark estático vindo de data/lancamentos_historico.json. Use para comparação, não como pipeline em tempo real.');
     const endDay = windowEndDay(key);
-    if (endDay !== null && (launch.dPlus ?? 0) < endDay) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`, `Janela ${windowLabel(key)} ainda nao fechou no snapshot. O acumulado atual vai ate D+${Math.max(0, launch.dPlus ?? 0)}.`);
+    if (endDay !== null && (launch.dPlus ?? 0) < endDay) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`, `Janela ${windowLabel(key)} ainda não fechou no snapshot. O acumulado atual vai até D+${Math.max(0, launch.dPlus ?? 0)}.`);
     return badge('pipeline', 'Pipeline', `Janela ${windowLabel(key)} fechada com dados reais do pipeline de vendas exportado pelo Apps Script.`);
   }
 
@@ -1157,10 +1157,10 @@
     const auditBadge = auditBadgeForLaunch(launch);
     if (auditBadge) return auditBadge;
     const hasAnyWindow = WINDOW_KEYS.some((key) => Boolean(getWindow(launch, key)));
-    if (launch.isFuture) return badge('planejado', 'Planejado', 'Modelo com D0 futuro no snapshot. Fica fora de vendas, midia, CRM e projecao ate entrar dado real.');
-    if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Modelo usado como benchmark historico, com dados agregados em JSON versionado.');
-    if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`, 'Ha linhas reais no pipeline, mas nenhuma janela D+N fechada ainda.');
-    if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`, 'Nao ha janela fechada nem acumulado suficiente no JSON. Ausencia permanece vazia, nao vira zero.');
+    if (launch.isFuture) return badge('planejado', 'Planejado', 'Modelo com D0 futuro no snapshot. Fica fora de vendas, mídia, CRM e projeção até entrar dado real.');
+    if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Modelo usado como benchmark histórico, com dados agregados em JSON versionado.');
+    if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`, 'Há linhas reais no pipeline, mas nenhuma janela D+N fechada ainda.');
+    if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`, 'Não há janela fechada nem acumulado suficiente no JSON. Ausência permanece vazia, não vira zero.');
     if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline D+${Math.max(0, launch.dPlus)}`, 'Dados reais vindos de lancamentos_produtos_dia.json, gerado pelo Apps Script a partir do SSOT.');
     return badge('parcial', 'Sem dados', 'Fonte insuficiente para classificar a leitura.');
   }
@@ -1613,7 +1613,7 @@
   function renderPeriodSelector() {
     const wrap = $('period-selector');
     wrap.innerHTML = `
-      <select class="period-select" aria-label="Periodo principal da analise">
+      <select class="period-select" aria-label="Período principal da análise">
         ${ANALYSIS_PERIODS.map((period) => (
           `<option value="${period.key}" ${period.key === state.analysisPeriodKey ? 'selected' : ''}>${escapeHtml(period.label)}</option>`
         )).join('')}
@@ -1845,7 +1845,14 @@
         actual += actualPart;
         actualDays += days;
       }
-      parts.push({ month, days, target: targetPart, actual: actualPart });
+      parts.push({
+        month,
+        startIso: toIsoDate(cursor),
+        endIso: toIsoDate(segmentEnd),
+        days,
+        target: targetPart,
+        actual: actualPart
+      });
 
       cursor = new Date(segmentEnd);
       cursor.setDate(cursor.getDate() + 1);
@@ -1870,13 +1877,7 @@
     return days.length ? Math.max(...days) : null;
   }
 
-  function launchRevenueForDayRange(launch, startDay, endDay) {
-    const d0 = launch?.d0 || launch?.day_zero_base;
-    const rows = optionalRows('lancamentos_produtos_dia').filter((row) => {
-      if (row.modelo_id !== launch?.modelo_id) return false;
-      const idx = dayIndex(d0, row.data);
-      return idx !== null && idx >= startDay && idx <= endDay;
-    });
+  function aggregateLaunchSalesRows(rows, source = {}) {
     if (!rows.length) {
       return { receita: null, pedidos: null, pares: null, row: null };
     }
@@ -1893,8 +1894,47 @@
       receita,
       pedidos,
       pares,
-      row: { start_day: startDay, end_day: endDay, receita, pedidos, pares, linhas: rows.length }
+      row: { ...source, receita, pedidos, pares, linhas: rows.length }
     };
+  }
+
+  function launchRevenueForDayRange(launch, startDay, endDay) {
+    const d0 = launch?.d0 || launch?.day_zero_base;
+    const rows = optionalRows('lancamentos_produtos_dia').filter((row) => {
+      if (row.modelo_id !== launch?.modelo_id) return false;
+      const idx = dayIndex(d0, row.data);
+      return idx !== null && idx >= startDay && idx <= endDay;
+    });
+    return aggregateLaunchSalesRows(rows, { start_day: startDay, end_day: endDay });
+  }
+
+  function launchRevenueForMetaParts(launch, metaParts = [], field = 'actual') {
+    const validParts = (metaParts || []).filter((part) => (
+      part
+      && part[field] !== null
+      && part[field] !== undefined
+      && part.startIso
+      && part.endIso
+    ));
+    if (!validParts.length) {
+      return { receita: null, pedidos: null, pares: null, row: null };
+    }
+    const d0 = launch?.d0 || launch?.day_zero_base;
+    const coverageStart = validParts[0]?.startIso || null;
+    const coverageEnd = validParts[validParts.length - 1]?.endIso || null;
+    const coverageDays = validParts.reduce((acc, part) => acc + Number(part.days || 0), 0);
+    const rows = optionalRows('lancamentos_produtos_dia').filter((row) => {
+      if (row.modelo_id !== launch?.modelo_id || !row.data) return false;
+      return validParts.some((part) => row.data >= part.startIso && row.data <= part.endIso);
+    });
+    return aggregateLaunchSalesRows(rows, {
+      start_day: coverageStart && d0 ? dayIndex(d0, coverageStart) : null,
+      end_day: coverageEnd && d0 ? dayIndex(d0, coverageEnd) : null,
+      coverage_start: coverageStart,
+      coverage_end: coverageEnd,
+      coverage_days: coverageDays,
+      coverage_field: field
+    });
   }
 
   function representationGoalRows(launch) {
@@ -1922,9 +1962,20 @@
       const metaInfo = observedEndIso ? goalMetaForRange(startIso, observedEndIso, launch) : null;
       const target = metaInfo?.target ?? null;
       const actual = metaInfo?.actual ?? null;
-      const sales = observedEndDay !== null
+      const fullSales = observedEndDay !== null
         ? launchRevenueForDayRange(launch, observedStartDay, observedEndDay)
         : { receita: null, pedidos: null, pares: null, row: null };
+      const targetSales = metaInfo
+        ? launchRevenueForMetaParts(launch, metaInfo.parts, 'target')
+        : fullSales;
+      const actualSales = metaInfo
+        ? launchRevenueForMetaParts(launch, metaInfo.parts, 'actual')
+        : fullSales;
+      const comparableSales = actualSales.receita !== null
+        ? actualSales
+        : targetSales.receita !== null
+          ? targetSales
+          : fullSales;
       return {
         index: window.index,
         startDay: window.startDay,
@@ -1941,12 +1992,16 @@
         metaParts: metaInfo?.parts || [],
         target,
         actual,
-        receita: sales.receita,
-        pedidos: sales.pedidos,
-        pares: sales.pares,
-        pctMeta: ratioOrNull(sales.receita, target),
-        pctRealizado: ratioOrNull(sales.receita, actual),
-        sourceRow: sales.row
+        receita: comparableSales.receita,
+        pedidos: comparableSales.pedidos,
+        pares: comparableSales.pares,
+        receitaTotalObservada: fullSales.receita,
+        pedidosTotalObservado: fullSales.pedidos,
+        paresTotalObservado: fullSales.pares,
+        pctMeta: ratioOrNull(targetSales.receita, target),
+        pctRealizado: ratioOrNull(actualSales.receita, actual),
+        sourceRow: comparableSales.row,
+        observedSourceRow: fullSales.row
       };
     });
   }
@@ -1958,7 +2013,7 @@
   function goalRangeLabel(row) {
     if (!row) return '';
     const endDay = row.observedEndDay ?? row.endDay;
-    const suffix = row.notStarted ? ' · nao iniciado' : row.complete ? '' : ' · em curso';
+    const suffix = row.notStarted ? ' · não iniciado' : row.complete ? '' : ' · em curso';
     return `${goalDayLabel(row.startDay)}-${goalDayLabel(endDay)}${suffix}`;
   }
 
@@ -1968,18 +2023,27 @@
   }
 
   function goalMetaLabel(row) {
-    if (!row || row.target === null) return 'meta nao carregada';
-    return `${row.metaComplete ? 'meta' : 'meta parcial'} ${fmtBRL(row.target)}`;
+    if (!row || row.target === null) return 'meta não carregada';
+    const coverage = !row.metaComplete && row.metaDays && row.totalDays
+      ? ` (${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias)`
+      : '';
+    return `${row.metaComplete ? 'meta' : 'meta parcial'}${coverage} ${fmtBRL(row.target)}`;
+  }
+
+  function goalCoverageNote(row) {
+    if (!row || row.metaComplete || !row.metaDays || !row.totalDays) return '';
+    const end = row.sourceRow?.coverage_end ? ` até ${fmtDateSlash(row.sourceRow.coverage_end)}` : '';
+    return ` · comparável em ${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias${end}`;
   }
 
   function representationGoalSummary(rows) {
     const first = rows[0];
-    if (!first) return 'Meta mensal ainda nao conectada para este lancamento.';
+    if (!first) return 'Meta mensal ainda não conectada para este lançamento.';
     if (first.pctMeta !== null) {
-      return `M1 ${goalRangeLabel(first)}: ${fmtPct(first.pctMeta, 1)} ${first.metaComplete ? 'da meta' : 'da meta parcial'}.`;
+      return `M1 ${goalRangeLabel(first)}: ${fmtPct(first.pctMeta, 1)} ${first.metaComplete ? 'da meta' : 'da meta parcial'}${goalCoverageNote(first)}.`;
     }
     if (first.target === null) {
-      return `M1 ${goalRangeLabel(first)}: meta ainda nao carregada.`;
+      return `M1 ${goalRangeLabel(first)}: meta ainda não carregada.`;
     }
     return `M1 ${goalRangeLabel(first)}: sem venda carregada contra a meta.`;
   }
@@ -1995,18 +2059,18 @@
           const pctText = row.pctMeta !== null
             ? `${fmtPct(row.pctMeta, 1)} ${row.metaComplete ? 'da meta' : 'meta parcial'}`
             : row.notStarted
-              ? 'nao iniciado'
+              ? 'não iniciado'
               : hasMeta
               ? 'sem venda'
               : 'sem meta';
           const rangeText = `${goalRangeLabel(row)} · ${goalDateRangeLabel(row)}`;
           const detail = hasMeta
-            ? `${fmtBRL(row.receita)} / ${goalMetaLabel(row)}`
+            ? `${fmtBRL(row.receita)} comparável / ${goalMetaLabel(row)}${goalCoverageNote(row)}`
             : hasSales
-              ? `${fmtBRL(row.receita)} vendido · meta nao carregada`
+              ? `${fmtBRL(row.receita)} vendido · meta não carregada`
               : row.notStarted
                 ? `Janela prevista: ${goalDateRangeLabel(row)}`
-                : 'meta nao carregada';
+                : 'meta não carregada';
           const width = row.pctMeta !== null ? Math.min(100, Math.max(3, row.pctMeta * 100)) : 0;
           const state = row.pctMeta === null ? 'pending' : row.pctMeta >= 0.12 ? 'focus' : 'ok';
           return `
@@ -2027,9 +2091,12 @@
   function representationGoalEvidence(rows = []) {
     if (!rows.length) return '';
     const summary = rows.map((row) => {
-      const pct = row.pctMeta !== null ? fmtPct(row.pctMeta, 1) : row.notStarted ? 'nao iniciado' : 'sem meta';
+      const pct = row.pctMeta !== null ? fmtPct(row.pctMeta, 1) : row.notStarted ? 'não iniciado' : 'sem meta';
       const metaStatus = row.target === null ? 'sem meta' : row.metaComplete ? 'meta completa' : `meta parcial ${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias`;
-      return `M${row.index} ${goalRangeLabel(row)} ${goalDateRangeLabel(row)}: receita=${fmtBRL(row.receita)} meta=${fmtBRL(row.target)} pct=${pct} (${metaStatus})`;
+      const observed = row.receitaTotalObservada !== null && row.receitaTotalObservada !== row.receita
+        ? ` receita_total_observada=${fmtBRL(row.receitaTotalObservada)}`
+        : '';
+      return `M${row.index} ${goalRangeLabel(row)} ${goalDateRangeLabel(row)}: receita_comparavel=${fmtBRL(row.receita)}${observed} meta=${fmtBRL(row.target)} pct=${pct} (${metaStatus})`;
     }).join(' | ');
     return `<code class="story-step-source">metas_mensais.json + lancamentos_produtos_dia.json → ${escapeHtml(summary)}</code>`;
   }
@@ -2039,7 +2106,7 @@
       return {
         label: 'Pendente',
         value: 'Sem meta',
-        copy: 'Contrato esperado: mes, meta_receita e realizado_receita; modelo_id opcional.'
+        copy: 'Contrato esperado: mês, meta_receita e realizado_receita; modelo_id opcional.'
       };
     }
     const target = firstKnownCommercialNumber(meta, ['meta_receita', 'meta_faturamento', 'meta']);
@@ -2052,7 +2119,7 @@
     const monthsAlign = meta && !meta.__meta_status && launchMonth && metaMonth && launchMonth === metaMonth;
     const contribution = monthsAlign && actual ? ratioOrNull(context.launchRevenue, actual) : null;
     const contributionCopy = contribution !== null
-      ? ` \u00b7 seu lancamento respondeu por ${fmtPct(contribution, 1)} do realizado desse mes`
+      ? ` \u00b7 seu lançamento respondeu por ${fmtPct(contribution, 1)} do realizado desse mês`
       : '';
 
     if (meta.__meta_status === 'month_open') {
@@ -2163,22 +2230,22 @@
     const receita = numberOrNull(current?.receita);
     const pedidos = numberOrNull(current?.pedidos);
     const pares = numberOrNull(current?.pares);
-    const sourceLabel = activityDay !== null ? `D0 a D+${Math.max(0, activityDay)}` : (selectedWindow.label || 'janela disponivel');
+    const sourceLabel = activityDay !== null ? `D0 a D+${Math.max(0, activityDay)}` : (selectedWindow.label || 'janela disponível');
     const partialData = dataDay !== null && activityDay !== null && dataDay < activityDay;
-    const dataCoverageCopy = partialData ? ` Dados de venda disponiveis ate D+${fmtNum(Math.max(0, dataDay))}.` : '';
+    const dataCoverageCopy = partialData ? ` Dados de venda disponíveis até D+${fmtNum(Math.max(0, dataDay))}.` : '';
     const facts = [
       { label: 'Dias ativo', value: daysActive !== null ? fmtNum(daysActive) : 'sem dado' },
       { label: 'Faturamento', value: fmtBRL(receita) },
       { label: 'Pedidos', value: fmtNum(pedidos) }
     ];
     if (pares !== null) facts.push({ label: 'Pares', value: fmtNum(pares) });
-    if (partialData) facts.push({ label: 'Dados ate', value: `D+${fmtNum(Math.max(0, dataDay))}` });
+    if (partialData) facts.push({ label: 'Dados até', value: `D+${fmtNum(Math.max(0, dataDay))}` });
     return {
       label: sourceLabel,
       value: daysActive !== null ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'}` : 'Sem atividade',
       copy: receita !== null || pedidos !== null
-        ? `Desde o lancamento: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
-        : 'Ainda sem acumulado de atividade desde o lancamento.',
+        ? `Desde o lançamento: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
+        : 'Ainda sem acumulado de atividade desde o lançamento.',
       facts,
       row: current ? { ...current, activity_day: activityDay, data_day: dataDay } : null,
       state: receita !== null || pedidos !== null ? 'ok' : 'pending'
@@ -2194,8 +2261,8 @@
       return {
         label: 'Sem contexto',
         value: 'Sem contexto',
-        copy: 'Ainda nao ha leitura antes/depois da empresa para separar efeito do lancamento de contexto geral.',
-        evidence: 'share_trajetoria ainda nao trouxe a leitura antes/depois da empresa.',
+        copy: 'Ainda não há leitura antes/depois da empresa para separar efeito do lançamento do contexto geral.',
+        evidence: 'share_trajetoria ainda não trouxe a leitura antes/depois da empresa.',
         state: 'pending',
         facts: []
       };
@@ -2205,8 +2272,8 @@
       return {
         label: 'Sem base comparável',
         value: fmtBRL(pos),
-        copy: 'Nao conclua aceleracao da empresa por esse percentual. A essencia aqui e qualidade/contexto: o periodo anterior esta baixo demais para sustentar comparacao, entao o lancamento deve ser lido por representatividade, mix e curva.',
-        evidence: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''} - periodo anterior sem receita suficiente para calcular variacao.`,
+        copy: 'Não conclua aceleração da empresa por esse percentual. A essência aqui é qualidade/contexto: o período anterior está baixo demais para sustentar comparação, então o lançamento deve ser lido por representatividade, mix e curva.',
+        evidence: `${fmtBRL(pre)} antes · ${fmtBRL(pos)} depois${days !== null ? ` · ${fmtNum(days)} dias` : ''} - período anterior sem receita suficiente para calcular variação.`,
         state: 'warn',
         baselineInsuficiente: true,
         facts: [
@@ -2216,12 +2283,12 @@
         ]
       };
     }
-    const direction = variation > 0.05 ? 'Empresa acelerando' : variation < -0.05 ? 'Empresa pressionada' : 'Empresa estavel';
+    const direction = variation > 0.05 ? 'Empresa acelerando' : variation < -0.05 ? 'Empresa pressionada' : 'Empresa estável';
     const essence = variation > 0.05
-      ? 'Contexto favoravel: a empresa cresceu no entorno do lancamento, entao parte da rampa pode vir do momento geral e nao so do produto.'
+      ? 'Contexto favorável: a empresa cresceu no entorno do lançamento, então parte da rampa pode vir do momento geral e não só do produto.'
       : variation < -0.05
-        ? 'Contexto pressionado: se o lancamento performou bem, ele pode ter compensado queda geral ou deslocado receita interna.'
-        : 'Contexto neutro: a empresa ficou relativamente estavel, entao a leitura do lancamento tende a depender mais de mix, campanha e estoque.';
+        ? 'Contexto pressionado: se o lançamento performou bem, ele pode ter compensado queda geral ou deslocado receita interna.'
+        : 'Contexto neutro: a empresa ficou relativamente estável, então a leitura do lançamento tende a depender mais de mix, campanha e estoque.';
     return {
       label: direction,
       value: fmtPct(variation, 1),
@@ -2247,18 +2314,21 @@
     const productMetaPct = ratioOrNull(revenue, target);
     const productActualPct = ratioOrNull(revenue, actual);
     const range = firstGoal ? `${goalRangeLabel(firstGoal)} (${goalDateRangeLabel(firstGoal)})` : 'M1 desde D0';
-    const source = 'Origem: metas_mensais.json informa meta e faturamento da empresa no periodo do lancamento; lancamentos_produtos_dia.json calcula a receita do produto selecionado.';
+    const comparableNote = firstGoal && !firstGoal.metaComplete && firstGoal.metaDays && firstGoal.totalDays
+      ? ` Como a meta/realizado só existem para ${fmtNum(firstGoal.metaDays)}/${fmtNum(firstGoal.totalDays)} dias dessa janela, o produto também foi somado apenas na mesma cobertura comparável.`
+      : '';
+    const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa no período do lançamento; lancamentos_produtos_dia.json calcula a receita do produto selecionado na mesma cobertura.';
 
     if (!firstGoal || (target === null && actual === null)) {
       return {
-        label: 'Meta do periodo nao carregada',
+        label: 'Meta do período não carregada',
         value: 'Sem meta',
-        copy: `${range}: o card deveria comparar faturamento da empresa contra a meta da empresa e mostrar quanto o produto selecionado contribuiu. Como a meta/faturamento do periodo ainda nao esta carregada, so da para mostrar a receita do produto: ${fmtBRL(revenue)}.`,
+        copy: `${range}: este card compara faturamento realizado da empresa contra a meta praticada e usa o produto como participação dentro desse realizado. Como a meta/faturamento do período ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: revenue !== null ? 'pending' : 'warn',
         facts: [
-          { label: 'Periodo', value: range },
+          { label: 'Período', value: range },
           { label: 'Receita produto', value: fmtBRL(revenue) },
           { label: 'Fat. empresa', value: 'sem dado' },
           { label: 'Meta empresa', value: 'sem meta' }
@@ -2268,14 +2338,14 @@
 
     if (target === null && actual !== null) {
       return {
-        label: 'Meta do periodo nao carregada',
+        label: 'Meta do período não carregada',
         value: 'Sem meta',
-        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do periodo ainda nao esta carregada. O produto entra apenas como share de participacao: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento realizado.`,
+        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do período ainda não está carregada. O produto entra apenas como participação no realizado: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.${comparableNote}`,
         evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
-          { label: 'Realizado', value: fmtBRL(actual) },
+          { label: 'Faturamento', value: fmtBRL(actual) },
           { label: 'Meta empresa', value: 'sem meta' },
           { label: 'Share produto', value: fmtPct(productActualPct, 1) },
           { label: 'Receita produto', value: fmtBRL(revenue) }
@@ -2287,12 +2357,12 @@
       return {
         label: 'Faturamento empresa pendente',
         value: 'Sem realizado',
-        copy: `${range}: a meta proporcional da empresa era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda nao esta carregado. Sem realizado da empresa, o share de participacao do produto ainda nao pode ser calculado.`,
+        copy: `${range}: a meta proporcional da empresa era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado. Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${comparableNote}`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
-          { label: 'Realizado', value: 'sem dado' },
+          { label: 'Faturamento', value: 'sem dado' },
           { label: 'Meta empresa', value: fmtBRL(target) },
           { label: 'Receita produto', value: fmtBRL(revenue) },
           { label: 'Share produto', value: 'sem realizado' }
@@ -2308,19 +2378,19 @@
     const companyState = companyPct < 0.9 ? 'warn' : companyPct >= 1 ? 'focus' : 'ok';
     const metaGap = actual !== null && target !== null ? actual - target : null;
     const productSentence = revenue !== null
-      ? `O produto selecionado entra como share de participacao: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento realizado.`
-      : 'Ainda nao ha receita do produto carregada nessa janela.';
+      ? `O produto selecionado entra como participação: fez ${fmtBRL(revenue)}, representou ${fmtPct(productActualPct, 1)} do faturamento realizado e equivaleu a ${fmtPct(productMetaPct, 1)} da meta praticada.`
+      : 'Ainda não há receita do produto carregada nessa janela.';
 
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: momento da empresa = realizado da empresa contra meta do mesmo periodo. A empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} de meta (${fmtPct(companyPct, 1)}), com gap de ${fmtBRL(metaGap)}. ${productSentence}`,
+      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta praticada no mesmo período. A empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} (${fmtPct(companyPct, 1)}), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}`,
       evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} atingimento=${fmtPct(companyPct, 1)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
       source,
       state: companyState,
       facts: [
-        { label: 'Realizado', value: fmtBRL(actual) },
-        { label: 'Meta empresa', value: fmtBRL(target) },
+        { label: 'Faturamento', value: fmtBRL(actual) },
+        { label: 'Meta praticada', value: fmtBRL(target) },
         { label: 'Gap meta', value: fmtBRL(metaGap) },
         { label: 'Share produto', value: fmtPct(productActualPct, 1) },
         { label: 'Receita produto', value: fmtBRL(revenue) }
@@ -2464,7 +2534,7 @@
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
     const historicalUniverse = historicalShareUniverse(selected);
-    const rankCutoffLabel = historicalUniverse.cutoffDate ? `ate ${fmtDateSlash(toIsoDate(historicalUniverse.cutoffDate))}` : 'no periodo historico';
+    const rankCutoffLabel = historicalUniverse.cutoffDate ? `até ${fmtDateSlash(toIsoDate(historicalUniverse.cutoffDate))}` : 'no período histórico';
     const comparisonRows = historicalUniverse.launches
       .map((launch) => ({
         launch,
@@ -2473,7 +2543,7 @@
       .filter((row) => row.share !== null)
       .sort((a, b) => b.share - a.share);
     const rank = comparisonRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
-    const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo historico (${rankCutoffLabel})` : 'Ranking depende de share_trajetoria.';
+    const rankCopy = rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(comparisonRows.length)} no universo histórico (${rankCutoffLabel})` : 'Ranking depende de share_trajetoria.';
     const topShareRows = comparisonRows.slice(0, 3);
     const selectedInTopShare = topShareRows.some((row) => row.launch.modelo_id === selected.modelo_id);
     const selectedShareRow = comparisonRows.find((row) => row.launch.modelo_id === selected.modelo_id);
@@ -2493,19 +2563,19 @@
           ${pinnedRow ? `
             <li class="is-selected is-pinned">
               <b>${fmtNum(pinnedIndex + 1)}\u00ba</b>
-              <span title="${escapeHtml(pinnedRow.launch.modelo)}">${escapeHtml(pinnedRow.launch.modelo)} (seu lancamento)</span>
+              <span title="${escapeHtml(pinnedRow.launch.modelo)}">${escapeHtml(pinnedRow.launch.modelo)} (seu lançamento)</span>
               <em>${escapeHtml(fmtPct(pinnedRow.share, 1))}</em>
             </li>
           ` : ''}
         </ol>
       `
-      : '<div class="story-empty-note">Ranking historico depende de share_trajetoria.</div>';
+      : '<div class="story-empty-note">Ranking histórico depende de share_trajetoria.</div>';
     const thesis = share !== null
       ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
       : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
-    const activityTooltip = 'Resumo operacional desde o D0 usado na analise. Mostra quantos dias o lancamento ja tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
+    const activityTooltip = 'Resumo operacional desde o D0 usado na análise. Mostra quantos dias o lançamento já tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
     const representationGoalHtml = storyGoalContributionHtml(goalRows);
     const evidence = [
       storyMetricHtml({
@@ -2523,7 +2593,7 @@
         detail: `${company.label}: ${company.copy}`,
         width: companyWidth,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Mostra como a empresa esta contra a meta no periodo do produto selecionado. O produto entra como share de participacao no faturamento realizado.',
+        tooltip: 'Mostra como a empresa está contra a meta no período do produto selecionado. O produto entra como participação no faturamento realizado.',
         extraHtml: `${storyFactChips(company.facts)}${storySourceNote(company.source)}`,
         showTrack: false
       }),
@@ -2533,7 +2603,7 @@
         detail: meta.copy,
         width: metaWidth,
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Cruza o mes do lancamento com metas_mensais. Se o mes ainda esta aberto, mostra o ultimo mes fechado como contexto. Share produto vem de share_trajetoria e mostra o peso do lancamento no periodo coberto.'
+        tooltip: 'Cruza o mês do lançamento com metas_mensais. Se o mês ainda está aberto, mostra o último mês fechado como contexto. Share produto vem de share_trajetoria e mostra o peso do lançamento no período coberto.'
       })
     ];
     const decisionNotes = [
@@ -2553,12 +2623,12 @@
       },
       {
         title: 'Próximo passo',
-        tooltip: 'Mostra o melhor proximo recorte depois de entender atividade desde D0, representatividade e contexto da empresa.',
+        tooltip: 'Mostra o melhor próximo recorte depois de entender atividade desde D0, representatividade e contexto da empresa.',
         copy: metaOpen
-          ? 'Meta do mes corrente entra quando o mes fechar; por enquanto acompanhe atividade desde D0, curva, mix e estoque.'
+          ? 'Meta do mês corrente entra quando o mês fechar; por enquanto acompanhe atividade desde D0, curva, mix e estoque.'
           : metaPending
-            ? 'Meta mensal ainda completa a historia de eficiencia; ate la, use atividade desde D0, curva, mix e estoque.'
-            : 'Cruzar atividade desde D0, meta, mix e estoque para decidir reforco, pausa ou redistribuicao.'
+            ? 'Meta mensal ainda completa a história de eficiência; até lá, use atividade desde D0, curva, mix e estoque.'
+            : 'Cruzar atividade desde D0, meta, mix e estoque para decidir reforço, pausa ou redistribuição.'
       }
     ];
 
@@ -2570,7 +2640,7 @@
         label: company.label,
         copy: `<code class="story-step-source">${escapeHtml(company.evidence || '')}</code>${evidenceSourceLine('momento', { model })}`,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Evidencia tecnica: realizado da empresa vs meta no periodo do produto selecionado; produto entra como share de participacao no realizado.'
+        tooltip: 'Evidência técnica: realizado da empresa vs meta no período do produto selecionado; produto entra como participação no realizado.'
       },
       {
         step: '02',
@@ -2588,7 +2658,7 @@
         label: meta.label,
         copy: evidenceSourceLine('meta', { metaRow }),
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Evidencia tecnica de meta: mes do lancamento, meta esperada, realizado e share do produto no periodo coberto. Se o mes ainda esta aberto, usa o ultimo mes fechado como contexto.'
+        tooltip: 'Evidência técnica de meta: mês do lançamento, meta esperada, realizado e share do produto no período coberto. Se o mês ainda está aberto, usa o último mês fechado como contexto.'
       },
       {
         step: '04',
@@ -2629,7 +2699,7 @@
             </div>
             <div class="story-visual-metric story-visual-metric--wide">
               <div class="story-visual-metric-head">
-                ${labelTip('Ranking por share geral', 'Share acumulado de cada modelo comparavel ate a data mais recente disponivel, com o lancamento selecionado sempre visivel mesmo fora do top 3.')}
+                ${labelTip('Ranking por share geral', 'Share acumulado de cada modelo comparável até a data mais recente disponível, com o lançamento selecionado sempre visível mesmo fora do top 3.')}
               </div>
               ${topShareHtml}
             </div>
@@ -2799,7 +2869,7 @@
   function sharePayloadForLaunch(launch) {
     const payload = state.data?.share_trajetoria;
     if (!payload || typeof payload !== 'object' || !payload.modelos) {
-      return { error: 'data/share_trajetoria.json nao foi carregado ou esta fora do contrato esperado.' };
+      return { error: 'data/share_trajetoria.json não foi carregado ou está fora do contrato esperado.' };
     }
     const model = payload.modelos?.[launch.modelo_id];
     if (!model) {
@@ -2815,13 +2885,13 @@
       }
     });
     if (missing.length) {
-      return { error: `share_trajetoria incompleto: campo(s) obrigatorio(s) ausente(s): ${missing.join(', ')}.` };
+      return { error: `share_trajetoria incompleto: campo(s) obrigatório(s) ausente(s): ${missing.join(', ')}.` };
     }
     return { model, points };
   }
 
   function shareDrawerError(message, selected) {
-    const line = selected?.linha || selected?.modelo || 'Lancamento';
+    const line = selected?.linha || selected?.modelo || 'Lançamento';
     return `
       <div class="share-drawer-head">
         <div>
@@ -2838,12 +2908,12 @@
 
   function shareChartAria(points) {
     const values = points.map((point) => Number(point.share_do_dia)).filter((value) => Number.isFinite(value));
-    if (!values.length) return 'Share diario do lancamento sem pontos validos.';
+    if (!values.length) return 'Share diário do lançamento sem pontos válidos.';
     const min = Math.min(...values);
     const max = Math.max(...values);
     const companyValues = points.map((point) => numberOrNull(point.receita_empresa)).filter((value) => value !== null);
     const companyLayer = companyValues.length ? ' com camada de faturamento total da Reise.' : '.';
-    return `Share diario do lancamento entre ${fmtPct(min, 1)} e ${fmtPct(max, 1)} ao longo de ${fmtNum(points.length)} dias${companyLayer}`;
+    return `Share diário do lançamento entre ${fmtPct(min, 1)} e ${fmtPct(max, 1)} ao longo de ${fmtNum(points.length)} dias${companyLayer}`;
   }
 
   function commercialEventTypeLabel(type) {
@@ -2851,7 +2921,7 @@
     const labels = {
       promocao: 'Promocao',
       ruptura_estoque: 'Ruptura de estoque',
-      midia_paga: 'Midia paga',
+      midia_paga: 'Mídia paga',
       concorrente: 'Concorrente',
       outro: 'Outro'
     };
@@ -2994,7 +3064,7 @@
               ),
               afterLabel: (ctx) => {
                 const point = points[ctx.dataIndex];
-                const rows = [`Data calendario: ${fmtDateSlash(point.data_calendario)}`];
+                const rows = [`Data calendário: ${fmtDateSlash(point.data_calendario)}`];
                 if (hasSeasonalEvent(point)) rows.push(`Sazonalidade: ${point.evento_sazonal}`);
                 if (hasCommercialEvent(point)) {
                   const label = commercialEventTypeLabel(point.evento_comercial_tipo);
@@ -3304,8 +3374,8 @@
           ${markers}
         </svg>
         <div class="drill-chart-foot">
-          <span>Projecao tracejada: estimativa por regressao simples dos ultimos 10 dias, nao meta.</span>
-          <span>Meta nao cadastrada.</span>
+          <span>Projeção tracejada: estimativa por regressão simples dos últimos 10 dias, não meta.</span>
+          <span>Meta não cadastrada.</span>
         </div>
         <div class="drill-event-note">${hasEvents ? 'Marcadores: losango para sazonalidade, quadrado para evento comercial.' : 'sem data sazonal/comercial registrada'}</div>
       </div>
@@ -3346,7 +3416,7 @@
       return `
         <section class="drill-section">
           <div class="drill-section-title">Momento da empresa</div>
-          <p class="drill-empty">comparativo indisponivel</p>
+          <p class="drill-empty">comparativo indisponível</p>
         </section>
       `;
     }
@@ -3399,14 +3469,14 @@
 
     return `
       <section class="drill-section">
-        <div class="drill-section-title">Atribuicao comercial</div>
+        <div class="drill-section-title">Atribuição comercial</div>
         <div class="drill-impact-grid">
           <div><span>Investimento agregado</span><strong>${fmtBRL(aggregate?.investimento)}</strong><small>${escapeHtml(aggregate?.janela || 'sem janela')}</small></div>
           <div><span>ROAS agregado</span><strong>${roasValue(aggregate?.roas)}</strong><small>sem divisao por canal</small></div>
         </div>
         <div class="drill-visible-warning">
-          <strong>Atribuicao real pendente</strong>
-          <span>O dashboard nao usa mais correlacao dias-com-investimento vs dias-sem como impacto. Ate a view por pedido entrar no payload, midia fica agregada por janela e ROAS por canal fica bloqueado quando a receita for repetida.</span>
+          <strong>Atribuição real pendente</strong>
+          <span>O dashboard não usa mais correlação dias-com-investimento vs dias-sem como impacto. Até a view por pedido entrar no payload, mídia fica agregada por janela e ROAS por canal fica bloqueado quando a receita for repetida.</span>
         </div>
       </section>
     `;
@@ -3472,13 +3542,13 @@
       }
     }
     if (level === 'sku') parts.push('<span>SKU / cor</span>');
-    return `<nav class="drill-breadcrumb" aria-label="Caminho da analise">${parts.join('<i>/</i>')}</nav>`;
+    return `<nav class="drill-breadcrumb" aria-label="Caminho da análise">${parts.join('<i>/</i>')}</nav>`;
   }
 
   function drillLevelMeta(level) {
     const meta = {
-      linha: { step: '1 de 3', label: 'Linha', copy: 'Visao macro da representatividade' },
-      submodelo: { step: '2 de 3', label: 'Sub-modelo', copy: 'Familias internas da linha' },
+      linha: { step: '1 de 3', label: 'Linha', copy: 'Visão macro da representatividade' },
+      submodelo: { step: '2 de 3', label: 'Sub-modelo', copy: 'Famílias internas da linha' },
       sku: { step: '3 de 3', label: 'Cor / SKU', copy: 'Cobertura e venda por cor' }
     };
     return meta[level] || meta.linha;
@@ -3529,16 +3599,16 @@
     const model = shareModelForLine(launch.modelo_id);
     const points = sharePointsForLine(launch.modelo_id).filter((point) => numberOrNull(point.share_do_dia) !== null);
     const bestSub = bestSubModelId(launch.modelo_id);
-    if (!model || !points.length) return shareDrawerError('share_trajetoria nao tem pontos validos para esta linha.', launch);
+    if (!model || !points.length) return shareDrawerError('share_trajetoria não tem pontos válidos para esta linha.', launch);
     const lineLabel = model.linha || launch.linha || launch.modelo;
 
     return `
       ${drillNavigationHtml('linha', launch)}
       <div class="share-drawer-head drill-head">
         <div>
-          <div class="share-drawer-kicker">Analise por niveis</div>
+          <div class="share-drawer-kicker">Análise por níveis</div>
           <h3>${escapeHtml(lineLabel)}</h3>
-          <p>D0 ${fmtDate(model.data_lancamento || launch.d0)} · dado ate ${fmtDateSlash(shareDataUntil(model, points))}</p>
+          <p>D0 ${fmtDate(model.data_lancamento || launch.d0)} · dado até ${fmtDateSlash(shareDataUntil(model, points))}</p>
         </div>
         ${lineSelectHtml(launch.modelo_id)}
       </div>
@@ -3555,7 +3625,7 @@
           level: 'submodelo',
           line: launch.modelo_id,
           sub: bestSub,
-          kicker: 'Proximo nivel',
+          kicker: 'Próximo nível',
           title: 'Sub-modelos',
           copy: 'Compare familias internas antes de abrir SKU/cor.',
           disabled: !bestSub,
@@ -3624,7 +3694,7 @@
           level: 'sku',
           line: launch.modelo_id,
           sub: selectedSub,
-          kicker: 'Proximo nivel',
+          kicker: 'Próximo nível',
           title: 'Cores deste sub-modelo',
           copy: 'Abra cobertura e venda por cor dentro do sub-modelo.',
           variant: 'primary'
@@ -3706,7 +3776,7 @@
             <thead>
               <tr>
                 <th>Cor</th>
-                <th>Vendas no periodo</th>
+                <th>Vendas no período</th>
                 <th>Estoque atual</th>
                 <th>Cobertura projetada</th>
               </tr>
@@ -3731,7 +3801,7 @@
           sub: subId,
           kicker: 'Voltar',
           title: 'Sub-modelo',
-          copy: 'Retorne para a curva e comparacao entre sub-modelos.'
+          copy: 'Retorne para a curva e comparação entre sub-modelos.'
         }) : drillActionCardHtml({
           level: 'linha',
           line: launch.modelo_id,
@@ -3819,7 +3889,7 @@
       .filter((point) => Number.isFinite(Number(point.dias_desde_lancamento)) && Number.isFinite(Number(point.share_do_dia)))
       .sort((a, b) => Number(a.dias_desde_lancamento) - Number(b.dias_desde_lancamento));
     if (!points.length) {
-      content.innerHTML = shareDrawerError('share_trajetoria nao tem pontos validos para este lancamento.', selected);
+      content.innerHTML = shareDrawerError('share_trajetoria não tem pontos válidos para este lançamento.', selected);
       setShareDrawerOpen(true);
       return;
     }
@@ -3844,8 +3914,8 @@
     const commercialNote = commercialRegistered
       ? (hasCommercial
         ? ''
-        : '<p class="share-note">Ha evento comercial cadastrado para este lancamento, mas nenhum cruza o periodo coberto no grafico.</p>')
-      : '<p class="share-note share-note--pending">Nenhum evento comercial registrado para este lancamento - cadastro manual pendente.</p>';
+        : '<p class="share-note">Há evento comercial cadastrado para este lançamento, mas nenhum cruza o período coberto no gráfico.</p>')
+      : '<p class="share-note share-note--pending">Nenhum evento comercial registrado para este lançamento - cadastro manual pendente.</p>';
     const markerLegend = (hasSeasonal || hasCommercial)
       ? `<div class="share-legend">
           ${hasSeasonal ? '<span><i class="share-marker share-marker--seasonal"></i>Sazonalidade</span>' : ''}
@@ -3861,24 +3931,24 @@
           <p>${escapeHtml(selected.modelo)} · D0 ${fmtDate(model.data_lancamento || selected.d0)}</p>
         </div>
       </div>
-      <div class="share-data-note">Dado ate ${fmtDateSlash(dataUntil)} · ${fmtNum(points.length)} dia(s) observado(s)</div>
+      <div class="share-data-note">Dado até ${fmtDateSlash(dataUntil)} · ${fmtNum(points.length)} dia(s) observado(s)</div>
       <div class="share-badges">${partialBadge || completeBadge}</div>
       ${seasonalWarning}
       <div class="share-stats">
         <div class="share-stat">
           <span>Share acumulado</span>
           <strong>${fmtPct(model.share_acumulado_atual, 1)}</strong>
-          <small>do faturamento total da Reise no periodo</small>
+          <small>do faturamento total da Reise no período</small>
         </div>
         <div class="share-stat">
           <span>Receita do lançamento</span>
           <strong>${fmtBRL(model.receita_lancamento_periodo)}</strong>
-          <small>itens classificados no periodo coberto</small>
+          <small>itens classificados no período coberto</small>
         </div>
         <div class="share-stat">
           <span>Ticket médio empresa</span>
           <strong>${fmtBRL(model.ticket_medio_empresa_periodo)}</strong>
-          <small>receita total da Reise / pedidos no periodo</small>
+          <small>receita total da Reise / pedidos no período</small>
         </div>
         <div class="share-stat share-stat-company">
           <span>Momento da empresa</span>
@@ -3887,7 +3957,7 @@
       </div>
       <div class="share-chart-card">
         <div class="share-chart-title">
-          <span>Share diario + empresa</span>
+          <span>Share diário + empresa</span>
           <div class="share-chart-meta">
             <small>Periodo coberto: ${escapeHtml(coveredPeriod)}</small>
             <small>Eixo alinhado por D+n do lançamento</small>
@@ -3955,37 +4025,37 @@
         label: isCurrentAccumulated ? 'Faturamento atual' : `Faturamento ${periodLabel}`,
         value: fmtBRL(data?.receita),
         sub: dataSub,
-        tooltip: `Soma da receita bruta dos itens do modelo quando receita_bruta existe no JSON; em JSON antigo usa o campo receita. Periodo: ${isCurrentAccumulated ? `D0 ate ${key}` : `janela ${periodLabel}`}. Nao inclui itens fora do modelo no mesmo pedido.`
+        tooltip: `Soma da receita bruta dos itens do modelo quando receita_bruta existe no JSON; em JSON antigo usa o campo receita. Período: ${isCurrentAccumulated ? `D0 até ${key}` : `janela ${periodLabel}`}. Não inclui itens fora do modelo no mesmo pedido.`
       },
       {
         label: 'Pedidos',
         value: fmtNum(data?.pedidos),
         sub: data?.pedidos ? `${fmtNum(data.pedidos)} pedidos` : 'Sem pedidos no JSON',
-        tooltip: 'Quantidade de pedidos distintos na janela. Quando existe source_order_id, o dashboard conta pedidos unicos; se nao existir, usa o campo pedidos do JSON.'
+        tooltip: 'Quantidade de pedidos distintos na janela. Quando existe source_order_id, o dashboard conta pedidos únicos; se não existir, usa o campo pedidos do JSON.'
       },
       {
         label: 'Ticket médio/pedido',
         value: fmtBRL(data?.ticket),
         sub: data?.ticket ? (isCurrentAccumulated ? `Acumulado ${key}` : `Janela ${periodLabel}`) : '—',
-        tooltip: 'Formula: faturamento do modelo / pedidos validos com itens do modelo. Usa a mesma base de receita exibida no card de faturamento.'
+        tooltip: 'Fórmula: faturamento do modelo / pedidos válidos com itens do modelo. Usa a mesma base de receita exibida no card de faturamento.'
       },
       {
         label: 'Preço médio/par',
         value: fmtBRL(data?.preco_medio_par),
         sub: data?.preco_medio_par ? `${fmtNum(data?.pares)} pares` : '—',
-        tooltip: 'Formula: faturamento do modelo / pares vendidos do modelo. Nao usa total do carrinho e nao substitui preco cheio.'
+        tooltip: 'Fórmula: faturamento do modelo / pares vendidos do modelo. Não usa total do carrinho e não substitui preço cheio.'
       },
       {
         label: '% Clientes novos',
         value: fmtPct(data?.novos_pct),
         sub: data?.novos_pct != null ? `${fmtPct(1 - data.novos_pct)} recorrentes` : '—',
-        tooltip: 'Formula: novos / (novos + recorrentes). Fica vazio quando a classificacao de cliente nao veio auditada no JSON; ausencia nao vira zero.'
+        tooltip: 'Fórmula: novos / (novos + recorrentes). Fica vazio quando a classificação de cliente não veio auditada no JSON; ausência não vira zero.'
       },
       {
         label: 'Pares vendidos',
         value: fmtNum(data?.pares),
         sub: data?.pares ? `${fmtNum(data.pares)} pares` : 'Sem pares no JSON',
-        tooltip: 'Soma das quantidades vendidas dos itens classificados no modelo. Fonte: pipeline ou historico agregado, conforme o badge.'
+        tooltip: 'Soma das quantidades vendidas dos itens classificados no modelo. Fonte: pipeline ou histórico agregado, conforme o badge.'
       }
     ];
 
@@ -4004,12 +4074,12 @@
       ${empty}
       <div class="grid grid-2" style="margin-top:14px">
         <div class="card soft">
-          <div class="metric-label">${labelTip('Velocidade diária', 'Formula: receita / numero de dias considerados. Em acumulado atual usa D0 ate D+n; em janela fechada usa D0 ate o marco D+N inclusivo.')}</div>
+          <div class="metric-label">${labelTip('Velocidade diária', 'Fórmula: receita / número de dias considerados. Em acumulado atual usa D0 até D+n; em janela fechada usa D0 até o marco D+N inclusivo.')}</div>
           <div class="metric-value">${fmtBRL(velocity)}</div>
           <div class="metric-sub">${isCurrentAccumulated ? `R$/dia no acumulado ${key}` : `R$/dia na janela ${periodLabel}`}</div>
         </div>
         <div class="card soft">
-          <div class="metric-label">${labelTip('Comparativo anterior', 'Delta percentual contra o modelo anterior elegivel na mesma janela. Fica vazio quando a janela ainda nao fechou ou o comparavel nao tem dado.')}</div>
+          <div class="metric-label">${labelTip('Comparativo anterior', 'Delta percentual contra o modelo anterior elegível na mesma janela. Fica vazio quando a janela ainda não fechou ou o comparável não tem dado.')}</div>
           <div class="metric-value">${delta === null ? '—' : `<span class="delta ${delta >= 0 ? 'delta--pos' : 'delta--neg'}">${delta >= 0 ? '▲' : '▼'} ${fmtPct(Math.abs(delta))}</span>`}</div>
           <div class="metric-sub">${isCurrentAccumulated ? 'Disponível quando uma janela fechar.' : `vs ${previous ? escapeHtml(previous.modelo) : 'modelo anterior'} na mesma janela`}</div>
         </div>
@@ -4380,15 +4450,15 @@
   function renderRankings(selected) {
     if (!$('ranking-grid')) return;
     const rankingDefs = [
-      { title: 'Faturamento D+7', get: (l) => getWindow(l, '7d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+7. So entra quem tem a janela fechada ou historico cadastrado.' },
-      { title: 'Faturamento D+15', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+15. Para ativos, depende do snapshot ja ter alcancado D+15.' },
-      { title: 'Faturamento D+30', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+30. Nulos indicam janela ainda nao fechada ou dado ausente.' },
-      { title: 'Faturamento D+60', get: (l) => getWindow(l, '60d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+60. Use com cuidado se poucos modelos tiverem essa janela.' },
-      { title: 'Faturamento D+90', get: (l) => getWindow(l, '90d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 ate D+90. E o marco mais completo, mas pode excluir modelos em curso.' },
-      { title: 'Ticket/pedido D+30', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL, tooltip: 'Formula: receita D+30 / pedidos D+30. Ajuda a avaliar valor medio por pedido, nao volume total.' },
-      { title: 'Pares D+30', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum, tooltip: 'Quantidade de pares vendidos de D0 ate D+30. Compara volume fisico, independente de preco.' },
-      { title: '% novos D+30', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct, tooltip: 'Formula: novos / (novos + recorrentes) no D+30. Fica vazio quando nao ha classificacao auditada.' },
-      { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL, tooltip: 'Formula: receita da melhor janela fechada / quantidade de dias inclusivos da janela. Serve para comparar ritmo, nao tamanho final.' }
+      { title: 'Faturamento D+7', get: (l) => getWindow(l, '7d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 até D+7. Só entra quem tem a janela fechada ou histórico cadastrado.' },
+      { title: 'Faturamento D+15', get: (l) => getWindow(l, '15d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 até D+15. Para ativos, depende do snapshot já ter alcançado D+15.' },
+      { title: 'Faturamento D+30', get: (l) => getWindow(l, '30d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 até D+30. Nulos indicam janela ainda não fechada ou dado ausente.' },
+      { title: 'Faturamento D+60', get: (l) => getWindow(l, '60d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 até D+60. Use com cuidado se poucos modelos tiverem essa janela.' },
+      { title: 'Faturamento D+90', get: (l) => getWindow(l, '90d')?.receita, fmt: fmtBRL, tooltip: 'Ranking por receita acumulada de D0 até D+90. É o marco mais completo, mas pode excluir modelos em curso.' },
+      { title: 'Ticket/pedido D+30', get: (l) => getWindow(l, '30d')?.ticket, fmt: fmtBRL, tooltip: 'Fórmula: receita D+30 / pedidos D+30. Ajuda a avaliar valor médio por pedido, não volume total.' },
+      { title: 'Pares D+30', get: (l) => getWindow(l, '30d')?.pares, fmt: fmtNum, tooltip: 'Quantidade de pares vendidos de D0 até D+30. Compara volume físico, independente de preço.' },
+      { title: '% novos D+30', get: (l) => getWindow(l, '30d')?.novos_pct, fmt: fmtPct, tooltip: 'Fórmula: novos / (novos + recorrentes) no D+30. Fica vazio quando não há classificação auditada.' },
+      { title: 'Velocidade R$/dia', get: windowVelocity, fmt: fmtBRL, tooltip: 'Fórmula: receita da melhor janela fechada / quantidade de dias inclusivos da janela. Serve para comparar ritmo, não tamanho final.' }
     ];
     const launches = selectedCompareLaunches();
     if (!launches.length) {
@@ -4465,17 +4535,17 @@
 
     $('historical-average').innerHTML = `
       <div class="card">
-        <div class="metric-label">${labelTip('Modelo selecionado', `Receita do modelo em foco no mesmo marco usado para comparar: ${label}. Se houver dado diario, usa acumulado ate D+n; caso contrario usa a melhor janela fechada.`)}</div>
+        <div class="metric-label">${labelTip('Modelo selecionado', `Receita do modelo em foco no mesmo marco usado para comparar: ${label}. Se houver dado diário, usa acumulado até D+n; caso contrário usa a melhor janela fechada.`)}</div>
         <div class="metric-value">${fmtBRL(selectedValue)}</div>
         <div class="metric-sub">${escapeHtml(selected.modelo)} · ${escapeHtml(label)}</div>
       </div>
       <div class="card">
-        <div class="metric-label">${labelTip('Média histórica', 'Media simples dos modelos historicos elegiveis na mesma janela ou D+n. Historico agregado nao vira curva diaria inventada quando nao ha base segura.')}</div>
+        <div class="metric-label">${labelTip('Média histórica', 'Média simples dos modelos históricos elegíveis na mesma janela ou D+n. Histórico agregado não vira curva diária inventada quando não há base segura.')}</div>
         <div class="metric-value">${fmtBRL(avg)}</div>
         <div class="metric-sub">Históricos disponíveis · ${escapeHtml(label)}</div>
       </div>
       <div class="card">
-        <div class="metric-label">${labelTip('Diferença vs média', 'Formula: receita do modelo selecionado menos media historica. Percentual = diferenca / media historica.')}</div>
+        <div class="metric-label">${labelTip('Diferença vs média', 'Fórmula: receita do modelo selecionado menos média histórica. Percentual = diferença / média histórica.')}</div>
         <div class="metric-value">${diff === null ? '—' : metricDelta(selectedValue, avg, fmtBRL)}</div>
         <div class="metric-sub">${pct === null ? '—' : fmtPct(pct)}</div>
       </div>`;
@@ -4535,7 +4605,7 @@
           <td class="num">${fmtNum(j30?.pares)}</td>
           <td class="num">${fmtPct(j30?.novos_pct, 1)}</td>
           <td class="num">${velocity == null ? '&mdash;' : `${fmtBRL(velocity)}/dia`}<div class="metric-sub">${escapeHtml(best.key ? windowLabel(best.key) : '')}</div></td>
-          <td class="num">${historicalAverage === null ? '&mdash;' : metricDelta(deltaBase, historicalAverage, fmtBRL)}<div class="metric-sub">vs media ${escapeHtml(averageLabel)}</div></td>
+          <td class="num">${historicalAverage === null ? '&mdash;' : metricDelta(deltaBase, historicalAverage, fmtBRL)}<div class="metric-sub">vs média ${escapeHtml(averageLabel)}</div></td>
           <td>${sourceBadge(launch)}</td>
         </tr>`;
     }).join('');
@@ -4561,12 +4631,12 @@
 
   function commercialMetricConfig(key = state.commercialChartMetric) {
     const configs = {
-      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Soma do investimento de midia paga por janela acumulada.' },
-      receita: { key: 'receita', label: 'Receita atribuida', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuida na planilha ou em faturamento_campanha. Sem receita atribuida, a linha permanece vazia.' },
-      roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita atribuida / investimento. Usa ROAS informado ou receita atribuida real; nao usa faturamento total da janela do modelo.' },
-      cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos informados ou atribuidos na propria linha de midia.' },
-      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares informados na linha de midia. Mantem a leitura separada de custo por sessao, que so existe se a planilha de midia ganhar uma coluna de sessoes por campanha.' },
-      cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. So aparece quando o JSON trouxer cliques ou CPC.' }
+      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Soma do investimento de mídia paga por janela acumulada.' },
+      receita: { key: 'receita', label: 'Receita atribuída', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuída na planilha ou em faturamento_campanha. Sem receita atribuída, a linha permanece vazia.' },
+      roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita atribuída / investimento. Usa ROAS informado ou receita atribuída real; não usa faturamento total da janela do modelo.' },
+      cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos informados ou atribuídos na própria linha de mídia.' },
+      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares informados na linha de mídia. Mantém a leitura separada de custo por sessão, que só existe se a planilha de mídia ganhar uma coluna de sessões por campanha.' },
+      cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. Só aparece quando o JSON trouxer cliques ou CPC.' }
     };
     return configs[key] || configs.investimento;
   }
@@ -4676,15 +4746,15 @@
       .sort((a, b) => commercialWindowRank(a) - commercialWindowRank(b));
 
     if (!allRows.length || !windowKeys.length) {
-      if (subText) subText.textContent = 'Sem midia paga cadastrada para os modelos selecionados.';
+      if (subText) subText.textContent = 'Sem mídia paga cadastrada para os modelos selecionados.';
       return;
     }
 
     const hasAnyMetricValue = allRows.some((row) => commercialMetricValue(row, metric.key) !== null);
     if (subText) {
       subText.textContent = hasAnyMetricValue
-        ? `${metric.label} por janela acumulada de midia paga. Tooltip mostra investimento, receita, ROAS, CPA, CPP e CPC quando houver base.`
-        : `${metric.label}: ainda sem base suficiente no JSON. ${metric.key === 'cpc' ? 'Inclua cliques ou CPC na exportacao para habilitar esta leitura.' : 'Ausencia fica vazia, nao vira zero.'}`;
+        ? `${metric.label} por janela acumulada de mídia paga. Tooltip mostra investimento, receita, ROAS, CPA, CPP e CPC quando houver base.`
+        : `${metric.label}: ainda sem base suficiente no JSON. ${metric.key === 'cpc' ? 'Inclua cliques ou CPC na exportação para habilitar esta leitura.' : 'Ausência fica vazia, não vira zero.'}`;
     }
 
     const chartLaunches = launches.filter((launch) => (rowsByLaunch.get(launch.modelo_id) || []).length);
@@ -4735,7 +4805,7 @@
               afterLabel: (ctx) => {
                 const key = windowKeys[ctx.dataIndex];
                 const row = ctx.dataset.metricRows?.get(key);
-                if (!row) return 'Sem midia para esta janela.';
+                if (!row) return 'Sem mídia para esta janela.';
                 return [
                   `Invest. ${formatCommercialMetric(row.investimento, commercialMetricConfig('investimento'))} · Receita ${formatCommercialMetric(row.receita, commercialMetricConfig('receita'))}`,
                   `ROAS ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))} · CPA ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))} · CPP ${formatCommercialMetric(row.cpp, commercialMetricConfig('cpp'))}`,
@@ -4788,7 +4858,7 @@
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
-              afterLabel: (ctx) => `Janela ${ctx.label}: D0 ate ${ctx.label}. Fonte: JSON de vendas ou historico versionado.`
+              afterLabel: (ctx) => `Janela ${ctx.label}: D0 até ${ctx.label}. Fonte: JSON de vendas ou histórico versionado.`
             }
           }
         },
@@ -4814,7 +4884,7 @@
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)} pares`,
-              afterLabel: (ctx) => `Soma de pares vendidos de D0 ate ${ctx.label}. Nulo significa janela ausente, nao zero.`
+              afterLabel: (ctx) => `Soma de pares vendidos de D0 até ${ctx.label}. Nulo significa janela ausente, não zero.`
             }
           }
         },
@@ -4843,7 +4913,7 @@
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y, 2)}x`,
-              afterLabel: () => 'Formula: janela maior / janela anterior. Ex.: 30÷15 = receita D+30 / receita D+15.'
+              afterLabel: () => 'Fórmula: janela maior / janela anterior. Ex.: 30÷15 = receita D+30 / receita D+15.'
             }
           }
         },
@@ -4983,7 +5053,7 @@
   function stockStatusBadge(status) {
     if (status === 'zero') return badge('neg', 'Zerado', 'Snapshot de estoque veio zerado para esta combinacao. Verifique antes de inferir ruptura real.');
     if (status === 'low') return badge('neg', 'Baixa', 'Cobertura estimada abaixo de 15 dias.');
-    if (status === 'no-base') return badge('parcial', 'Sem D-30', 'Sem vendas D-30 para calcular velocidade. A ausencia permanece vazia, nao vira zero.');
+    if (status === 'no-base') return badge('parcial', 'Sem D-30', 'Sem vendas D-30 para calcular velocidade. A ausência permanece vazia, não vira zero.');
     return badge('pipeline', 'Coberto', 'Cobertura calculada igual ou acima de 15 dias.');
   }
 
@@ -5124,7 +5194,7 @@
       <div class="stock-workbench">
         <div class="stock-toolbar">
           <div>
-            <div class="stock-toolbar-title">Cobertura operacional ${tip('Fonte: data/estoque.json. Cobertura = estoque atual / media diaria de vendas D-30 quando vendas_d30 existir.')}</div>
+        <div class="stock-toolbar-title">Cobertura operacional ${tip('Fonte: data/estoque.json. Cobertura = estoque atual / média diária de vendas D-30 quando vendas_d30 existir.')}</div>
             <div class="stock-toolbar-sub">Mostrando ${fmtNum(visibleRows.length)} de ${fmtNum(filtered.length)} linhas filtradas · ${fmtNum(decorated.length)} no modelo.</div>
           </div>
           <div class="stock-controls">
@@ -5163,9 +5233,9 @@
               <tr>
                 <th>${labelTip('Item', 'Sub-modelo ou SKU do snapshot de estoque.')}</th>
                 <th>${labelTip('Cor', 'Cor ou variante informada no estoque.')}</th>
-                <th class="num">${labelTip('Estoque', 'Quantidade disponivel no snapshot de estoque.')}</th>
+                <th class="num">${labelTip('Estoque', 'Quantidade disponível no snapshot de estoque.')}</th>
                 <th class="num">${labelTip('Vendas D-30', 'Pares vendidos nos ultimos 30 dias. Quando ausente, cobertura permanece vazia.')}</th>
-                <th class="num">${labelTip('Cobertura', 'Formula: estoque atual / (vendas D-30 / 30). Abaixo de 15 dias vira alerta.')}</th>
+                <th class="num">${labelTip('Cobertura', 'Fórmula: estoque atual / (vendas D-30 / 30). Abaixo de 15 dias vira alerta.')}</th>
                 <th>${labelTip('Status', 'Leitura operacional da cobertura de estoque.')}</th>
                 <th class="num">Detalhe</th>
               </tr>
@@ -5261,14 +5331,14 @@
     });
 
     if (!cards.some((card) => card.rows.length)) {
-      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Sem mix de cores.</strong>Dados entram pelo historico estatico ou pelo pipeline de venda por SKU.</div></div>`;
+      $('color-mix').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div><strong>Sem mix de cores.</strong>Dados entram pelo histórico estático ou pelo pipeline de venda por SKU.</div></div>`;
       return;
     }
 
     $('color-mix').innerHTML = cards.map((card) => {
       const { launch, total, max, rows } = card;
       return `<div class="color-card">
-        <div class="color-title">${escapeHtml(launch.modelo)} ${tip('Top 3 cores por modelo. As cores sao normalizadas por SKU, nome e campo de cor; sem cor so aparece quando nao ha outra cor valida.')}</div>
+        <div class="color-title">${escapeHtml(launch.modelo)} ${tip('Top 3 cores por modelo. As cores são normalizadas por SKU, nome e campo de cor; sem cor só aparece quando não há outra cor válida.')}</div>
         ${rows.length ? rows.map((item, idx) => {
           const pctMax = max ? (item.pares / max) * 100 : 0;
           const pctTotal = total ? item.pares / total : null;
@@ -5332,7 +5402,7 @@
       <div class="size-ranking-grid">
         <div class="table-wrap">
           <table>
-            <thead><tr>${thTip('#', 'Posicao no ranking do conjunto selecionado.')} ${thTip('Tamanho', 'Tamanho extraido de SKU, nome do item ou variant_title quando disponivel.')} ${thTip('Pares vendidos', 'Soma de pares classificados naquele tamanho.', 'num')} ${thTip('% do total', 'Formula: pares do tamanho / pares totais com tamanho no grupo.', 'num')}</tr></thead>
+            <thead><tr>${thTip('#', 'Posição no ranking do conjunto selecionado.')} ${thTip('Tamanho', 'Tamanho extraído de SKU, nome do item ou variant_title quando disponível.')} ${thTip('Pares vendidos', 'Soma de pares classificados naquele tamanho.', 'num')} ${thTip('% do total', 'Fórmula: pares do tamanho / pares totais com tamanho no grupo.', 'num')}</tr></thead>
             <tbody>${tableRows(geral)}</tbody>
           </table>
         </div>
@@ -5341,7 +5411,7 @@
             <table>
               <thead>
                 <tr><th colspan="4">${escapeHtml(group.launch.modelo)} ${tip('Top tamanhos dentro deste modelo. Percentuais usam apenas pares classificados para o proprio modelo.')}</th></tr>
-                <tr>${thTip('#', 'Posicao no ranking do modelo.')} ${thTip('Tamanho', 'Tamanho detectado no item/SKU.')} ${thTip('Pares vendidos', 'Soma de pares daquele tamanho no modelo.', 'num')} ${thTip('% do total', 'Formula: pares do tamanho / pares totais do modelo com tamanho.', 'num')}</tr>
+                <tr>${thTip('#', 'Posição no ranking do modelo.')} ${thTip('Tamanho', 'Tamanho detectado no item/SKU.')} ${thTip('Pares vendidos', 'Soma de pares daquele tamanho no modelo.', 'num')} ${thTip('% do total', 'Fórmula: pares do tamanho / pares totais do modelo com tamanho.', 'num')}</tr>
               </thead>
               <tbody>${tableRows(group.rows)}</tbody>
             </table>
@@ -5394,7 +5464,7 @@
     ].sort((a, b) => b.deltaPp - a.deltaPp);
 
     if (!allCuts.length) {
-      container.innerHTML = `<div class="empty-state"><div><strong>Sem cortes suficientes.</strong>Precisa de ao menos 2 cores ou tamanhos classificados no lancamento.</div></div>`;
+      container.innerHTML = `<div class="empty-state"><div><strong>Sem cortes suficientes.</strong>Precisa de ao menos 2 cores ou tamanhos classificados no lançamento.</div></div>`;
       return;
     }
 
@@ -5411,13 +5481,13 @@
     container.innerHTML = `
       <div class="cut-group">
         <div class="cut-group-title">Promotores</div>
-        ${promoters.length ? promoters.map(barRow).join('') : '<div class="cut-empty">Sem corte acima da media.</div>'}
+        ${promoters.length ? promoters.map(barRow).join('') : '<div class="cut-empty">Sem corte acima da média.</div>'}
       </div>
       <div class="cut-group">
         <div class="cut-group-title">Ofensores</div>
-        ${detractors.length ? detractors.map(barRow).join('') : '<div class="cut-empty">Sem corte abaixo da media.</div>'}
+        ${detractors.length ? detractors.map(barRow).join('') : '<div class="cut-empty">Sem corte abaixo da média.</div>'}
       </div>
-      <p class="cut-note">Canal (organico vs pago) entra quando a atribuicao real de midia estiver plugada; hoje midia_paga.json nao tem grao por pedido para sustentar esse corte.</p>
+      <p class="cut-note">Canal (orgânico vs pago) entra quando a atribuição real de mídia estiver plugada; hoje midia_paga.json não tem grão por pedido para sustentar esse corte.</p>
     `;
   }
 
@@ -5508,10 +5578,10 @@
   function seasonalRead(events, score, observedScore) {
     if (!events.length) return 'Sem promotor, ofensor ou neutro cadastrado para esta janela.';
     const futureCount = events.filter((event) => !event.observed).length;
-    if (score > 0 && observedScore <= 0 && futureCount) return 'Impulso positivo esta dentro da janela, mas ainda nao entrou no acumulado atual.';
+    if (score > 0 && observedScore <= 0 && futureCount) return 'Impulso positivo está dentro da janela, mas ainda não entrou no acumulado atual.';
     if (score > 0) return 'Promotores superam ofensores; compare esta janela com cautela porque existe vento a favor.';
-    if (score < 0) return 'Ofensores pesam mais que promotores; queda relativa pode ser efeito de calendario.';
-    return 'Eventos sem direcao clara; use como contexto, nao como explicacao principal.';
+    if (score < 0) return 'Ofensores pesam mais que promotores; queda relativa pode ser efeito de calendário.';
+    return 'Eventos sem direção clara; use como contexto, não como explicação principal.';
   }
 
   function renderCalendar(selected) {
@@ -5541,20 +5611,20 @@
     const observedEvents = ninety.events.filter((event) => event.observed);
     const futureEvents = ninety.events.filter((event) => !event.observed);
     const summaryRead = ninety.events.length
-      ? `${observedEvents.length} evento(s) ja observado(s) e ${futureEvents.length} evento(s) futuro(s) ate D+90.`
+      ? `${observedEvents.length} evento(s) já observado(s) e ${futureEvents.length} evento(s) futuro(s) até D+90.`
       : 'Nenhum evento cadastrado entre D0 e D+90.';
 
     $('calendar-grid').innerHTML = `
       <div class="calendar-summary calendar-summary--${ninety.cls}">
         <div>
-          <div class="metric-label">${labelTip('Saldo sazonal D+90', 'Soma ponderada dos eventos no calendario entre D0 e D+90. Promotor soma, ofensor subtrai e neutro vale 0; peso forte=3, medio=2, baixo=1.')}</div>
+          <div class="metric-label">${labelTip('Saldo sazonal D+90', 'Soma ponderada dos eventos no calendário entre D0 e D+90. Promotor soma, ofensor subtrai e neutro vale 0; peso forte=3, médio=2, baixo=1.')}</div>
           <div class="seasonal-score seasonal-score--${ninety.cls}">${escapeHtml(seasonalScoreLabel(ninety.score, ninety.events))}</div>
           <div class="metric-sub">${escapeHtml(summaryRead)}</div>
         </div>
         <div class="seasonal-stat-grid">
-          <div><span>${labelTip('Promotores', 'Eventos esperados como vento a favor de venda ou atencao comercial.')}</span><strong>${fmtNum(ninety.counts.promotores)}</strong></div>
+          <div><span>${labelTip('Promotores', 'Eventos esperados como vento a favor de venda ou atenção comercial.')}</span><strong>${fmtNum(ninety.counts.promotores)}</strong></div>
           <div><span>${labelTip('Ofensores', 'Eventos que podem reduzir comparabilidade ou pressionar performance relativa.')}</span><strong>${fmtNum(ninety.counts.ofensores)}</strong></div>
-          <div><span>${labelTip('Neutros', 'Eventos cadastrados como contexto sem direcao clara de impacto.')}</span><strong>${fmtNum(ninety.counts.neutros)}</strong></div>
+          <div><span>${labelTip('Neutros', 'Eventos cadastrados como contexto sem direção clara de impacto.')}</span><strong>${fmtNum(ninety.counts.neutros)}</strong></div>
           <div><span>${labelTip('Mais forte', 'Evento com maior peso absoluto dentro de D+90.')}</span><strong>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</strong></div>
         </div>
       </div>
@@ -5580,21 +5650,21 @@
               <div class="event-name">
                 ${escapeHtml(event.nome)}
                 <span class="event-pill event-pill--${meta.cls}" tabindex="0" data-tooltip="${tooltipAttr(`Tipo ${meta.label}; peso ${seasonalWeightLabel(event.peso)}. Impacto no saldo: ${impact}.`)}">${escapeHtml(meta.label)} ${escapeHtml(seasonalWeightLabel(event.peso))}</span>
-                <span class="event-state" tabindex="0" data-tooltip="${tooltipAttr(event.observed ? 'Evento ja entrou no acumulado observado do snapshot.' : 'Evento esta dentro da janela, mas ainda nao ocorreu no acumulado atual.')}">${event.observed ? 'observado' : 'futuro'}</span>
+                <span class="event-state" tabindex="0" data-tooltip="${tooltipAttr(event.observed ? 'Evento já entrou no acumulado observado do snapshot.' : 'Evento está dentro da janela, mas ainda não ocorreu no acumulado atual.')}">${event.observed ? 'observado' : 'futuro'}</span>
               </div>
               <div class="event-meta">${fmtDate(event.data)} · D+${fmtNum(event.day)} · impacto ${escapeHtml(impact)} · ${escapeHtml(event.phase)}</div>
               ${event.observacao ? `<div class="event-copy">${escapeHtml(event.observacao)}</div>` : ''}
             </div>
           </div>`;
-        }).join('')}</div>` : `<div class="empty-state seasonal-empty"><div><strong>Janela limpa.</strong>Sem evento cadastrado entre D0 e D+${fmtNum(win.end)}.</div></div>`}
+        }).join('')}</div>` : `<div class="empty-state seasonal-empty"><div><strong>Janela limpa.</strong> Sem evento cadastrado entre D0 e D+${fmtNum(win.end)}.</div></div>`}
       </div>`).join('')}`;
   }
 
   function roasBadge(value) {
     if (value === null || value === undefined) return badge('parcial', '—', 'Sem ROAS cadastrado na planilha para esta linha.');
-    if (value < 1) return badge('neg', 'Crítico', 'ROAS abaixo de 1x: a receita atribuida/informada e menor que o investimento informado.');
-    if (value < 3) return badge('parcial', 'Atenção', 'ROAS entre 1x e 3x: leitura intermediaria; confira atribuicao, janela e custo cadastrado.');
-    return badge('pipeline', 'Eficiente', 'ROAS acima de 3x: a receita atribuida/informada supera o investimento com folga.');
+    if (value < 1) return badge('neg', 'Crítico', 'ROAS abaixo de 1x: a receita atribuída/informada é menor que o investimento informado.');
+    if (value < 3) return badge('parcial', 'Atenção', 'ROAS entre 1x e 3x: leitura intermediária; confira atribuição, janela e custo cadastrado.');
+    return badge('pipeline', 'Eficiente', 'ROAS acima de 3x: a receita atribuída/informada supera o investimento com folga.');
   }
 
   function metodologiaComercialBadge(row) {
@@ -5604,7 +5674,7 @@
     const label = metodologia === 'correlacao_por_janela_calendario'
       ? 'correl.'
       : metodologia === 'janela_isolada' ? 'isolada' : 'metod.';
-    const text = `${aviso || 'Leitura comercial estimada; nao representa atribuicao real de clique/conversao.'} Metodologia: ${metodologia || 'nao informada'}.`;
+    const text = `${aviso || 'Leitura comercial estimada; não representa atribuição real de clique/conversão.'} Metodologia: ${metodologia || 'não informada'}.`;
     return ` ${badge('parcial', label, text)}`;
   }
 
@@ -5794,7 +5864,7 @@
         out[index].pedidos_source = 'bloqueada_por_duplicidade';
         out[index].atribuicao_bloqueada = true;
         out[index].metodologia = 'receita_janela_agregada';
-        out[index].aviso = 'Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use a linha agregada ate existir atribuicao real por pedido.';
+        out[index].aviso = 'Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use a linha agregada até existir atribuição real por pedido.';
       });
     });
 
@@ -5814,7 +5884,7 @@
     const roas = rowRoas(row) ?? (investimento && receitaBase !== null ? receitaBase / investimento : null);
     const cpa = numberOrNull(row.cpa) ?? (investimento !== null && pedidos ? investimento / pedidos : null);
     const metodologia = row.metodologia || ((receitaBase !== null || roas !== null) ? 'estimativa_dashboard' : '');
-    const aviso = row.aviso || (metodologia ? 'Leitura comercial estimada; nao representa atribuicao real de clique/conversao.' : '');
+    const aviso = row.aviso || (metodologia ? 'Leitura comercial estimada; não representa atribuição real de clique/conversão.' : '');
     return {
       ...row,
       investimento,
@@ -5994,13 +6064,13 @@
     el.innerHTML = `
       <div class="media-attribution-head">
         <div>
-          ${labelTip('Vendas por atribuicao do lancamento', 'Declarado dentro de Midia paga para separar venda organica e venda paga do lancamento em foco. Fonte: lancamentos_produtos_dia.json, campos receita_organica e receita_paga.')}
-          <p>Fonte: receita_organica e receita_paga do lancamento em foco; a tabela abaixo continua mostrando campanhas e investimento.</p>
+          ${labelTip('Vendas por atribuição do lançamento', 'Declarado dentro de Mídia paga para separar venda orgânica e venda paga do lançamento em foco. Fonte: lancamentos_produtos_dia.json, campos receita_organica e receita_paga.')}
+          <p>Fonte: receita_organica e receita_paga do lançamento em foco; a tabela abaixo continua mostrando campanhas e investimento.</p>
         </div>
         <small>${hasSales ? 'vendas atribuidas' : 'aguardando vendas'}</small>
       </div>
       <div class="media-attribution-grid">
-        ${metric('Organico', organicRevenue)}
+        ${metric('Orgânico', organicRevenue)}
         ${metric('Pago', paidRevenue)}
       </div>
     `;
@@ -6012,7 +6082,7 @@
     if (row?.janela_isolada_confiavel && numberOrNull(row?.receita_janela_isolada) !== null) {
       return `${fmtBRL(row.receita_janela_isolada)} ${badge('parcial', 'isolada', row.janela_isolada_motivo || 'Estimativa isolada por janela unica de campanha.')}`;
     }
-    return `<span class="cell-muted">Sem receita atribuida</span>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
+    return `<span class="cell-muted">Sem receita atribuída</span>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
   }
 
   function prepareMediaDisplayRow(row) {
@@ -6143,19 +6213,19 @@
             <tr>
               ${thTip('Modelo', 'Modelo comparado na frente comercial.')}
               ${thTip('Janela base', 'Janela usada para contextualizar a receita do modelo: acumulado D+n para ativo ou melhor janela fechada/historica.')}
-              ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou historico versionado.', 'num')}
-              ${thTip('Invest. midia', 'Soma do investimento informado nas campanhas de midia paga cadastradas na planilha.', 'num')}
-              ${thTip('ROAS midia', 'ROAS informado na planilha ou calculado apenas quando existe receita atribuida real para a linha. Nao usa faturamento total da janela do modelo.', 'num')}
-              ${thTip('CPA midia', 'Formula: investimento de midia / pedidos informados ou atribuidos na propria linha. Sem rateio pela janela do modelo.', 'num')}
+              ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou histórico versionado.', 'num')}
+              ${thTip('Invest. mídia', 'Soma do investimento informado nas campanhas de mídia paga cadastradas na planilha.', 'num')}
+              ${thTip('ROAS mídia', 'ROAS informado na planilha ou calculado apenas quando existe receita atribuída real para a linha. Não usa faturamento total da janela do modelo.', 'num')}
+              ${thTip('CPA mídia', 'Fórmula: investimento de mídia / pedidos informados ou atribuídos na própria linha. Sem rateio pela janela do modelo.', 'num')}
               ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
               ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
               ${thTip('ROAS CRM', 'ROAS informado na planilha de CRM ou calculado por receita base / investimento. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
-              ${thTip('CPA CRM', 'Formula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
-              ${thTip('Invest. total', 'Soma de investimento de midia paga e CRM.', 'num')}
-              ${thTip('Receita comercial', 'Soma das receitas informadas em midia e CRM. Midia sem receita atribuida fica fora da receita comercial.', 'num')}
-              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculavel por receita atribuida real.', 'num')}
-              ${thTip('Vendas organicas', 'Receita organica do lancamento atribuida por last-click. Fica pendente ate receita_organica estar no lancamentos_produtos_dia.json.', 'num')}
-              ${thTip('Vendas pagas', 'Receita paga do lancamento atribuida por last-click. Fica pendente ate receita_paga estar no lancamentos_produtos_dia.json.', 'num')}
+              ${thTip('CPA CRM', 'Fórmula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
+              ${thTip('Invest. total', 'Soma de investimento de mídia paga e CRM.', 'num')}
+              ${thTip('Receita comercial', 'Soma das receitas informadas em mídia e CRM. Mídia sem receita atribuída fica fora da receita comercial.', 'num')}
+              ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculável por receita atribuída real.', 'num')}
+              ${thTip('Vendas orgânicas', 'Receita orgânica do lançamento atribuída por last-click. Fica pendente até receita_organica estar no lancamentos_produtos_dia.json.', 'num')}
+              ${thTip('Vendas pagas', 'Receita paga do lançamento atribuída por last-click. Fica pendente até receita_paga estar no lancamentos_produtos_dia.json.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -6208,7 +6278,7 @@
         <td class="num">${mediaValue(mediaCpaForDisplay(row), fmtBRL)}</td>
         <td>${mediaRoasBadgeForDisplay(row)}</td>
       </tr>`;
-    }).join('') : `<tr><td colspan="8" class="cell-muted">Sem midia paga cadastrada para este modelo.</td></tr>`;
+    }).join('') : `<tr><td colspan="8" class="cell-muted">Sem mídia paga cadastrada para este modelo.</td></tr>`;
 
     const crmRows = (state.data.crm_disparos || [])
       .filter((row) => row.modelo_id === selected.modelo_id)
@@ -6231,7 +6301,7 @@
     if (!launches.length) {
       renderMediaAttributionSummary([]);
       renderActionsComparison([]);
-      $('media-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar midia paga.</td></tr>`;
+      $('media-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar mídia paga.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar CRM.</td></tr>`;
       return;
     }
@@ -6278,7 +6348,7 @@
         <td class="num">${mediaValue(mediaCpaForDisplay(row), fmtBRL)}</td>
         <td>${mediaRoasBadgeForDisplay(row)}</td>
       </tr>`;
-    }).join('') : `<tr><td colspan="9" class="cell-muted">Sem midia paga cadastrada para os modelos selecionados.</td></tr>`;
+    }).join('') : `<tr><td colspan="9" class="cell-muted">Sem mídia paga cadastrada para os modelos selecionados.</td></tr>`;
 
     const crmRows = crmRowsAll
       .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.data_disparo || '').localeCompare(String(b.data_disparo || '')));
@@ -6338,14 +6408,14 @@
       <div class="metric-sub" style="margin-bottom:10px">Base da projeção: <strong>${escapeHtml(projectionBase.modelo)}</strong></div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
-          <div class="scenario-label">${escapeHtml(s.label)} ${tip(`Formula: base 30d estimada x multiplicador ${fmtNum(s.mult, 2)}. Se o modelo so tem D+15, a base 30d e aproximada dobrando D+15, conforme decisao documentada.`)}</div>
+          <div class="scenario-label">${escapeHtml(s.label)} ${tip(`Fórmula: base 30d estimada x multiplicador ${fmtNum(s.mult, 2)}. Se o modelo só tem D+15, a base 30d é aproximada dobrando D+15, conforme decisão documentada.`)}</div>
           <div class="scenario-name">${escapeHtml(s.name)}</div>
           <div class="scenario-value">${fmtBRL(s.value)}</div>
-          <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr('Pares estimados = faturamento do cenario / preco medio por par da janela base. E aproximacao, nao forecast operacional.')}">≈ ${fmtNum(s.pairs)} pares</div>
+          <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr('Pares estimados = faturamento do cenário / preço médio por par da janela base. É aproximação, não forecast operacional.')}">≈ ${fmtNum(s.pairs)} pares</div>
         </div>`).join('')}
       </div>
       <div class="card warning" style="margin-top:14px">
-        <div class="metric-label">${labelTip('Aviso fixo', 'A projecao nao usa modelo estatistico externo. Ela aplica multiplicadores historicos para dar amplitude conservadora/base/otimista.')}</div>
+        <div class="metric-label">${labelTip('Aviso fixo', 'A projeção não usa modelo estatístico externo. Ela aplica multiplicadores históricos para dar amplitude conservadora/base/otimista.')}</div>
         <p class="section-desc">Cenários usam multiplicadores 90÷30 dos modelos históricos elegíveis. Leia como referência de amplitude, não como previsão automática.</p>
       </div>`;
 
@@ -6383,12 +6453,12 @@
       backfilled.length ? {
         type: 'warn',
         title: 'Backfill diario aplicado',
-        copy: `${backfilled.length} modelo(s) historico(s) sem diario real receberam backfill a partir das janelas acumuladas para curva e semana a semana.`
+        copy: `${backfilled.length} modelo(s) histórico(s) sem diário real receberam backfill a partir das janelas acumuladas para curva e semana a semana.`
       } : null,
       mediaBlocked.length ? {
         type: 'warn',
-        title: 'Midia sem atribuicao por canal',
-        copy: `${mediaBlocked.length} linha(s) de midia tiveram ROAS por canal bloqueado ou agregado porque a receita nao representa last-click por pedido.`
+        title: 'Mídia sem atribuição por canal',
+        copy: `${mediaBlocked.length} linha(s) de mídia tiveram ROAS por canal bloqueado ou agregado porque a receita não representa last-click por pedido.`
       } : null,
       {
         type: 'pos',
