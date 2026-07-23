@@ -2352,21 +2352,21 @@
         <div class="story-order-channel-item">
           <em>${escapeHtml(label)}</em>
           <b>${escapeHtml(orderValue)}</b>
-          <small>${escapeHtml(shareValue)} · ${escapeHtml(revenueValue)}</small>
+          <small>${escapeHtml(shareValue)} - ${escapeHtml(revenueValue)}</small>
         </div>
       `;
     };
     return `
       <div class="story-order-channel-card story-order-channel-card--${hasOrders ? 'ready' : 'pending'}">
         <div class="story-order-channel-head">
-          ${labelTip('Pedidos por canal', 'Mostra pedidos do lancamento separados entre organico e pago por atribuicao real last-click. A receita aparece apenas como apoio.')}
+          ${labelTip('Pedidos pagos x organicos', 'Mostra pedidos do lancamento separados entre organico e pago por atribuicao real last-click. A receita aparece apenas como apoio.')}
           <small>${hasOrders ? 'atribuicao real' : 'aguardando pedidos'}</small>
         </div>
         <div class="story-order-channel-grid">
           ${channelCell('Organico', organicOrders, organicRevenue)}
           ${channelCell('Pago', paidOrders, paidRevenue)}
         </div>
-        <p>Leitura principal: quantos pedidos vieram de orgânico vs mídia paga no lançamento.</p>
+        <p>Card principal: vendas e pedidos organicos vs pagos do lancamento.</p>
       </div>
     `;
   }
