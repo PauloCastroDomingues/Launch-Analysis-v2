@@ -2210,9 +2210,9 @@
         state: 'warn',
         baselineInsuficiente: true,
         facts: [
-          { label: 'Antes', value: fmtBRL(pre) },
-          { label: 'Depois', value: fmtBRL(pos) },
-          { label: 'Janela', value: days !== null ? `${fmtNum(days)} dias` : 'sem janela' }
+          { label: 'Empresa antes', value: fmtBRL(pre) },
+          { label: 'Empresa depois', value: fmtBRL(pos) },
+          { label: 'Janela comp.', value: days !== null ? `${fmtNum(days)} dias` : 'sem janela' }
         ]
       };
     }
@@ -2230,9 +2230,9 @@
       state: variation < -0.05 ? 'warn' : variation > 0.05 ? 'focus' : 'ok',
       baselineInsuficiente: false,
       facts: [
-        { label: 'Antes', value: fmtBRL(pre) },
-        { label: 'Depois', value: fmtBRL(pos) },
-        { label: 'Variacao', value: fmtPct(variation, 1) }
+        { label: 'Empresa antes', value: fmtBRL(pre) },
+        { label: 'Empresa depois', value: fmtBRL(pos) },
+        { label: 'Var. empresa', value: fmtPct(variation, 1) }
       ]
     };
   }
@@ -2247,31 +2247,31 @@
     const productMetaPct = ratioOrNull(revenue, target);
     const productActualPct = ratioOrNull(revenue, actual);
     const range = firstGoal ? `${goalRangeLabel(firstGoal)} (${goalDateRangeLabel(firstGoal)})` : 'M1 desde D0';
-    const source = 'Origem: metas_mensais.json calcula meta e faturamento da empresa no periodo; lancamentos_produtos_dia.json calcula receita do produto; share_trajetoria.json mantem o contexto antes/depois.';
+    const source = 'Origem: metas_mensais.json informa meta e faturamento da empresa no periodo do lancamento; lancamentos_produtos_dia.json calcula a receita do produto selecionado; share_trajetoria.json mantem o contexto antes/depois da empresa.';
 
     if (!firstGoal || (target === null && actual === null)) {
       if (base.state !== 'pending') {
         return {
           label: base.label,
           value: base.value,
-          copy: `${base.copy} (meta do periodo ainda nao carregada; produto fez ${fmtBRL(revenue)} no ${range}.)`,
+          copy: `${base.copy} Leitura antes/depois e faturamento da empresa; meta do periodo ainda nao carregada. Produto selecionado fez ${fmtBRL(revenue)} no ${range}.`,
           evidence: `${source} ${base.evidence || ''}`,
           source,
           state: base.state,
-          facts: [...(base.facts || []), { label: 'Produto', value: fmtBRL(revenue) }]
+          facts: [...(base.facts || []), { label: 'Receita produto', value: fmtBRL(revenue) }]
         };
       }
       return {
         label: 'Meta sem contexto',
         value: 'Sem meta',
-        copy: `${range}: ainda nao existe meta/faturamento da empresa carregado para comparar o produto. Receita do produto no periodo: ${fmtBRL(revenue)}.`,
+        copy: `${range}: ainda nao existe meta/faturamento da empresa carregado para comparar o produto selecionado. Receita do produto no periodo: ${fmtBRL(revenue)}.`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: revenue !== null ? 'pending' : 'warn',
         facts: [
           { label: 'Periodo', value: range },
-          { label: 'Produto', value: fmtBRL(revenue) },
-          { label: 'Meta', value: 'sem meta' }
+          { label: 'Receita produto', value: fmtBRL(revenue) },
+          { label: 'Meta empresa', value: 'sem meta' }
         ]
       };
     }
@@ -2285,8 +2285,8 @@
         source,
         state: 'pending',
         facts: [
-          { label: 'Meta periodo', value: fmtBRL(target) },
-          { label: 'Produto', value: fmtBRL(revenue) },
+          { label: 'Meta empresa', value: fmtBRL(target) },
+          { label: 'Receita produto', value: fmtBRL(revenue) },
           { label: 'Produto/meta', value: fmtPct(productMetaPct, 1) }
         ]
       };
@@ -2299,19 +2299,20 @@
         : 'Empresa abaixo da meta';
     const companyState = companyPct < 0.9 ? 'warn' : productMetaPct >= 0.12 ? 'focus' : 'ok';
     const productSentence = revenue !== null
-      ? `O produto fez ${fmtBRL(revenue)}, cobrindo ${fmtPct(productMetaPct, 1)} da meta e ${fmtPct(productActualPct, 1)} do faturamento realizado.`
+      ? `O produto selecionado fez ${fmtBRL(revenue)}, cobrindo ${fmtPct(productMetaPct, 1)} da meta da empresa e ${fmtPct(productActualPct, 1)} do faturamento realizado.`
       : 'Ainda nao ha receita do produto carregada nessa janela.';
 
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: empresa realizou ${fmtBRL(actual)} contra meta proporcional de ${fmtBRL(target)}. ${productSentence}`,
+      copy: `${range}: o percentual do card e faturamento da empresa / meta da empresa. A empresa realizou ${fmtBRL(actual)} contra meta proporcional de ${fmtBRL(target)}. ${productSentence}`,
       evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} produto=${fmtBRL(revenue)} produto_meta=${fmtPct(productMetaPct, 1)} produto_faturamento=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
       source,
       state: companyState,
       facts: [
         { label: 'Fat. empresa', value: fmtBRL(actual) },
-        { label: 'Meta periodo', value: fmtBRL(target) },
+        { label: 'Meta empresa', value: fmtBRL(target) },
+        { label: 'Receita produto', value: fmtBRL(revenue) },
         { label: 'Produto/meta', value: fmtPct(productMetaPct, 1) },
         { label: 'Produto/fat.', value: fmtPct(productActualPct, 1) }
       ]
@@ -2513,7 +2514,7 @@
         detail: `${company.label}: ${company.copy}`,
         width: companyWidth,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Conta se a empresa estava acima ou abaixo da meta no M1 do lancamento e quanto o produto contribuiu para o faturamento/meta daquele periodo.',
+        tooltip: 'Mostra o contexto da empresa no M1 do lancamento: faturamento realizado da empresa contra a meta proporcional daquele periodo, e quanto o produto selecionado contribuiu para essa meta/faturamento.',
         extraHtml: `${storyFactChips(company.facts)}${storySourceNote(company.source)}`,
         showTrack: false
       }),
@@ -2560,7 +2561,7 @@
         label: company.label,
         copy: `<code class="story-step-source">${escapeHtml(company.evidence || '')}</code>${evidenceSourceLine('momento', { model })}`,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Evidência técnica do contexto: meta/faturamento da empresa no M1, receita do produto e antes/depois do lançamento.'
+        tooltip: 'Evidência técnica do contexto: faturamento da empresa vs meta da empresa no M1, receita do produto selecionado e antes/depois da empresa quando existir.'
       },
       {
         step: '02',
