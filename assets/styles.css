@@ -2246,6 +2246,74 @@ h2 {
 .actions-comparison {
   margin: 0 0 14px;
 }
+.media-attribution-summary {
+  margin: 0 0 14px;
+  padding: 12px 0 14px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.media-attribution-summary:empty {
+  display: none;
+}
+.media-attribution-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.media-attribution-head p {
+  margin: 5px 0 0;
+  color: var(--txt-secondary);
+  font-size: .76rem;
+  line-height: 1.35;
+}
+.media-attribution-head small {
+  flex: 0 0 auto;
+  color: var(--txt-muted);
+  font-size: .6rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  line-height: 1.2;
+  text-align: right;
+  text-transform: uppercase;
+}
+.media-attribution-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.media-attribution-metric {
+  min-width: 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--orange);
+}
+.media-attribution-metric span,
+.media-attribution-metric strong,
+.media-attribution-metric small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.media-attribution-metric span {
+  color: var(--txt-muted);
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.media-attribution-metric strong {
+  margin-top: 4px;
+  color: var(--txt-primary);
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+.media-attribution-metric small {
+  margin-top: 3px;
+  color: var(--txt-secondary);
+  font-size: .72rem;
+  line-height: 1.25;
+}
 .commercial-table {
   margin-bottom: 14px;
 }
@@ -3265,6 +3333,9 @@ body.stock-detail-open .stock-detail-drawer {
   .story-channel-grid { grid-template-columns: 1fr; }
   .story-channel-head { display: grid; }
   .story-channel-head small { text-align: left; }
+  .media-attribution-head { display: grid; }
+  .media-attribution-head small { text-align: left; }
+  .media-attribution-grid { grid-template-columns: 1fr; }
   .story-step-details { margin: 0 16px 16px; }
   .story-step-details summary { width: 100%; text-align: center; white-space: normal; line-height: 1.2; }
   .story-step-grid { grid-template-columns: 1fr; }

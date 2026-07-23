@@ -5948,6 +5948,46 @@
     return fmtBRL(value);
   }
 
+  function renderMediaAttributionSummary(launches) {
+    const el = $('media-attribution-summary');
+    if (!el) return;
+    const validLaunches = (launches || []).filter(Boolean);
+    const launch = validLaunches.find((item) => item.modelo_id === state.primaryModelId) || validLaunches[0];
+    if (!launch) {
+      el.innerHTML = '';
+      return;
+    }
+
+    const paidRevenue = numberOrNull(launch.receita_paga);
+    const organicRevenue = numberOrNull(launch.receita_organica);
+    const total = Number(paidRevenue || 0) + Number(organicRevenue || 0);
+    const hasSales = paidRevenue !== null || organicRevenue !== null;
+    const metric = (label, value) => {
+      const share = total > 0 && value !== null ? `${fmtPct(value / total, 1)} do atribuido` : 'sem venda no JSON';
+      return `
+        <div class="media-attribution-metric">
+          <span>${escapeHtml(label)}</span>
+          <strong>${value !== null ? fmtBRL(value) : 'Aguardando'}</strong>
+          <small>${escapeHtml(share)}</small>
+        </div>
+      `;
+    };
+
+    el.innerHTML = `
+      <div class="media-attribution-head">
+        <div>
+          ${labelTip('Vendas por atribuicao do lancamento', 'Declarado dentro de Midia paga para separar venda organica e venda paga do lancamento em foco. Fonte: lancamentos_produtos_dia.json, campos receita_organica e receita_paga.')}
+          <p>Fonte: receita_organica e receita_paga do lancamento em foco; a tabela abaixo continua mostrando campanhas e investimento.</p>
+        </div>
+        <small>${hasSales ? 'vendas atribuidas' : 'aguardando vendas'}</small>
+      </div>
+      <div class="media-attribution-grid">
+        ${metric('Organico', organicRevenue)}
+        ${metric('Pago', paidRevenue)}
+      </div>
+    `;
+  }
+
   function mediaRevenueCell(row) {
     const value = numberOrNull(row?.receita_atribuida);
     if (value !== null) return `${fmtBRL(value)}${metodologiaComercialBadge(row)}`;
@@ -6126,6 +6166,7 @@
 
   function renderActions(selected) {
     renderLineInvestmentTable();
+    renderMediaAttributionSummary([selected]);
     if (selected.isFuture || isPlannedStatus(selected.status)) {
       $('media-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Lançamento planejado: mídia paga fica fora da análise até D0 e dados reais.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="7" class="cell-muted">Lançamento planejado: CRM fica fora da análise até D0 e dados reais.</td></tr>`;
@@ -6170,11 +6211,13 @@
     renderLineInvestmentTable();
     const launches = selectedCompareLaunches().filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
     if (!launches.length) {
+      renderMediaAttributionSummary([]);
       renderActionsComparison([]);
       $('media-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar midia paga.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar CRM.</td></tr>`;
       return;
     }
+    renderMediaAttributionSummary(launches);
 
     const mediaByModel = new Map();
     const crmByModel = new Map();
