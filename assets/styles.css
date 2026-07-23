@@ -1171,6 +1171,11 @@ h1 {
   background: rgba(255,255,255,.035);
   padding: 9px;
 }
+.story-order-channel-item--unattributed {
+  grid-column: 1 / -1;
+  border-color: rgba(232,160,32,.32);
+  background: rgba(232,160,32,.07);
+}
 .story-order-channel-item em,
 .story-order-channel-item b,
 .story-order-channel-item small {

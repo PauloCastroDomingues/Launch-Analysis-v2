@@ -2342,11 +2342,33 @@
     const organicOrders = numberOrNull(launch?.pedidos_organicos);
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
-    const totalOrders = Number(paidOrders || 0) + Number(organicOrders || 0);
+    const totalLaunchOrders = numberOrNull(launch?.acumulado_lancamento?.pedidos)
+      ?? numberOrNull(launch?.acumulado_atual?.pedidos)
+      ?? numberOrNull(selectedAnalysisWindow(launch)?.data?.pedidos)
+      ?? numberOrNull(launch?.pedidos);
+    const totalLaunchRevenue = numberOrNull(launch?.acumulado_lancamento?.receita)
+      ?? numberOrNull(launch?.acumulado_atual?.receita)
+      ?? numberOrNull(selectedAnalysisWindow(launch)?.data?.receita)
+      ?? numberOrNull(launch?.receita);
+    const attributedOrders = (paidOrders !== null || organicOrders !== null)
+      ? Number(paidOrders || 0) + Number(organicOrders || 0)
+      : null;
+    const attributedRevenue = (paidRevenue !== null || organicRevenue !== null)
+      ? Number(paidRevenue || 0) + Number(organicRevenue || 0)
+      : null;
+    const unattributedOrders = totalLaunchOrders !== null && attributedOrders !== null
+      ? Math.max(0, totalLaunchOrders - attributedOrders)
+      : null;
+    const unattributedRevenue = totalLaunchRevenue !== null && attributedRevenue !== null
+      ? Math.max(0, totalLaunchRevenue - attributedRevenue)
+      : null;
+    const shareBase = totalLaunchOrders ?? attributedOrders;
+    const shareBaseLabel = totalLaunchOrders !== null ? 'dos pedidos totais' : 'dos pedidos atribuidos';
+    const coverage = totalLaunchOrders && attributedOrders !== null ? attributedOrders / totalLaunchOrders : null;
     const hasOrders = paidOrders !== null || organicOrders !== null;
     const channelCell = (label, orders, revenue) => {
       const orderValue = orders !== null ? `${fmtNum(orders)} pedidos` : 'Aguardando';
-      const shareValue = totalOrders > 0 && orders !== null ? `${fmtPct(orders / totalOrders, 1)} dos pedidos atribuidos` : 'sem pedidos no JSON';
+      const shareValue = shareBase > 0 && orders !== null ? `${fmtPct(orders / shareBase, 1)} ${shareBaseLabel}` : 'sem pedidos no JSON';
       const revenueValue = revenue !== null ? fmtBRL(revenue) : 'venda aguardando';
       return `
         <div class="story-order-channel-item">
@@ -2356,17 +2378,30 @@
         </div>
       `;
     };
+    const unattributedCell = unattributedOrders !== null && unattributedOrders > 0
+      ? `
+        <div class="story-order-channel-item story-order-channel-item--unattributed">
+          <em>Sem atribuicao</em>
+          <b>${escapeHtml(`${fmtNum(unattributedOrders)} pedidos`)}</b>
+          <small>${escapeHtml(`${fmtPct(unattributedOrders / totalLaunchOrders, 1)} dos pedidos totais - ${unattributedRevenue !== null ? fmtBRL(unattributedRevenue) : 'receita nao calculada'}`)}</small>
+        </div>
+      `
+      : '';
+    const coverageText = coverage !== null
+      ? `${fmtNum(attributedOrders)} de ${fmtNum(totalLaunchOrders)} pedidos classificados (${fmtPct(coverage, 1)} de cobertura).`
+      : 'Cobertura de atribuicao ainda nao disponivel.';
     return `
       <div class="story-order-channel-card story-order-channel-card--${hasOrders ? 'ready' : 'pending'}">
         <div class="story-order-channel-head">
-          ${labelTip('Pedidos pagos x organicos', 'Mostra pedidos do lancamento separados entre organico e pago por atribuicao real last-click. A receita aparece apenas como apoio.')}
+          ${labelTip('Pedidos pagos x organicos', 'Compara a atribuicao real last-click com o total de pedidos do lancamento. Quando a soma pago + organico for menor que o total, a diferenca aparece como Sem atribuicao.')}
           <small>${hasOrders ? 'atribuicao real' : 'aguardando pedidos'}</small>
         </div>
         <div class="story-order-channel-grid">
           ${channelCell('Organico', organicOrders, organicRevenue)}
           ${channelCell('Pago', paidOrders, paidRevenue)}
+          ${unattributedCell}
         </div>
-        <p>Card principal: vendas e pedidos organicos vs pagos do lancamento.</p>
+        <p>${escapeHtml(coverageText)} O split pago/organico nao substitui o total do lancamento.</p>
       </div>
     `;
   }
