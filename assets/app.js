@@ -2384,6 +2384,11 @@
   function companyGoalMomentNarrative(launch, model, goalRows = []) {
     const base = companyMomentNarrative(model);
     const firstGoal = goalRows[0];
+    const goalMonth = monthKeyFromIso(firstGoal?.startIso || launch?.d0 || snapshotIso());
+    const metaRow = goalMonth ? metaMensalForMonth(goalMonth, launch) : metaMensalForLaunch(launch);
+    const monthlyTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
+    const monthlyActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+    const monthlyLabel = fmtMonthKey(goalMonth);
     const target = numberOrNull(firstGoal?.target);
     const actual = numberOrNull(firstGoal?.actual);
     const revenue = numberOrNull(firstGoal?.receita);
@@ -2394,21 +2399,25 @@
     const comparableNote = firstGoal && !firstGoal.metaComplete && firstGoal.metaDays && firstGoal.totalDays
       ? ` Como a meta/realizado só existem para ${fmtNum(firstGoal.metaDays)}/${fmtNum(firstGoal.totalDays)} dias dessa janela, o produto também foi somado apenas na mesma cobertura comparável.`
       : '';
+    const monthlyTargetNote = monthlyTarget !== null
+      ? ` Meta total de ${monthlyLabel}: ${fmtBRL(monthlyTarget)}; meta do período analisado: ${fmtBRL(target)}.`
+      : '';
     const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa; quando existe detalhe diário, ele vem de dashboard_targets_daily_raw no SSOT. lancamentos_produtos_dia.json calcula a receita do produto na mesma cobertura.';
 
     if (!firstGoal || (target === null && actual === null)) {
       return {
         label: 'Meta do período não carregada',
         value: 'Sem meta',
-        copy: `${range}: este card compara faturamento realizado da empresa contra a meta praticada e usa o produto como participação dentro desse realizado. Como a meta/faturamento do período ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.`,
+        copy: `${range}: este card compara faturamento realizado da empresa contra a meta do período, mas também mostra a meta total do mês. Como a meta/faturamento do período ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.${monthlyTargetNote}`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: revenue !== null ? 'pending' : 'warn',
         facts: [
           { label: 'Período', value: range },
           { label: 'Receita produto', value: fmtBRL(revenue) },
+          { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
           { label: 'Fat. empresa', value: 'sem dado' },
-          { label: 'Meta empresa', value: 'sem meta' }
+          { label: 'Meta período', value: 'sem meta' }
         ]
       };
     }
@@ -2423,7 +2432,8 @@
         state: 'pending',
         facts: [
           { label: 'Faturamento', value: fmtBRL(actual) },
-          { label: 'Meta empresa', value: 'sem meta' },
+          { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
+          { label: 'Meta período', value: 'sem meta' },
           { label: 'Share produto', value: fmtPct(productActualPct, 1) },
           { label: 'Receita produto', value: fmtBRL(revenue) }
         ]
@@ -2434,13 +2444,14 @@
       return {
         label: 'Faturamento empresa pendente',
         value: 'Sem realizado',
-        copy: `${range}: a meta proporcional da empresa era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado. Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${comparableNote}`,
+        copy: `${range}: a meta do período era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado.${monthlyTargetNote} Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${comparableNote}`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
           { label: 'Faturamento', value: 'sem dado' },
-          { label: 'Meta empresa', value: fmtBRL(target) },
+          { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
+          { label: 'Meta período', value: fmtBRL(target) },
           { label: 'Receita produto', value: fmtBRL(revenue) },
           { label: 'Share produto', value: 'sem realizado' }
         ]
@@ -2455,20 +2466,21 @@
     const companyState = companyPct < 0.9 ? 'warn' : companyPct >= 1 ? 'focus' : 'ok';
     const metaGap = actual !== null && target !== null ? actual - target : null;
     const productSentence = revenue !== null
-      ? `O produto selecionado entra como participação: fez ${fmtBRL(revenue)}, representou ${fmtPct(productActualPct, 1)} do faturamento realizado e equivaleu a ${fmtPct(productMetaPct, 1)} da meta praticada.`
+      ? `O produto selecionado entra como participação: fez ${fmtBRL(revenue)}, representou ${fmtPct(productActualPct, 1)} do faturamento realizado e equivaleu a ${fmtPct(productMetaPct, 1)} da meta do período.`
       : 'Ainda não há receita do produto carregada nessa janela.';
 
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta praticada no mesmo período. A empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} (${fmtPct(companyPct, 1)}), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}`,
-      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} atingimento=${fmtPct(companyPct, 1)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta do período analisado, sem esconder a meta total do mês. A meta total de ${monthlyLabel} é ${fmtBRL(monthlyTarget)}; dentro da janela do lançamento, a meta proporcional é ${fmtBRL(target)}. A empresa realizou ${fmtBRL(actual)} (${fmtPct(companyPct, 1)} do período), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}`,
+      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta_periodo=${fmtBRL(target)} meta_total_mes=${fmtBRL(monthlyTarget)} realizado_total_mes=${fmtBRL(monthlyActual)} atingimento_periodo=${fmtPct(companyPct, 1)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
       source,
       state: companyState,
       facts: [
         { label: 'Faturamento', value: fmtBRL(actual) },
-        { label: 'Meta praticada', value: fmtBRL(target) },
-        { label: 'Gap meta', value: fmtBRL(metaGap) },
+        { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
+        { label: 'Meta período', value: fmtBRL(target) },
+        { label: 'Gap período', value: fmtBRL(metaGap) },
         { label: 'Share produto', value: fmtPct(productActualPct, 1) },
         { label: 'Receita produto', value: fmtBRL(revenue) }
       ]
