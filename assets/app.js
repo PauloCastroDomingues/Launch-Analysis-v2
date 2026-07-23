@@ -2340,35 +2340,32 @@
   function storyChannelAttributionHtml(launch) {
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
-    const paidOrders = numberOrNull(launch?.pedidos_pagos);
-    const organicOrders = numberOrNull(launch?.pedidos_organicos);
     const totalRevenue = Number(paidRevenue || 0) + Number(organicRevenue || 0);
-    const hasRealAttribution = paidRevenue !== null || organicRevenue !== null || paidOrders !== null || organicOrders !== null;
-    const channelCell = (label, revenue, orders) => {
+    const hasRealAttribution = paidRevenue !== null || organicRevenue !== null;
+    const channelCell = (label, revenue) => {
       const revenueValue = revenue !== null ? fmtBRL(revenue) : 'Aguardando';
-      const ordersValue = orders !== null ? `${fmtNum(orders)} pedidos` : 'pedidos aguardando';
-      const shareValue = totalRevenue > 0 && revenue !== null ? `${fmtPct(revenue / totalRevenue, 1)} do atribuido` : 'sem share real';
+      const shareValue = totalRevenue > 0 && revenue !== null ? `${fmtPct(revenue / totalRevenue, 1)} da venda atribuida` : 'sem venda no JSON';
       return `
         <div class="story-channel-item">
           <em>${escapeHtml(label)}</em>
           <b>${escapeHtml(revenueValue)}</b>
-          <small>${escapeHtml(ordersValue)} - ${escapeHtml(shareValue)}</small>
+          <small>${escapeHtml(shareValue)}</small>
         </div>
       `;
     };
     return `
       <div class="story-channel-card story-channel-card--${hasRealAttribution ? 'ready' : 'pending'}">
         <div class="story-channel-head">
-          ${labelTip('Organico x pago', 'Mostra receita e pedidos do lancamento separados por atribuicao real last-click. Se aparecer aguardando, o JSON ainda nao trouxe receita_paga, receita_organica, pedidos_pagos e pedidos_organicos para este lancamento.')}
-          <small>${hasRealAttribution ? 'atribuicao real' : 'aguardando atribuicao real'}</small>
+          ${labelTip('Organico x pago', 'Mostra as vendas do lancamento separadas por atribuicao real last-click. Se aparecer aguardando, o JSON ainda nao trouxe receita_paga e receita_organica para este lancamento.')}
+          <small>${hasRealAttribution ? 'vendas atribuidas' : 'aguardando vendas atribuidas'}</small>
         </div>
         <div class="story-channel-grid">
-          ${channelCell('Organico', organicRevenue, organicOrders)}
-          ${channelCell('Pago', paidRevenue, paidOrders)}
+          ${channelCell('Organico', organicRevenue)}
+          ${channelCell('Pago', paidRevenue)}
         </div>
         <p>${hasRealAttribution
-          ? 'Leitura usada para separar tracao organica de resposta paga dentro do lancamento.'
-          : 'Sem canal no JSON ainda. Depois de popular a mirror de atribuicao e rodar exportarTudo, este card troca para os valores reais.'}</p>
+          ? 'Leitura usada para separar venda organica de venda paga dentro do lancamento.'
+          : 'Sem vendas por canal no JSON ainda. Depois de rodar exportarTudo com a consulta US, este card troca para os valores reais.'}</p>
       </div>
     `;
   }
@@ -3363,23 +3360,20 @@
     const aggregate = aggregateMediaRows(mediaRows, launch)[0] || null;
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
-    const paidOrders = numberOrNull(launch?.pedidos_pagos);
-    const organicOrders = numberOrNull(launch?.pedidos_organicos);
 
-    if (paidRevenue !== null || organicRevenue !== null || paidOrders !== null || organicOrders !== null) {
+    if (paidRevenue !== null || organicRevenue !== null) {
       const total = Number(paidRevenue || 0) + Number(organicRevenue || 0);
-      const channelMeta = (revenue, orders, label) => {
+      const channelMeta = (revenue) => {
         const parts = [];
-        parts.push(total && revenue !== null ? `${fmtPct(revenue / total, 1)} do total atribuido` : 'receita aguardando');
-        parts.push(orders !== null ? `${fmtNum(orders)} ${label}` : `${label} aguardando`);
+        parts.push(total && revenue !== null ? `${fmtPct(revenue / total, 1)} do total atribuido` : 'venda aguardando');
         return parts.join(' · ');
       };
       return `
         <section class="drill-section">
-          <div class="drill-section-title">Atribuicao por canal</div>
+          <div class="drill-section-title">Vendas por canal</div>
           <div class="drill-impact-grid">
-            <div><span>Receita paga</span><strong>${fmtBRL(paidRevenue)}</strong><small>${channelMeta(paidRevenue, paidOrders, 'pedidos pagos')}</small></div>
-            <div><span>Receita organica</span><strong>${fmtBRL(organicRevenue)}</strong><small>${channelMeta(organicRevenue, organicOrders, 'pedidos organicos')}</small></div>
+            <div><span>Venda paga</span><strong>${paidRevenue !== null ? fmtBRL(paidRevenue) : 'Aguardando'}</strong><small>${channelMeta(paidRevenue)}</small></div>
+            <div><span>Venda organica</span><strong>${organicRevenue !== null ? fmtBRL(organicRevenue) : 'Aguardando'}</strong><small>${channelMeta(organicRevenue)}</small></div>
           </div>
         </section>
       `;
@@ -4512,8 +4506,8 @@
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
           <td>${fmtBRL(dplus?.receita)}<div class="metric-sub">${day !== null && day !== undefined ? `D+${day}` : 'sem D+n'}</div></td>
-          <td class="num">${comparisonAttributionCell(launch.receita_organica, launch.pedidos_organicos, 'ped. organicos')}</td>
-          <td class="num">${comparisonAttributionCell(launch.receita_paga, launch.pedidos_pagos, 'ped. pagos')}</td>
+          <td class="num">${comparisonAttributionCell(launch.receita_organica)}</td>
+          <td class="num">${comparisonAttributionCell(launch.receita_paga)}</td>
           <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
@@ -4530,13 +4524,12 @@
     tbody.innerHTML = rows || `<tr><td colspan="15" class="cell-muted">Sem lancamentos com dados reais para comparar.</td></tr>`;
   }
 
-  function comparisonAttributionCell(revenue, orders, orderLabel) {
+  function comparisonAttributionCell(revenue) {
     const revenueValue = numberOrNull(revenue);
-    const ordersValue = numberOrNull(orders);
-    if (revenueValue === null && ordersValue === null) {
-      return '<span class="cell-muted">Aguardando atribuicao real</span><div class="metric-sub">sem canal no JSON</div>';
+    if (revenueValue === null) {
+      return '<span class="cell-muted">Aguardando vendas</span><div class="metric-sub">sem receita no JSON</div>';
     }
-    return `${organicPaidValue(revenueValue)}<div class="metric-sub">${ordersValue !== null ? `${fmtNum(ordersValue)} ${orderLabel}` : 'pedidos pendentes'}</div>`;
+    return `${organicPaidValue(revenueValue)}<div class="metric-sub">venda atribuida</div>`;
   }
 
   function firstKnownCommercialNumber(row, keys) {
@@ -5950,16 +5943,9 @@
 
   function organicPaidValue(value) {
     if (value === null || value === undefined) {
-      return '<span class="cell-muted">Aguardando atribuicao real</span>';
+      return '<span class="cell-muted">Aguardando vendas</span>';
     }
     return fmtBRL(value);
-  }
-
-  function organicPaidOrdersValue(value) {
-    if (value === null || value === undefined) {
-      return '<span class="cell-muted">Aguardando atribuicao real</span>';
-    }
-    return fmtNum(value);
   }
 
   function mediaRevenueCell(row) {
@@ -6110,10 +6096,8 @@
               ${thTip('Invest. total', 'Soma de investimento de midia paga e CRM.', 'num')}
               ${thTip('Receita comercial', 'Soma das receitas informadas em midia e CRM. Midia sem receita atribuida fica fora da receita comercial.', 'num')}
               ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculavel por receita atribuida real.', 'num')}
-              ${thTip('Vendas organicas', 'Receita organica atribuida por pedido via last-click. Fica pendente ate a atribuicao real (Complemento 8) estar validada no BigQuery.', 'num')}
-              ${thTip('Pedidos organicos', 'Pedidos organicos atribuidos via last-click. Fica pendente ate a atribuicao real estar no lancamentos_produtos_dia.json.', 'num')}
-              ${thTip('Vendas pagas', 'Receita paga atribuida por pedido via last-click. Fica pendente ate a atribuicao real (Complemento 8) estar validada no BigQuery.', 'num')}
-              ${thTip('Pedidos pagos', 'Pedidos pagos atribuidos via last-click. Fica pendente ate a atribuicao real estar no lancamentos_produtos_dia.json.', 'num')}
+              ${thTip('Vendas organicas', 'Receita organica do lancamento atribuida por last-click. Fica pendente ate receita_organica estar no lancamentos_produtos_dia.json.', 'num')}
+              ${thTip('Vendas pagas', 'Receita paga do lancamento atribuida por last-click. Fica pendente ate receita_paga estar no lancamentos_produtos_dia.json.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -6133,9 +6117,7 @@
                 <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${roasValue(row.roasComercial)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${organicPaidValue(row.launch.receita_organica)}</td>
-                <td class="num">${organicPaidOrdersValue(row.launch.pedidos_organicos)}</td>
                 <td class="num">${organicPaidValue(row.launch.receita_paga)}</td>
-                <td class="num">${organicPaidOrdersValue(row.launch.pedidos_pagos)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
