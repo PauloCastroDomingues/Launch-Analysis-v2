@@ -1803,9 +1803,36 @@
     return new Date(year, monthNum, 0).getDate();
   }
 
+  function monthEndIso(month) {
+    const targetMonth = monthKeyFromIso(month);
+    const days = daysInMonthKey(targetMonth);
+    return targetMonth && days ? `${targetMonth}-${String(days).padStart(2, '0')}` : null;
+  }
+
   function inclusiveDays(startDate, endDate) {
     if (!startDate || !endDate) return 0;
     return Math.max(0, Math.floor((endDate - startDate) / 86400000) + 1);
+  }
+
+  function dateRangeIso(startIso, endIso) {
+    const start = toDate(startIso);
+    const end = toDate(endIso);
+    if (!start || !end || end < start) return [];
+    const dates = [];
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      dates.push(toIsoDate(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return dates;
+  }
+
+  function metaDailyRowsForRange(metaRow, startIso, endIso) {
+    const daily = Array.isArray(metaRow?.daily) ? metaRow.daily : [];
+    if (!daily.length) return [];
+    return daily
+      .map((row) => ({ ...row, data: String(row.data || '').slice(0, 10) }))
+      .filter((row) => row.data && row.data >= startIso && row.data <= endIso);
   }
 
   function goalMetaForRange(startIso, endIso, launch) {
@@ -1831,25 +1858,54 @@
       const days = inclusiveDays(cursor, segmentEnd);
       const monthDays = daysInMonthKey(month) || days;
       const metaRow = metaMensalForMonth(month, launch);
-      const monthTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
-      const monthActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
-      const targetPart = monthTarget !== null ? (monthTarget / monthDays) * days : null;
-      const actualPart = monthActual !== null ? (monthActual / monthDays) * days : null;
+      const segmentStartIso = toIsoDate(cursor);
+      const segmentEndIso = toIsoDate(segmentEnd);
+      const dailyRows = metaDailyRowsForRange(metaRow, segmentStartIso, segmentEndIso);
+      const targetRows = dailyRows.filter((row) => numberOrNull(row.meta_receita ?? row.revenue_target) !== null);
+      const actualRows = dailyRows.filter((row) => numberOrNull(row.realizado_receita ?? row.revenue_actual) !== null);
+      const targetDates = dailyRows.length
+        ? targetRows.map((row) => row.data)
+        : dateRangeIso(segmentStartIso, segmentEndIso);
+      const actualDates = dailyRows.length
+        ? actualRows.map((row) => row.data)
+        : dateRangeIso(segmentStartIso, segmentEndIso);
+      let targetPart = null;
+      let actualPart = null;
+      let targetPartDays = 0;
+      let actualPartDays = 0;
+      if (dailyRows.length) {
+        targetPart = sumNullableRows(targetRows, 'meta_receita');
+        actualPart = sumNullableRows(actualRows, 'realizado_receita');
+        targetPartDays = targetPart !== null ? targetRows.length : 0;
+        actualPartDays = actualPart !== null ? actualRows.length : 0;
+      } else {
+        const monthTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
+        const monthActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+        targetPart = monthTarget !== null ? (monthTarget / monthDays) * days : null;
+        actualPart = monthActual !== null ? (monthActual / monthDays) * days : null;
+        targetPartDays = targetPart !== null ? days : 0;
+        actualPartDays = actualPart !== null ? days : 0;
+      }
 
       totalDays += days;
       if (targetPart !== null) {
         target += targetPart;
-        targetDays += days;
+        targetDays += targetPartDays;
       }
       if (actualPart !== null) {
         actual += actualPart;
-        actualDays += days;
+        actualDays += actualPartDays;
       }
       parts.push({
         month,
-        startIso: toIsoDate(cursor),
-        endIso: toIsoDate(segmentEnd),
+        startIso: segmentStartIso,
+        endIso: segmentEndIso,
         days,
+        targetDays: targetPartDays,
+        actualDays: actualPartDays,
+        targetDates,
+        actualDates,
+        source: dailyRows.length ? 'daily' : 'monthly_prorated',
         target: targetPart,
         actual: actualPart
       });
@@ -1909,6 +1965,7 @@
   }
 
   function launchRevenueForMetaParts(launch, metaParts = [], field = 'actual') {
+    const dateKey = `${field}Dates`;
     const validParts = (metaParts || []).filter((part) => (
       part
       && part[field] !== null
@@ -1920,11 +1977,20 @@
       return { receita: null, pedidos: null, pares: null, row: null };
     }
     const d0 = launch?.d0 || launch?.day_zero_base;
-    const coverageStart = validParts[0]?.startIso || null;
-    const coverageEnd = validParts[validParts.length - 1]?.endIso || null;
-    const coverageDays = validParts.reduce((acc, part) => acc + Number(part.days || 0), 0);
+    const coverageDates = new Set();
+    validParts.forEach((part) => {
+      const dates = Array.isArray(part[dateKey]) && part[dateKey].length
+        ? part[dateKey]
+        : dateRangeIso(part.startIso, part.endIso);
+      dates.forEach((date) => coverageDates.add(date));
+    });
+    const sortedDates = [...coverageDates].sort();
+    const coverageStart = sortedDates[0] || validParts[0]?.startIso || null;
+    const coverageEnd = sortedDates[sortedDates.length - 1] || validParts[validParts.length - 1]?.endIso || null;
+    const coverageDays = sortedDates.length || validParts.reduce((acc, part) => acc + Number(part.days || 0), 0);
     const rows = optionalRows('lancamentos_produtos_dia').filter((row) => {
       if (row.modelo_id !== launch?.modelo_id || !row.data) return false;
+      if (coverageDates.size) return coverageDates.has(row.data);
       return validParts.some((part) => row.data >= part.startIso && row.data <= part.endIso);
     });
     return aggregateLaunchSalesRows(rows, {
@@ -2116,6 +2182,9 @@
     const shareCopy = productShare !== null ? ` \u00b7 share produto ${fmtPct(productShare, 1)}` : '';
     const launchMonth = context.launchD0 ? monthKeyFromIso(context.launchD0) : null;
     const metaMonth = meta ? metaMonthKey(meta) : null;
+    const monthEnd = monthEndIso(metaMonth);
+    const realizedUntil = String(meta?.realizado_ate || '').slice(0, 10);
+    const dailyOpen = Array.isArray(meta?.daily) && meta.daily.length && realizedUntil && monthEnd && realizedUntil < monthEnd;
     const monthsAlign = meta && !meta.__meta_status && launchMonth && metaMonth && launchMonth === metaMonth;
     const contribution = monthsAlign && actual ? ratioOrNull(context.launchRevenue, actual) : null;
     const contributionCopy = contribution !== null
@@ -2130,6 +2199,14 @@
         label: `${requestedLabel} em aberto`,
         value: 'M\u00eas em aberto',
         copy: `\u00daltimo fechado: ${fallbackLabel} \u00b7 ${summary} \u00b7 meta ${fmtBRL(target)} \u00b7 realizado ${fmtBRL(actual)}${shareCopy}${contributionCopy}`
+      };
+    }
+
+    if (dailyOpen) {
+      return {
+        label: `${fmtMonthKey(metaMonth)} em andamento`,
+        value: pct !== null ? fmtPct(pct, 1) : 'Mês em andamento',
+        copy: `Até ${fmtDateSlash(realizedUntil)}: realizado ${fmtBRL(actual)} contra meta mensal ${fmtBRL(target)}${shareCopy}${contributionCopy}`
       };
     }
 
@@ -2317,7 +2394,7 @@
     const comparableNote = firstGoal && !firstGoal.metaComplete && firstGoal.metaDays && firstGoal.totalDays
       ? ` Como a meta/realizado só existem para ${fmtNum(firstGoal.metaDays)}/${fmtNum(firstGoal.totalDays)} dias dessa janela, o produto também foi somado apenas na mesma cobertura comparável.`
       : '';
-    const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa no período do lançamento; lancamentos_produtos_dia.json calcula a receita do produto selecionado na mesma cobertura.';
+    const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa; quando existe detalhe diário, ele vem de dashboard_targets_daily_raw/targets published. lancamentos_produtos_dia.json calcula a receita do produto na mesma cobertura.';
 
     if (!firstGoal || (target === null && actual === null)) {
       return {
@@ -2529,7 +2606,8 @@
     const metaActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
     const metaPct = roasNumberOrNull(metaRow?.atingimento) ?? ratioOrNull(metaActual, metaTarget);
     const metaPending = meta.label === 'Pendente';
-    const metaOpen = metaRow?.__meta_status === 'month_open';
+    const metaOpen = metaRow?.__meta_status === 'month_open'
+      || (Array.isArray(metaRow?.daily) && metaRow.daily.length && metaRow.realizado_ate && monthEndIso(metaMonthKey(metaRow)) && String(metaRow.realizado_ate).slice(0, 10) < monthEndIso(metaMonthKey(metaRow)));
     const signal = storySignal({ share, companyVariation, metaPending });
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const metaWidth = metaPct === null ? 0 : Math.max(4, Math.min(100, metaPct * 100));
@@ -2603,7 +2681,7 @@
         detail: meta.copy,
         width: metaWidth,
         state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Cruza o mês do lançamento com metas_mensais. Se o mês ainda está aberto, mostra o último mês fechado como contexto. Share produto vem de share_trajetoria e mostra o peso do lançamento no período coberto.'
+        tooltip: 'Cruza o mês do lançamento com metas_mensais. Quando o BigQuery exporta detalhe diário de targets, mês aberto usa a meta publicada dia a dia; sem esse dado, mostra o último mês fechado como contexto.'
       })
     ];
     const decisionNotes = [

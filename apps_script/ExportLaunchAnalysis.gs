@@ -2813,8 +2813,42 @@ function exportarCrmSeConfigurado_(shareTrajetoria) {
 }
 
 function exportarMetasMensaisSeConfigurado_() {
+  let baseRows = [];
+  try {
+    baseRows = carregarMetasMensaisBase_();
+  } catch (error) {
+    Logger.log(`metas_mensais base nao carregada; seguindo apenas com BigQuery se disponivel. Erro: ${error.message}`);
+  }
+
+  try {
+    const rowsBq = consultarMetasMensaisBigQuery_();
+    if (rowsBq.length) {
+      const rows = mesclarMetasMensais_(baseRows, rowsBq);
+      const payload = {
+        generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+        source: 'bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_vs_actual_daily_published_v,aquisicao_por_canal',
+        rows
+      };
+      escreverJsonGitHub_('metas_mensais.json', payload);
+      Logger.log(`metas_mensais.json exportado com ${rows.length} linhas; ${rowsBq.length} vindas do BigQuery/targets.`);
+      return { status: 'exported', rows: rows.length, payload };
+    }
+    Logger.log('dashboard_targets publicados nao retornaram linhas; tentando fallback por planilha/GitHub.');
+  } catch (error) {
+    Logger.log(`metas_mensais BigQuery nao exportado; tentando fallback por planilha/GitHub. Erro: ${error.message}`);
+  }
+
   const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
   if (!spreadsheetId) {
+    if (baseRows.length) {
+      const payload = {
+        generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+        source: 'github_existing',
+        rows: baseRows
+      };
+      Logger.log(`MIDIA_SPREADSHEET_ID nao configurado; mantendo metas_mensais.json atual com ${baseRows.length} linhas.`);
+      return { status: 'skipped', rows: baseRows.length, payload };
+    }
     Logger.log('MIDIA_SPREADSHEET_ID nao configurado; mantendo metas_mensais.json atual');
     return { status: 'skipped', rows: 'skipped', payload: { generated_at: null, rows: [] } };
   }
@@ -2839,6 +2873,256 @@ function exportarMetasMensaisSeConfigurado_() {
     Logger.log(`metas_mensais.json nao exportado; mantendo arquivo atual. Erro: ${error.message}`);
     return { status: 'skipped', rows: 'skipped', error: error.message, payload: { generated_at: null, rows: [] } };
   }
+}
+
+function carregarMetasMensaisBase_() {
+  const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
+  if (spreadsheetId) {
+    try {
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      const sheet = ss.getSheetByName('metas_mensais');
+      if (sheet) return normalizeMetasMensais_(sheetToObjects_(sheet));
+    } catch (error) {
+      Logger.log(`Nao consegui carregar metas_mensais da planilha opcional: ${error.message}`);
+    }
+  }
+
+  try {
+    const atual = lerJsonGitHub_('metas_mensais.json');
+    return normalizeMetasMensaisPayload_(atual.rows || atual || []);
+  } catch (error) {
+    Logger.log(`Nao consegui carregar metas_mensais.json atual do GitHub: ${error.message}`);
+    return [];
+  }
+}
+
+function consultarMetasMensaisBigQuery_() {
+  const goalScope = getProp_('TARGET_GOAL_SCOPE', 'shopify_geral');
+  const goalScopeSql = sqlString_(goalScope);
+  const query = `
+WITH actual_cutoff AS (
+  SELECT MAX(data) AS max_data
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_actual_daily_v\`
+  WHERE data <= CURRENT_DATE('${CONFIG.timeZone}')
+),
+targets_daily AS (
+  SELECT
+    DATE(data) AS data,
+    DATE(target_month) AS target_month,
+    goal_scope,
+    version_id,
+    status,
+    saved_at,
+    revenue_target,
+    orders_target,
+    marketing_investment_target,
+    roas_target,
+    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), revenue_actual, NULL) AS revenue_actual,
+    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), orders_actual, NULL) AS orders_actual,
+    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), marketing_investment_actual, NULL) AS marketing_investment_actual,
+    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), roas_actual, NULL) AS roas_actual
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_vs_actual_daily_published_v\`
+  WHERE goal_scope = ${goalScopeSql}
+),
+daily_agg AS (
+  SELECT
+    target_month,
+    goal_scope,
+    version_id,
+    COUNTIF(revenue_target IS NOT NULL) AS dias_meta_receita,
+    COUNTIF(revenue_actual IS NOT NULL) AS dias_realizado_receita,
+    SUM(revenue_target) AS meta_receita_dia_sum,
+    SUM(orders_target) AS meta_pedidos_dia_sum,
+    SUM(marketing_investment_target) AS meta_investimento_dia_sum,
+    SUM(revenue_actual) AS realizado_receita_dia_sum,
+    SUM(orders_actual) AS realizado_pedidos_dia_sum,
+    SUM(marketing_investment_actual) AS realizado_investimento_dia_sum,
+    MAX(IF(revenue_actual IS NOT NULL, data, NULL)) AS realizado_ate,
+    TO_JSON_STRING(ARRAY_AGG(STRUCT(
+      data,
+      revenue_target AS meta_receita,
+      orders_target AS meta_pedidos,
+      marketing_investment_target AS meta_investimento,
+      roas_target AS roas_meta,
+      revenue_actual AS realizado_receita,
+      orders_actual AS realizado_pedidos,
+      marketing_investment_actual AS investimento_realizado,
+      roas_actual AS roas_realizado
+    ) ORDER BY data)) AS daily_json
+  FROM targets_daily
+  GROUP BY 1,2,3
+),
+aquisicao_canal AS (
+  SELECT
+    DATE_TRUNC(DATE(data), MONTH) AS target_month,
+    canal,
+    SUM(investimento) AS investimento_aquisicao,
+    SUM(sessoes) AS sessoes_aquisicao,
+    SUM(pedidos_total) AS pedidos_aquisicao,
+    SUM(receita_total) AS receita_aquisicao,
+    SUM(novos_clientes) AS novos_clientes_aquisicao,
+    SAFE_DIVIDE(SUM(investimento), NULLIF(SUM(sessoes), 0)) AS cps_aquisicao,
+    SAFE_DIVIDE(SUM(receita_total), NULLIF(SUM(investimento), 0)) AS roas_aquisicao
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.aquisicao_por_canal\`
+  GROUP BY target_month, canal
+),
+aquisicao_mes AS (
+  SELECT
+    target_month,
+    SUM(investimento_aquisicao) AS investimento_aquisicao,
+    SUM(sessoes_aquisicao) AS sessoes_aquisicao,
+    SUM(pedidos_aquisicao) AS pedidos_aquisicao,
+    SUM(receita_aquisicao) AS receita_aquisicao,
+    SUM(novos_clientes_aquisicao) AS novos_clientes_aquisicao,
+    SAFE_DIVIDE(SUM(investimento_aquisicao), NULLIF(SUM(sessoes_aquisicao), 0)) AS cps_aquisicao,
+    SAFE_DIVIDE(SUM(receita_aquisicao), NULLIF(SUM(investimento_aquisicao), 0)) AS roas_aquisicao,
+    TO_JSON_STRING(ARRAY_AGG(STRUCT(
+      canal,
+      investimento_aquisicao AS investimento,
+      sessoes_aquisicao AS sessoes,
+      pedidos_aquisicao AS pedidos,
+      receita_aquisicao AS receita,
+      novos_clientes_aquisicao AS novos_clientes,
+      cps_aquisicao AS cps,
+      roas_aquisicao AS roas
+    ) ORDER BY investimento_aquisicao DESC)) AS canais_json
+  FROM aquisicao_canal
+  GROUP BY target_month
+),
+headers AS (
+  SELECT *
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_month_summary_published_v\`
+  WHERE goal_scope = ${goalScopeSql}
+)
+SELECT
+  FORMAT_DATE('%Y-%m', h.target_month) AS mes,
+  h.goal_scope,
+  h.version_id,
+  h.status,
+  h.month_label,
+  h.monthly_revenue_target AS meta_receita_header,
+  h.monthly_orders_target AS meta_pedidos_header,
+  h.monthly_marketing_investment_target AS meta_investimento_header,
+  h.monthly_roas_target AS roas_meta_header,
+  d.meta_receita_dia_sum,
+  d.meta_pedidos_dia_sum,
+  d.meta_investimento_dia_sum,
+  d.realizado_receita_dia_sum,
+  d.realizado_pedidos_dia_sum,
+  d.realizado_investimento_dia_sum,
+  d.dias_meta_receita,
+  d.dias_realizado_receita,
+  d.realizado_ate,
+  d.daily_json,
+  a.investimento_aquisicao,
+  a.sessoes_aquisicao,
+  a.pedidos_aquisicao,
+  a.receita_aquisicao,
+  a.novos_clientes_aquisicao,
+  a.cps_aquisicao,
+  a.roas_aquisicao,
+  a.canais_json
+FROM headers h
+LEFT JOIN daily_agg d
+  ON h.target_month = d.target_month
+ AND h.goal_scope = d.goal_scope
+ AND h.version_id = d.version_id
+LEFT JOIN aquisicao_mes a
+  ON h.target_month = a.target_month
+ORDER BY h.target_month`;
+
+  return runBq_(query, CONFIG.bqUsLocation).map(row => normalizarMetaMensalBigQuery_(row));
+}
+
+function normalizarMetaMensalBigQuery_(row) {
+  const daily = parseJsonArraySeguro_(row.daily_json).map(day => ({
+    data: dateIsoKey_(day.data),
+    meta_receita: numberOrNull_(day.meta_receita),
+    realizado_receita: numberOrNull_(day.realizado_receita),
+    meta_pedidos: numberOrNull_(day.meta_pedidos),
+    realizado_pedidos: numberOrNull_(day.realizado_pedidos),
+    meta_investimento: numberOrNull_(day.meta_investimento),
+    investimento_realizado: numberOrNull_(day.investimento_realizado),
+    roas_meta: roasOrNull_(day.roas_meta),
+    roas_realizado: roasOrNull_(day.roas_realizado)
+  })).filter(day => day.data);
+  const canais = parseJsonArraySeguro_(row.canais_json).map(canal => ({
+    canal: canal.canal || null,
+    investimento: numberOrNull_(canal.investimento),
+    sessoes: numberOrNull_(canal.sessoes),
+    pedidos: numberOrNull_(canal.pedidos),
+    receita: numberOrNull_(canal.receita),
+    novos_clientes: numberOrNull_(canal.novos_clientes),
+    cps: numberOrNull_(canal.cps),
+    roas: roasOrNull_(canal.roas)
+  }));
+  const metaReceita = numberOrNull_(row.meta_receita_header) ?? numberOrNull_(row.meta_receita_dia_sum);
+  const realizadoReceita = numberOrNull_(row.realizado_receita_dia_sum);
+  return {
+    mes: row.mes || monthKey_(row.target_month),
+    modelo_id: null,
+    linha: null,
+    meta_receita: metaReceita,
+    realizado_receita: realizadoReceita,
+    meta_pedidos: numberOrNull_(row.meta_pedidos_header) ?? numberOrNull_(row.meta_pedidos_dia_sum),
+    realizado_pedidos: numberOrNull_(row.realizado_pedidos_dia_sum),
+    meta_pares: null,
+    realizado_pares: null,
+    atingimento: roasOrNull_(ratioSeguro_(realizadoReceita, metaReceita)),
+    goal_scope: row.goal_scope || null,
+    version_id: row.version_id || null,
+    month_label: row.month_label || null,
+    dias_meta_receita: numberOrNull_(row.dias_meta_receita),
+    dias_realizado_receita: numberOrNull_(row.dias_realizado_receita),
+    realizado_ate: dateIsoKey_(row.realizado_ate),
+    meta_investimento: numberOrNull_(row.meta_investimento_header) ?? numberOrNull_(row.meta_investimento_dia_sum),
+    investimento_realizado: numberOrNull_(row.realizado_investimento_dia_sum),
+    investimento_aquisicao: numberOrNull_(row.investimento_aquisicao),
+    sessoes_aquisicao: numberOrNull_(row.sessoes_aquisicao),
+    pedidos_aquisicao: numberOrNull_(row.pedidos_aquisicao),
+    receita_aquisicao: numberOrNull_(row.receita_aquisicao),
+    novos_clientes_aquisicao: numberOrNull_(row.novos_clientes_aquisicao),
+    cps_aquisicao: numberOrNull_(row.cps_aquisicao),
+    roas_aquisicao: roasOrNull_(row.roas_aquisicao),
+    canais_aquisicao: canais,
+    daily,
+    observacao: 'fonte: BigQuery mart_growth_us.dashboard_targets_header_raw + dashboard_targets_daily_raw + aquisicao_por_canal',
+    status: row.status || 'published'
+  };
+}
+
+function normalizeMetasMensaisPayload_(rows) {
+  return (rows || []).map(row => ({
+    ...row,
+    mes: monthKey_(row.mes || row.competencia || row.month || row.data || row.data_inicio),
+    modelo_id: row.modelo_id || null,
+    linha: row.linha || null,
+    meta_receita: numberOrNull_(row.meta_receita),
+    realizado_receita: numberOrNull_(row.realizado_receita),
+    meta_pedidos: numberOrNull_(row.meta_pedidos),
+    realizado_pedidos: numberOrNull_(row.realizado_pedidos),
+    meta_pares: numberOrNull_(row.meta_pares),
+    realizado_pares: numberOrNull_(row.realizado_pares),
+    atingimento: roasOrNull_(row.atingimento),
+    daily: Array.isArray(row.daily) ? row.daily : []
+  })).filter(row => row.mes || row.meta_receita !== null || row.realizado_receita !== null);
+}
+
+function mesclarMetasMensais_(baseRows, bqRows) {
+  const map = {};
+  normalizeMetasMensaisPayload_(baseRows).forEach(row => {
+    map[chaveMetaMensal_(row)] = row;
+  });
+  normalizeMetasMensaisPayload_(bqRows).forEach(row => {
+    map[chaveMetaMensal_(row)] = row;
+  });
+  return Object.keys(map)
+    .map(key => map[key])
+    .sort((a, b) => String(a.mes || '').localeCompare(String(b.mes || '')) || String(a.modelo_id || '').localeCompare(String(b.modelo_id || '')));
+}
+
+function chaveMetaMensal_(row) {
+  return [row.mes || '', row.modelo_id || '', row.linha || ''].join('|');
 }
 
 function exportarFaturamentoCampanhaSeConfigurado_() {
@@ -3390,6 +3674,29 @@ function mediaOuNull_(values) {
 function dateIsoKey_(value) {
   const date = dateOnly_(value);
   return date ? Utilities.formatDate(date, CONFIG.timeZone, 'yyyy-MM-dd') : null;
+}
+
+function parseJsonArraySeguro_(value) {
+  if (Array.isArray(value)) return value;
+  const text = String(value || '').trim();
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function ratioSeguro_(numerador, denominador) {
+  const num = numberOrNull_(numerador);
+  const den = numberOrNull_(denominador);
+  if (num === null || den === null || den === 0) return null;
+  return round6_(num / den);
+}
+
+function sqlString_(value) {
+  return `'${String(value || '').replace(/'/g, "''")}'`;
 }
 
 function addDaysIso_(value, days) {
