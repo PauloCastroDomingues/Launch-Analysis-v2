@@ -2380,83 +2380,6 @@
     `;
   }
 
-  function storyOrderAttributionHtml(launch) {
-    const paidOrders = numberOrNull(launch?.pedidos_pagos);
-    const organicOrders = numberOrNull(launch?.pedidos_organicos);
-    const otherTrackedOrders = numberOrNull(launch?.pedidos_outros_canais);
-    const noMatchOrders = numberOrNull(launch?.pedidos_sem_match_atribuicao);
-    const paidRevenue = numberOrNull(launch?.receita_paga);
-    const organicRevenue = numberOrNull(launch?.receita_organica);
-    const otherTrackedRevenue = numberOrNull(launch?.receita_outros_canais);
-    const noMatchRevenue = numberOrNull(launch?.receita_sem_match_atribuicao);
-    const totalLaunchOrders = numberOrNull(launch?.acumulado_lancamento?.pedidos)
-      ?? numberOrNull(launch?.acumulado_atual?.pedidos)
-      ?? numberOrNull(selectedAnalysisWindow(launch)?.data?.pedidos)
-      ?? numberOrNull(launch?.pedidos);
-    const totalLaunchRevenue = numberOrNull(launch?.acumulado_lancamento?.receita)
-      ?? numberOrNull(launch?.acumulado_atual?.receita)
-      ?? numberOrNull(selectedAnalysisWindow(launch)?.data?.receita)
-      ?? numberOrNull(launch?.receita);
-    const attributedOrders = (paidOrders !== null || organicOrders !== null || otherTrackedOrders !== null)
-      ? Number(paidOrders || 0) + Number(organicOrders || 0) + Number(otherTrackedOrders || 0)
-      : null;
-    const attributedRevenue = (paidRevenue !== null || organicRevenue !== null || otherTrackedRevenue !== null)
-      ? Number(paidRevenue || 0) + Number(organicRevenue || 0) + Number(otherTrackedRevenue || 0)
-      : null;
-    const shareBase = totalLaunchOrders ?? attributedOrders;
-    const shareBaseLabel = totalLaunchOrders !== null ? 'dos pedidos totais' : 'dos pedidos atribuidos';
-    const coverage = totalLaunchOrders && attributedOrders !== null ? attributedOrders / totalLaunchOrders : null;
-    const hasOrders = paidOrders !== null || organicOrders !== null || otherTrackedOrders !== null || noMatchOrders !== null;
-    const channelCell = (label, orders, revenue) => {
-      const orderValue = orders !== null ? `${fmtNum(orders)} pedidos` : 'Aguardando';
-      const shareValue = shareBase > 0 && orders !== null ? `${fmtPct(orders / shareBase, 1)} ${shareBaseLabel}` : 'sem pedidos no JSON';
-      const revenueValue = revenue !== null ? fmtBRL(revenue) : 'venda aguardando';
-      return `
-        <div class="story-order-channel-item">
-          <em>${escapeHtml(label)}</em>
-          <b>${escapeHtml(orderValue)}</b>
-          <small>${escapeHtml(shareValue)} - ${escapeHtml(revenueValue)}</small>
-        </div>
-      `;
-    };
-    const otherTrackedCell = otherTrackedOrders !== null && otherTrackedOrders > 0
-      ? `
-        <div class="story-order-channel-item story-order-channel-item--tracked-other">
-          <em>Outros rastreados</em>
-          <b>${escapeHtml(`${fmtNum(otherTrackedOrders)} pedidos`)}</b>
-          <small>${escapeHtml(`${shareBase > 0 ? fmtPct(otherTrackedOrders / shareBase, 1) : '—'} ${shareBaseLabel} - ${otherTrackedRevenue !== null ? fmtBRL(otherTrackedRevenue) : 'receita nao calculada'}`)}</small>
-        </div>
-      `
-      : '';
-    const noMatchCell = noMatchOrders !== null && noMatchOrders > 0
-      ? `
-        <div class="story-order-channel-item story-order-channel-item--no-match">
-          <em>Sem match</em>
-          <b>${escapeHtml(`${fmtNum(noMatchOrders)} pedidos`)}</b>
-          <small>${escapeHtml(`${shareBase > 0 ? fmtPct(noMatchOrders / shareBase, 1) : '—'} ${shareBaseLabel} - ${noMatchRevenue !== null ? fmtBRL(noMatchRevenue) : 'receita nao calculada'}`)}</small>
-        </div>
-      `
-      : '';
-    const coverageText = coverage !== null
-      ? `${fmtNum(attributedOrders)} de ${fmtNum(totalLaunchOrders)} pedidos com canal rastreado (${fmtPct(coverage, 1)} de cobertura).`
-      : 'Cobertura de atribuicao ainda nao disponivel.';
-    return `
-      <div class="story-order-channel-card story-order-channel-card--${hasOrders ? 'ready' : 'pending'}">
-        <div class="story-order-channel-head">
-          ${labelTip('Pedidos pagos x organicos', 'Compara a atribuicao real last-click com o total de pedidos do lancamento. Canais rastreados que nao sao paid/organic aparecem como Outros rastreados; apenas linhas sem match aparecem como Sem match.')}
-          <small>${hasOrders ? 'atribuicao real' : 'aguardando pedidos'}</small>
-        </div>
-        <div class="story-order-channel-grid">
-          ${channelCell('Organico', organicOrders, organicRevenue)}
-          ${channelCell('Pago', paidOrders, paidRevenue)}
-          ${otherTrackedCell}
-          ${noMatchCell}
-        </div>
-        <p>${escapeHtml(coverageText)} O que fica fora de pago/organico pode ser direct, CRM, referral ou canal ainda nao classificado.</p>
-      </div>
-    `;
-  }
-
   function storySourceNote(text) {
     if (!text) return '';
     return `<div class="story-source-note"><span>Origem</span><p>${escapeHtml(text)}</p></div>`;
@@ -2573,7 +2496,6 @@
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const activityTooltip = 'Resumo operacional desde o D0 usado na analise. Mostra quantos dias o lancamento ja tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
-    const orderAttributionHtml = storyOrderAttributionHtml(selected);
     const representationGoalHtml = storyGoalContributionHtml(goalRows);
     const evidence = [
       storyMetricHtml({
@@ -2690,7 +2612,6 @@
               <p>${escapeHtml(activity.copy)}</p>
               ${storyFactChips(activity.facts)}
             </div>
-            ${orderAttributionHtml}
           </div>
           <div>
             <div class="story-visual-metrics story-visual-metrics--three">
