@@ -2247,40 +2247,47 @@
     const productMetaPct = ratioOrNull(revenue, target);
     const productActualPct = ratioOrNull(revenue, actual);
     const range = firstGoal ? `${goalRangeLabel(firstGoal)} (${goalDateRangeLabel(firstGoal)})` : 'M1 desde D0';
-    const source = 'Origem: metas_mensais.json informa meta e faturamento da empresa no periodo do lancamento; lancamentos_produtos_dia.json calcula a receita do produto selecionado; share_trajetoria.json mantem o contexto antes/depois da empresa.';
+    const source = 'Origem: metas_mensais.json informa meta e faturamento da empresa no periodo do lancamento; lancamentos_produtos_dia.json calcula a receita do produto selecionado.';
 
     if (!firstGoal || (target === null && actual === null)) {
-      if (base.state !== 'pending') {
-        return {
-          label: base.label,
-          value: base.value,
-          copy: `${base.copy} Leitura antes/depois e faturamento da empresa; meta do periodo ainda nao carregada. Produto selecionado fez ${fmtBRL(revenue)} no ${range}.`,
-          evidence: `${source} ${base.evidence || ''}`,
-          source,
-          state: base.state,
-          facts: [...(base.facts || []), { label: 'Receita produto', value: fmtBRL(revenue) }]
-        };
-      }
       return {
-        label: 'Meta sem contexto',
+        label: 'Meta do periodo nao carregada',
         value: 'Sem meta',
-        copy: `${range}: ainda nao existe meta/faturamento da empresa carregado para comparar o produto selecionado. Receita do produto no periodo: ${fmtBRL(revenue)}.`,
+        copy: `${range}: o card deveria comparar faturamento da empresa contra a meta da empresa e mostrar quanto o produto selecionado contribuiu. Como a meta/faturamento do periodo ainda nao esta carregada, so da para mostrar a receita do produto: ${fmtBRL(revenue)}.`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: revenue !== null ? 'pending' : 'warn',
         facts: [
           { label: 'Periodo', value: range },
           { label: 'Receita produto', value: fmtBRL(revenue) },
+          { label: 'Fat. empresa', value: 'sem dado' },
           { label: 'Meta empresa', value: 'sem meta' }
+        ]
+      };
+    }
+
+    if (target === null && actual !== null) {
+      return {
+        label: 'Meta do periodo nao carregada',
+        value: fmtBRL(actual),
+        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do periodo ainda nao esta carregada. O produto selecionado fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.`,
+        evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} produto_faturamento=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+        source,
+        state: 'pending',
+        facts: [
+          { label: 'Fat. empresa', value: fmtBRL(actual) },
+          { label: 'Meta empresa', value: 'sem meta' },
+          { label: 'Receita produto', value: fmtBRL(revenue) },
+          { label: 'Produto/fat.', value: fmtPct(productActualPct, 1) }
         ]
       };
     }
 
     if (target !== null && actual === null) {
       return {
-        label: 'Meta sem realizado',
+        label: 'Faturamento empresa pendente',
         value: fmtBRL(target),
-        copy: `${range}: a meta proporcional era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda nao esta carregado. O produto fez ${fmtBRL(revenue)} (${fmtPct(productMetaPct, 1)} da meta).`,
+        copy: `${range}: a meta proporcional da empresa era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda nao esta carregado. O produto selecionado fez ${fmtBRL(revenue)} (${fmtPct(productMetaPct, 1)} da meta).`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: 'pending',
@@ -2298,6 +2305,7 @@
         ? 'Empresa perto da meta'
         : 'Empresa abaixo da meta';
     const companyState = companyPct < 0.9 ? 'warn' : productMetaPct >= 0.12 ? 'focus' : 'ok';
+    const metaGap = actual !== null && target !== null ? actual - target : null;
     const productSentence = revenue !== null
       ? `O produto selecionado fez ${fmtBRL(revenue)}, cobrindo ${fmtPct(productMetaPct, 1)} da meta da empresa e ${fmtPct(productActualPct, 1)} do faturamento realizado.`
       : 'Ainda nao ha receita do produto carregada nessa janela.';
@@ -2305,16 +2313,16 @@
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: o percentual do card e faturamento da empresa / meta da empresa. A empresa realizou ${fmtBRL(actual)} contra meta proporcional de ${fmtBRL(target)}. ${productSentence}`,
-      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} produto=${fmtBRL(revenue)} produto_meta=${fmtPct(productMetaPct, 1)} produto_faturamento=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta do mesmo periodo. A empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} de meta (${fmtPct(companyPct, 1)}). ${productSentence}`,
+      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} produto_meta=${fmtPct(productMetaPct, 1)} produto_faturamento=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
       source,
       state: companyState,
       facts: [
         { label: 'Fat. empresa', value: fmtBRL(actual) },
         { label: 'Meta empresa', value: fmtBRL(target) },
+        { label: 'Gap meta', value: fmtBRL(metaGap) },
         { label: 'Receita produto', value: fmtBRL(revenue) },
-        { label: 'Produto/meta', value: fmtPct(productMetaPct, 1) },
-        { label: 'Produto/fat.', value: fmtPct(productActualPct, 1) }
+        { label: 'Produto/meta', value: fmtPct(productMetaPct, 1) }
       ]
     };
   }
@@ -2509,12 +2517,12 @@
         extraHtml: representationGoalHtml
       }),
       storyMetricHtml({
-        label: 'Momento da empresa',
+        label: 'Momento da empresa vs meta',
         value: company.value,
         detail: `${company.label}: ${company.copy}`,
         width: companyWidth,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Mostra o contexto da empresa no M1 do lancamento: faturamento realizado da empresa contra a meta proporcional daquele periodo, e quanto o produto selecionado contribuiu para essa meta/faturamento.',
+        tooltip: 'Mostra se a empresa estava acima ou abaixo da meta no periodo do produto selecionado. A leitura cruza faturamento da empresa, meta da empresa e receita do produto.',
         extraHtml: `${storyFactChips(company.facts)}${storySourceNote(company.source)}`,
         showTrack: false
       }),
@@ -2556,12 +2564,12 @@
     const cards = [
       {
         step: '01',
-        title: 'Momento da empresa',
+        title: 'Momento da empresa vs meta',
         value: company.value,
         label: company.label,
         copy: `<code class="story-step-source">${escapeHtml(company.evidence || '')}</code>${evidenceSourceLine('momento', { model })}`,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Evidência técnica do contexto: faturamento da empresa vs meta da empresa no M1, receita do produto selecionado e antes/depois da empresa quando existir.'
+        tooltip: 'Evidencia tecnica: faturamento da empresa vs meta da empresa no periodo do produto selecionado e receita do produto dentro desse mesmo periodo.'
       },
       {
         step: '02',
