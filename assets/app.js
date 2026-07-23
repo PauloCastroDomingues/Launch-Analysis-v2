@@ -581,6 +581,41 @@
       const receitaOrganica = sumNullable(filtered, 'receita_organica');
       const pedidosPagos = sumNullable(filtered, 'pedidos_pagos');
       const pedidosOrganicos = sumNullable(filtered, 'pedidos_organicos');
+      const attributionSignal = filtered.some((row) => (
+        row.tipo_real !== null && row.tipo_real !== undefined
+        || row.canal_real !== null && row.canal_real !== undefined
+        || row.atribuicao_match_key !== null && row.atribuicao_match_key !== undefined
+        || row.regra_atribuicao_real !== null && row.regra_atribuicao_real !== undefined
+        || row.receita_paga !== null && row.receita_paga !== undefined
+        || row.receita_organica !== null && row.receita_organica !== undefined
+      ));
+      let receitaOutrosCanais = 0;
+      let receitaSemMatchAtribuicao = 0;
+      let outrosPedidosSomados = 0;
+      let semMatchPedidosSomados = 0;
+      const pedidosOutrosCanais = new Set();
+      const pedidosSemMatchAtribuicao = new Set();
+      filtered.forEach((row) => {
+        const tipo = String(row.tipo_real || '').trim().toLowerCase();
+        const orderId = pedidoId(row);
+        const hasAttributionMatch = Boolean(
+          tipo
+          || row.canal_real
+          || row.atribuicao_match_key
+          || (row.regra_atribuicao_real && row.regra_atribuicao_real !== 'sem_atribuicao_real')
+        );
+        if (tipo && tipo !== 'paid' && tipo !== 'organic') {
+          receitaOutrosCanais += receitaBrutaRow(row);
+          if (orderId) pedidosOutrosCanais.add(orderId);
+          else outrosPedidosSomados += Number(row.pedidos_validos ?? row.pedidos ?? 0);
+          return;
+        }
+        if (!hasAttributionMatch) {
+          receitaSemMatchAtribuicao += receitaBrutaRow(row);
+          if (orderId) pedidosSemMatchAtribuicao.add(orderId);
+          else semMatchPedidosSomados += Number(row.pedidos_validos ?? row.pedidos ?? 0);
+        }
+      });
       return {
         receita,
         receita_bruta: receita,
@@ -597,6 +632,10 @@
         receita_organica: receitaOrganica,
         pedidos_pagos: pedidosPagos,
         pedidos_organicos: pedidosOrganicos,
+        receita_outros_canais: attributionSignal ? Math.round(receitaOutrosCanais * 100) / 100 : null,
+        pedidos_outros_canais: attributionSignal ? (pedidosOutrosCanais.size || outrosPedidosSomados) : null,
+        receita_sem_match_atribuicao: attributionSignal ? Math.round(receitaSemMatchAtribuicao * 100) / 100 : null,
+        pedidos_sem_match_atribuicao: attributionSignal ? (pedidosSemMatchAtribuicao.size || semMatchPedidosSomados) : null,
         origem,
         day
       };
@@ -713,6 +752,10 @@
       receita_organica: acumuladoLancamento?.receita_organica ?? acumuladoAtual?.receita_organica ?? null,
       pedidos_pagos: acumuladoLancamento?.pedidos_pagos ?? acumuladoAtual?.pedidos_pagos ?? null,
       pedidos_organicos: acumuladoLancamento?.pedidos_organicos ?? acumuladoAtual?.pedidos_organicos ?? null,
+      receita_outros_canais: acumuladoLancamento?.receita_outros_canais ?? acumuladoAtual?.receita_outros_canais ?? null,
+      pedidos_outros_canais: acumuladoLancamento?.pedidos_outros_canais ?? acumuladoAtual?.pedidos_outros_canais ?? null,
+      receita_sem_match_atribuicao: acumuladoLancamento?.receita_sem_match_atribuicao ?? acumuladoAtual?.receita_sem_match_atribuicao ?? null,
+      pedidos_sem_match_atribuicao: acumuladoLancamento?.pedidos_sem_match_atribuicao ?? acumuladoAtual?.pedidos_sem_match_atribuicao ?? null,
       first_sale_date: firstSaleDate,
       first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(model.day_zero_base, toDate(firstSaleDate)) || 0) : null,
       origem: 'pipeline',
@@ -2340,8 +2383,12 @@
   function storyOrderAttributionHtml(launch) {
     const paidOrders = numberOrNull(launch?.pedidos_pagos);
     const organicOrders = numberOrNull(launch?.pedidos_organicos);
+    const otherTrackedOrders = numberOrNull(launch?.pedidos_outros_canais);
+    const noMatchOrders = numberOrNull(launch?.pedidos_sem_match_atribuicao);
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
+    const otherTrackedRevenue = numberOrNull(launch?.receita_outros_canais);
+    const noMatchRevenue = numberOrNull(launch?.receita_sem_match_atribuicao);
     const totalLaunchOrders = numberOrNull(launch?.acumulado_lancamento?.pedidos)
       ?? numberOrNull(launch?.acumulado_atual?.pedidos)
       ?? numberOrNull(selectedAnalysisWindow(launch)?.data?.pedidos)
@@ -2350,22 +2397,16 @@
       ?? numberOrNull(launch?.acumulado_atual?.receita)
       ?? numberOrNull(selectedAnalysisWindow(launch)?.data?.receita)
       ?? numberOrNull(launch?.receita);
-    const attributedOrders = (paidOrders !== null || organicOrders !== null)
-      ? Number(paidOrders || 0) + Number(organicOrders || 0)
+    const attributedOrders = (paidOrders !== null || organicOrders !== null || otherTrackedOrders !== null)
+      ? Number(paidOrders || 0) + Number(organicOrders || 0) + Number(otherTrackedOrders || 0)
       : null;
-    const attributedRevenue = (paidRevenue !== null || organicRevenue !== null)
-      ? Number(paidRevenue || 0) + Number(organicRevenue || 0)
-      : null;
-    const unattributedOrders = totalLaunchOrders !== null && attributedOrders !== null
-      ? Math.max(0, totalLaunchOrders - attributedOrders)
-      : null;
-    const unattributedRevenue = totalLaunchRevenue !== null && attributedRevenue !== null
-      ? Math.max(0, totalLaunchRevenue - attributedRevenue)
+    const attributedRevenue = (paidRevenue !== null || organicRevenue !== null || otherTrackedRevenue !== null)
+      ? Number(paidRevenue || 0) + Number(organicRevenue || 0) + Number(otherTrackedRevenue || 0)
       : null;
     const shareBase = totalLaunchOrders ?? attributedOrders;
     const shareBaseLabel = totalLaunchOrders !== null ? 'dos pedidos totais' : 'dos pedidos atribuidos';
     const coverage = totalLaunchOrders && attributedOrders !== null ? attributedOrders / totalLaunchOrders : null;
-    const hasOrders = paidOrders !== null || organicOrders !== null;
+    const hasOrders = paidOrders !== null || organicOrders !== null || otherTrackedOrders !== null || noMatchOrders !== null;
     const channelCell = (label, orders, revenue) => {
       const orderValue = orders !== null ? `${fmtNum(orders)} pedidos` : 'Aguardando';
       const shareValue = shareBase > 0 && orders !== null ? `${fmtPct(orders / shareBase, 1)} ${shareBaseLabel}` : 'sem pedidos no JSON';
@@ -2378,30 +2419,40 @@
         </div>
       `;
     };
-    const unattributedCell = unattributedOrders !== null && unattributedOrders > 0
+    const otherTrackedCell = otherTrackedOrders !== null && otherTrackedOrders > 0
       ? `
-        <div class="story-order-channel-item story-order-channel-item--unattributed">
-          <em>Sem atribuicao</em>
-          <b>${escapeHtml(`${fmtNum(unattributedOrders)} pedidos`)}</b>
-          <small>${escapeHtml(`${fmtPct(unattributedOrders / totalLaunchOrders, 1)} dos pedidos totais - ${unattributedRevenue !== null ? fmtBRL(unattributedRevenue) : 'receita nao calculada'}`)}</small>
+        <div class="story-order-channel-item story-order-channel-item--tracked-other">
+          <em>Outros rastreados</em>
+          <b>${escapeHtml(`${fmtNum(otherTrackedOrders)} pedidos`)}</b>
+          <small>${escapeHtml(`${shareBase > 0 ? fmtPct(otherTrackedOrders / shareBase, 1) : '—'} ${shareBaseLabel} - ${otherTrackedRevenue !== null ? fmtBRL(otherTrackedRevenue) : 'receita nao calculada'}`)}</small>
+        </div>
+      `
+      : '';
+    const noMatchCell = noMatchOrders !== null && noMatchOrders > 0
+      ? `
+        <div class="story-order-channel-item story-order-channel-item--no-match">
+          <em>Sem match</em>
+          <b>${escapeHtml(`${fmtNum(noMatchOrders)} pedidos`)}</b>
+          <small>${escapeHtml(`${shareBase > 0 ? fmtPct(noMatchOrders / shareBase, 1) : '—'} ${shareBaseLabel} - ${noMatchRevenue !== null ? fmtBRL(noMatchRevenue) : 'receita nao calculada'}`)}</small>
         </div>
       `
       : '';
     const coverageText = coverage !== null
-      ? `${fmtNum(attributedOrders)} de ${fmtNum(totalLaunchOrders)} pedidos classificados (${fmtPct(coverage, 1)} de cobertura).`
+      ? `${fmtNum(attributedOrders)} de ${fmtNum(totalLaunchOrders)} pedidos com canal rastreado (${fmtPct(coverage, 1)} de cobertura).`
       : 'Cobertura de atribuicao ainda nao disponivel.';
     return `
       <div class="story-order-channel-card story-order-channel-card--${hasOrders ? 'ready' : 'pending'}">
         <div class="story-order-channel-head">
-          ${labelTip('Pedidos pagos x organicos', 'Compara a atribuicao real last-click com o total de pedidos do lancamento. Quando a soma pago + organico for menor que o total, a diferenca aparece como Sem atribuicao.')}
+          ${labelTip('Pedidos pagos x organicos', 'Compara a atribuicao real last-click com o total de pedidos do lancamento. Canais rastreados que nao sao paid/organic aparecem como Outros rastreados; apenas linhas sem match aparecem como Sem match.')}
           <small>${hasOrders ? 'atribuicao real' : 'aguardando pedidos'}</small>
         </div>
         <div class="story-order-channel-grid">
           ${channelCell('Organico', organicOrders, organicRevenue)}
           ${channelCell('Pago', paidOrders, paidRevenue)}
-          ${unattributedCell}
+          ${otherTrackedCell}
+          ${noMatchCell}
         </div>
-        <p>${escapeHtml(coverageText)} O split pago/organico nao substitui o total do lancamento.</p>
+        <p>${escapeHtml(coverageText)} O que fica fora de pago/organico pode ser direct, CRM, referral ou canal ainda nao classificado.</p>
       </div>
     `;
   }

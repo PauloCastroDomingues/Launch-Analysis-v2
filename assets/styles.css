@@ -1171,8 +1171,15 @@ h1 {
   background: rgba(255,255,255,.035);
   padding: 9px;
 }
-.story-order-channel-item--unattributed {
+.story-order-channel-item--tracked-other,
+.story-order-channel-item--no-match {
   grid-column: 1 / -1;
+}
+.story-order-channel-item--tracked-other {
+  border-color: rgba(91,184,212,.28);
+  background: rgba(91,184,212,.07);
+}
+.story-order-channel-item--no-match {
   border-color: rgba(232,160,32,.32);
   background: rgba(232,160,32,.07);
 }

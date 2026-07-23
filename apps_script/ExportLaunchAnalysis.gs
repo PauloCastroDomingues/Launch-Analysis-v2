@@ -1116,10 +1116,14 @@ classified AS (
     CASE
       WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'direct'
       WHEN raw_channel IS NULL OR raw_channel = '' THEN 'unknown'
+      WHEN REGEXP_CONTAINS(raw_medium, r'(cpcp|cpc|ppc|pmax|paid|paidsocial|paid[_ -]?social|paidsearch|paid[_ -]?search|display|affiliate|affiliates|demand[_ -]?gen)') THEN 'paid'
       WHEN raw_medium IN ('organic','seo') THEN 'organic'
-      WHEN raw_medium IN ('cpc','ppc','paid','paid_social','paidsearch','display','affiliate','affiliates') THEN 'paid'
-      WHEN raw_medium IN ('email','newsletter','crm','sms','whatsapp') THEN 'paid'
-      WHEN raw_channel LIKE '%google%' AND raw_medium = '' AND LOWER(TRIM(last_source_type)) IN ('search','referring_site') THEN 'organic'
+      WHEN raw_medium = '' AND REGEXP_CONTAINS(raw_channel, r'(google|bing|yahoo|duckduckgo|brave)') THEN 'organic'
+      WHEN raw_medium = '' AND REGEXP_CONTAINS(raw_channel, r'(instagram|facebook|youtube|tiktok)') THEN 'organic'
+      WHEN REGEXP_CONTAINS(raw_medium, r'(email|newsletter|crm|sms|whatsapp|disparo|grupos|canal[-_ ]de[-_ ]transmissao)')
+        OR REGEXP_CONTAINS(raw_channel, r'(email|whatsapp|sms|rd station|rdstation)') THEN 'owned'
+      WHEN raw_medium = 'referral'
+        OR REGEXP_CONTAINS(raw_channel, r'(linktree|linktr\\.ee|linktr|nextags|awin|cupomonline|br-desconto|chatgpt|perplexity)') THEN 'referral'
       ELSE 'unknown'
     END AS tipo
   FROM joined
