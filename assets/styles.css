@@ -1278,6 +1278,15 @@ h1 {
   gap: 6px;
   margin-top: 7px;
 }
+.story-goal-list--compact {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.story-goal-list--compact .story-goal-row {
+  padding: 7px;
+}
+.story-goal-list--compact .story-goal-row em {
+  font-size: .62rem;
+}
 .story-goal-row {
   min-width: 0;
   border: 1px solid rgba(255,255,255,.09);

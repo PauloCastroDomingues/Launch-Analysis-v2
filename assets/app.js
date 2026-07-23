@@ -2038,6 +2038,101 @@
     return aggregateLaunchSalesRows(rows, { start_day: startDay, end_day: endDay });
   }
 
+  function launchRevenueForIsoRange(launch, startIso, endIso) {
+    const d0 = launch?.d0 || launch?.day_zero_base;
+    if (!d0 || !startIso || !endIso) {
+      return { receita: null, pedidos: null, pares: null, row: null };
+    }
+    const startDay = dayIndex(d0, startIso);
+    const endDay = dayIndex(d0, endIso);
+    if (startDay === null || endDay === null) {
+      return { receita: null, pedidos: null, pares: null, row: null };
+    }
+    return launchRevenueForDayRange(launch, startDay, endDay);
+  }
+
+  function goalMonthBreakdown(row, launch) {
+    const parts = Array.isArray(row?.metaParts) && row.metaParts.length
+      ? row.metaParts
+      : row?.startIso && row?.endIso
+        ? [{ month: monthKeyFromIso(row.startIso), startIso: row.startIso, endIso: row.endIso }]
+        : [];
+    return parts
+      .map((part) => {
+        const month = monthKeyFromIso(part.month || part.startIso);
+        if (!month || !part.startIso || !part.endIso) return null;
+        const metaRow = metaMensalForMonth(month, launch);
+        const monthlyTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
+        const monthlyActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+        const sales = launchRevenueForIsoRange(launch, part.startIso, part.endIso);
+        return {
+          month,
+          startIso: part.startIso,
+          endIso: part.endIso,
+          target: monthlyTarget,
+          actual: monthlyActual,
+          receita: sales.receita,
+          pedidos: sales.pedidos,
+          pares: sales.pares,
+          pctMeta: ratioOrNull(sales.receita, monthlyTarget),
+          pctRealizado: ratioOrNull(sales.receita, monthlyActual)
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function meaningfulGoalMonths(row, launch) {
+    return goalMonthBreakdown(row, launch).filter((part) => (
+      part.target !== null || part.actual !== null || part.receita !== null
+    ));
+  }
+
+  function goalDisplayPctMeta(row, launch) {
+    const months = meaningfulGoalMonths(row, launch);
+    if (months.length === 1) return months[0].pctMeta;
+    if (months.length > 1) return null;
+    return row?.pctMeta ?? null;
+  }
+
+  function goalDisplayTarget(row, launch) {
+    const months = meaningfulGoalMonths(row, launch);
+    if (months.length === 1) return months[0].target;
+    return null;
+  }
+
+  function goalMonthBreakdownText(row, launch) {
+    const months = meaningfulGoalMonths(row, launch);
+    if (!months.length) return '';
+    return months.map((part) => {
+      const pct = part.pctMeta !== null ? ` (${fmtPct(part.pctMeta, 1)} da meta)` : '';
+      return `${fmtMonthKey(part.month)}: ${fmtBRL(part.receita)} / meta do mês ${fmtBRL(part.target)}${pct}`;
+    }).join(' | ');
+  }
+
+  function goalMonthBreakdownHtml(row, launch) {
+    const months = meaningfulGoalMonths(row, launch);
+    if (months.length <= 1) return '';
+    return `
+      <div class="story-goal-caption">Meta acompanhando o faturamento por mês</div>
+      <div class="story-goal-list story-goal-list--compact">
+        ${months.map((part) => {
+          const pct = part.pctMeta !== null ? fmtPct(part.pctMeta, 1) : 'sem meta';
+          const width = part.pctMeta !== null ? Math.min(100, Math.max(3, part.pctMeta * 100)) : 0;
+          return `
+            <div class="story-goal-row story-goal-row--ok">
+              <div class="story-goal-row-head">
+                <span>${escapeHtml(fmtMonthKey(part.month))} <small>${escapeHtml(fmtDateSlash(part.startIso))} a ${escapeHtml(fmtDateSlash(part.endIso))}</small></span>
+                <strong>${escapeHtml(pct)}</strong>
+              </div>
+              <div class="story-goal-track" aria-hidden="true"><i style="width:${width.toFixed(1)}%"></i></div>
+              <em>${escapeHtml(`${fmtBRL(part.receita)} produto / meta do mês ${fmtBRL(part.target)}`)}</em>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   function launchRevenueForMetaParts(launch, metaParts = [], field = 'actual') {
     const dateKey = `${field}Dates`;
     const validParts = (metaParts || []).filter((part) => (
@@ -2200,11 +2295,16 @@
     return ` · comparável em ${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias${end}`;
   }
 
-  function representationGoalSummary(rows) {
+  function representationGoalSummary(rows, launch = null) {
     const first = rows[0];
     if (!first) return 'Meta mensal ainda não conectada para este lançamento.';
-    if (first.pctMeta !== null) {
-      return `M1 ${goalRangeLabel(first)}: ${fmtPct(first.pctMeta, 1)} ${first.metaComplete ? 'da meta' : 'da meta parcial'}${goalCoverageNote(first)}.`;
+    const displayPct = goalDisplayPctMeta(first, launch);
+    const monthBreakdown = goalMonthBreakdownText(first, launch);
+    if (monthBreakdown && displayPct === null) {
+      return `M1 ${goalRangeLabel(first)}: meta lida mês a mês, sem acumulado. ${monthBreakdown}.`;
+    }
+    if (displayPct !== null) {
+      return `M1 ${goalRangeLabel(first)}: ${fmtPct(displayPct, 1)} da meta mensal${goalCoverageNote(first)}.`;
     }
     if (first.target === null) {
       return `M1 ${goalRangeLabel(first)}: meta ainda não carregada.`;
@@ -2212,7 +2312,7 @@
     return `M1 ${goalRangeLabel(first)}: sem venda carregada contra a meta.`;
   }
 
-  function storyGoalContributionHtml(rows = []) {
+  function storyGoalContributionHtml(rows = [], launch = null) {
     if (!rows.length) return '';
     return `
       <div class="story-goal-caption">Produto vs meta mensal desde D0</div>
@@ -2220,23 +2320,30 @@
         ${rows.map((row) => {
           const hasMeta = row.target !== null;
           const hasSales = row.receita !== null;
-          const pctText = row.pctMeta !== null
-            ? `${fmtPct(row.pctMeta, 1)} ${row.metaComplete ? 'da meta' : 'meta parcial'}`
+          const displayPct = goalDisplayPctMeta(row, launch);
+          const displayTarget = goalDisplayTarget(row, launch);
+          const monthBreakdown = goalMonthBreakdownText(row, launch);
+          const pctText = monthBreakdown && displayPct === null
+            ? 'mês a mês'
+            : displayPct !== null
+            ? `${fmtPct(displayPct, 1)} da meta mensal`
             : row.notStarted
               ? 'não iniciado'
               : hasMeta
               ? 'sem venda'
               : 'sem meta';
           const rangeText = `${goalRangeLabel(row)} · ${goalDateRangeLabel(row)}`;
-          const detail = hasMeta
-            ? `${fmtBRL(row.receita)} comparável / ${goalMetaLabel(row)}${goalCoverageNote(row)}`
+          const detail = monthBreakdown
+            ? monthBreakdown
+            : hasMeta
+            ? `${fmtBRL(row.receita)} comparável / meta mensal ${fmtBRL(displayTarget ?? row.target)}${goalCoverageNote(row)}`
             : hasSales
               ? `${fmtBRL(row.receita)} vendido · meta não carregada`
               : row.notStarted
                 ? `Janela prevista: ${goalDateRangeLabel(row)}`
                 : 'meta não carregada';
-          const width = row.pctMeta !== null ? Math.min(100, Math.max(3, row.pctMeta * 100)) : 0;
-          const state = row.pctMeta === null ? 'pending' : row.pctMeta >= 0.12 ? 'focus' : 'ok';
+          const width = displayPct !== null ? Math.min(100, Math.max(3, displayPct * 100)) : 0;
+          const state = displayPct === null ? 'pending' : displayPct >= 0.12 ? 'focus' : 'ok';
           return `
             <div class="story-goal-row story-goal-row--${escapeHtml(state)}">
               <div class="story-goal-row-head">
@@ -2252,15 +2359,17 @@
     `;
   }
 
-  function representationGoalEvidence(rows = []) {
+  function representationGoalEvidence(rows = [], launch = null) {
     if (!rows.length) return '';
     const summary = rows.map((row) => {
-      const pct = row.pctMeta !== null ? fmtPct(row.pctMeta, 1) : row.notStarted ? 'não iniciado' : 'sem meta';
+      const displayPct = goalDisplayPctMeta(row, launch);
+      const pct = displayPct !== null ? fmtPct(displayPct, 1) : row.notStarted ? 'não iniciado' : 'mes_a_mes';
       const metaStatus = row.target === null ? 'sem meta' : row.metaComplete ? 'meta completa' : `meta parcial ${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias`;
       const observed = row.receitaTotalObservada !== null && row.receitaTotalObservada !== row.receita
         ? ` receita_total_observada=${fmtBRL(row.receitaTotalObservada)}`
         : '';
-      return `M${row.index} ${goalRangeLabel(row)} ${goalDateRangeLabel(row)}: receita_comparavel=${fmtBRL(row.receita)}${observed} meta=${fmtBRL(row.target)} pct=${pct} (${metaStatus})`;
+      const months = goalMonthBreakdownText(row, launch);
+      return `M${row.index} ${goalRangeLabel(row)} ${goalDateRangeLabel(row)}: receita_comparavel=${fmtBRL(row.receita)}${observed} meta=${fmtBRL(row.target)} pct=${pct} (${metaStatus})${months ? ` meses=[${months}]` : ''}`;
     }).join(' | ');
     return `<code class="story-step-source">metas_mensais.json + lancamentos_produtos_dia.json → ${escapeHtml(summary)}</code>`;
   }
@@ -2488,62 +2597,68 @@
   function companyGoalMomentNarrative(launch, model, goalRows = []) {
     const base = companyMomentNarrative(model);
     const firstGoal = goalRows[0];
-    const goalMonth = monthKeyFromIso(firstGoal?.startIso || launch?.d0 || snapshotIso());
-    const metaRow = goalMonth ? metaMensalForMonth(goalMonth, launch) : metaMensalForLaunch(launch);
-    const monthlyTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
-    const monthlyActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
+    const range = firstGoal ? `${goalRangeLabel(firstGoal)} (${goalDateRangeLabel(firstGoal)})` : 'M1 desde D0';
+    const months = firstGoal ? meaningfulGoalMonths(firstGoal, launch) : [];
+    const focusMonth = [...months].reverse().find((part) => (
+      part.target !== null || part.actual !== null || part.receita !== null
+    ));
+    const multiMonth = months.length > 1;
+    const goalMonth = monthKeyFromIso(focusMonth?.month || firstGoal?.startIso || launch?.d0 || snapshotIso());
     const monthlyLabel = fmtMonthKey(goalMonth);
-    const target = numberOrNull(firstGoal?.target);
-    const actual = numberOrNull(firstGoal?.actual);
-    const revenue = numberOrNull(firstGoal?.receita);
+    const target = numberOrNull(focusMonth ? focusMonth.target : firstGoal?.target);
+    const actual = numberOrNull(focusMonth ? focusMonth.actual : firstGoal?.actual);
+    const revenue = numberOrNull(focusMonth ? focusMonth.receita : firstGoal?.receita);
     const companyPct = ratioOrNull(actual, target);
     const productMetaPct = ratioOrNull(revenue, target);
     const productActualPct = ratioOrNull(revenue, actual);
-    const range = firstGoal ? `${goalRangeLabel(firstGoal)} (${goalDateRangeLabel(firstGoal)})` : 'M1 desde D0';
     const comparableNote = firstGoal && !firstGoal.metaComplete && firstGoal.metaDays && firstGoal.totalDays
       ? ` Como a meta/realizado só existem para ${fmtNum(firstGoal.metaDays)}/${fmtNum(firstGoal.totalDays)} dias dessa janela, o produto também foi somado apenas na mesma cobertura comparável.`
       : '';
     const selectedPartialNote = firstGoal?.selectedPeriodPartial
       ? ` ${selectedPeriodLabel()} foi selecionado, mas o snapshot do produto só tem dados até ${goalDayLabel(firstGoal.observedEndDay)}; a leitura usa essa cobertura disponível.`
       : '';
-    const monthlyTargetNote = monthlyTarget !== null
-      ? ` Meta total de ${monthlyLabel}: ${fmtBRL(monthlyTarget)}; meta do período analisado: ${fmtBRL(target)}.`
-      : '';
-    const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa; quando existe detalhe diário, ele vem de dashboard_targets_daily_raw no SSOT. lancamentos_produtos_dia.json calcula a receita do produto na mesma cobertura.';
+    const monthModeNote = multiMonth
+      ? ` A janela cruza ${fmtNum(months.length)} meses; por isso a meta não é acumulada. O número principal usa ${monthlyLabel}, o mês mais recente com dado na janela, e a quebra abaixo mostra cada mês separado.`
+      : ` A leitura usa ${monthlyLabel}: faturamento da empresa contra a meta total do mês, com o produto como participação.`;
+    const monthBreakdown = firstGoal ? goalMonthBreakdownHtml(firstGoal, launch) : '';
+    const monthBreakdownEvidence = firstGoal ? goalMonthBreakdownText(firstGoal, launch) : '';
+    const source = 'Origem: metas_mensais.json informa a meta total e o faturamento realizado da empresa por mês; quando existe detalhe diário, ele vem de dashboard_targets_daily_raw no SSOT. lancamentos_produtos_dia.json calcula a receita do produto no mesmo recorte.';
 
     if (!firstGoal || (target === null && actual === null)) {
       return {
-        label: 'Meta do período não carregada',
+        label: 'Meta do mês não carregada',
         value: 'Sem meta',
-        copy: `${range}: este card compara faturamento realizado da empresa contra a meta do período, mas também mostra a meta total do mês. Como a meta/faturamento do período ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.${monthlyTargetNote}${selectedPartialNote}`,
-        evidence: `${source} ${base.evidence || ''}`,
+        copy: `${range}: este card compara faturamento realizado da empresa contra a meta mensal que acompanha o faturamento do produto. Como a meta/faturamento do mês ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.${monthModeNote}${selectedPartialNote}`,
+        evidence: `${source} meses=[${monthBreakdownEvidence}] ${base.evidence || ''}`,
         source,
         state: revenue !== null ? 'pending' : 'warn',
         facts: [
           { label: 'Período', value: range },
           { label: 'Receita produto', value: fmtBRL(revenue) },
-          { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
-          { label: 'Fat. empresa', value: 'sem dado' },
-          { label: 'Meta período', value: 'sem meta' }
-        ]
+          { label: 'Mês base', value: monthlyLabel },
+          { label: 'Fat. empresa mês', value: 'sem dado' },
+          { label: 'Meta mês', value: 'sem meta' }
+        ],
+        extraHtml: monthBreakdown
       };
     }
 
     if (target === null && actual !== null) {
       return {
-        label: 'Meta do período não carregada',
+        label: 'Meta do mês não carregada',
         value: 'Sem meta',
-        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do período ainda não está carregada. O produto entra apenas como participação no realizado: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.${comparableNote}${selectedPartialNote}`,
-        evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+        copy: `${range}: em ${monthlyLabel}, a empresa faturou ${fmtBRL(actual)}, mas a meta mensal ainda não está carregada. O produto entra como participação no realizado: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.${monthModeNote}${comparableNote}${selectedPartialNote}`,
+        evidence: `${source} mes_base=${monthlyLabel} empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)} meses=[${monthBreakdownEvidence}]. ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
-          { label: 'Faturamento', value: fmtBRL(actual) },
-          { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
-          { label: 'Meta período', value: 'sem meta' },
+          { label: 'Mês base', value: monthlyLabel },
+          { label: 'Fat. empresa mês', value: fmtBRL(actual) },
+          { label: 'Meta mês', value: 'sem meta' },
           { label: 'Share produto', value: fmtPct(productActualPct, 1) },
           { label: 'Receita produto', value: fmtBRL(revenue) }
-        ]
+        ],
+        extraHtml: monthBreakdown
       };
     }
 
@@ -2551,17 +2666,18 @@
       return {
         label: 'Faturamento empresa pendente',
         value: 'Sem realizado',
-        copy: `${range}: a meta do período era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado.${monthlyTargetNote} Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${comparableNote}${selectedPartialNote}`,
-        evidence: `${source} ${base.evidence || ''}`,
+        copy: `${range}: a meta total de ${monthlyLabel} é ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado. Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${monthModeNote}${comparableNote}${selectedPartialNote}`,
+        evidence: `${source} mes_base=${monthlyLabel} meta_mes=${fmtBRL(target)} meses=[${monthBreakdownEvidence}]. ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
-          { label: 'Faturamento', value: 'sem dado' },
-          { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
-          { label: 'Meta período', value: fmtBRL(target) },
+          { label: 'Mês base', value: monthlyLabel },
+          { label: 'Fat. empresa mês', value: 'sem dado' },
+          { label: 'Meta mês', value: fmtBRL(target) },
           { label: 'Receita produto', value: fmtBRL(revenue) },
           { label: 'Share produto', value: 'sem realizado' }
-        ]
+        ],
+        extraHtml: monthBreakdown
       };
     }
 
@@ -2573,24 +2689,25 @@
     const companyState = companyPct < 0.9 ? 'warn' : companyPct >= 1 ? 'focus' : 'ok';
     const metaGap = actual !== null && target !== null ? actual - target : null;
     const productSentence = revenue !== null
-      ? `O produto selecionado entra como participação: fez ${fmtBRL(revenue)}, representou ${fmtPct(productActualPct, 1)} do faturamento realizado e equivaleu a ${fmtPct(productMetaPct, 1)} da meta do período.`
+      ? `O produto selecionado entra como participação: fez ${fmtBRL(revenue)} em ${monthlyLabel}, representou ${fmtPct(productActualPct, 1)} do faturamento realizado e equivaleu a ${fmtPct(productMetaPct, 1)} da meta do mês.`
       : 'Ainda não há receita do produto carregada nessa janela.';
 
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta do período analisado, sem esconder a meta total do mês. A meta total de ${monthlyLabel} é ${fmtBRL(monthlyTarget)}; dentro da janela do lançamento, a meta proporcional é ${fmtBRL(target)}. A empresa realizou ${fmtBRL(actual)} (${fmtPct(companyPct, 1)} do período), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}${selectedPartialNote}`,
-      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta_periodo=${fmtBRL(target)} meta_total_mes=${fmtBRL(monthlyTarget)} realizado_total_mes=${fmtBRL(monthlyActual)} atingimento_periodo=${fmtPct(companyPct, 1)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+      copy: `${range}: momento da empresa = faturamento realizado contra a meta total do mês em que o faturamento do produto está sendo lido.${monthModeNote} Em ${monthlyLabel}, a empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} (${fmtPct(companyPct, 1)}), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}${selectedPartialNote}`,
+      evidence: `${source} mes_base=${monthlyLabel} empresa_realizado_mes=${fmtBRL(actual)} meta_mes=${fmtBRL(target)} atingimento_mes=${fmtPct(companyPct, 1)} gap_mes=${fmtBRL(metaGap)} produto_mes=${fmtBRL(revenue)} share_produto_mes=${fmtPct(productActualPct, 1)} meses=[${monthBreakdownEvidence}]. ${base.evidence || ''}`,
       source,
       state: companyState,
       facts: [
-        { label: 'Faturamento', value: fmtBRL(actual) },
-        { label: 'Meta total do mês', value: fmtBRL(monthlyTarget) },
-        { label: 'Meta período', value: fmtBRL(target) },
-        { label: 'Gap período', value: fmtBRL(metaGap) },
+        { label: 'Mês base', value: monthlyLabel },
+        { label: 'Fat. empresa mês', value: fmtBRL(actual) },
+        { label: 'Meta mês', value: fmtBRL(target) },
+        { label: 'Gap mês', value: fmtBRL(metaGap) },
         { label: 'Share produto', value: fmtPct(productActualPct, 1) },
         { label: 'Receita produto', value: fmtBRL(revenue) }
-      ]
+      ],
+      extraHtml: monthBreakdown
     };
   }
 
@@ -2738,12 +2855,13 @@
     const companyGoal = selectedGoalRow(selected);
     const company = companyGoalMomentNarrative(selected, model, companyGoal ? [companyGoal] : goalRows);
     const firstGoal = companyGoal || goalRows[0];
-    const firstGoalPct = numberOrNull(firstGoal?.pctMeta);
+    const firstGoalPct = firstGoal ? numberOrNull(goalDisplayPctMeta(firstGoal, selected)) : null;
+    const firstGoalMonthText = firstGoal ? goalMonthBreakdownText(firstGoal, selected) : '';
     const representationPartialNote = firstGoal?.selectedPeriodPartial ? `; dados até ${goalDayLabel(firstGoal.observedEndDay)}` : '';
-    const representationValue = firstGoalPct !== null ? fmtPct(firstGoalPct, 1) : firstGoal ? 'Sem meta' : fmtPct(share, 1);
+    const representationValue = firstGoalPct !== null ? fmtPct(firstGoalPct, 1) : firstGoalMonthText ? 'Mês a mês' : firstGoal ? 'Sem meta' : fmtPct(share, 1);
     const representationDetail = firstGoal
-      ? `${selectedPeriodLabel()} ${goalRangeLabel(firstGoal)}${representationPartialNote}: ${firstGoalPct !== null ? `${fmtPct(firstGoalPct, 1)} da meta` : 'sem meta'}. Share da janela: ${fmtPct(share, 1)}.`
-      : `${representationGoalSummary(goalRows)} Share da janela: ${fmtPct(share, 1)}.`;
+      ? `${selectedPeriodLabel()} ${goalRangeLabel(firstGoal)}${representationPartialNote}: ${firstGoalPct !== null ? `${fmtPct(firstGoalPct, 1)} da meta mensal` : firstGoalMonthText ? 'meta aberta mês a mês, sem acumulado' : 'sem meta'}. Share da janela: ${fmtPct(share, 1)}.`
+      : `${representationGoalSummary(goalRows, selected)} Share da janela: ${fmtPct(share, 1)}.`;
     const activity = launchActivityNarrative(selected, selectedWindow);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
@@ -2798,7 +2916,7 @@
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const activityTooltip = 'Resumo operacional desde o D0 usado na análise. Mostra quantos dias o lançamento já tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
-    const representationGoalHtml = storyGoalContributionHtml(goalRows);
+    const representationGoalHtml = storyGoalContributionHtml(goalRows, selected);
     const evidence = [
       storyMetricHtml({
         label: 'Representatividade vs meta',
@@ -2806,7 +2924,7 @@
         detail: representationDetail,
         width: firstGoalPct !== null ? firstGoalPct * 100 : 0,
         state: firstGoalPct === null ? 'pending' : firstGoalPct >= 0.12 ? 'focus' : 'ok',
-        tooltip: 'Mostra quanto o produto cobriu da meta proporcional nas janelas M1 D0-D+30, M2 D+31-D+60 e M3 D+61-D+90.',
+        tooltip: 'Mostra quanto o produto cobriu da meta mensal nas janelas M1 D0-D+30, M2 D+31-D+60 e M3 D+61-D+90. Quando a janela cruza meses, a meta aparece mês a mês, sem acumulado.',
         extraHtml: representationGoalHtml
       }),
       storyMetricHtml({
@@ -2816,7 +2934,7 @@
         width: companyWidth,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
         tooltip: 'Mostra como a empresa está contra a meta no período do produto selecionado. O produto entra como participação no faturamento realizado.',
-        extraHtml: `${storyFactChips(company.facts)}${storySourceNote(company.source)}`,
+        extraHtml: `${storyFactChips(company.facts)}${company.extraHtml || ''}${storySourceNote(company.source)}`,
         showTrack: false
       }),
       storyMetricHtml({
@@ -2868,10 +2986,10 @@
         step: '02',
         title: 'Representatividade vs meta',
         value: representationValue,
-        label: representationGoalSummary(goalRows),
-        copy: `${representationGoalEvidence(goalRows)}${evidenceSourceLine('representatividade', { model })}`,
+        label: representationGoalSummary(goalRows, selected),
+        copy: `${representationGoalEvidence(goalRows, selected)}${evidenceSourceLine('representatividade', { model })}`,
         state: 'focus',
-        tooltip: 'Evidência técnica do peso do lançamento: produto contra meta proporcional por janelas D+n, share acumulado e posição no universo comparado.'
+        tooltip: 'Evidência técnica do peso do lançamento: produto contra meta mensal por janelas D+n, share da janela e posição no universo comparado.'
       },
       {
         step: '03',
