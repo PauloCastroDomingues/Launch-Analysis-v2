@@ -6666,6 +6666,33 @@
   }
 
   function projectionScenarios(selected) {
+    const selectedKey = isSpecificAnalysisPeriod() ? state.analysisPeriodKey : null;
+    if (selectedKey && WINDOW_KEYS.includes(selectedKey)) {
+      const baseWindow = getWindow(selected, selectedKey);
+      if (!baseWindow?.receita) return null;
+      const hist = selectedCompareLaunches()
+        .filter((l) => isHistoricalLaunch(l) && l.modelo_id !== selected.modelo_id)
+        .filter((l) => getWindow(l, '90d')?.receita && getWindow(l, selectedKey)?.receita);
+      const fallbackHist = comparableLaunches()
+        .filter((l) => isHistoricalLaunch(l) && getWindow(l, '90d')?.receita && getWindow(l, selectedKey)?.receita);
+      const refs = hist.length ? hist : fallbackHist;
+      const multipliers = refs
+        .map((l) => getWindow(l, '90d').receita / getWindow(l, selectedKey).receita)
+        .filter((value) => value !== null && value !== undefined && Number.isFinite(value))
+        .sort((a, b) => a - b);
+      if (!multipliers.length) return null;
+      const conservative = multipliers[0];
+      const optimistic = multipliers[multipliers.length - 1];
+      const avg = multipliers.reduce((acc, value) => acc + value, 0) / multipliers.length;
+      const ticketPar = baseWindow.pares ? baseWindow.receita / baseWindow.pares : null;
+      const baseLabel = windowLabel(selectedKey);
+      return [
+        { name: 'Conservador', label: `Menor histórico D+90/${baseLabel}: ${fmtNum(conservative, 2)}×`, mult: conservative, value: baseWindow.receita * conservative },
+        { name: 'Base ★', label: `Média D+90/${baseLabel}: ${fmtNum(avg, 2)}×`, mult: avg, value: baseWindow.receita * avg, base: true },
+        { name: 'Otimista', label: `Maior histórico D+90/${baseLabel}: ${fmtNum(optimistic, 2)}×`, mult: optimistic, value: baseWindow.receita * optimistic }
+      ].map((s) => ({ ...s, pairs: ticketPar ? s.value / ticketPar : null, baseLabel }));
+    }
+
     const hist = comparableLaunches()
       .filter((l) => isHistoricalLaunch(l) && l.multiplicadores?.m90_30)
       .filter((l) => l.modelo_id !== selected.modelo_id);
@@ -6690,7 +6717,7 @@
       { name: 'Conservador', label: `Menor histórico ${fmtNum(conservative, 2)}×`, mult: conservative, value: factorBase * conservative },
       { name: 'Base ★', label: `Média ${fmtNum(avg, 2)}×`, mult: avg, value: factorBase * avg, base: true },
       { name: 'Otimista', label: `Maior histórico ${fmtNum(optimistic, 2)}×`, mult: optimistic, value: factorBase * optimistic }
-    ].map((s) => ({ ...s, pairs: ticketPar ? s.value / ticketPar : null }));
+    ].map((s) => ({ ...s, pairs: ticketPar ? s.value / ticketPar : null, baseLabel: getWindow(selected, '30d') ? 'D+30' : 'D+15 estimado' }));
   }
 
   function renderProjection(selected) {
@@ -6707,7 +6734,7 @@
       <div class="metric-sub" style="margin-bottom:10px">Base da projeção: <strong>${escapeHtml(projectionBase.modelo)}</strong></div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
-          <div class="scenario-label">${escapeHtml(s.label)} ${tip(`Fórmula: base 30d estimada x multiplicador ${fmtNum(s.mult, 2)}. Se o modelo só tem D+15, a base 30d é aproximada dobrando D+15, conforme decisão documentada.`)}</div>
+          <div class="scenario-label">${escapeHtml(s.label)} ${tip(`Fórmula: base ${s.baseLabel || 'D+30'} x multiplicador ${fmtNum(s.mult, 2)} para estimar D+90. Quando a janela escolhida não tem dado, a projeção fica vazia.`)}</div>
           <div class="scenario-name">${escapeHtml(s.name)}</div>
           <div class="scenario-value">${fmtBRL(s.value)}</div>
           <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr('Pares estimados = faturamento do cenário / preço médio por par da janela base. É aproximação, não forecast operacional.')}">≈ ${fmtNum(s.pairs)} pares</div>
@@ -6715,7 +6742,7 @@
       </div>
       <div class="card warning" style="margin-top:14px">
         <div class="metric-label">${labelTip('Aviso fixo', 'A projeção não usa modelo estatístico externo. Ela aplica multiplicadores históricos para dar amplitude conservadora/base/otimista.')}</div>
-        <p class="section-desc">Cenários usam multiplicadores 90÷30 dos modelos históricos elegíveis. Leia como referência de amplitude, não como previsão automática.</p>
+        <p class="section-desc">Cenários usam multiplicadores históricos entre a janela selecionada e D+90. Leia como referência de amplitude, não como previsão automática.</p>
       </div>`;
 
   }
