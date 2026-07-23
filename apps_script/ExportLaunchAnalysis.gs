@@ -2826,7 +2826,7 @@ function exportarMetasMensaisSeConfigurado_() {
       const rows = mesclarMetasMensais_(baseRows, rowsBq);
       const payload = {
         generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
-        source: 'bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_vs_actual_daily_published_v,aquisicao_por_canal',
+        source: 'bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal',
         rows
       };
       escreverJsonGitHub_('metas_mensais.json', payload);
@@ -2905,24 +2905,94 @@ WITH actual_cutoff AS (
   FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_actual_daily_v\`
   WHERE data <= CURRENT_DATE('${CONFIG.timeZone}')
 ),
+headers AS (
+  SELECT * EXCEPT(rn)
+  FROM (
+    SELECT
+      DATE(target_month) AS target_month,
+      goal_scope,
+      version_id,
+      status,
+      saved_at,
+      saved_by,
+      source,
+      save_reason,
+      month_label,
+      planning_method,
+      currency_code,
+      monthly_revenue_target,
+      monthly_orders_target,
+      monthly_aov_target,
+      monthly_marketing_cost_pct_target,
+      monthly_marketing_investment_target,
+      monthly_roas_target,
+      commercial_conditions_json,
+      notes,
+      ROW_NUMBER() OVER (
+        PARTITION BY DATE(target_month), goal_scope
+        ORDER BY
+          IF(LOWER(COALESCE(status, '')) = 'published', 1, 0) DESC,
+          saved_at DESC,
+          version_id DESC
+      ) AS rn
+    FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_header_raw\`
+    WHERE goal_scope = ${goalScopeSql}
+  )
+  WHERE rn = 1
+),
+daily_latest AS (
+  SELECT * EXCEPT(rn)
+  FROM (
+    SELECT
+      DATE(target_month) AS target_month,
+      goal_scope,
+      DATE(target_date) AS data,
+      version_id,
+      status,
+      saved_at,
+      day_of_month,
+      weekday_label,
+      week_of_month,
+      commercial_action,
+      crm_action,
+      general_note,
+      revenue_target,
+      orders_target,
+      marketing_investment_target,
+      roas_target,
+      aov_target,
+      ROW_NUMBER() OVER (
+        PARTITION BY DATE(target_month), goal_scope, version_id, DATE(target_date)
+        ORDER BY saved_at DESC
+      ) AS rn
+    FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_daily_raw\`
+    WHERE goal_scope = ${goalScopeSql}
+  )
+  WHERE rn = 1
+),
 targets_daily AS (
   SELECT
-    DATE(data) AS data,
-    DATE(target_month) AS target_month,
-    goal_scope,
-    version_id,
-    status,
-    saved_at,
-    revenue_target,
-    orders_target,
-    marketing_investment_target,
-    roas_target,
-    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), revenue_actual, NULL) AS revenue_actual,
-    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), orders_actual, NULL) AS orders_actual,
-    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), marketing_investment_actual, NULL) AS marketing_investment_actual,
-    IF(DATE(data) <= (SELECT max_data FROM actual_cutoff), roas_actual, NULL) AS roas_actual
-  FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_vs_actual_daily_published_v\`
-  WHERE goal_scope = ${goalScopeSql}
+    d.data,
+    h.target_month,
+    h.goal_scope,
+    h.version_id,
+    h.status,
+    h.saved_at,
+    d.revenue_target,
+    d.orders_target,
+    d.marketing_investment_target,
+    d.roas_target,
+    IF(d.data <= (SELECT max_data FROM actual_cutoff), a.revenue_actual, NULL) AS revenue_actual,
+    IF(d.data <= (SELECT max_data FROM actual_cutoff), a.orders_actual, NULL) AS orders_actual,
+    IF(d.data <= (SELECT max_data FROM actual_cutoff), a.marketing_investment_actual, NULL) AS marketing_investment_actual,
+    IF(d.data <= (SELECT max_data FROM actual_cutoff), a.roas_actual, NULL) AS roas_actual
+  FROM headers h
+  JOIN daily_latest d
+    ON h.target_month = d.target_month
+   AND h.goal_scope = d.goal_scope
+   AND h.version_id = d.version_id
+  LEFT JOIN \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_actual_daily_v\` a
+    ON d.data = a.data
 ),
 daily_agg AS (
   SELECT
@@ -2988,11 +3058,6 @@ aquisicao_mes AS (
     ) ORDER BY investimento_aquisicao DESC)) AS canais_json
   FROM aquisicao_canal
   GROUP BY target_month
-),
-headers AS (
-  SELECT *
-  FROM \`${CONFIG.bqProjectId}.mart_growth_us.dashboard_targets_month_summary_published_v\`
-  WHERE goal_scope = ${goalScopeSql}
 )
 SELECT
   FORMAT_DATE('%Y-%m', h.target_month) AS mes,
@@ -3086,7 +3151,7 @@ function normalizarMetaMensalBigQuery_(row) {
     roas_aquisicao: roasOrNull_(row.roas_aquisicao),
     canais_aquisicao: canais,
     daily,
-    observacao: 'fonte: BigQuery mart_growth_us.dashboard_targets_header_raw + dashboard_targets_daily_raw + aquisicao_por_canal',
+    observacao: 'fonte: BigQuery mart_growth_us.dashboard_targets_header_raw + dashboard_targets_daily_raw + dashboard_targets_actual_daily_v + aquisicao_por_canal',
     status: row.status || 'published'
   };
 }

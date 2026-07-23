@@ -2394,7 +2394,7 @@
     const comparableNote = firstGoal && !firstGoal.metaComplete && firstGoal.metaDays && firstGoal.totalDays
       ? ` Como a meta/realizado só existem para ${fmtNum(firstGoal.metaDays)}/${fmtNum(firstGoal.totalDays)} dias dessa janela, o produto também foi somado apenas na mesma cobertura comparável.`
       : '';
-    const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa; quando existe detalhe diário, ele vem de dashboard_targets_daily_raw/targets published. lancamentos_produtos_dia.json calcula a receita do produto na mesma cobertura.';
+    const source = 'Origem: metas_mensais.json informa meta e faturamento realizado da empresa; quando existe detalhe diário, ele vem de dashboard_targets_daily_raw no SSOT. lancamentos_produtos_dia.json calcula a receita do produto na mesma cobertura.';
 
     if (!firstGoal || (target === null && actual === null)) {
       return {
