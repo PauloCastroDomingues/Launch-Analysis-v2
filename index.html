@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260723-targets-month-total" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260723-global-period" />
 </head>
 <body>
   <div class="app-shell">
@@ -103,12 +103,12 @@
         <div class="chart-card wide">
           <div class="chart-head">
             <div>
-              <div class="chart-title chart-title--with-tip"><span>Curva normalizada D0 → D90</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa. Ativos mostram somente dias já observados no snapshot; históricos usam os dados disponíveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div>
+              <div class="chart-title chart-title--with-tip"><span>Curva normalizada por período</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa dentro do período escolhido. Ativos mostram somente dias já observados no snapshot; históricos usam os dados disponíveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div>
               <div class="chart-sub" id="chart-normalized-sub">Faturamento acumulado por dia desde o lançamento</div>
             </div>
             <div class="chart-mode-controls">
               <div class="chart-mode-toggle" role="group" aria-label="Modo do gráfico de curva">
-                <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 → D90</button>
+                <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 → período</button>
                 <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
                 <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
               </div>
@@ -177,9 +177,9 @@
                 <th><span class="th-label">D+30 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita líquida acumulada de D0 até D+30. É a principal janela de comparação comercial." aria-label="Ajuda sobre D+30">i</button></span></th>
                 <th><span class="th-label">D+60 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita líquida acumulada de D0 até D+60. Use quando todos os comparados tiverem essa janela." aria-label="Ajuda sobre D+60">i</button></span></th>
                 <th><span class="th-label">D+90 Fat. <button class="help-button help-button--mini" type="button" data-tooltip="Receita líquida acumulada de D0 até D+90. Marco de consolidação; modelos recentes podem ficar vazios." aria-label="Ajuda sobre D+90">i</button></span></th>
-                <th class="num"><span class="th-label">Ticket/pedido D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: receita D+30 / pedidos D+30. Mede valor médio por pedido, não volume." aria-label="Ajuda sobre ticket">i</button></span></th>
-                <th class="num"><span class="th-label">Pares D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Quantidade de pares vendidos até D+30. Compara demanda física sem misturar preço." aria-label="Ajuda sobre pares D+30">i</button></span></th>
-                <th class="num"><span class="th-label">% Novos D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: novos / (novos + recorrentes) no D+30. Fica vazio sem classificação auditada." aria-label="Ajuda sobre novos">i</button></span></th>
+                <th class="num"><span class="th-label">Ticket/pedido <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: receita / pedidos na janela selecionada no filtro de período. Mede valor médio por pedido, não volume." aria-label="Ajuda sobre ticket">i</button></span></th>
+                <th class="num"><span class="th-label">Pares <button class="help-button help-button--mini" type="button" data-tooltip="Quantidade de pares vendidos na janela selecionada no filtro de período. Compara demanda física sem misturar preço." aria-label="Ajuda sobre pares">i</button></span></th>
+                <th class="num"><span class="th-label">% Novos <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: novos / (novos + recorrentes) na janela selecionada. Fica vazio sem classificação auditada." aria-label="Ajuda sobre novos">i</button></span></th>
                 <th class="num"><span class="th-label">Velocidade <button class="help-button help-button--mini" type="button" data-tooltip="Receita acumulada dividida pelos dias da janela de referência. Leitura de ritmo médio, não previsão." aria-label="Ajuda sobre velocidade">i</button></span></th>
                 <th class="num"><span class="th-label">Delta vs média <button class="help-button help-button--mini" type="button" data-tooltip="Diferença entre a receita do modelo e a média histórica no mesmo D+n, com fallback para D+30 quando não houver curva comparável." aria-label="Ajuda sobre delta vs média">i</button></span></th>
                 <th><span class="th-label">Fonte <button class="help-button help-button--mini" type="button" data-tooltip="Mostra se o dado é histórico, pipeline real, parcial, estimado ou auditado." aria-label="Ajuda sobre fonte">i</button></span></th>
@@ -203,12 +203,12 @@
         <div class="grid grid-2">
           <div class="chart-card wide">
             <div class="chart-head">
-              <div><div class="chart-title chart-title--with-tip"><span>Faturamento acumulado</span><button class="help-button help-button--mini" type="button" data-tooltip="Receita líquida acumulada por janela D+N. Fórmula: soma de receita dos itens classificados no modelo até cada marco. Dado pode ser histórico, pipeline real ou parcial conforme badge." aria-label="Ajuda sobre gráfico de faturamento">i</button></div><div class="chart-sub">R$ por janela: D+7, D+15, D+30, D+60 e D+90</div></div>
+              <div><div class="chart-title chart-title--with-tip"><span>Faturamento acumulado</span><button class="help-button help-button--mini" type="button" data-tooltip="Receita líquida acumulada por janela D+N. Fórmula: soma de receita dos itens classificados no modelo até cada marco. Dado pode ser histórico, pipeline real ou parcial conforme badge." aria-label="Ajuda sobre gráfico de faturamento">i</button></div><div class="chart-sub">R$ por janela até o período selecionado</div></div>
             </div>
             <div class="chart-canvas"><canvas id="chart-revenue"></canvas></div>
           </div>
           <div class="chart-card">
-            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Pares acumulados</span><button class="help-button help-button--mini" type="button" data-tooltip="Soma de quantidades vendidas por janela. Interpreta demanda física, mas depende da classificação correta de SKU/nome do produto." aria-label="Ajuda sobre pares acumulados">i</button></div><div class="chart-sub">Unidades por janela: D+7, D+15, D+30, D+60 e D+90</div></div></div>
+            <div class="chart-head"><div><div class="chart-title chart-title--with-tip"><span>Pares acumulados</span><button class="help-button help-button--mini" type="button" data-tooltip="Soma de quantidades vendidas por janela. Interpreta demanda física, mas depende da classificação correta de SKU/nome do produto." aria-label="Ajuda sobre pares acumulados">i</button></div><div class="chart-sub">Unidades por janela até o período selecionado</div></div></div>
             <div class="chart-canvas"><canvas id="chart-pairs"></canvas></div>
           </div>
           <div class="chart-card">
@@ -459,7 +459,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="assets/embedded-data.js?v=20260721-series2-d0-20260716"></script>
-  <script src="assets/app.js?v=20260723-targets-month-total"></script>
+  <script src="assets/app.js?v=20260723-global-period"></script>
   <script src="assets/presentation.js?v=20260716-compact-overview"></script>
 </body>
 </html>

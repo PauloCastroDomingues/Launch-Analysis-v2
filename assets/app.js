@@ -1005,6 +1005,12 @@
     return { key: null, data: null };
   }
 
+  function widestWindow(launch) {
+    if (!launch) return { key: null, data: null };
+    const key = ['90d', '60d', '30d', '15d', '7d'].find((windowKey) => getWindow(launch, windowKey));
+    return key ? { key, data: getWindow(launch, key) } : { key: null, data: null };
+  }
+
   function selectedAnalysisWindow(launch) {
     const period = state.analysisPeriodKey || 'total';
     if (!launch) {
@@ -1021,7 +1027,7 @@
           label: `D+${day}`
         };
       }
-      const best = bestWindow(launch);
+      const best = widestWindow(launch);
       return {
         ...best,
         isCurrentAccumulated: false,
@@ -1035,6 +1041,73 @@
       isCurrentAccumulated: false,
       label: windowLabel(period)
     };
+  }
+
+  function isSpecificAnalysisPeriod() {
+    return WINDOW_KEYS.includes(state.analysisPeriodKey || '');
+  }
+
+  function selectedPeriodEndDay(launch, { capToAvailable = false } = {}) {
+    const period = state.analysisPeriodKey || 'total';
+    let day = WINDOW_DAYS[period] ?? null;
+    if (day === null) {
+      const selectedWindow = selectedAnalysisWindow(launch);
+      if (selectedWindow.isCurrentAccumulated) {
+        day = numberOrNull(selectedWindow.data?.day) ?? numberOrNull(launch?.dPlus);
+      } else if (WINDOW_KEYS.includes(selectedWindow.key)) {
+        day = windowEndDay(selectedWindow.key);
+      } else {
+        day = numberOrNull(launch?.dPlus) ?? latestLaunchDataDay(launch) ?? 90;
+      }
+    }
+    if (day === null) return null;
+    if (!capToAvailable) return Math.max(0, Math.min(90, day));
+    const available = [
+      latestLaunchDataDay(launch),
+      numberOrNull(launch?.dPlus)
+    ].filter((value) => value !== null);
+    const maxAvailable = available.length ? Math.max(...available) : day;
+    return Math.max(0, Math.min(90, day, maxAvailable));
+  }
+
+  function selectedPeriodWindowKeys(launch) {
+    if (!isSpecificAnalysisPeriod()) return WINDOW_KEYS;
+    const endDay = selectedPeriodEndDay(launch);
+    return WINDOW_KEYS.filter((key) => windowEndDay(key) <= endDay);
+  }
+
+  function selectedPeriodLabel() {
+    const period = ANALYSIS_PERIODS.find((item) => item.key === state.analysisPeriodKey);
+    return period?.label || state.analysisPeriodKey || 'Total dias';
+  }
+
+  function validAnalysisPeriodKey(key) {
+    return ANALYSIS_PERIODS.some((period) => period.key === key);
+  }
+
+  function syncAnalysisPeriodUrl() {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('period', state.analysisPeriodKey || 'total');
+      window.history.replaceState(null, '', url);
+    } catch (error) {
+      // URL sync is only a convenience for sharing/debugging; rendering must not depend on it.
+    }
+  }
+
+  function applyInitialAnalysisPeriodFromUrl() {
+    const params = new URLSearchParams(window.location.search || '');
+    const period = params.get('period');
+    if (validAnalysisPeriodKey(period)) state.analysisPeriodKey = period;
+  }
+
+  function launchSalesRowsForSelectedPeriod(launch) {
+    const endDay = selectedPeriodEndDay(launch, { capToAvailable: true });
+    return optionalRows('lancamentos_produtos_dia').filter((row) => {
+      if (row.modelo_id !== launch?.modelo_id) return false;
+      const idx = dayIndex(launch?.d0 || launch?.day_zero_base, row.data);
+      return idx !== null && idx >= 0 && (endDay === null || idx <= endDay);
+    });
   }
 
   function hasPipelineRows(launch) {
@@ -1620,6 +1693,7 @@
       </select>`;
     wrap.querySelector('select')?.addEventListener('change', (event) => {
       state.analysisPeriodKey = event.target.value;
+      syncAnalysisPeriodUrl();
       renderAll();
     });
   }
@@ -2003,7 +2077,63 @@
     });
   }
 
-  function representationGoalRows(launch) {
+  function goalRowForWindow(launch, window, availableDay = null) {
+    const d0 = launch?.d0 || launch?.day_zero_base;
+    if (!d0) return null;
+    const dataEndDay = availableDay === null ? window.endDay : Math.min(window.endDay, availableDay);
+    const notStarted = dataEndDay < window.startDay;
+    const observedStartDay = window.startDay;
+    const observedEndDay = notStarted ? null : dataEndDay;
+    const startIso = toIsoDate(addDays(d0, window.startDay));
+    const plannedEndIso = toIsoDate(addDays(d0, window.endDay));
+    const observedEndIso = observedEndDay !== null ? toIsoDate(addDays(d0, observedEndDay)) : null;
+    const metaInfo = observedEndIso ? goalMetaForRange(startIso, observedEndIso, launch) : null;
+    const target = metaInfo?.target ?? null;
+    const actual = metaInfo?.actual ?? null;
+    const fullSales = observedEndDay !== null
+      ? launchRevenueForDayRange(launch, observedStartDay, observedEndDay)
+      : { receita: null, pedidos: null, pares: null, row: null };
+    const targetSales = metaInfo
+      ? launchRevenueForMetaParts(launch, metaInfo.parts, 'target')
+      : fullSales;
+    const actualSales = metaInfo
+      ? launchRevenueForMetaParts(launch, metaInfo.parts, 'actual')
+      : fullSales;
+    const comparableSales = actualSales.receita !== null
+      ? actualSales
+      : targetSales.receita !== null
+        ? targetSales
+        : fullSales;
+    return {
+      index: window.index,
+      startDay: window.startDay,
+      endDay: window.endDay,
+      observedEndDay,
+      startIso,
+      endIso: observedEndIso || plannedEndIso,
+      plannedEndIso,
+      notStarted,
+      complete: observedEndDay !== null && observedEndDay >= window.endDay,
+      metaComplete: Boolean(metaInfo?.complete),
+      metaDays: metaInfo?.targetDays ?? 0,
+      totalDays: metaInfo?.totalDays ?? 0,
+      metaParts: metaInfo?.parts || [],
+      target,
+      actual,
+      receita: comparableSales.receita,
+      pedidos: comparableSales.pedidos,
+      pares: comparableSales.pares,
+      receitaTotalObservada: fullSales.receita,
+      pedidosTotalObservado: fullSales.pedidos,
+      paresTotalObservado: fullSales.pares,
+      pctMeta: ratioOrNull(targetSales.receita, target),
+      pctRealizado: ratioOrNull(actualSales.receita, actual),
+      sourceRow: comparableSales.row,
+      observedSourceRow: fullSales.row
+    };
+  }
+
+  function representationGoalRows(launch, limitDay = null) {
     const d0 = launch?.d0 || launch?.day_zero_base;
     if (!d0) return [];
     const latestDay = latestLaunchDataDay(launch);
@@ -2011,65 +2141,33 @@
     const availableDay = [latestDay, dPlus].filter((value) => value !== null).reduce((acc, value) => (
       acc === null ? value : Math.min(acc, value)
     ), null);
+    const cappedAvailableDay = limitDay === null
+      ? availableDay
+      : availableDay === null
+        ? limitDay
+        : Math.min(availableDay, limitDay);
     const windows = [
       { index: 1, startDay: 0, endDay: 30 },
       { index: 2, startDay: 31, endDay: 60 },
       { index: 3, startDay: 61, endDay: 90 }
     ];
 
-    return windows.map((window) => {
-      const dataEndDay = availableDay === null ? window.endDay : Math.min(window.endDay, availableDay);
-      const notStarted = dataEndDay < window.startDay;
-      const observedStartDay = window.startDay;
-      const observedEndDay = notStarted ? null : dataEndDay;
-      const startIso = toIsoDate(addDays(d0, window.startDay));
-      const plannedEndIso = toIsoDate(addDays(d0, window.endDay));
-      const observedEndIso = observedEndDay !== null ? toIsoDate(addDays(d0, observedEndDay)) : null;
-      const metaInfo = observedEndIso ? goalMetaForRange(startIso, observedEndIso, launch) : null;
-      const target = metaInfo?.target ?? null;
-      const actual = metaInfo?.actual ?? null;
-      const fullSales = observedEndDay !== null
-        ? launchRevenueForDayRange(launch, observedStartDay, observedEndDay)
-        : { receita: null, pedidos: null, pares: null, row: null };
-      const targetSales = metaInfo
-        ? launchRevenueForMetaParts(launch, metaInfo.parts, 'target')
-        : fullSales;
-      const actualSales = metaInfo
-        ? launchRevenueForMetaParts(launch, metaInfo.parts, 'actual')
-        : fullSales;
-      const comparableSales = actualSales.receita !== null
-        ? actualSales
-        : targetSales.receita !== null
-          ? targetSales
-          : fullSales;
-      return {
-        index: window.index,
-        startDay: window.startDay,
-        endDay: window.endDay,
-        observedEndDay,
-        startIso,
-        endIso: observedEndIso || plannedEndIso,
-        plannedEndIso,
-        notStarted,
-        complete: observedEndDay !== null && observedEndDay >= window.endDay,
-        metaComplete: Boolean(metaInfo?.complete),
-        metaDays: metaInfo?.targetDays ?? 0,
-        totalDays: metaInfo?.totalDays ?? 0,
-        metaParts: metaInfo?.parts || [],
-        target,
-        actual,
-        receita: comparableSales.receita,
-        pedidos: comparableSales.pedidos,
-        pares: comparableSales.pares,
-        receitaTotalObservada: fullSales.receita,
-        pedidosTotalObservado: fullSales.pedidos,
-        paresTotalObservado: fullSales.pares,
-        pctMeta: ratioOrNull(targetSales.receita, target),
-        pctRealizado: ratioOrNull(actualSales.receita, actual),
-        sourceRow: comparableSales.row,
-        observedSourceRow: fullSales.row
-      };
-    });
+    return windows
+      .filter((window) => limitDay === null || window.startDay <= limitDay)
+      .map((window) => goalRowForWindow(launch, window, cappedAvailableDay))
+      .filter(Boolean);
+  }
+
+  function selectedGoalRow(launch) {
+    const requestedEndDay = selectedPeriodEndDay(launch);
+    const endDay = selectedPeriodEndDay(launch, { capToAvailable: true });
+    if (endDay === null) return null;
+    const row = goalRowForWindow(launch, { index: 1, startDay: 0, endDay }, endDay);
+    return row ? {
+      ...row,
+      requestedEndDay,
+      selectedPeriodPartial: requestedEndDay !== null && requestedEndDay > endDay
+    } : null;
   }
 
   function goalDayLabel(day) {
@@ -2300,14 +2398,20 @@
   }
 
   function launchActivityNarrative(launch, selectedWindow = {}) {
-    const current = launch?.acumulado_lancamento || launch?.acumulado_atual || selectedWindow.data || null;
+    const specificPeriod = isSpecificAnalysisPeriod();
+    const current = selectedWindow.data || (!specificPeriod ? (launch?.acumulado_lancamento || launch?.acumulado_atual) : null);
     const activityDay = numberOrNull(current?.activity_day) ?? numberOrNull(launch?.dPlus) ?? numberOrNull(current?.day);
     const dataDay = numberOrNull(current?.data_day) ?? numberOrNull(current?.day);
-    const daysActive = activityDay !== null ? Math.max(1, activityDay + 1) : null;
+    const fixedEndDay = specificPeriod ? selectedPeriodEndDay(launch) : null;
+    const daysActive = specificPeriod
+      ? (current && fixedEndDay !== null ? Math.max(1, fixedEndDay + 1) : null)
+      : activityDay !== null ? Math.max(1, activityDay + 1) : null;
     const receita = numberOrNull(current?.receita);
     const pedidos = numberOrNull(current?.pedidos);
     const pares = numberOrNull(current?.pares);
-    const sourceLabel = activityDay !== null ? `D0 a D+${Math.max(0, activityDay)}` : (selectedWindow.label || 'janela disponível');
+    const sourceLabel = specificPeriod
+      ? `D0 a ${selectedWindow.label || selectedPeriodLabel()}`
+      : activityDay !== null ? `D0 a D+${Math.max(0, activityDay)}` : (selectedWindow.label || 'janela disponível');
     const partialData = dataDay !== null && activityDay !== null && dataDay < activityDay;
     const dataCoverageCopy = partialData ? ` Dados de venda disponíveis até D+${fmtNum(Math.max(0, dataDay))}.` : '';
     const facts = [
@@ -2321,8 +2425,8 @@
       label: sourceLabel,
       value: daysActive !== null ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'}` : 'Sem atividade',
       copy: receita !== null || pedidos !== null
-        ? `Desde o lançamento: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
-        : 'Ainda sem acumulado de atividade desde o lançamento.',
+        ? `${specificPeriod ? 'Na janela selecionada' : 'Desde o lançamento'}: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
+        : `Ainda sem acumulado de atividade ${specificPeriod ? 'na janela selecionada' : 'desde o lançamento'}.`,
       facts,
       row: current ? { ...current, activity_day: activityDay, data_day: dataDay } : null,
       state: receita !== null || pedidos !== null ? 'ok' : 'pending'
@@ -2399,6 +2503,9 @@
     const comparableNote = firstGoal && !firstGoal.metaComplete && firstGoal.metaDays && firstGoal.totalDays
       ? ` Como a meta/realizado só existem para ${fmtNum(firstGoal.metaDays)}/${fmtNum(firstGoal.totalDays)} dias dessa janela, o produto também foi somado apenas na mesma cobertura comparável.`
       : '';
+    const selectedPartialNote = firstGoal?.selectedPeriodPartial
+      ? ` ${selectedPeriodLabel()} foi selecionado, mas o snapshot do produto só tem dados até ${goalDayLabel(firstGoal.observedEndDay)}; a leitura usa essa cobertura disponível.`
+      : '';
     const monthlyTargetNote = monthlyTarget !== null
       ? ` Meta total de ${monthlyLabel}: ${fmtBRL(monthlyTarget)}; meta do período analisado: ${fmtBRL(target)}.`
       : '';
@@ -2408,7 +2515,7 @@
       return {
         label: 'Meta do período não carregada',
         value: 'Sem meta',
-        copy: `${range}: este card compara faturamento realizado da empresa contra a meta do período, mas também mostra a meta total do mês. Como a meta/faturamento do período ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.${monthlyTargetNote}`,
+        copy: `${range}: este card compara faturamento realizado da empresa contra a meta do período, mas também mostra a meta total do mês. Como a meta/faturamento do período ainda não está carregada, só dá para mostrar a receita do produto: ${fmtBRL(revenue)}.${monthlyTargetNote}${selectedPartialNote}`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: revenue !== null ? 'pending' : 'warn',
@@ -2426,7 +2533,7 @@
       return {
         label: 'Meta do período não carregada',
         value: 'Sem meta',
-        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do período ainda não está carregada. O produto entra apenas como participação no realizado: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.${comparableNote}`,
+        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do período ainda não está carregada. O produto entra apenas como participação no realizado: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.${comparableNote}${selectedPartialNote}`,
         evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
         source,
         state: 'pending',
@@ -2444,7 +2551,7 @@
       return {
         label: 'Faturamento empresa pendente',
         value: 'Sem realizado',
-        copy: `${range}: a meta do período era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado.${monthlyTargetNote} Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${comparableNote}`,
+        copy: `${range}: a meta do período era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado.${monthlyTargetNote} Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${comparableNote}${selectedPartialNote}`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: 'pending',
@@ -2472,7 +2579,7 @@
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta do período analisado, sem esconder a meta total do mês. A meta total de ${monthlyLabel} é ${fmtBRL(monthlyTarget)}; dentro da janela do lançamento, a meta proporcional é ${fmtBRL(target)}. A empresa realizou ${fmtBRL(actual)} (${fmtPct(companyPct, 1)} do período), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}`,
+      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta do período analisado, sem esconder a meta total do mês. A meta total de ${monthlyLabel} é ${fmtBRL(monthlyTarget)}; dentro da janela do lançamento, a meta proporcional é ${fmtBRL(target)}. A empresa realizou ${fmtBRL(actual)} (${fmtPct(companyPct, 1)} do período), com gap de ${fmtBRL(metaGap)}. ${productSentence}${comparableNote}${selectedPartialNote}`,
       evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta_periodo=${fmtBRL(target)} meta_total_mes=${fmtBRL(monthlyTarget)} realizado_total_mes=${fmtBRL(monthlyActual)} atingimento_periodo=${fmtPct(companyPct, 1)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
       source,
       state: companyState,
@@ -2571,12 +2678,31 @@
   function shareRankingCutoffDate(selected) {
     const d0 = selected?.d0 || selected?.day_zero_base;
     if (!d0) return null;
+    const selectedDay = selectedPeriodEndDay(selected, { capToAvailable: true });
     const latestDay = latestLaunchDataDay(selected);
     const dPlus = numberOrNull(selected?.dPlus);
-    const day = selected?.isActive
-      ? Math.max(0, dPlus ?? latestDay ?? 0)
-      : Math.min(90, Math.max(0, latestDay ?? dPlus ?? 90));
+    const day = selectedDay !== null
+      ? selectedDay
+      : selected?.isActive
+        ? Math.max(0, dPlus ?? latestDay ?? 0)
+        : Math.min(90, Math.max(0, latestDay ?? dPlus ?? 90));
     return addDays(d0, day);
+  }
+
+  function selectedPeriodShareForLaunch(launch) {
+    const goalRow = selectedGoalRow(launch);
+    return ratioOrNull(goalRow?.receita, goalRow?.actual)
+      ?? numberOrNull(shareModelForLine(launch?.modelo_id)?.share_acumulado_atual);
+  }
+
+  function attributionForSelectedPeriod(launch) {
+    const data = selectedAnalysisWindow(launch).data || {};
+    return {
+      receita_organica: numberOrNull(data.receita_organica),
+      receita_paga: numberOrNull(data.receita_paga),
+      pedidos_organicos: numberOrNull(data.pedidos_organicos),
+      pedidos_pagos: numberOrNull(data.pedidos_pagos)
+    };
   }
 
   function launchStartedByDate(launch, cutoffDate) {
@@ -2603,15 +2729,21 @@
     const model = shareModelForLine(selected.modelo_id);
     const selectedWindow = selectedAnalysisWindow(selected);
     const metaRow = metaMensalForLaunch(selected);
-    const share = numberOrNull(model?.share_acumulado_atual);
-    const launchRevenue = numberOrNull(model?.receita_lancamento_periodo) ?? numberOrNull(selectedWindow.data?.receita);
+    const selectedShare = selectedPeriodShareForLaunch(selected);
+    const share = selectedShare ?? numberOrNull(model?.share_acumulado_atual);
+    const launchRevenue = numberOrNull(selectedWindow.data?.receita) ?? numberOrNull(model?.receita_lancamento_periodo);
     const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue, launchD0: selected.d0 });
-    const goalRows = representationGoalRows(selected);
-    const company = companyGoalMomentNarrative(selected, model, goalRows);
-    const firstGoal = goalRows[0];
+    const periodLimitDay = isSpecificAnalysisPeriod() ? selectedPeriodEndDay(selected) : null;
+    const goalRows = representationGoalRows(selected, periodLimitDay);
+    const companyGoal = selectedGoalRow(selected);
+    const company = companyGoalMomentNarrative(selected, model, companyGoal ? [companyGoal] : goalRows);
+    const firstGoal = companyGoal || goalRows[0];
     const firstGoalPct = numberOrNull(firstGoal?.pctMeta);
+    const representationPartialNote = firstGoal?.selectedPeriodPartial ? `; dados até ${goalDayLabel(firstGoal.observedEndDay)}` : '';
     const representationValue = firstGoalPct !== null ? fmtPct(firstGoalPct, 1) : firstGoal ? 'Sem meta' : fmtPct(share, 1);
-    const representationDetail = `${representationGoalSummary(goalRows)} Share geral: ${fmtPct(share, 1)}.`;
+    const representationDetail = firstGoal
+      ? `${selectedPeriodLabel()} ${goalRangeLabel(firstGoal)}${representationPartialNote}: ${firstGoalPct !== null ? `${fmtPct(firstGoalPct, 1)} da meta` : 'sem meta'}. Share da janela: ${fmtPct(share, 1)}.`
+      : `${representationGoalSummary(goalRows)} Share da janela: ${fmtPct(share, 1)}.`;
     const activity = launchActivityNarrative(selected, selectedWindow);
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
     const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
@@ -2628,7 +2760,7 @@
     const comparisonRows = historicalUniverse.launches
       .map((launch) => ({
         launch,
-        share: numberOrNull(shareModelForLine(launch.modelo_id)?.share_acumulado_atual)
+        share: selectedPeriodShareForLaunch(launch)
       }))
       .filter((row) => row.share !== null)
       .sort((a, b) => b.share - a.share);
@@ -2641,7 +2773,7 @@
     const pinnedIndex = pinnedRow ? comparisonRows.indexOf(pinnedRow) : -1;
     const topShareHtml = topShareRows.length
       ? `
-        <div class="story-top-caption">Ranking por share geral · ${escapeHtml(rankCutoffLabel)}</div>
+        <div class="story-top-caption">Ranking por share da janela · ${escapeHtml(selectedPeriodLabel())} · ${escapeHtml(rankCutoffLabel)}</div>
         <ol class="story-top-list" aria-label="Top 3 produtos por representatividade">
           ${topShareRows.map((row, index) => `
             <li class="${row.launch.modelo_id === selected.modelo_id ? 'is-selected' : ''}">
@@ -2661,8 +2793,8 @@
       `
       : '<div class="story-empty-note">Ranking histórico depende de share_trajetoria.</div>';
     const thesis = share !== null
-      ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise no período coberto.`
-      : `${selected.modelo} ainda não tem leitura de representatividade carregada.`;
+      ? `${selected.modelo} representou ${fmtPct(share, 1)} da receita da Reise na janela ${selectedPeriodLabel()}.`
+      : `${selected.modelo} ainda não tem leitura de representatividade carregada para ${selectedPeriodLabel()}.`;
     const storyIntroTooltip = 'Esta visão transforma dados do lançamento em narrativa executiva. Ela responde: qual foi o peso do lançamento, em que contexto a empresa estava, qual atividade real aconteceu desde D0 e qual recorte investigar em seguida.';
     const centralQuestionTooltip = 'Pergunta de decisão que guia a leitura. Ela muda conforme representatividade, variação da empresa, meta mensal e atividade acumulada desde D0.';
     const activityTooltip = 'Resumo operacional desde o D0 usado na análise. Mostra quantos dias o lançamento já tem de vida no snapshot e quanto acumulou em faturamento, pedidos e pares.';
@@ -2789,7 +2921,7 @@
             </div>
             <div class="story-visual-metric story-visual-metric--wide">
               <div class="story-visual-metric-head">
-                ${labelTip('Ranking por share geral', 'Share acumulado de cada modelo comparável até a data mais recente disponível, com o lançamento selecionado sempre visível mesmo fora do top 3.')}
+                ${labelTip('Ranking por share da janela', 'Share de cada modelo comparável dentro do período selecionado, respeitando o momento histórico do lançamento e mantendo o produto em foco sempre visível.')}
               </div>
               ${topShareHtml}
             </div>
@@ -4317,9 +4449,10 @@
     }
 
     if (mode === 'linha') {
-      if (subText) subText.textContent = 'Faturamento acumulado por dia desde o lançamento';
+      if (subText) subText.textContent = `Faturamento acumulado por dia desde o lançamento · ${selectedPeriodLabel()}`;
       const chartLaunches = selectedCompareLaunches();
-      const normalizedLabels = Array.from({ length: 91 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
+      const maxDay = selectedPeriodEndDay(selected) ?? 90;
+      const normalizedLabels = Array.from({ length: maxDay + 1 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
       const normalizedLaunches = [...chartLaunches].sort((a, b) => {
         if (a.modelo_id === selected.modelo_id) return -1;
         if (b.modelo_id === selected.modelo_id) return 1;
@@ -4330,25 +4463,25 @@
         data: {
           labels: normalizedLabels,
           datasets: normalizedLaunches.map((launch, index) => {
-            const data = Array(91).fill(null);
+            const data = Array(maxDay + 1).fill(null);
             const hasDaily = Boolean(launch.daily?.length);
             const isBackfilled = launch.daily_source === 'historico_backfill';
             if (hasDaily) {
               const byDay = new Map();
               launch.daily.forEach((row) => {
-                if (row.day < 0 || row.day > 90) return;
+                if (row.day < 0 || row.day > maxDay) return;
                 byDay.set(row.day, (byDay.get(row.day) || 0) + Number(row.receita || 0));
               });
               let running = 0;
-              const validDays = launch.daily.map((row) => row.day).filter((day) => day >= 0 && day <= 90);
-              const maxDailyDay = validDays.length ? Math.min(90, Math.max(...validDays)) : 0;
+              const validDays = launch.daily.map((row) => row.day).filter((day) => day >= 0 && day <= maxDay);
+              const maxDailyDay = validDays.length ? Math.min(maxDay, Math.max(...validDays)) : 0;
               for (let day = 0; day <= maxDailyDay; day += 1) {
                 running += byDay.get(day) || 0;
                 data[day] = running;
               }
             } else {
               data[0] = 0;
-              const points = WINDOW_KEYS.map((key) => ({
+              const points = selectedPeriodWindowKeys(selected).map((key) => ({
                 day: WINDOW_DAYS[key],
                 value: getWindow(launch, key)?.receita
               }));
@@ -4503,7 +4636,9 @@
 
   function renderDplusComparison(selected) {
     if (!$('dplus-table')) return;
-    const day = comparisonDay(selected);
+    const day = isSpecificAnalysisPeriod()
+      ? selectedPeriodEndDay(selected, { capToAvailable: true })
+      : comparisonDay(selected);
     if (day === null || day === undefined || selected.isFuture) {
       $('dplus-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Lançamento planejado: comparativo D+n fica fora da análise até D0 e dados reais.</td></tr>`;
       return;
@@ -4599,7 +4734,9 @@
       ? launches
       : comparableLaunches();
 
-    const day = comparisonDay(selected);
+    const day = isSpecificAnalysisPeriod()
+      ? selectedPeriodEndDay(selected, { capToAvailable: true })
+      : comparisonDay(selected);
     const dailyRefs = referencePool.filter((l) => isHistoricalLaunch(l) && l.daily?.length);
     const selectedDaily = cumulativeAt(selected, day);
     let label = day !== null ? `D+${day}` : '—';
@@ -4651,7 +4788,11 @@
     }
 
     const selected = state.launches.find((l) => l.modelo_id === state.primaryModelId) || launches[0];
-    const day = comparisonDay(selected);
+    const day = isSpecificAnalysisPeriod()
+      ? selectedPeriodEndDay(selected, { capToAvailable: true })
+      : comparisonDay(selected);
+    const metricWindowKey = isSpecificAnalysisPeriod() ? state.analysisPeriodKey : '30d';
+    const metricWindowLabel = WINDOW_KEYS.includes(metricWindowKey) ? windowLabel(metricWindowKey) : 'D+30';
     const referencePool = launches.some(isHistoricalLaunch)
       ? launches
       : comparableLaunches();
@@ -4671,30 +4812,35 @@
       : null;
 
     const rows = launches.map((launch) => {
+      const attribution = attributionForSelectedPeriod(launch);
       const j7 = getWindow(launch, '7d');
       const j15 = getWindow(launch, '15d');
       const j30 = getWindow(launch, '30d');
       const j60 = getWindow(launch, '60d');
       const j90 = getWindow(launch, '90d');
+      const metricWindow = WINDOW_KEYS.includes(metricWindowKey) ? getWindow(launch, metricWindowKey) : j30;
       const dplus = day !== null && day !== undefined ? cumulativeAt(launch, day) : null;
       const best = bestWindow(launch);
-      const velocity = dplus?.velocidade ?? windowVelocity(launch);
+      const metricDays = WINDOW_KEYS.includes(metricWindowKey) ? windowSpanDays(metricWindowKey) : null;
+      const velocity = isSpecificAnalysisPeriod()
+        ? (metricWindow?.receita && metricDays ? metricWindow.receita / metricDays : null)
+        : dplus?.velocidade ?? windowVelocity(launch);
       const deltaBase = averageLabel.startsWith('D+') ? dplus?.receita : j30?.receita;
       return `
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
           <td>${fmtBRL(dplus?.receita)}<div class="metric-sub">${day !== null && day !== undefined ? `D+${day}` : 'sem D+n'}</div></td>
-          <td class="num">${comparisonAttributionCell(launch.receita_organica)}</td>
-          <td class="num">${comparisonAttributionCell(launch.receita_paga)}</td>
+          <td class="num">${comparisonAttributionCell(attribution.receita_organica)}</td>
+          <td class="num">${comparisonAttributionCell(attribution.receita_paga)}</td>
           <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
           <td>${fmtBRL(j60?.receita)}<div>${coverageBadge(launch, '60d')}</div></td>
           <td>${fmtBRL(j90?.receita)}<div>${coverageBadge(launch, '90d')}</div></td>
-          <td class="num">${fmtBRL(j30?.ticket)}</td>
-          <td class="num">${fmtNum(j30?.pares)}</td>
-          <td class="num">${fmtPct(j30?.novos_pct, 1)}</td>
-          <td class="num">${velocity == null ? '&mdash;' : `${fmtBRL(velocity)}/dia`}<div class="metric-sub">${escapeHtml(best.key ? windowLabel(best.key) : '')}</div></td>
+          <td class="num">${fmtBRL(metricWindow?.ticket)}<div class="metric-sub">${escapeHtml(metricWindowLabel)}</div></td>
+          <td class="num">${fmtNum(metricWindow?.pares)}<div class="metric-sub">${escapeHtml(metricWindowLabel)}</div></td>
+          <td class="num">${fmtPct(metricWindow?.novos_pct, 1)}<div class="metric-sub">${escapeHtml(metricWindowLabel)}</div></td>
+          <td class="num">${velocity == null ? '&mdash;' : `${fmtBRL(velocity)}/dia`}<div class="metric-sub">${escapeHtml(isSpecificAnalysisPeriod() ? metricWindowLabel : (best.key ? windowLabel(best.key) : ''))}</div></td>
           <td class="num">${historicalAverage === null ? '&mdash;' : metricDelta(deltaBase, historicalAverage, fmtBRL)}<div class="metric-sub">vs média ${escapeHtml(averageLabel)}</div></td>
           <td>${sourceBadge(launch)}</td>
         </tr>`;
@@ -4752,9 +4898,36 @@
     return days === null ? 999 : days;
   }
 
+  function mediaRowMatchesSelectedPeriod(row, launch) {
+    if (!isSpecificAnalysisPeriod()) return true;
+    const selectedEnd = selectedPeriodEndDay(launch);
+    if (selectedEnd === null) return true;
+    const key = commercialWindowKey(row);
+    if (key === 'pre-d0') return true;
+    const days = janelaEmDias(key) ?? WINDOW_DAYS[key] ?? null;
+    if (days !== null) return days <= selectedEnd;
+    if (row.data_inicio || row.data_fim) {
+      const startIdx = row.data_inicio ? dayIndex(launch?.d0 || launch?.day_zero_base, row.data_inicio) : null;
+      const endIdx = row.data_fim ? dayIndex(launch?.d0 || launch?.day_zero_base, row.data_fim) : startIdx;
+      if (startIdx === null && endIdx === null) return true;
+      return (startIdx ?? endIdx) <= selectedEnd && (endIdx ?? startIdx) >= 0;
+    }
+    return true;
+  }
+
+  function crmRowMatchesSelectedPeriod(row, launch) {
+    if (!isSpecificAnalysisPeriod()) return true;
+    const endDay = selectedPeriodEndDay(launch);
+    if (endDay === null) return true;
+    const data = row.data_disparo || row.data || row.date;
+    const idx = dayIndex(launch?.d0 || launch?.day_zero_base, data);
+    return idx !== null && idx >= 0 && idx <= endDay;
+  }
+
   function commercialMetricRowsForLaunch(launch) {
     const rawRows = (state.data?.midia_paga || [])
       .filter((row) => row.modelo_id === launch.modelo_id)
+      .filter((row) => mediaRowMatchesSelectedPeriod(row, launch))
       .map((row) => normalizeMediaRow(row, launch));
     const detailedRows = enrichMediaEstimates(rawRows, launch).filter((row) => midiaValidaParaGraficoComercial(row));
     const pairsByWindow = new Map();
@@ -4926,7 +5099,7 @@
     if (!window.Chart) return;
 
     const chartLaunches = selectedCompareLaunches();
-    const labels = WINDOW_KEYS;
+    const labels = selectedPeriodWindowKeys(selected);
     const windowChartLaunches = chartLaunches.filter((launch) => labels.some((key) => Boolean(getWindow(launch, key))));
 
     createChart('chart-revenue', {
@@ -5012,6 +5185,12 @@
     });
 
     const mixWindowFor = (launch) => {
+      if (isSpecificAnalysisPeriod()) {
+        return {
+          key: state.analysisPeriodKey,
+          data: getWindow(launch, state.analysisPeriodKey)
+        };
+      }
       const keys = ['30d', '15d', '7d', '60d', '90d'];
       const key = keys.find((windowKey) => getWindow(launch, windowKey));
       if (key) return { key, data: getWindow(launch, key) };
@@ -5370,6 +5549,32 @@
     });
   }
 
+  function colorRowsForLaunchPeriod(launch) {
+    const rows = launchSalesRowsForSelectedPeriod(launch);
+    if (rows.length) {
+      return rows.map((row) => ({
+        cor: extractColor({ ...row, modelo_id: launch.modelo_id }, launch),
+        pares: Number(row.pares || row.quantidade || 0),
+        receita_bruta: Number((row.receita_bruta ?? row.receita) || 0),
+        receita_liquida: Number(row.receita_liquida || 0),
+        hasReceitaLiquida: row.receita_liquida !== null && row.receita_liquida !== undefined,
+        pedidos: Number(row.pedidos_validos ?? row.pedidos ?? 0)
+      }));
+    }
+    return isSpecificAnalysisPeriod() ? [] : (launch.cores || []);
+  }
+
+  function sizeRowsForLaunchPeriod(launch) {
+    const rows = launchSalesRowsForSelectedPeriod(launch);
+    if (rows.length) {
+      return rows.map((row) => ({
+        tamanho: row.tamanho || row.size || 'Sem tamanho',
+        pares: Number(row.pares || row.quantidade || 0)
+      }));
+    }
+    return isSpecificAnalysisPeriod() ? [] : (launch.tamanhos || []);
+  }
+
   function renderColorMix() {
     const launches = selectedCompareLaunches();
     if (!launches.length) {
@@ -5379,7 +5584,7 @@
 
     const cards = launches.map((launch) => {
       const colorsMap = new Map();
-      (launch.cores || []).forEach((row) => {
+      colorRowsForLaunchPeriod(launch).forEach((row) => {
         const cor = extractColor({ ...row, modelo_id: launch.modelo_id }, launch);
         const current = colorsMap.get(cor) || {
           modelo_id: launch.modelo_id,
@@ -5451,7 +5656,7 @@
       return;
     }
 
-    const rows = launches.flatMap((launch) => (launch.tamanhos || []).map((row) => ({
+    const rows = launches.flatMap((launch) => sizeRowsForLaunchPeriod(launch).map((row) => ({
       modelo: launch.modelo,
       tamanho: row.tamanho || 'Sem tamanho',
       pares: Number(row.pares || 0)
@@ -5540,11 +5745,11 @@
     const container = $('cut-promoters-detractors');
     if (!container) return;
 
-    const coresRows = (selected?.cores || []).map((row) => ({
+    const coresRows = colorRowsForLaunchPeriod(selected).map((row) => ({
       ...row,
       cor: extractColor({ ...row, modelo_id: selected.modelo_id }, selected)
     }));
-    const tamanhoRows = selected?.tamanhos || [];
+    const tamanhoRows = sizeRowsForLaunchPeriod(selected);
 
     const coresDeviation = computeCutDeviation(coresRows, 'cor');
     const tamanhoDeviation = computeCutDeviation(tamanhoRows, 'tamanho');
@@ -5675,7 +5880,7 @@
   }
 
   function renderCalendar(selected) {
-    const windows = WINDOW_KEYS.map((key) => ({
+    const windows = selectedPeriodWindowKeys(selected).map((key) => ({
       key,
       label: windowLabel(key),
       end: windowEndDay(key) || 0
@@ -5696,26 +5901,26 @@
         read: seasonalRead(events, score, observedScore)
       };
     });
-    const ninety = analyses[analyses.length - 1] || { events: [], counts: seasonalCounts([]), score: 0, observedScore: 0, cls: 'clean' };
-    const strongest = [...ninety.events].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
-    const observedEvents = ninety.events.filter((event) => event.observed);
-    const futureEvents = ninety.events.filter((event) => !event.observed);
-    const summaryRead = ninety.events.length
-      ? `${observedEvents.length} evento(s) já observado(s) e ${futureEvents.length} evento(s) futuro(s) até D+90.`
-      : 'Nenhum evento cadastrado entre D0 e D+90.';
+    const selectedAnalysis = analyses[analyses.length - 1] || { label: selectedPeriodLabel(), end: selectedPeriodEndDay(selected) ?? 90, events: [], counts: seasonalCounts([]), score: 0, observedScore: 0, cls: 'clean' };
+    const strongest = [...selectedAnalysis.events].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0];
+    const observedEvents = selectedAnalysis.events.filter((event) => event.observed);
+    const futureEvents = selectedAnalysis.events.filter((event) => !event.observed);
+    const summaryRead = selectedAnalysis.events.length
+      ? `${observedEvents.length} evento(s) já observado(s) e ${futureEvents.length} evento(s) futuro(s) até ${selectedAnalysis.label}.`
+      : `Nenhum evento cadastrado entre D0 e ${selectedAnalysis.label}.`;
 
     $('calendar-grid').innerHTML = `
-      <div class="calendar-summary calendar-summary--${ninety.cls}">
+      <div class="calendar-summary calendar-summary--${selectedAnalysis.cls}">
         <div>
-          <div class="metric-label">${labelTip('Saldo sazonal D+90', 'Soma ponderada dos eventos no calendário entre D0 e D+90. Promotor soma, ofensor subtrai e neutro vale 0; peso forte=3, médio=2, baixo=1.')}</div>
-          <div class="seasonal-score seasonal-score--${ninety.cls}">${escapeHtml(seasonalScoreLabel(ninety.score, ninety.events))}</div>
+          <div class="metric-label">${labelTip(`Saldo sazonal ${selectedAnalysis.label}`, 'Soma ponderada dos eventos no calendário dentro do período selecionado. Promotor soma, ofensor subtrai e neutro vale 0; peso forte=3, médio=2, baixo=1.')}</div>
+          <div class="seasonal-score seasonal-score--${selectedAnalysis.cls}">${escapeHtml(seasonalScoreLabel(selectedAnalysis.score, selectedAnalysis.events))}</div>
           <div class="metric-sub">${escapeHtml(summaryRead)}</div>
         </div>
         <div class="seasonal-stat-grid">
-          <div><span>${labelTip('Promotores', 'Eventos esperados como vento a favor de venda ou atenção comercial.')}</span><strong>${fmtNum(ninety.counts.promotores)}</strong></div>
-          <div><span>${labelTip('Ofensores', 'Eventos que podem reduzir comparabilidade ou pressionar performance relativa.')}</span><strong>${fmtNum(ninety.counts.ofensores)}</strong></div>
-          <div><span>${labelTip('Neutros', 'Eventos cadastrados como contexto sem direção clara de impacto.')}</span><strong>${fmtNum(ninety.counts.neutros)}</strong></div>
-          <div><span>${labelTip('Mais forte', 'Evento com maior peso absoluto dentro de D+90.')}</span><strong>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</strong></div>
+          <div><span>${labelTip('Promotores', 'Eventos esperados como vento a favor de venda ou atenção comercial.')}</span><strong>${fmtNum(selectedAnalysis.counts.promotores)}</strong></div>
+          <div><span>${labelTip('Ofensores', 'Eventos que podem reduzir comparabilidade ou pressionar performance relativa.')}</span><strong>${fmtNum(selectedAnalysis.counts.ofensores)}</strong></div>
+          <div><span>${labelTip('Neutros', 'Eventos cadastrados como contexto sem direção clara de impacto.')}</span><strong>${fmtNum(selectedAnalysis.counts.neutros)}</strong></div>
+          <div><span>${labelTip('Mais forte', 'Evento com maior peso absoluto dentro do período selecionado.')}</span><strong>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</strong></div>
         </div>
       </div>
       ${analyses.map((win) => `<div class="calendar-card calendar-card--${win.cls}">
@@ -6136,8 +6341,9 @@
       return;
     }
 
-    const paidRevenue = numberOrNull(launch.receita_paga);
-    const organicRevenue = numberOrNull(launch.receita_organica);
+    const attribution = attributionForSelectedPeriod(launch);
+    const paidRevenue = attribution.receita_paga;
+    const organicRevenue = attribution.receita_organica;
     const total = Number(paidRevenue || 0) + Number(organicRevenue || 0);
     const hasSales = paidRevenue !== null || organicRevenue !== null;
     const metric = (label, value) => {
@@ -6155,7 +6361,7 @@
       <div class="media-attribution-head">
         <div>
           ${labelTip('Vendas por atribuição do lançamento', 'Declarado dentro de Mídia paga para separar venda orgânica e venda paga do lançamento em foco. Fonte: lancamentos_produtos_dia.json, campos receita_organica e receita_paga.')}
-          <p>Fonte: receita_organica e receita_paga do lançamento em foco; a tabela abaixo continua mostrando campanhas e investimento.</p>
+          <p>Fonte: receita_organica e receita_paga do lançamento em foco na janela ${escapeHtml(selectedPeriodLabel())}; a tabela abaixo continua mostrando campanhas e investimento.</p>
         </div>
         <small>${hasSales ? 'vendas atribuidas' : 'aguardando vendas'}</small>
       </div>
@@ -6252,11 +6458,9 @@
   }
 
   function commercialSummaryFor(launch, mediaRows, crmRows) {
-    const best = bestWindow(launch);
-    const receitaModelo = launch.acumulado_atual?.receita ?? best.data?.receita ?? null;
-    const janelaModelo = launch.acumulado_atual?.receita !== null && launch.acumulado_atual?.receita !== undefined
-      ? `D+${Math.max(0, launch.dPlus ?? 0)}`
-      : best.key ? windowLabel(best.key) : '&mdash;';
+    const selectedWindow = selectedAnalysisWindow(launch);
+    const receitaModelo = selectedWindow.data?.receita ?? null;
+    const janelaModelo = selectedWindow.label || '&mdash;';
 
     const mediaRowsImpacto = mediaRows.filter((row) => midiaValidaParaImpacto(row));
     const mediaAggregateRows = aggregateMediaRows(mediaRowsImpacto, launch);
@@ -6334,8 +6538,8 @@
                 <td class="num">${mediaValue(row.investimentoTotal, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${roasValue(row.roasComercial)}${metodologiaComercialBadge(row)}</td>
-                <td class="num">${organicPaidValue(row.launch.receita_organica)}</td>
-                <td class="num">${organicPaidValue(row.launch.receita_paga)}</td>
+                <td class="num">${organicPaidValue(attributionForSelectedPeriod(row.launch).receita_organica)}</td>
+                <td class="num">${organicPaidValue(attributionForSelectedPeriod(row.launch).receita_paga)}</td>
               </tr>`).join('')}
           </tbody>
         </table>
@@ -6351,7 +6555,9 @@
       return;
     }
 
-    const mediaRows = (state.data.midia_paga || []).filter((row) => row.modelo_id === selected.modelo_id);
+    const mediaRows = (state.data.midia_paga || [])
+      .filter((row) => row.modelo_id === selected.modelo_id)
+      .filter((row) => mediaRowMatchesSelectedPeriod(row, selected));
     const detailedRows = enrichMediaEstimates(mediaRows.map((row) => normalizeMediaRow(row, selected)), selected);
     const displayRows = [...aggregateMediaRows(detailedRows, selected), ...detailedRows];
     $('media-table').innerHTML = displayRows.length ? displayRows.map((inputRow) => {
@@ -6372,6 +6578,7 @@
 
     const crmRows = (state.data.crm_disparos || [])
       .filter((row) => row.modelo_id === selected.modelo_id)
+      .filter((row) => crmRowMatchesSelectedPeriod(row, selected))
       .map(normalizeCrmRow);
     $('crm-table').innerHTML = crmRows.length ? crmRows.map((row) => `
       <tr>
@@ -6402,6 +6609,7 @@
     const detailedRows = launches.flatMap((launch) => {
       const rowsRaw = (state.data.midia_paga || [])
         .filter((row) => row.modelo_id === launch.modelo_id)
+        .filter((row) => mediaRowMatchesSelectedPeriod(row, launch))
         .map((row) => normalizeMediaRow(row, launch));
       const rows = enrichMediaEstimates(rowsRaw, launch);
       mediaByModel.set(launch.modelo_id, rows);
@@ -6410,6 +6618,7 @@
     const crmRowsAll = launches.flatMap((launch) => {
       const rows = (state.data.crm_disparos || [])
         .filter((row) => row.modelo_id === launch.modelo_id)
+        .filter((row) => crmRowMatchesSelectedPeriod(row, launch))
         .map((row) => ({ ...normalizeCrmRow(row), modelo_id: launch.modelo_id, modelo: launch.modelo }));
       crmByModel.set(launch.modelo_id, rows);
       return rows;
@@ -6635,6 +6844,7 @@
     state.data = await loadData();
     state.snapshotClock = deriveSnapshotClock(state.data);
     state.launches = buildLaunches(state.data);
+    applyInitialAnalysisPeriodFromUrl();
     const comparable = comparableLaunches();
     const preferred = defaultComparableLaunch(comparable);
     state.primaryModelId = preferred?.modelo_id;
