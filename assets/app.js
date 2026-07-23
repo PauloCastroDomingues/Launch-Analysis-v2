@@ -2269,16 +2269,16 @@
     if (target === null && actual !== null) {
       return {
         label: 'Meta do periodo nao carregada',
-        value: fmtBRL(actual),
-        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do periodo ainda nao esta carregada. O produto selecionado fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento da empresa.`,
-        evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} produto_faturamento=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+        value: 'Sem meta',
+        copy: `${range}: a empresa faturou ${fmtBRL(actual)}, mas a meta do periodo ainda nao esta carregada. O produto entra apenas como share de participacao: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento realizado.`,
+        evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=sem_meta produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
-          { label: 'Fat. empresa', value: fmtBRL(actual) },
+          { label: 'Realizado', value: fmtBRL(actual) },
           { label: 'Meta empresa', value: 'sem meta' },
-          { label: 'Receita produto', value: fmtBRL(revenue) },
-          { label: 'Produto/fat.', value: fmtPct(productActualPct, 1) }
+          { label: 'Share produto', value: fmtPct(productActualPct, 1) },
+          { label: 'Receita produto', value: fmtBRL(revenue) }
         ]
       };
     }
@@ -2286,15 +2286,16 @@
     if (target !== null && actual === null) {
       return {
         label: 'Faturamento empresa pendente',
-        value: fmtBRL(target),
-        copy: `${range}: a meta proporcional da empresa era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda nao esta carregado. O produto selecionado fez ${fmtBRL(revenue)} (${fmtPct(productMetaPct, 1)} da meta).`,
+        value: 'Sem realizado',
+        copy: `${range}: a meta proporcional da empresa era ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda nao esta carregado. Sem realizado da empresa, o share de participacao do produto ainda nao pode ser calculado.`,
         evidence: `${source} ${base.evidence || ''}`,
         source,
         state: 'pending',
         facts: [
+          { label: 'Realizado', value: 'sem dado' },
           { label: 'Meta empresa', value: fmtBRL(target) },
           { label: 'Receita produto', value: fmtBRL(revenue) },
-          { label: 'Produto/meta', value: fmtPct(productMetaPct, 1) }
+          { label: 'Share produto', value: 'sem realizado' }
         ]
       };
     }
@@ -2304,25 +2305,25 @@
       : companyPct >= 0.9
         ? 'Empresa perto da meta'
         : 'Empresa abaixo da meta';
-    const companyState = companyPct < 0.9 ? 'warn' : productMetaPct >= 0.12 ? 'focus' : 'ok';
+    const companyState = companyPct < 0.9 ? 'warn' : companyPct >= 1 ? 'focus' : 'ok';
     const metaGap = actual !== null && target !== null ? actual - target : null;
     const productSentence = revenue !== null
-      ? `O produto selecionado fez ${fmtBRL(revenue)}, cobrindo ${fmtPct(productMetaPct, 1)} da meta da empresa e ${fmtPct(productActualPct, 1)} do faturamento realizado.`
+      ? `O produto selecionado entra como share de participacao: fez ${fmtBRL(revenue)} e representou ${fmtPct(productActualPct, 1)} do faturamento realizado.`
       : 'Ainda nao ha receita do produto carregada nessa janela.';
 
     return {
       label: companyLabel,
       value: fmtPct(companyPct, 1),
-      copy: `${range}: momento da empresa = faturamento realizado da empresa contra a meta do mesmo periodo. A empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} de meta (${fmtPct(companyPct, 1)}). ${productSentence}`,
-      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} produto_meta=${fmtPct(productMetaPct, 1)} produto_faturamento=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
+      copy: `${range}: momento da empresa = realizado da empresa contra meta do mesmo periodo. A empresa realizou ${fmtBRL(actual)} de ${fmtBRL(target)} de meta (${fmtPct(companyPct, 1)}), com gap de ${fmtBRL(metaGap)}. ${productSentence}`,
+      evidence: `${source} M1: empresa_realizado=${fmtBRL(actual)} meta=${fmtBRL(target)} atingimento=${fmtPct(companyPct, 1)} gap_meta=${fmtBRL(metaGap)} produto=${fmtBRL(revenue)} share_produto=${fmtPct(productActualPct, 1)}. ${base.evidence || ''}`,
       source,
       state: companyState,
       facts: [
-        { label: 'Fat. empresa', value: fmtBRL(actual) },
+        { label: 'Realizado', value: fmtBRL(actual) },
         { label: 'Meta empresa', value: fmtBRL(target) },
         { label: 'Gap meta', value: fmtBRL(metaGap) },
-        { label: 'Receita produto', value: fmtBRL(revenue) },
-        { label: 'Produto/meta', value: fmtPct(productMetaPct, 1) }
+        { label: 'Share produto', value: fmtPct(productActualPct, 1) },
+        { label: 'Receita produto', value: fmtBRL(revenue) }
       ]
     };
   }
@@ -2522,7 +2523,7 @@
         detail: `${company.label}: ${company.copy}`,
         width: companyWidth,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Mostra se a empresa estava acima ou abaixo da meta no periodo do produto selecionado. A leitura cruza faturamento da empresa, meta da empresa e receita do produto.',
+        tooltip: 'Mostra como a empresa esta contra a meta no periodo do produto selecionado. O produto entra como share de participacao no faturamento realizado.',
         extraHtml: `${storyFactChips(company.facts)}${storySourceNote(company.source)}`,
         showTrack: false
       }),
@@ -2569,7 +2570,7 @@
         label: company.label,
         copy: `<code class="story-step-source">${escapeHtml(company.evidence || '')}</code>${evidenceSourceLine('momento', { model })}`,
         state: company.state || (companyVariation !== null && companyVariation < -0.05 ? 'warn' : 'ok'),
-        tooltip: 'Evidencia tecnica: faturamento da empresa vs meta da empresa no periodo do produto selecionado e receita do produto dentro desse mesmo periodo.'
+        tooltip: 'Evidencia tecnica: realizado da empresa vs meta no periodo do produto selecionado; produto entra como share de participacao no realizado.'
       },
       {
         step: '02',
