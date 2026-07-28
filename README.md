@@ -285,9 +285,11 @@ O dashboard deve puxar vendas desde `2026-06-25`. Se aparecer sem dados, revisar
 
 ## Mídia Paga e CRM
 
-A mídia paga é preenchida manualmente na aba `midia_paga` de uma planilha opcional. CRM manual usa a aba `crm_disparos`.
+A mídia paga por campanha é preenchida manualmente na aba `midia_paga` de uma planilha opcional. CRM manual usa a aba `crm_disparos`.
 
-Os campos de `investimento` vêm exclusivamente dessas abas da planilha configurada em `MIDIA_SPREADSHEET_ID`. O dashboard não busca gasto em Meta Ads, Google Ads ou BigQuery e não recalcula investimento automaticamente.
+O investimento agregado de aquisição da empresa vem de `metas_mensais.json` quando o export encontra `mart_growth_us.dashboard_targets_header_raw`, `dashboard_targets_daily_raw`, `dashboard_targets_actual_daily_v` e `mart_growth_us.aquisicao_por_canal`. Esse dado alimenta o resumo/gráfico comercial como **Aquisição SSOT** por janela do lançamento. Ele não é rateado por produto nem usado como atribuição de campanha.
+
+Os campos de `investimento` em `midia_paga.json` e `crm_disparos.json` continuam sendo cadastros manuais de campanha/disparo. O dashboard mantém esses valores no detalhe operacional e não soma com Aquisição SSOT para evitar dupla contagem.
 
 Para exportar essas abas, configure:
 
@@ -312,16 +314,24 @@ receita_linha | receita_dia | pedidos | roas | cpa | observacao | status
 Regras:
 
 - `campanha` é obrigatório.
-- `investimento` deve ser o valor real informado por campanha.
+- `investimento` deve ser o valor real informado por campanha. Para gasto agregado da empresa, use o caminho BigQuery/`metas_mensais.json`, não a aba manual.
 - `roas` deve vir informado na planilha em escala de multiplicador (`6,48` = `6,48x`) sempre que houver atribuição real.
 - Se `roas` vier como percentual/texto (`647,8%`) ou como número acima de `100`, o exportador/front normalizam por `/100` para evitar confusão de escala percentual vs. multiplicador.
 - `receita_atribuida`, `receita_linha` e `receita_dia` são contexto/atribuição cadastrada e não substituem o campo `roas`.
 - Quando `midia_paga` repetir a mesma `receita_atribuida` em canais diferentes do mesmo modelo/janela, o dashboard bloqueia ROAS/CPA por canal e mostra apenas uma leitura agregada da janela.
-- Quando houver investimento sem atribuição real por pedido, a leitura pode usar a receita da janela do modelo somente no agregado. Isso não é atribuição real por canal.
+- Quando houver investimento sem atribuição real por pedido, a campanha permanece sem ROAS/CPA de atribuição. O gráfico pode mostrar Aquisição SSOT da empresa na mesma janela, mas isso é contexto de eficiência, não receita da campanha.
 - Para CRM, se `roas` estiver vazio, o dashboard calcula `receita_base / investimento` usando `receita_dia` ou `receita_linha`.
 - `janela` pode ser preenchida manualmente.
 - Se `janela` vier vazia, o Apps Script calcula pela relação entre `data_inicio`/`data_fim` e o D0 do modelo.
 - Se a planilha não estiver configurada, o exportador não apaga os arquivos atuais.
+
+Auditoria local:
+
+```bash
+node scripts/auditar_investimento.js
+```
+
+Esse script resume cobertura de `metas_mensais`, investimento de aquisição, planilhas manuais e pendências como campanhas sem receita atribuída.
 
 ### Atribuição por pedido
 

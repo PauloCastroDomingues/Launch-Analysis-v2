@@ -5181,10 +5181,10 @@
 
   function commercialMetricConfig(key = state.commercialChartMetric) {
     const configs = {
-      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Soma do investimento de mídia paga por janela acumulada.' },
-      receita: { key: 'receita', label: 'Receita atribuída', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita atribuída na planilha ou em faturamento_campanha. Sem receita atribuída, a linha permanece vazia.' },
-      roas: { key: 'roas', label: 'ROAS', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita atribuída / investimento. Usa ROAS informado ou receita atribuída real; não usa faturamento total da janela do modelo.' },
-      cpa: { key: 'cpa', label: 'CPA', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento / pedidos informados ou atribuídos na própria linha de mídia.' },
+      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Prioriza investimento real de aquisição vindo de metas_mensais.daily/aquisicao_por_canal na janela do lançamento. Se não houver SSOT, usa cadastro manual de mídia/CRM.' },
+      receita: { key: 'receita', label: 'Receita no contexto de aquisição', short: 'Receita', type: 'bar', unit: 'currency', help: 'Quando há Aquisição SSOT, mostra receita realizada da empresa na mesma janela de calendário do lançamento. Não é receita atribuída à campanha.' },
+      roas: { key: 'roas', label: 'ROAS de aquisição', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita realizada da empresa / investimento de aquisição na janela do lançamento. É contexto de eficiência da empresa, não atribuição por campanha.' },
+      cpa: { key: 'cpa', label: 'CPA de aquisição', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento de aquisição / pedidos realizados na mesma janela de calendário do lançamento.' },
       cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares informados na linha de mídia. Mantém a leitura separada de custo por sessão, que só existe se a planilha de mídia ganhar uma coluna de sessões por campanha.' },
       cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. Só aparece quando o JSON trouxer cliques ou CPC.' }
     };
@@ -5210,6 +5210,89 @@
     const days = janelaEmDias(key);
     if (key === 'pre-d0') return -1;
     return days === null ? 999 : days;
+  }
+
+  function metasMensaisRows() {
+    const payload = state.data?.metas_mensais;
+    if (Array.isArray(payload?.rows)) return payload.rows;
+    return Array.isArray(payload) ? payload : [];
+  }
+
+  function acquisitionDailyRows() {
+    return metasMensaisRows().flatMap((month) => (
+      (Array.isArray(month.daily) ? month.daily : []).map((row) => ({
+        ...row,
+        mes: month.mes,
+        month_label: month.month_label,
+        source: 'metas_mensais.daily'
+      }))
+    ));
+  }
+
+  function sumKnownField(rows, field) {
+    const values = rows
+      .map((row) => numberOrNull(row[field]))
+      .filter((value) => value !== null && value !== undefined);
+    return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
+  }
+
+  function acquisitionWindowForLaunch(launch, key = selectedPeriodKey(), { requireClosed = false } = {}) {
+    const d0 = analysisDayZero(launch);
+    const targetDay = windowEndDay(key);
+    if (!d0 || targetDay === null) return null;
+    const available = selectedPeriodEndDay(launch, { capToAvailable: true });
+    if (requireClosed && available < targetDay) return null;
+
+    const observedDay = Math.max(0, Math.min(targetDay, available));
+    const startIso = d0;
+    const endIso = toIsoDate(addDays(d0, observedDay));
+    const rows = acquisitionDailyRows()
+      .filter((row) => row.data && row.data >= startIso && row.data <= endIso);
+    const investimento = sumKnownField(rows, 'investimento_realizado');
+    const receita = sumKnownField(rows, 'realizado_receita');
+    const pedidos = sumKnownField(rows, 'realizado_pedidos');
+    const metaInvestimento = sumKnownField(rows, 'meta_investimento');
+    if (investimento === null && receita === null && pedidos === null) return null;
+
+    const complete = observedDay >= targetDay;
+    return {
+      key,
+      label: complete ? windowLabel(key) : `${windowLabel(key)} parcial`,
+      range: `${fmtDateSlash(startIso)} a ${fmtDateSlash(endIso)}`,
+      observedDay,
+      targetDay,
+      complete,
+      investimento,
+      metaInvestimento,
+      receita,
+      pedidos,
+      roas: investimento && receita !== null ? receita / investimento : null,
+      cpa: investimento !== null && pedidos ? investimento / pedidos : null,
+      source: 'Aquisição SSOT'
+    };
+  }
+
+  function acquisitionMetricRowsForLaunch(launch) {
+    const selectedEnd = selectedPeriodEndDay(launch);
+    return WINDOW_KEYS
+      .filter((key) => windowEndDay(key) <= selectedEnd)
+      .map((key) => acquisitionWindowForLaunch(launch, key, { requireClosed: true }))
+      .filter(Boolean)
+      .map((row) => ({
+        launch,
+        key: row.key,
+        label: row.label,
+        investimento: row.investimento,
+        receita: row.receita,
+        pedidos: row.pedidos,
+        pares: null,
+        cliques: null,
+        roas: row.roas,
+        cpa: row.cpa,
+        cpp: null,
+        cpc: null,
+        source: row.source
+      }));
   }
 
   function mediaRowMatchesSelectedPeriod(row, launch) {
@@ -5293,6 +5376,11 @@
         };
       })
       .sort((a, b) => commercialWindowRank(a.key) - commercialWindowRank(b.key));
+
+    const acquisitionRows = acquisitionMetricRowsForLaunch(launch);
+    if (acquisitionRows.length) {
+      return aggregateCommercialChartRows(acquisitionRows);
+    }
 
     return aggregateCommercialChartRows([
       ...mediaMetricRows,
@@ -5426,14 +5514,14 @@
       .sort((a, b) => commercialWindowRank(a) - commercialWindowRank(b));
 
     if (!allRows.length || !windowKeys.length) {
-      if (subText) subText.textContent = 'Sem mídia paga ou CRM cadastrados para os modelos selecionados.';
+      if (subText) subText.textContent = 'Sem investimento de aquisição, mídia paga ou CRM cadastrados para os modelos selecionados.';
       return;
     }
 
     const hasAnyMetricValue = allRows.some((row) => commercialMetricValue(row, metric.key) !== null);
     if (subText) {
       subText.textContent = hasAnyMetricValue
-        ? `${metric.label} por janela acumulada de mídia paga e CRM. Tooltip mostra investimento, receita, ROAS, CPA, CPP e CPC quando houver base.`
+        ? `${metric.label} por janela do lançamento. Prioriza Aquisição SSOT; planilhas manuais ficam como fallback/detalhe.`
         : `${metric.label}: ainda sem base suficiente no JSON. ${metric.key === 'cpc' ? 'Inclua cliques ou CPC na exportação para habilitar esta leitura.' : 'Ausência fica vazia, não vira zero.'}`;
     }
 
@@ -5485,12 +5573,12 @@
               afterLabel: (ctx) => {
                 const key = windowKeys[ctx.dataIndex];
                 const row = ctx.dataset.metricRows?.get(key);
-                if (!row) return 'Sem mídia/CRM para esta janela.';
+                if (!row) return 'Sem investimento para esta janela.';
                 return [
                   `Invest. ${formatCommercialMetric(row.investimento, commercialMetricConfig('investimento'))} · Receita ${formatCommercialMetric(row.receita, commercialMetricConfig('receita'))}`,
                   `ROAS ${formatCommercialMetric(row.roas, commercialMetricConfig('roas'))} · CPA ${formatCommercialMetric(row.cpa, commercialMetricConfig('cpa'))} · CPP ${formatCommercialMetric(row.cpp, commercialMetricConfig('cpp'))}`,
                   `Base ${fmtNum(row.pedidos)} ped. · ${fmtNum(row.pares)} pares · CPC ${formatCommercialMetric(row.cpc, commercialMetricConfig('cpc'))}`,
-                  row.source ? `Fonte ${row.source}` : 'Fonte midia_paga + janela'
+                  row.source ? `Fonte ${row.source}` : 'Fonte manual'
                 ];
               }
             }
@@ -6744,6 +6832,7 @@
     const selectedWindow = selectedAnalysisWindow(launch);
     const receitaModelo = selectedWindow.data?.receita ?? null;
     const janelaModelo = selectedWindow.label || '&mdash;';
+    const aquisicao = acquisitionWindowForLaunch(launch, selectedPeriodKey(), { requireClosed: false });
 
     const mediaRowsImpacto = mediaRows.filter((row) => midiaValidaParaImpacto(row));
     const mediaAggregateRows = aggregateMediaRows(mediaRowsImpacto, launch);
@@ -6763,6 +6852,12 @@
       launch,
       janelaModelo,
       receitaModelo,
+      aquisicaoInvestimento: aquisicao?.investimento ?? null,
+      aquisicaoReceita: aquisicao?.receita ?? null,
+      aquisicaoPedidos: aquisicao?.pedidos ?? null,
+      aquisicaoRoas: aquisicao?.roas ?? null,
+      aquisicaoCpa: aquisicao?.cpa ?? null,
+      aquisicaoLabel: aquisicao ? `${aquisicao.label} · ${aquisicao.range}${aquisicao.complete ? '' : ` · até D+${fmtNum(aquisicao.observedDay)}`}` : '',
       mediaInvestimento,
       mediaReceita,
       mediaPedidos,
@@ -6791,14 +6886,16 @@
               ${thTip('Modelo', 'Modelo comparado na frente comercial.')}
               ${thTip('Janela base', 'Janela fixa usada para contextualizar a receita do modelo, sempre a partir do D0 do lançamento.')}
               ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou histórico versionado.', 'num')}
-              ${thTip('Invest. mídia', 'Soma do investimento informado nas campanhas de mídia paga cadastradas na planilha.', 'num')}
-              ${thTip('ROAS mídia', 'ROAS informado na planilha ou calculado apenas quando existe receita atribuída real para a linha. Não usa faturamento total da janela do modelo.', 'num')}
-              ${thTip('CPA mídia', 'Fórmula: investimento de mídia / pedidos informados ou atribuídos na própria linha. Sem rateio pela janela do modelo.', 'num')}
+              ${thTip('Invest. aquisição', 'Soma de investimento_realizado em metas_mensais.daily dentro da janela do lançamento. Origem: BigQuery targets/aquisicao_por_canal. É contexto de empresa, não atribuição de campanha ao produto.', 'num')}
+              ${thTip('ROAS aquisição', 'Receita realizada da empresa / investimento de aquisição na mesma janela de calendário do lançamento. Ajuda a ler se a empresa estava eficiente naquele período.', 'num')}
+              ${thTip('Invest. campanha', 'Soma do investimento informado nas campanhas de mídia paga cadastradas manualmente na planilha midia_paga.', 'num')}
+              ${thTip('ROAS campanha', 'ROAS informado na planilha ou calculado apenas quando existe receita atribuída real para a linha. Não usa faturamento total da janela do modelo.', 'num')}
+              ${thTip('CPA campanha', 'Fórmula: investimento de campanha / pedidos informados ou atribuídos na própria linha. Sem rateio pela janela do modelo.', 'num')}
               ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
               ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
               ${thTip('ROAS CRM', 'ROAS informado na planilha de CRM ou calculado por receita base / investimento. Quando houver mais de uma linha, o agregado e ponderado pelo investimento.', 'num')}
               ${thTip('CPA CRM', 'Fórmula: investimento de CRM / pedidos de CRM quando pedidos existem.', 'num')}
-              ${thTip('Invest. total', 'Soma de investimento de mídia paga e CRM.', 'num')}
+              ${thTip('Invest. manual', 'Soma de investimento manual de campanha e CRM. Não inclui Aquisição SSOT para evitar dupla contagem.', 'num')}
               ${thTip('Receita comercial', 'Soma das receitas informadas em mídia e CRM. Mídia sem receita atribuída fica fora da receita comercial.', 'num')}
               ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculável por receita atribuída real.', 'num')}
               ${thTip('Vendas orgânicas', 'Receita orgânica do lançamento atribuída por last-click. Fica pendente até receita_organica estar no lancamentos_produtos_dia.json.', 'num')}
@@ -6811,6 +6908,8 @@
                 <td class="model-name">${escapeHtml(row.launch.modelo)}</td>
                 <td>${escapeHtml(row.janelaModelo)}</td>
                 <td class="num">${mediaValue(row.receitaModelo, fmtBRL)}</td>
+                <td class="num">${mediaValue(row.aquisicaoInvestimento, fmtBRL)}${row.aquisicaoLabel ? `<div class="metric-sub">${escapeHtml(row.aquisicaoLabel)}</div>` : ''}</td>
+                <td class="num">${roasValue(row.aquisicaoRoas)}</td>
                 <td class="num">${mediaValue(row.mediaInvestimento, fmtBRL)}</td>
                 <td class="num">${roasValue(row.mediaRoas)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${mediaValue(row.mediaCpa, fmtBRL)}</td>
