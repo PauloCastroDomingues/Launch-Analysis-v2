@@ -191,7 +191,7 @@ Funções principais:
 - Quando existe `lancamentos_produtos_dia.json` para um modelo, o front prioriza o pipeline diário. `lancamentos_historico.json` fica como fallback/benchmark estático e passa pela mesma normalização de contrato das janelas do pipeline.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries do dashboard em `southamerica-east1`.
-- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region. O join do dashboard usa email normalizado + data paga BRT + valor total arredondado.
+- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region. O join do dashboard usa email normalizado + data paga BRT + valor total arredondado. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica` como `null`.
 
 ## Pipeline de Vendas por Modelo
 

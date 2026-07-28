@@ -749,9 +749,13 @@ function consultarProdutosDia_(modelos) {
     const skuPrefixos = skuPrefixos_(m);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
-  const canalAtribuicaoCteSql = canalAtribuicaoPedidoCteSql_();
-  const canalAtribuicaoSelectSql = canalAtribuicaoPedidoSelectSql_();
-  const canalAtribuicaoJoinSql = canalAtribuicaoPedidoJoinSql_();
+  const canalAtribuicaoDisponivel = tabelaMartSharedExiste_('canal_atribuicao_pedido_mirror');
+  if (!canalAtribuicaoDisponivel) {
+    Logger.log('atribuicao_real: mart_shared.canal_atribuicao_pedido_mirror ausente; exportacao continua sem receita_paga/receita_organica por canal real.');
+  }
+  const canalAtribuicaoCteSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoCteSql_() : '';
+  const canalAtribuicaoSelectSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoSelectSql_() : canalAtribuicaoPedidoNullSelectSql_();
+  const canalAtribuicaoJoinSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoJoinSql_() : '';
 
   const query = `
 WITH modelos AS (
@@ -2107,6 +2111,12 @@ ORDER BY table_name`;
   return runBq_(query).map(row => String(row.table_name || '').trim()).filter(Boolean);
 }
 
+function tabelaMartSharedExiste_(tableName) {
+  const alvo = String(tableName || '').trim();
+  if (!alvo) return false;
+  return consultarTabelasMartShared_([alvo]).includes(alvo);
+}
+
 function canalAtribuicaoPedidoCteSql_() {
   return `pedido_atribuicao AS (
   SELECT
@@ -2130,6 +2140,13 @@ function canalAtribuicaoPedidoCteSql_() {
     ORDER BY canal_real.canal, canal_real.tipo
   ) = 1
 ),`;
+}
+
+function canalAtribuicaoPedidoNullSelectSql_() {
+  return `CAST(NULL AS STRING) AS canal_real,
+    CAST(NULL AS STRING) AS tipo_real,
+    CAST(NULL AS STRING) AS regra_atribuicao_real,
+    CAST(NULL AS STRING) AS atribuicao_match_key,`;
 }
 
 function canalAtribuicaoPedidoSelectSql_() {
