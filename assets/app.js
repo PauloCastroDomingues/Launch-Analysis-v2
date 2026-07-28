@@ -7106,15 +7106,15 @@
       ? `${fmtNum(refCount)} lançamento${refCount === 1 ? '' : 's'} que já complet${refCount === 1 ? 'ou' : 'aram'} 90 dias`
       : 'lançamentos que já completaram 90 dias';
     const exampleText = example
-      ? ` Exemplo de comparação: ${example.launch?.modelo || 'um lançamento anterior'} vendeu ${fmtBRL(example.baseWindow?.receita)} até ${baseLabel} e fechou ${fmtBRL(example.finalWindow?.receita)} em 90 dias.`
+      ? ` Exemplo: ${example.launch?.modelo || 'um lançamento anterior'} tinha ${fmtBRL(example.baseWindow?.receita)} em ${baseLabel} e terminou com ${fmtBRL(example.finalWindow?.receita)} em 90 dias.`
       : '';
-    return `Como ler este número: 1) venda real até agora: ${fmtBRL(baseRevenue)} (${baseLabel}, ${baseRange}); 2) comparação com ${referenceText}; 3) aplicação do ${scenario?.methodLabel || 'crescimento do grupo'}. Conta final: ${formula}.${fallback}${exampleText} Use como referência de caminho, não como meta prometida.`;
+    return `De onde vem o ${fmtNum(multiplier, 2)}x: ele vem da comparação com ${referenceText}. O painel olha quanto esses lançamentos tinham vendido em ${baseLabel} e quanto fecharam em 90 dias. Em termos simples, ${fmtNum(multiplier, 2)}x quer dizer: cada R$ 1 vendido até ${baseLabel} virou cerca de R$ ${fmtNum(multiplier, 2)} no fechamento de 90 dias. Para ${launch?.modelo || 'este lançamento'}, a conta é ${formula}.${fallback}${exampleText} É uma referência de caminho, não uma meta prometida.`;
   }
 
   function projectionPairsTooltip(launch, scenario) {
     const baseWindow = getWindow(launch, scenario?.baseKey);
     const ticketPar = baseWindow?.pares ? baseWindow.receita / baseWindow.pares : null;
-    return `Como ler os pares: o painel pega o faturamento estimado (${fmtBRL(scenario?.value)}) e divide pelo preço médio por par que este lançamento já mostrou (${fmtBRL(ticketPar)}). Resultado aproximado: ${fmtNum(scenario?.pairs)} pares.`;
+    return `De onde vêm os pares: depois de estimar o faturamento (${fmtBRL(scenario?.value)}), o painel divide pelo preço médio por par visto até agora (${fmtBRL(ticketPar)}). Resultado aproximado: ${fmtNum(scenario?.pairs)} pares.`;
   }
 
   function renderProjection(selected) {
