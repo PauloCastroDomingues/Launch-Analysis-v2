@@ -1,28 +1,34 @@
--- Consulta de referencia - atribuicao real por pedido.
+-- Canal attribution mirror for Launch Analysis v2.
 --
--- Objetivo:
--- inspecionar a atribuicao last-click que vive no dataset mart_growth_us (US).
--- Esta consulta nao cria tabela, nao cria view e nao grava em mart_shared.
+-- Goal:
+-- Build the southamerica-east1 table consumed by the dashboard pipeline:
 --
--- Rodar a leitura em JOB LOCATION = US.
+--   reise-ssot.mart_shared.canal_atribuicao_pedido_mirror
 --
--- O dashboard nao depende de uma tabela mirror. O Apps Script executa uma
--- consulta equivalente em US e cruza o resultado em memoria com as vendas por
--- produto exportadas de mart_shared.
+-- Final join key:
+--   email_norm + paid_date_brt + total_amount
+--
+-- Do not use order_id, order_name or customer_sk in the dashboard join. The
+-- source_order_id below is used only inside the US source region to read the
+-- last-click journey table before exporting the normalized mirror payload.
+--
+-- STEP 1 - run in BigQuery JOB LOCATION = US.
+-- Replace the EXPORT DATA URI with a GCS bucket/path available to your project.
 
+CREATE OR REPLACE TABLE `reise-ssot.mart_growth_us.canal_atribuicao_pedido_mirror_export`
+PARTITION BY paid_date_brt
+CLUSTER BY email_norm, total_amount AS
 WITH
 orders AS (
   SELECT
-    NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') AS source_order_id,
-    NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '') AS order_name,
-    NULLIF(TRIM(CAST(b.customer_sk AS STRING)), '') AS customer_sk,
-    LOWER(TRIM(b.email_norm)) AS email_norm,
+    NULLIF(LOWER(TRIM(CAST(b.email_norm AS STRING))), '') AS email_norm,
     b.paid_date_brt,
-    ROUND(CAST(b.total_amount AS NUMERIC), 2) AS total_amount
+    ROUND(SAFE_CAST(b.total_amount AS NUMERIC), 2) AS total_amount,
+    NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') AS source_order_id_for_us_journey
   FROM `reise-ssot.mart_growth_us.bridge_orders_customers` b
-  WHERE NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
-    AND b.paid_date_brt IS NOT NULL
+  WHERE b.paid_date_brt IS NOT NULL
     AND b.total_amount IS NOT NULL
+    AND NULLIF(LOWER(TRIM(CAST(b.email_norm AS STRING))), '') IS NOT NULL
 ),
 journey AS (
   SELECT
@@ -37,9 +43,6 @@ journey AS (
 ),
 joined AS (
   SELECT
-    o.source_order_id,
-    o.order_name,
-    o.customer_sk,
     o.email_norm,
     o.paid_date_brt,
     o.total_amount,
@@ -50,23 +53,21 @@ joined AS (
     j.last_utm_medium,
     j.last_utm_campaign,
     LOWER(TRIM(COALESCE(j.last_source_description, j.last_utm_source, j.last_source))) AS raw_channel,
-    LOWER(TRIM(COALESCE(j.last_utm_medium, ''))) AS raw_medium
+    LOWER(TRIM(COALESCE(j.last_utm_medium, ''))) AS raw_medium,
+    LOWER(TRIM(COALESCE(j.last_utm_source, ''))) AS raw_source
   FROM orders o
   LEFT JOIN journey j
-    ON j.order_id = o.source_order_id
+    ON j.order_id = o.source_order_id_for_us_journey
 ),
 classified AS (
   SELECT
-    source_order_id,
-    order_name,
-    customer_sk,
     email_norm,
     paid_date_brt,
     total_amount,
     CASE
       WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
       WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
-      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'Direct'
+      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct', '(direct)') THEN 'Direct'
       WHEN raw_channel LIKE '%instagram%' THEN 'Instagram'
       WHEN raw_channel LIKE '%facebook%' THEN 'Facebook'
       WHEN raw_channel LIKE '%whatsapp%' THEN 'Whatsapp'
@@ -79,36 +80,73 @@ classified AS (
       ELSE INITCAP(raw_channel)
     END AS canal,
     CASE
-      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'direct'
-      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'unknown'
       WHEN REGEXP_CONTAINS(raw_medium, r'(cpcp|cpc|ppc|pmax|paid|paidsocial|paid[_ -]?social|paidsearch|paid[_ -]?search|display|affiliate|affiliates|demand[_ -]?gen)') THEN 'paid'
-      WHEN raw_medium IN ('organic','seo') THEN 'organic'
-      WHEN raw_medium = '' AND REGEXP_CONTAINS(raw_channel, r'(google|bing|yahoo|duckduckgo|brave)') THEN 'organic'
+      WHEN raw_medium = '' AND REGEXP_CONTAINS(raw_channel, r'(google|bing|yahoo!?|duckduckgo|brave)') THEN 'organic'
       WHEN raw_medium = '' AND REGEXP_CONTAINS(raw_channel, r'(instagram|facebook|youtube|tiktok)') THEN 'organic'
+      WHEN raw_medium IN ('organic', 'seo') THEN 'organic'
+      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct', '(direct)') THEN 'direct'
+      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'unknown'
       WHEN REGEXP_CONTAINS(raw_medium, r'(email|newsletter|crm|sms|whatsapp|disparo|grupos|canal[-_ ]de[-_ ]transmissao)')
         OR REGEXP_CONTAINS(raw_channel, r'(email|whatsapp|sms|rd station|rdstation)') THEN 'owned'
       WHEN raw_medium = 'referral'
-        OR REGEXP_CONTAINS(raw_channel, r'(linktree|linktr\.ee|linktr|nextags|awin|cupomonline|br-desconto|chatgpt|perplexity)') THEN 'referral'
+        OR REGEXP_CONTAINS(CONCAT(raw_channel, ' ', raw_source), r'(linktree|linktr\.ee|linktr|nextags|awin|cupomonline|br-desconto|chatgpt|chatgpt\.com|perplexity)') THEN 'referral'
       ELSE 'unknown'
     END AS tipo
   FROM joined
 )
 SELECT
-  source_order_id,
-  order_name,
-  customer_sk,
   email_norm,
   paid_date_brt,
   total_amount,
   canal,
   tipo,
-  CASE
-    WHEN source_order_id IS NOT NULL THEN 'source_order_id_last_click'
-    WHEN order_name IS NOT NULL THEN 'order_name_last_click'
-    ELSE 'email_data_valor_last_click'
-  END AS regra_atribuicao_real
+  'email_data_valor_last_click_mirror' AS regra_atribuicao_real
 FROM classified
 QUALIFY ROW_NUMBER() OVER (
-  PARTITION BY source_order_id
-  ORDER BY canal, tipo
+  PARTITION BY email_norm, paid_date_brt, total_amount
+  ORDER BY
+    CASE tipo
+      WHEN 'paid' THEN 1
+      WHEN 'organic' THEN 2
+      WHEN 'owned' THEN 3
+      WHEN 'referral' THEN 4
+      WHEN 'direct' THEN 5
+      WHEN 'unknown' THEN 6
+      ELSE 99
+    END,
+    canal
 ) = 1;
+
+EXPORT DATA OPTIONS (
+  uri = 'gs://REPLACE_ME/canal_atribuicao_pedido_mirror/*.parquet',
+  format = 'PARQUET',
+  overwrite = true
+) AS
+SELECT
+  email_norm,
+  paid_date_brt,
+  total_amount,
+  canal,
+  tipo,
+  regra_atribuicao_real
+FROM `reise-ssot.mart_growth_us.canal_atribuicao_pedido_mirror_export`;
+
+-- STEP 2 - run in BigQuery JOB LOCATION = southamerica-east1.
+-- Use the same GCS URI exported above.
+
+CREATE OR REPLACE TABLE `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` (
+  email_norm STRING,
+  paid_date_brt DATE,
+  total_amount NUMERIC,
+  canal STRING,
+  tipo STRING,
+  regra_atribuicao_real STRING
+)
+PARTITION BY paid_date_brt
+CLUSTER BY email_norm, total_amount;
+
+LOAD DATA OVERWRITE `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror`
+FROM FILES (
+  format = 'PARQUET',
+  uris = ['gs://REPLACE_ME/canal_atribuicao_pedido_mirror/*.parquet']
+);

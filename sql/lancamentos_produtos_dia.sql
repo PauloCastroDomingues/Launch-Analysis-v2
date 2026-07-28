@@ -12,8 +12,8 @@
 -- 8) janelas D+N sao inclusivas: BETWEEN d0 AND DATE_ADD(d0, INTERVAL N DAY);
 -- 9) classificacao prioriza Monochrome > Series 2 > Phantom > GT > Avant > genericos;
 -- 10) ausencia permanece null, nao vira zero.
--- 11) atribuicao paga/organica real e enriquecida pelo Apps Script em memoria,
---     com uma consulta separada no dataset mart_growth_us (US), sem tabela mirror.
+-- 11) atribuicao paga/organica real vem da tabela mirror regional
+--     mart_shared.canal_atribuicao_pedido_mirror, ligada por email + data + valor.
 
 WITH modelos AS (
   -- O Apps Script preenche este CTE dinamicamente a partir de data/lancamentos_modelos.json.
@@ -82,6 +82,28 @@ modelos_norm AS (
     ), r'[^a-z0-9|]+', '') AS sku_prefixos_compact
   FROM modelos
 ),
+pedido_atribuicao AS (
+  SELECT
+    CAST(o.order_sk AS STRING) AS order_sk,
+    canal_real.canal AS canal_real,
+    canal_real.tipo AS tipo_real,
+    COALESCE(canal_real.regra_atribuicao_real, 'email_data_valor_last_click_mirror') AS regra_atribuicao_real,
+    CASE
+      WHEN canal_real.email_norm IS NULL THEN CAST(NULL AS STRING)
+      ELSE CONCAT(canal_real.email_norm, '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
+    END AS atribuicao_match_key
+  FROM `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
+  LEFT JOIN `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` canal_real
+    ON canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
+   AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
+   AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+  WHERE DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos_norm)
+    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY CAST(o.order_sk AS STRING)
+    ORDER BY canal_real.canal, canal_real.tipo
+  ) = 1
+),
 itens_validos AS (
   SELECT
     i.order_partition_date_brt AS data,
@@ -116,10 +138,10 @@ itens_validos AS (
         ), r'\D', ''), ''))
       ELSE NULL
     END AS customer_key,
-    CAST(NULL AS STRING) AS canal_real,
-    CAST(NULL AS STRING) AS tipo_real,
-    CAST(NULL AS STRING) AS regra_atribuicao_real,
-    CAST(NULL AS STRING) AS atribuicao_match_key,
+    pa.canal_real AS canal_real,
+    pa.tipo_real AS tipo_real,
+    pa.regra_atribuicao_real AS regra_atribuicao_real,
+    pa.atribuicao_match_key AS atribuicao_match_key,
     NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
     NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
     SAFE_CAST(i.quantity AS INT64) AS pares,
@@ -132,6 +154,8 @@ itens_validos AS (
   FROM `reise-ssot.mart_shared.fct_order_item` i
   LEFT JOIN `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
     ON CAST(o.order_sk AS STRING) = CAST(i.order_sk AS STRING)
+  LEFT JOIN pedido_atribuicao pa
+    ON pa.order_sk = CAST(i.order_sk AS STRING)
   LEFT JOIN (
     SELECT
       UPPER(TRIM(sku)) AS sku_key,
@@ -438,6 +462,7 @@ SELECT
     'is_valid_order = TRUE' AS regra_pedido_valido,
     'receita = receita_bruta' AS regra_receita_dashboard,
     COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real')) AS regra_atribuicao_real,
+    IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'mart_shared.canal_atribuicao_pedido_mirror', 'sem_match_last_click') AS regra_join_atribuicao,
     ANY_VALUE(regra_classificacao) AS regra_classificacao
   )) AS flags_qualidade,
   'reise-ssot.mart_shared.fct_order_item' AS fonte

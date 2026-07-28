@@ -191,7 +191,7 @@ Funções principais:
 - Quando existe `lancamentos_produtos_dia.json` para um modelo, o front prioriza o pipeline diário. `lancamentos_historico.json` fica como fallback/benchmark estático e passa pela mesma normalização de contrato das janelas do pipeline.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries do dashboard em `southamerica-east1`.
-- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region.
+- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region. O join do dashboard usa email normalizado + data paga BRT + valor total arredondado.
 
 ## Pipeline de Vendas por Modelo
 
@@ -212,7 +212,7 @@ flags_qualidade | fonte
 
 A camada nova de vendas por lançamento usa `reise-ssot.mart_shared.fct_order_item` como fonte preferencial. O filtro de pedido válido é `i.is_valid_order = TRUE` e a contagem de pedidos é sempre `COUNT(DISTINCT order_sk)`.
 
-O pacote público não deve carregar identificadores brutos de pedido. `source_order_id`, `order_name` e `atribuicao_match_key` são usados apenas durante a atribuição no Apps Script e removidos antes de gravar `lancamentos_produtos_dia.json`. O front usa `order_sk` hashado para deduplicação.
+O pacote público não deve carregar identificadores brutos de pedido. `source_order_id`, `order_name` e `atribuicao_match_key` podem existir apenas como campos operacionais temporários durante a query/exportação e são removidos antes de gravar `lancamentos_produtos_dia.json`. A atribuição real de canal não usa esses identificadores; ela vem da mirror `mart_shared.canal_atribuicao_pedido_mirror` por email normalizado + data paga BRT + valor total arredondado.
 
 O campo `receita` permanece no JSON por compatibilidade com o frontend, mas representa `receita_bruta`. No dashboard, ranking, curvas, composição por cor/tamanho e comparativos executivos devem usar `receita_bruta`/`receita`. `receita_liquida` é campo auxiliar para auditoria e análise financeira, não a base visual principal.
 
@@ -325,7 +325,7 @@ Regras:
 
 ### Atribuição por pedido
 
-`sql/shopify_orders_channel_last_click.sql` cria `reise-ssot.mart_growth_us.shopify_orders_channel_last_click_v` em grão de pedido (`order_name`, `source_order_id`, `canal`, `tipo`). Antes de cruzar com lançamentos, valide no BigQuery se a ponte deve ser direta por `order_name` ou via `mart_growth_us.bridge_orders_customers`, porque `lancamentos_produtos_dia` usa `order_sk` como identificador local.
+`sql/canal_atribuicao_pedido_mirror.sql` documenta a rotina cross-region: ler a classificacao last-click em `mart_growth_us`, exportar por GCS e carregar a tabela `mart_shared.canal_atribuicao_pedido_mirror` em `southamerica-east1`. O dashboard cruza essa mirror por `email_norm + paid_date_brt + total_amount`; `order_id`, `order_name` e `customer_sk` não são chave de junção entre regiões.
 
 ## Como Rodar Localmente
 
