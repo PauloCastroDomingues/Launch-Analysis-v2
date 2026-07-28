@@ -2841,39 +2841,51 @@
 
   function launchActivityNarrative(launch, selectedWindow = {}) {
     const specificPeriod = isSpecificAnalysisPeriod();
-    const current = selectedWindow.data || (!specificPeriod ? (launch?.acumulado_lancamento || launch?.acumulado_atual) : null);
+    const requestedEndDay = specificPeriod ? selectedPeriodEndDay(launch) : null;
+    const partialCurrent = specificPeriod && !selectedWindow.data
+      ? (launch?.acumulado_lancamento || launch?.acumulado_atual || null)
+      : null;
+    const current = selectedWindow.data || partialCurrent || (!specificPeriod ? (launch?.acumulado_lancamento || launch?.acumulado_atual) : null);
     const activityDay = numberOrNull(current?.activity_day) ?? numberOrNull(launch?.dPlus) ?? numberOrNull(current?.day);
     const dataDay = numberOrNull(current?.data_day) ?? numberOrNull(current?.day);
-    const fixedEndDay = specificPeriod ? selectedPeriodEndDay(launch) : null;
+    const fixedEndDay = requestedEndDay;
+    const displayedEndDay = selectedWindow.data ? fixedEndDay : dataDay;
     const daysActive = specificPeriod
-      ? (current && fixedEndDay !== null ? Math.max(1, fixedEndDay + 1) : null)
+      ? (current && displayedEndDay !== null ? Math.max(1, displayedEndDay + 1) : null)
       : activityDay !== null ? Math.max(1, activityDay + 1) : null;
     const receita = numberOrNull(current?.receita);
     const pedidos = numberOrNull(current?.pedidos);
     const pares = numberOrNull(current?.pares);
     const sourceLabel = specificPeriod
-      ? `D0 a ${selectedWindow.label || selectedPeriodLabel()}`
+      ? selectedWindow.data
+        ? `D0 a ${selectedWindow.label || selectedPeriodLabel()}`
+        : displayedEndDay !== null
+          ? `Parcial D0 a D+${fmtNum(Math.max(0, displayedEndDay))}`
+          : `D0 a ${selectedWindow.label || selectedPeriodLabel()}`
       : activityDay !== null ? `D0 a D+${Math.max(0, activityDay)}` : (selectedWindow.label || 'janela disponível');
     const partialData = dataDay !== null && activityDay !== null && dataDay < activityDay;
     const maturingWindow = specificPeriod && !selectedWindow.data;
     const dataCoverageCopy = partialData ? ` Dados de venda disponíveis até D+${fmtNum(Math.max(0, dataDay))}.` : '';
+    const maturingCopy = maturingWindow && (receita !== null || pedidos !== null)
+      ? `A janela de ${selectedPeriodLabel()} ainda não fechou para esta linha. Mostrando o acumulado parcial de D0 até D+${fmtNum(Math.max(0, displayedEndDay ?? dataDay ?? 0))}: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
+      : null;
     const facts = [
       { label: 'Dias ativo', value: daysActive !== null ? fmtNum(daysActive) : (maturingWindow ? 'em maturação' : 'sem dado') },
       { label: 'Faturamento', value: fmtBRL(receita) },
       { label: 'Pedidos', value: fmtNum(pedidos) }
     ];
     if (pares !== null) facts.push({ label: 'Pares', value: fmtNum(pares) });
-    if (partialData) facts.push({ label: 'Dados até', value: `D+${fmtNum(Math.max(0, dataDay))}` });
+    if (maturingWindow && displayedEndDay !== null) facts.push({ label: 'Parcial até', value: `D+${fmtNum(Math.max(0, displayedEndDay))}` });
+    else if (partialData) facts.push({ label: 'Dados até', value: `D+${fmtNum(Math.max(0, dataDay))}` });
     return {
       label: sourceLabel,
-      value: daysActive !== null ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'}` : (maturingWindow ? 'Em maturação' : 'Sem atividade'),
+      value: daysActive !== null && maturingWindow
+        ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'} parciais`
+        : daysActive !== null ? `${fmtNum(daysActive)} dia${daysActive === 1 ? '' : 's'}` : (maturingWindow ? 'Em maturação' : 'Sem atividade'),
       copy: receita !== null || pedidos !== null
-        ? `${specificPeriod ? 'Na janela selecionada' : 'Desde o lançamento'}: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
-        : `Ainda sem acumulado de atividade ${specificPeriod ? 'na janela selecionada' : 'desde o lançamento'}.`,
-      copy: receita !== null || pedidos !== null
-        ? `${specificPeriod ? 'Na janela selecionada' : 'Desde o lançamento'}: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`
+        ? (maturingCopy || `${specificPeriod ? 'Na janela selecionada' : 'Desde o lançamento'}: ${fmtBRL(receita)} de faturamento e ${fmtNum(pedidos)} pedidos.${dataCoverageCopy}`)
         : maturingWindow
-          ? `${selectedPeriodLabel()} ainda não fechou para esta linha. Isso é esperado em lançamento novo; acompanhe a janela menor disponível e volte quando o produto completar o marco.`
+          ? `A janela de ${selectedPeriodLabel()} ainda não fechou para esta linha. Isso é esperado em lançamento novo; acompanhe a janela menor disponível e volte quando o produto completar o marco.`
           : 'Ainda sem acumulado de atividade para esta janela.',
       facts,
       row: current ? { ...current, activity_day: activityDay, data_day: dataDay } : null,
