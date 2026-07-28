@@ -185,6 +185,9 @@
   const tip = (text, label = 'i') => text
     ? `<button class="help-button help-button--mini" type="button" data-tooltip="${tooltipAttr(text)}" aria-label="Ajuda analitica">${escapeHtml(label)}</button>`
     : '';
+  const tipMultiline = (text, label = 'i') => text
+    ? `<button class="help-button help-button--mini" type="button" data-tooltip="${tooltipMultilineAttr(text)}" aria-label="Ajuda analitica">${escapeHtml(label)}</button>`
+    : '';
   const labelTip = (label, text) => `<span class="label-with-tip"><span>${escapeHtml(label)}</span>${tip(text)}</span>`;
   const thTip = (label, text, cls = '') => `<th${cls ? ` class="${cls}"` : ''}>${labelTip(label, text)}</th>`;
   const badge = (type, label, text = '') => `<span class="badge badge--${type}"${text ? ` tabindex="0" data-tooltip="${tooltipAttr(text)}"` : ''}>${escapeHtml(label)}</span>`;
@@ -204,6 +207,10 @@
   const colorFor = (id, index = 0) => CORES_MODELO[id]?.line || CORES_MODELO._fallback[index % CORES_MODELO._fallback.length];
   const fillFor = (id, index = 0) => CORES_MODELO[id]?.fill || `${CORES_MODELO._fallback[index % CORES_MODELO._fallback.length]}33`;
   const windowLabel = (key) => WINDOW_LABELS[key] || key;
+  const windowPlainLabel = (key) => {
+    const days = windowEndDay(key);
+    return days === null || days === undefined ? windowLabel(key) : `${days} dias`;
+  };
   const normalizedStatus = (value) => String(value || '').trim().toLowerCase();
   function canonicalDayZero(model) {
     return model?.day_zero_base || null;
@@ -6948,7 +6955,7 @@
     return [
       {
         name: 'Conservador',
-        label: `Crescimento cauteloso: ${fmtNum(conservative, 2)}x`,
+        label: `Crescimento cauteloso: ${fmtNum(conservative, 2)} vezes`,
         mult: conservative,
         value: baseWindow.receita * conservative,
         methodLabel: 'o menor crescimento visto no grupo',
@@ -6956,7 +6963,7 @@
       },
       {
         name: 'Base',
-        label: `Crescimento médio: ${fmtNum(avg, 2)}x`,
+        label: `Crescimento médio: ${fmtNum(avg, 2)} vezes`,
         mult: avg,
         value: baseWindow.receita * avg,
         base: true,
@@ -6965,7 +6972,7 @@
       },
       {
         name: 'Otimista',
-        label: `Crescimento forte: ${fmtNum(optimistic, 2)}x`,
+        label: `Crescimento forte: ${fmtNum(optimistic, 2)} vezes`,
         mult: optimistic,
         value: baseWindow.receita * optimistic,
         methodLabel: 'o maior crescimento visto no grupo',
@@ -7091,24 +7098,24 @@
   function projectionEstimateTooltip(launch, scenario) {
     const baseWindow = getWindow(launch, scenario?.baseKey);
     const baseRevenue = numberOrNull(baseWindow?.receita);
-    const multiplier = numberOrNull(scenario?.mult);
+    const growthTimes = numberOrNull(scenario?.mult);
     const result = numberOrNull(scenario?.value);
-    const baseRange = launchWindowRangeLabel(launch, scenario?.baseKey);
-    const baseLabel = scenario?.baseLabel || 'janela atual';
-    const formula = `${fmtBRL(baseRevenue)} x ${fmtNum(multiplier, 2)} = ${fmtBRL(result)}`;
-    const fallback = scenario?.isFallbackBase
-      ? ` Como ${scenario.requestedLabel} ainda não fechou, foi usado ${baseLabel}, a última janela com venda real.`
-      : '';
-    const refs = (scenario?.sourceRefs || scenario?.refs || []).filter(Boolean);
-    const example = refs[0] || null;
-    const refCount = (scenario?.refs || refs).filter(Boolean).length;
+    const currentMark = windowPlainLabel(scenario?.baseKey);
+    const nextMark = windowPlainLabel(selectedPeriodKey());
+    const refCount = (scenario?.refs || []).filter(Boolean).length;
     const referenceText = refCount
       ? `${fmtNum(refCount)} lançamento${refCount === 1 ? '' : 's'} que já complet${refCount === 1 ? 'ou' : 'aram'} 90 dias`
-      : 'lançamentos que já completaram 90 dias';
-    const exampleText = example
-      ? ` Exemplo: ${example.launch?.modelo || 'um lançamento anterior'} tinha ${fmtBRL(example.baseWindow?.receita)} em ${baseLabel} e terminou com ${fmtBRL(example.finalWindow?.receita)} em 90 dias.`
+      : 'lançamentos parecidos que já completaram 90 dias';
+    const grewText = refCount === 1 ? 'cresceu' : 'cresceram';
+    const pendingText = scenario?.isFallbackBase
+      ? `\n\nPor que usamos o valor de até agora: a próxima marca (${nextMark}) ainda não fechou pra esse lançamento.`
       : '';
-    return `De onde vem o ${fmtNum(multiplier, 2)}x: ele vem da comparação com ${referenceText}. O painel olha quanto esses lançamentos tinham vendido em ${baseLabel} e quanto fecharam em 90 dias. Em termos simples, ${fmtNum(multiplier, 2)}x quer dizer: cada R$ 1 vendido até ${baseLabel} virou cerca de R$ ${fmtNum(multiplier, 2)} no fechamento de 90 dias. Para ${launch?.modelo || 'este lançamento'}, a conta é ${formula}.${fallback}${exampleText} É uma referência de caminho, não uma meta prometida.`;
+    return `O que é: uma ideia de até onde esse lançamento pode chegar em 90 dias, olhando o que aconteceu com lançamentos parecidos. Não é promessa, é palpite baseado no passado.
+
+Como chegamos nesse número: ${referenceText} ${grewText}, em média, ${fmtNum(growthTimes, 2)} vezes desde o início até o fim.
+
+Aplicando nesse lançamento: ${launch?.modelo || 'este lançamento'} já vendeu ${fmtBRL(baseRevenue)} até agora (${currentMark}).
+${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pendingText}`;
   }
 
   function projectionPairsTooltip(launch, scenario) {
@@ -7150,7 +7157,7 @@
       <div class="metric-sub" style="margin-bottom:10px">${scenarioMeta ? `Venda real até ${escapeHtml(scenarioMeta.baseLabel)}${scenarioMeta.isFallbackBase ? `, usada porque ${escapeHtml(scenarioMeta.requestedLabel)} ainda não fechou` : ''} · ${escapeHtml(scenarioMeta.referenceLabel)}` : ''}</div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
-          <div class="scenario-label">${escapeHtml(s.label)} ${tip(projectionEstimateTooltip(projectionBase, s))}</div>
+          <div class="scenario-label">${escapeHtml(s.label)} ${tipMultiline(projectionEstimateTooltip(projectionBase, s))}</div>
           <div class="scenario-name">${escapeHtml(s.name)}</div>
           <div class="scenario-value">${fmtBRL(s.value)}</div>
           <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr(projectionPairsTooltip(projectionBase, s))}">≈ ${fmtNum(s.pairs)} pares</div>
