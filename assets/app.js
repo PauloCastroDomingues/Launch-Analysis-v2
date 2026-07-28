@@ -6955,7 +6955,7 @@
     return [
       {
         name: 'Conservador',
-        label: `Crescimento cauteloso: ${fmtNum(conservative, 2)} vezes`,
+        label: `Cenário cauteloso: ${fmtNum(conservative, 2)} vezes`,
         mult: conservative,
         value: baseWindow.receita * conservative,
         methodLabel: 'o menor crescimento visto no grupo',
@@ -6963,7 +6963,7 @@
       },
       {
         name: 'Base',
-        label: `Crescimento médio: ${fmtNum(avg, 2)} vezes`,
+        label: `Cenário médio: ${fmtNum(avg, 2)} vezes`,
         mult: avg,
         value: baseWindow.receita * avg,
         base: true,
@@ -6972,7 +6972,7 @@
       },
       {
         name: 'Otimista',
-        label: `Crescimento forte: ${fmtNum(optimistic, 2)} vezes`,
+        label: `Cenário forte: ${fmtNum(optimistic, 2)} vezes`,
         mult: optimistic,
         value: baseWindow.receita * optimistic,
         methodLabel: 'o maior crescimento visto no grupo',
@@ -7108,13 +7108,13 @@
       : 'lançamentos parecidos que já completaram 90 dias';
     const grewText = refCount === 1 ? 'cresceu' : 'cresceram';
     const pendingText = scenario?.isFallbackBase
-      ? `\n\nPor que usamos o valor de até agora: a próxima marca (${nextMark}) ainda não fechou pra esse lançamento.`
+      ? `\n\nPor que usamos esse ponto: a próxima marca (${nextMark}) ainda não fechou para este lançamento.`
       : '';
-    return `O que é: uma ideia de até onde esse lançamento pode chegar em 90 dias, olhando o que aconteceu com lançamentos parecidos. Não é promessa, é palpite baseado no passado.
+    return `Leitura: estimativa de faturamento em 90 dias baseada em lançamentos comparáveis que já completaram esse ciclo. O valor orienta a decisão, mas não substitui meta ou previsão oficial.
 
-Como chegamos nesse número: ${referenceText} ${grewText}, em média, ${fmtNum(growthTimes, 2)} vezes desde o início até o fim.
+Origem do cálculo: ${referenceText} ${grewText}, em média, ${fmtNum(growthTimes, 2)} vezes entre o início e o fechamento de 90 dias.
 
-Aplicando nesse lançamento: ${launch?.modelo || 'este lançamento'} já vendeu ${fmtBRL(baseRevenue)} até agora (${currentMark}).
+Aplicação no lançamento atual: ${launch?.modelo || 'este lançamento'} acumulou ${fmtBRL(baseRevenue)} até agora (${currentMark}).
 ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pendingText}`;
   }
 
@@ -7164,8 +7164,8 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
         </div>`).join('')}
       </div>
       <div class="card warning" style="margin-top:14px">
-        <div class="metric-label">${labelTip('Como ler', 'A seção responde: se este lançamento repetir um caminho parecido com os anteriores, quanto pode chegar em 90 dias?')}</div>
-        <p class="section-desc">A projeção começa na venda real já observada e usa o comportamento de lançamentos que já completaram 90 dias. É uma referência para decisão, não uma meta prometida.</p>
+        <div class="metric-label">${labelTip('Como ler', 'A seção responde: se este lançamento seguir um comportamento próximo aos anteriores, qual faturamento pode alcançar em 90 dias?')}</div>
+        <p class="section-desc">A projeção parte da venda real já observada e usa o comportamento de lançamentos que completaram 90 dias. Use como apoio à decisão, não como meta garantida.</p>
       </div>`;
 
   }
