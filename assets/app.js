@@ -6990,35 +6990,6 @@
     }));
   }
 
-  function projectionScenarios(selected) {
-    const selectedKey = selectedPeriodKey();
-    if (selectedKey && WINDOW_KEYS.includes(selectedKey)) {
-      const baseWindow = getWindow(selected, selectedKey);
-      if (!baseWindow?.receita) return null;
-      const hist = selectedCompareLaunches()
-        .filter((l) => isHistoricalLaunch(l) && l.modelo_id !== selected.modelo_id)
-        .filter((l) => getWindow(l, '90d')?.receita && getWindow(l, selectedKey)?.receita);
-      const fallbackHist = comparableLaunches()
-        .filter((l) => isHistoricalLaunch(l) && getWindow(l, '90d')?.receita && getWindow(l, selectedKey)?.receita);
-      const refs = hist.length ? hist : fallbackHist;
-      const multipliers = refs
-        .map((l) => getWindow(l, '90d').receita / getWindow(l, selectedKey).receita)
-        .filter((value) => value !== null && value !== undefined && Number.isFinite(value))
-        .sort((a, b) => a - b);
-      if (!multipliers.length) return null;
-      const conservative = multipliers[0];
-      const optimistic = multipliers[multipliers.length - 1];
-      const avg = multipliers.reduce((acc, value) => acc + value, 0) / multipliers.length;
-      const ticketPar = baseWindow.pares ? baseWindow.receita / baseWindow.pares : null;
-      const baseLabel = windowLabel(selectedKey);
-      return [
-        { name: 'Conservador', label: `Menor histórico D+90/${baseLabel}: ${fmtNum(conservative, 2)}×`, mult: conservative, value: baseWindow.receita * conservative },
-        { name: 'Base ★', label: `Média D+90/${baseLabel}: ${fmtNum(avg, 2)}×`, mult: avg, value: baseWindow.receita * avg, base: true },
-        { name: 'Otimista', label: `Maior histórico D+90/${baseLabel}: ${fmtNum(optimistic, 2)}×`, mult: optimistic, value: baseWindow.receita * optimistic }
-      ].map((s) => ({ ...s, pairs: ticketPar ? s.value / ticketPar : null, baseLabel }));
-    }
-  }
-
   function d90RealizedWindow(launch) {
     const finalWindow = getWindow(launch, '90d');
     return numberOrNull(finalWindow?.receita) !== null ? finalWindow : null;
