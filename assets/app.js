@@ -6946,12 +6946,35 @@
     const referenceLabel = `${fmtNum(refs.length)} ref. com D+90`;
 
     return [
-      { name: 'Conservador', label: `Menor D+90/${baseLabel}: ${fmtNum(conservative, 2)}x`, mult: conservative, value: baseWindow.receita * conservative },
-      { name: 'Base', label: `Média D+90/${baseLabel}: ${fmtNum(avg, 2)}x`, mult: avg, value: baseWindow.receita * avg, base: true },
-      { name: 'Otimista', label: `Maior D+90/${baseLabel}: ${fmtNum(optimistic, 2)}x`, mult: optimistic, value: baseWindow.receita * optimistic }
+      {
+        name: 'Conservador',
+        label: `Menor D+90/${baseLabel}: ${fmtNum(conservative, 2)}x`,
+        mult: conservative,
+        value: baseWindow.receita * conservative,
+        methodLabel: 'menor multiplicador do grupo',
+        sourceRefs: [refs[0]]
+      },
+      {
+        name: 'Base',
+        label: `Média D+90/${baseLabel}: ${fmtNum(avg, 2)}x`,
+        mult: avg,
+        value: baseWindow.receita * avg,
+        base: true,
+        methodLabel: 'média dos multiplicadores do grupo',
+        sourceRefs: refs
+      },
+      {
+        name: 'Otimista',
+        label: `Maior D+90/${baseLabel}: ${fmtNum(optimistic, 2)}x`,
+        mult: optimistic,
+        value: baseWindow.receita * optimistic,
+        methodLabel: 'maior multiplicador do grupo',
+        sourceRefs: [refs[refs.length - 1]]
+      }
     ].map((s) => ({
       ...s,
       pairs: ticketPar ? s.value / ticketPar : null,
+      baseKey,
       baseLabel,
       requestedLabel,
       isFallbackBase,
@@ -7065,6 +7088,36 @@
       </div>`;
   }
 
+  function projectionEstimateTooltip(launch, scenario) {
+    const baseWindow = getWindow(launch, scenario?.baseKey);
+    const baseRevenue = numberOrNull(baseWindow?.receita);
+    const multiplier = numberOrNull(scenario?.mult);
+    const result = numberOrNull(scenario?.value);
+    const baseRange = launchWindowRangeLabel(launch, scenario?.baseKey);
+    const formula = `${fmtBRL(baseRevenue)} em ${scenario?.baseLabel || 'janela base'} x ${fmtNum(multiplier, 2)} = ${fmtBRL(result)}`;
+    const fallback = scenario?.isFallbackBase
+      ? ` A janela escolhida (${scenario.requestedLabel}) ainda não fechou; por isso a conta usa ${scenario.baseLabel}, a maior janela real disponível.`
+      : '';
+    const refs = (scenario?.sourceRefs || scenario?.refs || [])
+      .filter(Boolean)
+      .slice(0, 5)
+      .map((row) => {
+        const name = row.launch?.modelo || row.launch?.modelo_id || 'referência';
+        const base = fmtBRL(row.baseWindow?.receita);
+        const final = fmtBRL(row.finalWindow?.receita);
+        return `${name}: ${fmtNum(row.multiplier, 2)}x (${base} -> ${final})`;
+      })
+      .join('; ');
+    const refText = refs ? ` Multiplicador: ${scenario?.methodLabel || 'multiplicador do grupo'} a partir de ${refs}.` : '';
+    return `Estimativa ${scenario?.name || ''}: ${formula}. Base real: ${launch?.modelo || 'linha selecionada'} em ${baseRange}.${fallback}${refText} Não é meta nem venda atribuída; é uma projeção comparativa para D+90.`;
+  }
+
+  function projectionPairsTooltip(launch, scenario) {
+    const baseWindow = getWindow(launch, scenario?.baseKey);
+    const ticketPar = baseWindow?.pares ? baseWindow.receita / baseWindow.pares : null;
+    return `Pares estimados = faturamento estimado (${fmtBRL(scenario?.value)}) / preço médio por par da janela base (${fmtBRL(ticketPar)}). Resultado aproximado: ${fmtNum(scenario?.pairs)} pares.`;
+  }
+
   function renderProjection(selected) {
     const projectionLaunches = selectedCompareLaunches();
     const projectionWindowKey = selectedPeriodKey();
@@ -7098,10 +7151,10 @@
       <div class="metric-sub" style="margin-bottom:10px">${scenarioMeta ? `${escapeHtml(scenarioMeta.baseLabel)} real${scenarioMeta.isFallbackBase ? ` usado porque ${escapeHtml(scenarioMeta.requestedLabel)} ainda não fechou` : ''} · ${escapeHtml(scenarioMeta.referenceLabel)}` : ''}</div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
-          <div class="scenario-label">${escapeHtml(s.label)} ${tip(`Fórmula: receita real em ${s.baseLabel || 'D+30'} x multiplicador dos lançamentos que já chegaram a D+90. Se a janela escolhida ainda não fechou, usa a maior janela real disponível.`)}</div>
+          <div class="scenario-label">${escapeHtml(s.label)} ${tip(projectionEstimateTooltip(projectionBase, s))}</div>
           <div class="scenario-name">${escapeHtml(s.name)}</div>
           <div class="scenario-value">${fmtBRL(s.value)}</div>
-          <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr('Pares estimados = faturamento do cenário / preço médio por par da janela base. É aproximação, não forecast operacional.')}">≈ ${fmtNum(s.pairs)} pares</div>
+          <div class="scenario-pairs" tabindex="0" data-tooltip="${tooltipAttr(projectionPairsTooltip(projectionBase, s))}">≈ ${fmtNum(s.pairs)} pares</div>
         </div>`).join('')}
       </div>
       <div class="card warning" style="margin-top:14px">
