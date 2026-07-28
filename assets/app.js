@@ -257,9 +257,13 @@
     const version = manifest?.generated_at || String(Date.now());
     out.manifest = manifest || {};
 
-    for (const name of DATA_FILES) {
-      out[name] = await fetchDataFile(name, version, !NO_EMBEDDED_FALLBACK.has(name));
-    }
+    const entries = await Promise.all(DATA_FILES.map(async (name) => [
+      name,
+      await fetchDataFile(name, version, !NO_EMBEDDED_FALLBACK.has(name))
+    ]));
+    entries.forEach(([name, payload]) => {
+      out[name] = payload;
+    });
     return out;
   }
 

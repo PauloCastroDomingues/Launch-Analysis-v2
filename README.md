@@ -8,30 +8,19 @@ O app roda na Vercel, lê JSONs versionados em `/data` via `fetch` e não depend
 
 ## Estado Atual
 
-Snapshot versionado em `data/manifest.json`:
+O estado operacional não fica duplicado no README. Use `data/manifest.json` como fonte canônica do snapshot publicado:
 
-| Item | Status |
-| --- | --- |
-| Última geração | `2026-07-10T09:22:05-03:00` |
-| Modelo ativo | `rs8_monochrome` |
-| Linhas em `lancamentos_produtos_dia.json` | `359` |
-| Auditoria Monochrome | `ok` |
-| Estoque | exportado, `0` linhas |
-| Mídia paga | exportado, `11` linhas |
-| CRM | exportado, `23` linhas |
+- `generated_at`: data e hora da exportação.
+- `active_models` e `exported_models`: linhas ativas/exportadas.
+- `row_counts`: volume por JSON.
+- `data_quality`: auditorias disponíveis, como `rs8_monochrome`.
 
-Auditoria atual do RS8 Avant Monochrome:
+Checagem rápida depois de `exportarTudo()`:
 
-| Métrica | Valor |
-| --- | ---: |
-| Pedidos auditados | 281 |
-| Pares auditados | 359 |
-| Receita auditada | 258121 |
-| Diferença pedidos/exportado | 0 |
-| Diferença pares/exportado | 0 |
-| Diferença receita/exportado | 0 |
-| Linhas suspeitas | 0 |
-| Duplicidades | 0 |
+```powershell
+node scripts\auditar_pacote_publico.js
+node scripts\auditar_atribuicao_exportado.js data\lancamentos_produtos_dia.json
+```
 
 ## Modelos
 
@@ -190,6 +179,9 @@ Funções principais:
 - Nunca transformar ausência em `0`.
 - Filtros de data usam inclusão do D0.
 - O relógio analítico do front usa `manifest.generated_at`; se o manifest estiver ausente, usa a maior data de `lancamentos_produtos_dia.json` antes de cair na data do navegador.
+- O front carrega `data/manifest.json` primeiro e usa `manifest.generated_at` como chave de cache para os demais JSONs.
+- Depois do manifest, os arquivos em `DATA_FILES` são carregados em paralelo para reduzir o tempo de abertura do painel.
+- A Vercel serve `/data/(.*)` com `Cache-Control: no-store`; os assets versionados ficam com query string em `index.html` e `dashboard.html`.
 - Janelas `7d`, `15d`, `30d`, `60d` e `90d` significam D+N inclusivo: D0 até D+N.
 - `day_zero_base` é o D0 canônico usado pelo dashboard para toda janela comparativa.
 - `data_lancamento` e `data_oficial` são contexto de calendário/oficial; não substituem `day_zero_base` em cálculo.
@@ -362,12 +354,12 @@ Fluxo normal:
 
 1. Ajustar `data/lancamentos_modelos.json` quando houver novo lançamento, D0 ou termos.
 2. Rodar `exportarTudo()` no Apps Script.
-3. Conferir `data/manifest.json`.
-4. Verificar `data_quality` quando houver auditoria.
-5. Rodar `node scripts\sanitizar_public_data.js`.
-6. Rodar `node scripts\auditar_pacote_publico.js`.
+3. Conferir `data/manifest.json` e `data_quality` quando houver auditoria.
+4. Se os dados foram editados localmente ou vieram de exportador antigo, rodar `node scripts\sanitizar_public_data.js`.
+5. Rodar `node scripts\auditar_pacote_publico.js`.
+6. Rodar `node scripts\auditar_atribuicao_exportado.js data\lancamentos_produtos_dia.json`.
 7. Subir o commit gerado no GitHub.
-8. Publicar ou aguardar deploy da Vercel.
+8. Publicar ou aguardar deploy da Vercel e validar a URL de produção com cache-buster.
 
 Para recalcular GT/Avant:
 
