@@ -6943,32 +6943,32 @@
     const baseLabel = windowLabel(baseKey);
     const requestedLabel = windowLabel(requestedKey);
     const isFallbackBase = baseKey !== requestedKey;
-    const referenceLabel = `${fmtNum(refs.length)} ref. com D+90`;
+    const referenceLabel = `${fmtNum(refs.length)} lançamento${refs.length === 1 ? '' : 's'} já chegaram a 90 dias`;
 
     return [
       {
         name: 'Conservador',
-        label: `Evolução mais baixa até 90 dias: ${fmtNum(conservative, 2)}x`,
+        label: `Crescimento cauteloso: ${fmtNum(conservative, 2)}x`,
         mult: conservative,
         value: baseWindow.receita * conservative,
-        methodLabel: 'o comportamento mais cauteloso do grupo',
+        methodLabel: 'o menor crescimento visto no grupo',
         sourceRefs: [refs[0]]
       },
       {
         name: 'Base',
-        label: `Evolução média até 90 dias: ${fmtNum(avg, 2)}x`,
+        label: `Crescimento médio: ${fmtNum(avg, 2)}x`,
         mult: avg,
         value: baseWindow.receita * avg,
         base: true,
-        methodLabel: 'a média de evolução do grupo',
+        methodLabel: 'a média de crescimento do grupo',
         sourceRefs: refs
       },
       {
         name: 'Otimista',
-        label: `Evolução mais alta até 90 dias: ${fmtNum(optimistic, 2)}x`,
+        label: `Crescimento forte: ${fmtNum(optimistic, 2)}x`,
         mult: optimistic,
         value: baseWindow.receita * optimistic,
-        methodLabel: 'o comportamento mais forte do grupo',
+        methodLabel: 'o maior crescimento visto no grupo',
         sourceRefs: [refs[refs.length - 1]]
       }
     ].map((s) => ({
@@ -7097,26 +7097,24 @@
     const baseLabel = scenario?.baseLabel || 'janela atual';
     const formula = `${fmtBRL(baseRevenue)} x ${fmtNum(multiplier, 2)} = ${fmtBRL(result)}`;
     const fallback = scenario?.isFallbackBase
-      ? ` Como a janela escolhida (${scenario.requestedLabel}) ainda não fechou, a conta usa ${baseLabel}, que é a última janela com venda real disponível.`
+      ? ` Como ${scenario.requestedLabel} ainda não fechou, foi usado ${baseLabel}, a última janela com venda real.`
       : '';
-    const refs = (scenario?.sourceRefs || scenario?.refs || [])
-      .filter(Boolean)
-      .slice(0, 5)
-      .map((row) => {
-        const name = row.launch?.modelo || row.launch?.modelo_id || 'referência';
-        const base = fmtBRL(row.baseWindow?.receita);
-        const final = fmtBRL(row.finalWindow?.receita);
-        return `${name} saiu de ${base} em ${baseLabel} para ${final} em 90 dias (${fmtNum(row.multiplier, 2)}x)`;
-      })
-      .join('; ');
-    const refText = refs ? ` A referência usada foi ${scenario?.methodLabel || 'o comportamento do grupo'}: ${refs}.` : '';
-    return `Como chegar neste número: primeiro o painel pega a venda real de ${launch?.modelo || 'este lançamento'} até ${baseLabel} (${baseRange}), que foi ${fmtBRL(baseRevenue)}. Depois olha lançamentos que já completaram 90 dias para entender quanto eles cresceram depois desse mesmo ponto.${fallback}${refText} Neste cenário, a conta fica ${formula}. Não é meta nem promessa de venda; é uma estimativa executiva para enxergar o possível fechamento em 90 dias.`;
+    const refs = (scenario?.sourceRefs || scenario?.refs || []).filter(Boolean);
+    const example = refs[0] || null;
+    const refCount = (scenario?.refs || refs).filter(Boolean).length;
+    const referenceText = refCount
+      ? `${fmtNum(refCount)} lançamento${refCount === 1 ? '' : 's'} que já complet${refCount === 1 ? 'ou' : 'aram'} 90 dias`
+      : 'lançamentos que já completaram 90 dias';
+    const exampleText = example
+      ? ` Exemplo de comparação: ${example.launch?.modelo || 'um lançamento anterior'} vendeu ${fmtBRL(example.baseWindow?.receita)} até ${baseLabel} e fechou ${fmtBRL(example.finalWindow?.receita)} em 90 dias.`
+      : '';
+    return `Como ler este número: 1) venda real até agora: ${fmtBRL(baseRevenue)} (${baseLabel}, ${baseRange}); 2) comparação com ${referenceText}; 3) aplicação do ${scenario?.methodLabel || 'crescimento do grupo'}. Conta final: ${formula}.${fallback}${exampleText} Use como referência de caminho, não como meta prometida.`;
   }
 
   function projectionPairsTooltip(launch, scenario) {
     const baseWindow = getWindow(launch, scenario?.baseKey);
     const ticketPar = baseWindow?.pares ? baseWindow.receita / baseWindow.pares : null;
-    return `Como chegar nos pares: depois de estimar o faturamento (${fmtBRL(scenario?.value)}), o painel divide esse valor pelo preço médio por par observado até agora (${fmtBRL(ticketPar)}). Isso gera uma ordem de grandeza, não uma previsão operacional fechada: aproximadamente ${fmtNum(scenario?.pairs)} pares.`;
+    return `Como ler os pares: o painel pega o faturamento estimado (${fmtBRL(scenario?.value)}) e divide pelo preço médio por par que este lançamento já mostrou (${fmtBRL(ticketPar)}). Resultado aproximado: ${fmtNum(scenario?.pairs)} pares.`;
   }
 
   function renderProjection(selected) {
@@ -7148,8 +7146,8 @@
     }
 
     $('projection-content').innerHTML = `
-      <div class="metric-sub" style="margin-bottom:10px">Base da projeção: <strong>${escapeHtml(projectionBase.modelo)}</strong></div>
-      <div class="metric-sub" style="margin-bottom:10px">${scenarioMeta ? `${escapeHtml(scenarioMeta.baseLabel)} real${scenarioMeta.isFallbackBase ? ` usado porque ${escapeHtml(scenarioMeta.requestedLabel)} ainda não fechou` : ''} · ${escapeHtml(scenarioMeta.referenceLabel)}` : ''}</div>
+      <div class="metric-sub" style="margin-bottom:10px">Ponto de partida: <strong>${escapeHtml(projectionBase.modelo)}</strong></div>
+      <div class="metric-sub" style="margin-bottom:10px">${scenarioMeta ? `Venda real até ${escapeHtml(scenarioMeta.baseLabel)}${scenarioMeta.isFallbackBase ? `, usada porque ${escapeHtml(scenarioMeta.requestedLabel)} ainda não fechou` : ''} · ${escapeHtml(scenarioMeta.referenceLabel)}` : ''}</div>
       <div class="scenario-grid">
         ${scenarios.map((s) => `<div class="scenario ${s.base ? 'base' : ''}">
           <div class="scenario-label">${escapeHtml(s.label)} ${tip(projectionEstimateTooltip(projectionBase, s))}</div>
@@ -7159,8 +7157,8 @@
         </div>`).join('')}
       </div>
       <div class="card warning" style="margin-top:14px">
-        <div class="metric-label">${labelTip('Como ler', 'Esta leitura responde: se este lançamento continuar se comportando como lançamentos anteriores, qual faixa de faturamento ele pode alcançar em 90 dias?')}</div>
-        <p class="section-desc">Se o lançamento ainda não chegou a D+90, o painel parte da venda real mais recente e compara com modelos que já completaram 90 dias. Use como faixa de decisão, não como meta nem promessa de fechamento.</p>
+        <div class="metric-label">${labelTip('Como ler', 'A seção responde: se este lançamento repetir um caminho parecido com os anteriores, quanto pode chegar em 90 dias?')}</div>
+        <p class="section-desc">A projeção começa na venda real já observada e usa o comportamento de lançamentos que já completaram 90 dias. É uma referência para decisão, não uma meta prometida.</p>
       </div>`;
 
   }
