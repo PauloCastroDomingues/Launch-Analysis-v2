@@ -6948,27 +6948,27 @@
     return [
       {
         name: 'Conservador',
-        label: `Menor D+90/${baseLabel}: ${fmtNum(conservative, 2)}x`,
+        label: `Evolução mais baixa até 90 dias: ${fmtNum(conservative, 2)}x`,
         mult: conservative,
         value: baseWindow.receita * conservative,
-        methodLabel: 'menor multiplicador do grupo',
+        methodLabel: 'o comportamento mais cauteloso do grupo',
         sourceRefs: [refs[0]]
       },
       {
         name: 'Base',
-        label: `Média D+90/${baseLabel}: ${fmtNum(avg, 2)}x`,
+        label: `Evolução média até 90 dias: ${fmtNum(avg, 2)}x`,
         mult: avg,
         value: baseWindow.receita * avg,
         base: true,
-        methodLabel: 'média dos multiplicadores do grupo',
+        methodLabel: 'a média de evolução do grupo',
         sourceRefs: refs
       },
       {
         name: 'Otimista',
-        label: `Maior D+90/${baseLabel}: ${fmtNum(optimistic, 2)}x`,
+        label: `Evolução mais alta até 90 dias: ${fmtNum(optimistic, 2)}x`,
         mult: optimistic,
         value: baseWindow.receita * optimistic,
-        methodLabel: 'maior multiplicador do grupo',
+        methodLabel: 'o comportamento mais forte do grupo',
         sourceRefs: [refs[refs.length - 1]]
       }
     ].map((s) => ({
@@ -7094,9 +7094,10 @@
     const multiplier = numberOrNull(scenario?.mult);
     const result = numberOrNull(scenario?.value);
     const baseRange = launchWindowRangeLabel(launch, scenario?.baseKey);
-    const formula = `${fmtBRL(baseRevenue)} em ${scenario?.baseLabel || 'janela base'} x ${fmtNum(multiplier, 2)} = ${fmtBRL(result)}`;
+    const baseLabel = scenario?.baseLabel || 'janela atual';
+    const formula = `${fmtBRL(baseRevenue)} x ${fmtNum(multiplier, 2)} = ${fmtBRL(result)}`;
     const fallback = scenario?.isFallbackBase
-      ? ` A janela escolhida (${scenario.requestedLabel}) ainda não fechou; por isso a conta usa ${scenario.baseLabel}, a maior janela real disponível.`
+      ? ` Como a janela escolhida (${scenario.requestedLabel}) ainda não fechou, a conta usa ${baseLabel}, que é a última janela com venda real disponível.`
       : '';
     const refs = (scenario?.sourceRefs || scenario?.refs || [])
       .filter(Boolean)
@@ -7105,17 +7106,17 @@
         const name = row.launch?.modelo || row.launch?.modelo_id || 'referência';
         const base = fmtBRL(row.baseWindow?.receita);
         const final = fmtBRL(row.finalWindow?.receita);
-        return `${name}: ${fmtNum(row.multiplier, 2)}x (${base} -> ${final})`;
+        return `${name} saiu de ${base} em ${baseLabel} para ${final} em 90 dias (${fmtNum(row.multiplier, 2)}x)`;
       })
       .join('; ');
-    const refText = refs ? ` Multiplicador: ${scenario?.methodLabel || 'multiplicador do grupo'} a partir de ${refs}.` : '';
-    return `Estimativa ${scenario?.name || ''}: ${formula}. Base real: ${launch?.modelo || 'linha selecionada'} em ${baseRange}.${fallback}${refText} Não é meta nem venda atribuída; é uma projeção comparativa para D+90.`;
+    const refText = refs ? ` A referência usada foi ${scenario?.methodLabel || 'o comportamento do grupo'}: ${refs}.` : '';
+    return `Como chegar neste número: primeiro o painel pega a venda real de ${launch?.modelo || 'este lançamento'} até ${baseLabel} (${baseRange}), que foi ${fmtBRL(baseRevenue)}. Depois olha lançamentos que já completaram 90 dias para entender quanto eles cresceram depois desse mesmo ponto.${fallback}${refText} Neste cenário, a conta fica ${formula}. Não é meta nem promessa de venda; é uma estimativa executiva para enxergar o possível fechamento em 90 dias.`;
   }
 
   function projectionPairsTooltip(launch, scenario) {
     const baseWindow = getWindow(launch, scenario?.baseKey);
     const ticketPar = baseWindow?.pares ? baseWindow.receita / baseWindow.pares : null;
-    return `Pares estimados = faturamento estimado (${fmtBRL(scenario?.value)}) / preço médio por par da janela base (${fmtBRL(ticketPar)}). Resultado aproximado: ${fmtNum(scenario?.pairs)} pares.`;
+    return `Como chegar nos pares: depois de estimar o faturamento (${fmtBRL(scenario?.value)}), o painel divide esse valor pelo preço médio por par observado até agora (${fmtBRL(ticketPar)}). Isso gera uma ordem de grandeza, não uma previsão operacional fechada: aproximadamente ${fmtNum(scenario?.pairs)} pares.`;
   }
 
   function renderProjection(selected) {
@@ -7158,8 +7159,8 @@
         </div>`).join('')}
       </div>
       <div class="card warning" style="margin-top:14px">
-        <div class="metric-label">${labelTip('Como ler', 'A projeção não usa modelo estatístico externo. Ela aplica multiplicadores históricos para dar amplitude conservadora/base/otimista.')}</div>
-        <p class="section-desc">Se o lançamento ainda não chegou a D+90, o painel projeta D+90 a partir da maior janela real disponível e compara com os modelos que já completaram 90 dias. Leia como amplitude de rota, não como previsão fechada.</p>
+        <div class="metric-label">${labelTip('Como ler', 'Esta leitura responde: se este lançamento continuar se comportando como lançamentos anteriores, qual faixa de faturamento ele pode alcançar em 90 dias?')}</div>
+        <p class="section-desc">Se o lançamento ainda não chegou a D+90, o painel parte da venda real mais recente e compara com modelos que já completaram 90 dias. Use como faixa de decisão, não como meta nem promessa de fechamento.</p>
       </div>`;
 
   }
