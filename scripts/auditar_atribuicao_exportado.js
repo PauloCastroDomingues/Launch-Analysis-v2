@@ -23,7 +23,7 @@ function normalize(value) {
 }
 
 function orderKey(row) {
-  return normalize(row.order_sk || row.source_order_id || row.order_name);
+  return normalize(row.order_sk);
 }
 
 function readRows(filePath) {

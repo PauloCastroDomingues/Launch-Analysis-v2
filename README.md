@@ -191,9 +191,12 @@ Funções principais:
 - Filtros de data usam inclusão do D0.
 - O relógio analítico do front usa `manifest.generated_at`; se o manifest estiver ausente, usa a maior data de `lancamentos_produtos_dia.json` antes de cair na data do navegador.
 - Janelas `7d`, `15d`, `30d`, `60d` e `90d` significam D+N inclusivo: D0 até D+N.
-- `day_zero_base` é o D0 analítico usado pelo dashboard.
+- `day_zero_base` é o D0 canônico usado pelo dashboard para toda janela comparativa.
+- `data_lancamento` e `data_oficial` são contexto de calendário/oficial; não substituem `day_zero_base` em cálculo.
+- `mart_shared.linha_cadastro` mantém `data_lancamento` como data de cadastro/oficial e `day_zero_base` como D0 analítico; o exportador não faz fallback silencioso entre esses campos.
 - Modelos exportáveis pelo Apps Script precisam estar com `status = historico` ou `status = ativo` e `day_zero_base` válido.
 - Histórico (`status = historico`) também entra como benchmark estático em `lancamentos_historico.json`, mas pode ser reexportado no pipeline diário quando precisa de granularidade por pedido/item.
+- Quando existe `lancamentos_produtos_dia.json` para um modelo, o front prioriza o pipeline diário. `lancamentos_historico.json` fica como fallback/benchmark estático e passa pela mesma normalização de contrato das janelas do pipeline.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries do dashboard em `southamerica-east1`.
 - Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region.
@@ -205,7 +208,7 @@ Para modelos com `status = historico` ou `status = ativo`, o Apps Script usa `co
 Saída esperada por linha:
 
 ```txt
-modelo_id | data | source_order_id | order_sk | origem | sku | nome_produto
+modelo_id | data | order_sk | origem | sku | nome_produto
 variant_title | sub_modelo | cor | tamanho | pedidos | pedidos_validos | pares
 receita | receita_bruta | desconto | receita_liquida | novos | recorrentes
 match_text_norm | modelo_id_detectado | d0 | dia_desde_d0 | canal_real | tipo_real
@@ -217,7 +220,9 @@ flags_qualidade | fonte
 
 A camada nova de vendas por lançamento usa `reise-ssot.mart_shared.fct_order_item` como fonte preferencial. O filtro de pedido válido é `i.is_valid_order = TRUE` e a contagem de pedidos é sempre `COUNT(DISTINCT order_sk)`.
 
-O campo `receita` permanece no JSON por compatibilidade com o frontend, mas representa `receita_bruta`.
+O pacote público não deve carregar identificadores brutos de pedido. `source_order_id`, `order_name` e `atribuicao_match_key` são usados apenas durante a atribuição no Apps Script e removidos antes de gravar `lancamentos_produtos_dia.json`. O front usa `order_sk` hashado para deduplicação.
+
+O campo `receita` permanece no JSON por compatibilidade com o frontend, mas representa `receita_bruta`. No dashboard, ranking, curvas, composição por cor/tamanho e comparativos executivos devem usar `receita_bruta`/`receita`. `receita_liquida` é campo auxiliar para auditoria e análise financeira, não a base visual principal.
 
 ```txt
 receita_bruta = line_gross_amount
@@ -359,8 +364,10 @@ Fluxo normal:
 2. Rodar `exportarTudo()` no Apps Script.
 3. Conferir `data/manifest.json`.
 4. Verificar `data_quality` quando houver auditoria.
-5. Subir o commit gerado no GitHub.
-6. Publicar ou aguardar deploy da Vercel.
+5. Rodar `node scripts\sanitizar_public_data.js`.
+6. Rodar `node scripts\auditar_pacote_publico.js`.
+7. Subir o commit gerado no GitHub.
+8. Publicar ou aguardar deploy da Vercel.
 
 Para recalcular GT/Avant:
 
@@ -422,7 +429,7 @@ O dashboard mostra:
 - ações sugeridas;
 - projeção de 90 dias.
 
-O bloco de metodologia mostra `Data oficial`, `Day zero usado`, `Primeira venda encontrada` e `Gap base`.
+O painel recolhivel **Apoio de leitura** mostra metodologia executiva, alertas de leitura e estoque de apoio sem duplicar a leitura executiva. Ele reforca que toda comparacao usa `day_zero_base`, janelas fixas por idade de venda, receita bruta do SSOT, meta total mensal e ausencia preservada como vazio.
 
 ## Pendências Conhecidas
 

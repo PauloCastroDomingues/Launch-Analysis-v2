@@ -983,7 +983,17 @@ GROUP BY
 ORDER BY modelo_id, data, order_sk, sku;`;
 
   const rows = runBq_(query);
-  return enriquecerProdutosDiaComAtribuicaoLastClick_(rows);
+  return sanitizarProdutosDiaPublicos_(enriquecerProdutosDiaComAtribuicaoLastClick_(rows));
+}
+
+function sanitizarProdutosDiaPublicos_(rows) {
+  return (rows || []).map(row => {
+    const clean = { ...row };
+    delete clean.source_order_id;
+    delete clean.order_name;
+    delete clean.atribuicao_match_key;
+    return clean;
+  });
 }
 
 function enriquecerProdutosDiaComAtribuicaoLastClick_(rows) {
@@ -1888,7 +1898,7 @@ function consultarEstoque_(modelos) {
   const modelosSql = modelos.map(m => {
     const termosRegex = termosRegex_(m);
     const skuPrefixos = skuPrefixos_(m);
-    const d0 = sql_(m.day_zero_base || m.data_lancamento);
+    const d0 = sql_(m.day_zero_base);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
 
@@ -2102,7 +2112,7 @@ function logProdutosDiaExport_(modelos, produtosDia) {
   Logger.log(`exportarTudo: linhas por origem = ${JSON.stringify(byOrigem)}`);
 
   modelos.forEach(modelo => {
-    Logger.log(`modelo ${modelo.modelo_id}: d0=${modelo.day_zero_base || modelo.data_lancamento}; termos_busca=${modelo.termos_busca || ''}; sku_prefixos=${modelo.sku_prefixos || ''}`);
+    Logger.log(`modelo ${modelo.modelo_id}: d0=${modelo.day_zero_base}; termos_busca=${modelo.termos_busca || ''}; sku_prefixos=${modelo.sku_prefixos || ''}`);
     const rows = produtosDia.filter(row => row.modelo_id === modelo.modelo_id);
     const receita = rows.reduce((acc, row) => acc + Number(row.receita || 0), 0);
     const pares = rows.reduce((acc, row) => acc + Number(row.pares || 0), 0);
@@ -2203,7 +2213,8 @@ function carregarModelos_() {
     if (!modelo.modelo_id) missing.push('modelo_id');
     if (!modelo.modelo) missing.push('modelo');
     if (!modelo.linha) missing.push('linha');
-    if (!modelo.data_lancamento && !modelo.day_zero_base) missing.push('data_lancamento/day_zero_base');
+    if (!modelo.data_lancamento) missing.push('data_lancamento');
+    if (!modelo.day_zero_base) missing.push('day_zero_base');
     if (!modelo.termos_busca && !modelo.sku_prefixos) missing.push('termos_busca/sku_prefixos');
     if (!modelo.status) missing.push('status');
 
@@ -2211,7 +2222,7 @@ function carregarModelos_() {
       Logger.log(`lancamentos_modelos.json item ${index + 1}: campos ausentes = ${missing.join(', ')}`);
     }
 
-    const bloqueantes = ['modelo_id', 'modelo', 'data_lancamento/day_zero_base', 'status'];
+    const bloqueantes = ['modelo_id', 'modelo', 'data_lancamento', 'day_zero_base', 'status'];
     if (missing.some(field => bloqueantes.includes(field))) {
       Logger.log(`lancamentos_modelos.json item ${index + 1}: ignorado por falta de campo essencial.`);
       return;
@@ -2231,13 +2242,14 @@ function sincronizarCadastroBigQuery_(modelos) {
   const rows = (modelos || []).map((modelo, index) => {
     const modeloId = String(modelo.modelo_id || '').trim();
     const linha = String(modelo.linha || modelo.modelo || '').trim();
-    const dataLancamento = dateIso_(modelo.data_lancamento || modelo.day_zero_base);
+    const dataLancamento = dateIso_(modelo.data_lancamento);
+    const dayZeroBase = dateIso_(modelo.day_zero_base);
 
-    if (!modeloId || !linha || !dataLancamento) {
-      throw new Error(`lancamentos_modelos.json item ${index + 1}: modelo_id, linha e data_lancamento sao obrigatorios para sincronizar mart_shared.linha_cadastro.`);
+    if (!modeloId || !linha || !dataLancamento || !dayZeroBase) {
+      throw new Error(`lancamentos_modelos.json item ${index + 1}: modelo_id, linha, data_lancamento e day_zero_base sao obrigatorios para sincronizar mart_shared.linha_cadastro.`);
     }
 
-    return { modeloId, linha, dataLancamento };
+    return { modeloId, linha, dataLancamento, dayZeroBase };
   });
 
   if (!rows.length) {
@@ -2245,15 +2257,19 @@ function sincronizarCadastroBigQuery_(modelos) {
   }
 
   const sourceSql = rows.map(row =>
-    `SELECT '${sql_(row.modeloId)}' AS modelo_id, '${sql_(row.linha)}' AS linha, DATE('${sql_(row.dataLancamento)}') AS data_lancamento`
+    `SELECT '${sql_(row.modeloId)}' AS modelo_id, '${sql_(row.linha)}' AS linha, DATE('${sql_(row.dataLancamento)}') AS data_lancamento, DATE('${sql_(row.dayZeroBase)}') AS day_zero_base`
   ).join('\nUNION ALL\n');
 
   const query = `
 CREATE TABLE IF NOT EXISTS \`reise-ssot.mart_shared.linha_cadastro\` (
   modelo_id STRING,
   linha STRING,
-  data_lancamento DATE
+  data_lancamento DATE,
+  day_zero_base DATE
 );
+
+ALTER TABLE \`reise-ssot.mart_shared.linha_cadastro\`
+ADD COLUMN IF NOT EXISTS day_zero_base DATE;
 
 MERGE \`reise-ssot.mart_shared.linha_cadastro\` T
 USING (
@@ -2261,10 +2277,10 @@ USING (
 ) S
 ON T.modelo_id = S.modelo_id
 WHEN MATCHED THEN
-  UPDATE SET linha = S.linha, data_lancamento = S.data_lancamento
+  UPDATE SET linha = S.linha, data_lancamento = S.data_lancamento, day_zero_base = S.day_zero_base
 WHEN NOT MATCHED THEN
-  INSERT (modelo_id, linha, data_lancamento)
-  VALUES (S.modelo_id, S.linha, S.data_lancamento);`;
+  INSERT (modelo_id, linha, data_lancamento, day_zero_base)
+  VALUES (S.modelo_id, S.linha, S.data_lancamento, S.day_zero_base);`;
 
   runBq_(query);
   Logger.log(`mart_shared.linha_cadastro sincronizada com ${rows.length} modelos.`);
@@ -2504,7 +2520,7 @@ function consultarShareTrajetoria_(modelos) {
   const modelosSql = modelos.map(m => {
     const termosRegex = termosRegex_(m);
     const skuPrefixos = skuPrefixos_(m);
-    const d0 = sql_(m.day_zero_base || m.data_lancamento);
+    const d0 = sql_(m.day_zero_base);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, '${sql_(m.linha || m.modelo)}' AS linha, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
 
@@ -2579,6 +2595,7 @@ datas_modelo AS (
   SELECT
     m.modelo_id,
     COALESCE(NULLIF(m.linha, ''), m.modelo, m.modelo_id) AS linha,
+    m.d0 AS day_zero_base,
     m.d0 AS data_lancamento,
     day AS dias_desde_lancamento,
     DATE_ADD(m.d0, INTERVAL day DAY) AS data_calendario
@@ -2612,6 +2629,7 @@ base AS (
   SELECT
     d.modelo_id,
     d.linha,
+    d.day_zero_base,
     d.data_lancamento,
     d.dias_desde_lancamento,
     d.data_calendario,
@@ -2650,7 +2668,7 @@ base AS (
 janela_pos AS (
   SELECT
     modelo_id,
-    ANY_VALUE(data_lancamento) AS data_lancamento_janela,
+    ANY_VALUE(day_zero_base) AS day_zero_base_janela,
     COUNT(DISTINCT data_calendario) AS dias_pos_disponiveis,
     SUM(receita_empresa) AS receita_empresa_pos_periodo
   FROM base
@@ -2662,21 +2680,22 @@ janela_pre AS (
     SUM(re.receita_empresa) AS receita_empresa_pre_periodo
   FROM janela_pos p
   JOIN receita_empresa_dia re
-    ON re.data BETWEEN DATE_SUB(p.data_lancamento_janela, INTERVAL p.dias_pos_disponiveis DAY)
-                   AND DATE_SUB(p.data_lancamento_janela, INTERVAL 1 DAY)
+    ON re.data BETWEEN DATE_SUB(p.day_zero_base_janela, INTERVAL p.dias_pos_disponiveis DAY)
+                   AND DATE_SUB(p.day_zero_base_janela, INTERVAL 1 DAY)
   GROUP BY p.modelo_id
 ), sazonalidade_d0 AS (
   SELECT
     b.modelo_id,
-    COUNTIF(s.data = b.data_lancamento) > 0 AS d0_coincide_com_sazonalidade
-  FROM (SELECT DISTINCT modelo_id, data_lancamento FROM base) b
+    COUNTIF(s.data = b.day_zero_base) > 0 AS d0_coincide_com_sazonalidade
+  FROM (SELECT DISTINCT modelo_id, day_zero_base FROM base) b
   LEFT JOIN \`reise-ssot.mart_shared.datas_sazonais\` s
-    ON s.data = b.data_lancamento
+    ON s.data = b.day_zero_base
   GROUP BY b.modelo_id
 )
 SELECT
   modelo_id,
   ANY_VALUE(linha) AS linha,
+  CAST(ANY_VALUE(b.day_zero_base) AS STRING) AS day_zero_base,
   CAST(ANY_VALUE(b.data_lancamento) AS STRING) AS data_lancamento,
   MAX(dias_desde_lancamento) AS dias_disponiveis,
   90 AS janela_alvo_dias,
@@ -2740,6 +2759,7 @@ ORDER BY modelo_id`;
     const janelaAlvoDias = Number(row.janela_alvo_dias || 90);
     payload.modelos[row.modelo_id] = {
       linha: row.linha || row.modelo_id,
+      day_zero_base: row.day_zero_base || null,
       data_lancamento: row.data_lancamento || null,
       janela_completa: diasDisponiveis >= janelaAlvoDias,
       dias_disponiveis: diasDisponiveis,
@@ -3785,7 +3805,7 @@ function monthKey_(value) {
 }
 
 function inferJanelaMidia_(row, modelo) {
-  const d0 = dateOnly_(modelo.day_zero_base || modelo.data_lancamento);
+  const d0 = dateOnly_(modelo.day_zero_base);
   const end = dateOnly_(row.data_fim || row.data_inicio);
   if (!d0 || !end) return null;
   if (end < d0) return 'pre-d0';

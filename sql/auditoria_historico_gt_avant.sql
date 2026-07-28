@@ -172,6 +172,7 @@ WITH modelos AS (
     i.item_name AS titulo_produto,
     SAFE_CAST(i.quantity AS INT64) AS quantidade,
     SAFE_CAST(i.unit_price AS NUMERIC) AS preco_unitario,
+    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS valor_bruto_item_raw,
     SAFE_CAST(
       COALESCE(
         i.line_net_amount,
@@ -199,6 +200,7 @@ WITH modelos AS (
     titulo_produto,
     quantidade,
     preco_unitario,
+    COALESCE(valor_total_item_raw, preco_unitario * quantidade) AS valor_bruto_item,
     COALESCE(valor_total_item_raw, preco_unitario * quantidade) AS valor_liquido_item,
     total_pedido,
     pagamento,
@@ -220,6 +222,7 @@ WITH modelos AS (
     titulo_produto,
     quantidade,
     preco_unitario,
+    COALESCE(valor_bruto_item_raw, preco_unitario * quantidade, valor_total_item_raw) AS valor_bruto_item,
     valor_total_item_raw AS valor_liquido_item,
     total_pedido,
     pagamento,
@@ -260,21 +263,22 @@ SELECT
   DATE_ADD(p.data_primeira_venda, INTERVAL j.dias DAY) AS data_limite,
   COUNT(DISTINCT v.pedido_key) AS pedidos,
   SUM(v.quantidade) AS pares_vendidos,
+  ROUND(SUM(v.valor_bruto_item), 2) AS receita_bruta_itens,
   ROUND(SUM(v.valor_liquido_item), 2) AS receita_liquida_itens,
   ROUND(
-    SAFE_DIVIDE(SUM(v.valor_liquido_item), COUNT(DISTINCT v.pedido_key)),
+    SAFE_DIVIDE(SUM(v.valor_bruto_item), COUNT(DISTINCT v.pedido_key)),
     2
   ) AS ticket_medio_item_por_pedido,
   ROUND(
-    SAFE_DIVIDE(SUM(v.valor_liquido_item), SUM(v.quantidade)),
+    SAFE_DIVIDE(SUM(v.valor_bruto_item), SUM(v.quantidade)),
     2
-  ) AS preco_medio_liquido_por_par,
+  ) AS preco_medio_bruto_por_par,
   COUNT(DISTINCT IF(v.origem = 'shoppub', v.pedido_key, NULL)) AS pedidos_shoppub,
   COUNT(DISTINCT IF(v.origem = 'shopify', v.pedido_key, NULL)) AS pedidos_shopify,
   SUM(IF(v.origem = 'shoppub', v.quantidade, 0)) AS pares_shoppub,
   SUM(IF(v.origem = 'shopify', v.quantidade, 0)) AS pares_shopify,
-  ROUND(SUM(IF(v.origem = 'shoppub', v.valor_liquido_item, 0)), 2) AS receita_shoppub,
-  ROUND(SUM(IF(v.origem = 'shopify', v.valor_liquido_item, 0)), 2) AS receita_shopify
+  ROUND(SUM(IF(v.origem = 'shoppub', v.valor_bruto_item, 0)), 2) AS receita_shoppub,
+  ROUND(SUM(IF(v.origem = 'shopify', v.valor_bruto_item, 0)), 2) AS receita_shopify
 FROM primeira_venda p
 CROSS JOIN janelas j
 LEFT JOIN vendas_modelo v

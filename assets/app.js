@@ -8,6 +8,7 @@
     'faturamento_campanha',
     'crm_disparos',
     'sub_modelos_dia',
+    'estoque',
     'calendario_br',
     'share_trajetoria',
     'auditoria_monochrome'
@@ -204,7 +205,23 @@
   const fillFor = (id, index = 0) => CORES_MODELO[id]?.fill || `${CORES_MODELO._fallback[index % CORES_MODELO._fallback.length]}33`;
   const windowLabel = (key) => WINDOW_LABELS[key] || key;
   const normalizedStatus = (value) => String(value || '').trim().toLowerCase();
-  const hasValidDayZero = (model) => Boolean(toDate(model?.day_zero_base || model?.d0));
+  function canonicalDayZero(model) {
+    return model?.day_zero_base || null;
+  }
+
+  function analysisDayZero(launch) {
+    return launch?.d0 || canonicalDayZero(launch);
+  }
+
+  function dashboardRevenueValue(row) {
+    return numberOrNull(row?.receita_bruta) ?? numberOrNull(row?.receita);
+  }
+
+  function dashboardRevenueNumber(row) {
+    return Number(dashboardRevenueValue(row) ?? 0);
+  }
+
+  const hasValidDayZero = (model) => Boolean(toDate(canonicalDayZero(model)));
   const isEligibleStatus = (status) => ['historico', 'ativo'].includes(normalizedStatus(status));
   const isHistoricalLaunch = (launch) => launch?.isEligible && normalizedStatus(launch.status) === 'historico';
   const isPlannedStatus = (status) => normalizedStatus(status) === 'planejado';
@@ -478,6 +495,8 @@
   }
 
   function aggregatePipeline(model, rows) {
+    const d0 = canonicalDayZero(model);
+    if (!d0) return null;
     const modelRows = rows.filter((row) => row.modelo_id === model.modelo_id);
     if (!modelRows.length) return null;
 
@@ -486,8 +505,8 @@
         ? items.reduce((acc, row) => acc + Number(row[field] || 0), 0)
         : null
     );
-    const pedidoId = (row) => row.order_sk || row.source_order_id || null;
-    const receitaBrutaRow = (row) => Number((row.receita_bruta ?? row.receita) || 0);
+    const pedidoId = (row) => row.order_sk || null;
+    const receitaBrutaRow = (row) => dashboardRevenueNumber(row);
     const receitaLiquidaRow = (row) => (
       row.receita_liquida !== null && row.receita_liquida !== undefined
         ? Number(row.receita_liquida || 0)
@@ -499,7 +518,7 @@
         : null
     );
 
-    const todayIdx = daysBetween(model.day_zero_base, snapshotDate());
+    const todayIdx = daysBetween(d0, snapshotDate());
     const firstSaleDate = modelRows
       .map((row) => row.data)
       .filter(Boolean)
@@ -507,7 +526,7 @@
 
     const dailyMap = new Map();
     modelRows.forEach((row) => {
-      const idx = dayIndex(model.day_zero_base, row.data);
+      const idx = dayIndex(d0, row.data);
       if (idx === null || idx < 0 || idx > 90) return;
       if (todayIdx !== null && idx > todayIdx) return;
       const current = dailyMap.get(row.data) || {
@@ -537,9 +556,9 @@
 
     const buildAggregate = (filtered, origem, day = null) => {
       if (!filtered.length) return null;
-      const receita = filtered.some((row) => row.receita_bruta !== null && row.receita_bruta !== undefined)
+      const receita = filtered.some((row) => dashboardRevenueValue(row) !== null)
         ? filtered.reduce((acc, row) => acc + receitaBrutaRow(row), 0)
-        : sumNullable(filtered, 'receita');
+        : null;
       const receitaLiquida = filtered.some((row) => row.receita_liquida !== null && row.receita_liquida !== undefined)
         ? filtered.reduce((acc, row) => acc + (receitaLiquidaRow(row) ?? 0), 0)
         : null;
@@ -560,7 +579,6 @@
       const attributionSignal = filtered.some((row) => (
         row.tipo_real !== null && row.tipo_real !== undefined
         || row.canal_real !== null && row.canal_real !== undefined
-        || row.atribuicao_match_key !== null && row.atribuicao_match_key !== undefined
         || row.regra_atribuicao_real !== null && row.regra_atribuicao_real !== undefined
         || row.receita_paga !== null && row.receita_paga !== undefined
         || row.receita_organica !== null && row.receita_organica !== undefined
@@ -577,7 +595,6 @@
         const hasAttributionMatch = Boolean(
           tipo
           || row.canal_real
-          || row.atribuicao_match_key
           || (row.regra_atribuicao_real && row.regra_atribuicao_real !== 'sem_atribuicao_real')
         );
         if (tipo && tipo !== 'paid' && tipo !== 'organic') {
@@ -618,7 +635,7 @@
     };
 
     const closedRows = (maxIdx) => modelRows.filter((row) => {
-      const idx = dayIndex(model.day_zero_base, row.data);
+      const idx = dayIndex(d0, row.data);
       return idx !== null && idx >= 0 && idx <= maxIdx;
     });
 
@@ -626,7 +643,7 @@
     const acumuladoAtual = buildAggregate(closedRows(currentMaxIdx), 'pipeline_atual', currentMaxIdx);
 
     const availableIndexes = modelRows
-      .map((row) => dayIndex(model.day_zero_base, row.data))
+      .map((row) => dayIndex(d0, row.data))
       .filter((idx) => idx !== null && idx >= 0 && (todayIdx === null || idx <= todayIdx));
     const latestAvailableIdx = availableIndexes.length ? Math.max(...availableIndexes) : null;
     const launchActivityIdx = Math.max(0, todayIdx ?? latestAvailableIdx ?? 0);
@@ -649,7 +666,7 @@
 
     const semanasMap = new Map();
     modelRows.forEach((row) => {
-      const idx = dayIndex(model.day_zero_base, row.data);
+      const idx = dayIndex(d0, row.data);
       if (idx === null || idx < 0) return;
       const week = Math.floor(idx / 7) + 1;
       const key = `Sem ${week}`;
@@ -706,9 +723,9 @@
     return {
       modelo_id: model.modelo_id,
       modelo: model.modelo,
-      day_zero_base: model.day_zero_base,
+      day_zero_base: d0,
       data_oficial: model.data_oficial,
-      gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(model.day_zero_base)) || 0),
+      gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(d0)) || 0),
       janelas,
       semanas: [...semanasMap.values()].map(({ orderIds, ...week }) => ({
         ...week,
@@ -733,7 +750,7 @@
       receita_sem_match_atribuicao: acumuladoLancamento?.receita_sem_match_atribuicao ?? acumuladoAtual?.receita_sem_match_atribuicao ?? null,
       pedidos_sem_match_atribuicao: acumuladoLancamento?.pedidos_sem_match_atribuicao ?? acumuladoAtual?.pedidos_sem_match_atribuicao ?? null,
       first_sale_date: firstSaleDate,
-      first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(model.day_zero_base, toDate(firstSaleDate)) || 0) : null,
+      first_sale_gap_dias: firstSaleDate ? Math.max(0, daysBetween(d0, toDate(firstSaleDate)) || 0) : null,
       origem: 'pipeline',
       tamanhos: [...tamanhosMap.values()]
     };
@@ -743,6 +760,96 @@
     return rows.some((row) => row[field] !== null && row[field] !== undefined)
       ? rows.reduce((acc, row) => acc + Number(row[field] || 0), 0)
       : null;
+  }
+
+  function normalizedMetricOrigin(win, source) {
+    if (source === 'pipeline') return win?.origem || 'pipeline';
+    if (win?.origem === 'historico_backfill') return 'historico_backfill';
+    return source || win?.origem || 'historico';
+  }
+
+  function normalizeWindowMetric(win, source) {
+    if (!win) return null;
+    const receita = dashboardRevenueValue(win);
+    const receitaBruta = numberOrNull(win.receita_bruta) ?? receita;
+    const pares = numberOrNull(win.pares);
+    const pedidos = numberOrNull(win.pedidos) ?? numberOrNull(win.pedidos_validos);
+    const novos = numberOrNull(win.novos);
+    const recorrentes = numberOrNull(win.recorrentes);
+    const clientesClassificados = novos !== null && recorrentes !== null ? novos + recorrentes : null;
+    const ticket = numberOrNull(win.ticket) ?? (pedidos && receita !== null ? receita / pedidos : null);
+    const precoMedioPar = numberOrNull(win.preco_medio_par) ?? (pares && receita !== null ? receita / pares : null);
+    return {
+      ...win,
+      receita,
+      receita_bruta: receitaBruta,
+      receita_liquida: numberOrNull(win.receita_liquida),
+      desconto: numberOrNull(win.desconto),
+      pares,
+      pedidos,
+      pedidos_validos: pedidos,
+      ticket,
+      preco_medio_par: precoMedioPar,
+      novos,
+      recorrentes,
+      novos_pct: numberOrNull(win.novos_pct) ?? (clientesClassificados ? novos / clientesClassificados : null),
+      origem_original: win.origem || null,
+      origem: normalizedMetricOrigin(win, source),
+      fonte_dados: source || win.fonte_dados || win.origem || null
+    };
+  }
+
+  function normalizeDailyMetric(row, source) {
+    const receita = dashboardRevenueValue(row);
+    return {
+      ...row,
+      day: numberOrNull(row.day),
+      receita,
+      receita_bruta: numberOrNull(row.receita_bruta) ?? receita,
+      receita_liquida: numberOrNull(row.receita_liquida),
+      pares: numberOrNull(row.pares),
+      pedidos: numberOrNull(row.pedidos) ?? numberOrNull(row.pedidos_validos),
+      novos: numberOrNull(row.novos),
+      recorrentes: numberOrNull(row.recorrentes),
+      origem: normalizedMetricOrigin(row, source),
+      fonte_dados: source || row.fonte_dados || row.origem || null
+    };
+  }
+
+  function normalizeColorMetric(row, source) {
+    const receita = dashboardRevenueValue(row);
+    return {
+      ...row,
+      receita: receita,
+      receita_bruta: numberOrNull(row.receita_bruta) ?? receita,
+      receita_liquida: numberOrNull(row.receita_liquida),
+      pares: numberOrNull(row.pares),
+      pedidos: numberOrNull(row.pedidos) ?? numberOrNull(row.pedidos_validos),
+      origem: normalizedMetricOrigin(row, source),
+      fonte_dados: source || row.fonte_dados || row.origem || null
+    };
+  }
+
+  function normalizeLaunchMetrics(model, metrics, source) {
+    if (!metrics) return null;
+    const janelas = emptyWindows();
+    WINDOW_KEYS.forEach((key) => {
+      janelas[key] = normalizeWindowMetric(metrics.janelas?.[key], source);
+    });
+    return {
+      ...metrics,
+      modelo_id: metrics.modelo_id || model.modelo_id,
+      modelo: metrics.modelo || model.modelo,
+      day_zero_base: canonicalDayZero(model),
+      data_oficial: model.data_oficial,
+      origem: source || metrics.origem || null,
+      fonte_dados: source || metrics.fonte_dados || metrics.origem || null,
+      janelas,
+      daily: (metrics.daily || []).map((row) => normalizeDailyMetric(row, source)).filter((row) => row.day !== null),
+      semanas: metrics.semanas || [],
+      cores: (metrics.cores || []).map((row) => normalizeColorMetric(row, source)),
+      tamanhos: metrics.tamanhos || []
+    };
   }
 
   function hasWindowValue(win, field = 'receita') {
@@ -832,8 +939,10 @@
 
     return {
       receita,
+      receita_bruta: receita,
       pares,
       pedidos,
+      pedidos_validos: pedidos,
       ticket: pedidos && receita !== null ? receita / pedidos : null,
       preco_medio_par: pares && receita !== null ? receita / pares : null,
       novos,
@@ -916,15 +1025,15 @@
   function buildLaunches(data) {
     const histById = new Map(data.lancamentos_historico.map((item) => [item.modelo_id, item]));
     return data.lancamentos_modelos.map((model, idx) => {
-      const hist = histById.get(model.modelo_id);
+      const hist = normalizeLaunchMetrics(model, histById.get(model.modelo_id), 'historico');
       const pipelineRows = (data.lancamentos_produtos_dia || []).filter((row) => row.modelo_id === model.modelo_id);
-      const pipeline = aggregatePipeline(model, data.lancamentos_produtos_dia || []);
+      const pipeline = normalizeLaunchMetrics(model, aggregatePipeline(model, data.lancamentos_produtos_dia || []), 'pipeline');
       const rawMetrics = pipeline || hist || {
         modelo_id: model.modelo_id,
         modelo: model.modelo,
-        day_zero_base: model.day_zero_base,
+        day_zero_base: canonicalDayZero(model),
         data_oficial: model.data_oficial,
-        gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(model.day_zero_base)) || 0),
+        gap_dias: Math.max(0, daysBetween(model.data_oficial, toDate(canonicalDayZero(model))) || 0),
         janelas: emptyWindows(),
         multiplicadores: { m15_7: null, m30_15: null, m60_30: null, m90_15: null, m90_30: null },
         semanas: [],
@@ -937,7 +1046,7 @@
         first_sale_gap_dias: null,
         origem: isPlannedStatus(model.status) ? 'planejado' : 'pipeline'
       };
-      const d0 = model.day_zero_base || model.data_lancamento;
+      const d0 = canonicalDayZero(model);
       const d0Date = toDate(d0);
       const dPlus = d0Date ? daysBetween(d0, snapshotDate()) : null;
       const isFuture = d0Date ? d0Date > snapshotDate() : true;
@@ -972,7 +1081,7 @@
   }
 
   function launchWindowRangeLabel(launch, key) {
-    const d0 = launch?.d0 || launch?.day_zero_base;
+    const d0 = analysisDayZero(launch);
     const endDay = windowEndDay(key);
     if (!d0 || endDay === null) return 'janela sem D0';
     return `${fmtDateSlash(d0)} a ${fmtDateSlash(toIsoDate(addDays(d0, endDay)))}`;
@@ -1050,7 +1159,7 @@
     const endDay = selectedPeriodEndDay(launch);
     return optionalRows('lancamentos_produtos_dia').filter((row) => {
       if (row.modelo_id !== launch?.modelo_id) return false;
-      const idx = dayIndex(launch?.d0 || launch?.day_zero_base, row.data);
+      const idx = dayIndex(analysisDayZero(launch), row.data);
       return idx !== null && idx >= 0 && (endDay === null || idx <= endDay);
     });
   }
@@ -1067,11 +1176,11 @@
     let receita = 0;
 
     rows.forEach((row) => {
-      const orderId = row.order_sk || row.source_order_id;
+      const orderId = row.order_sk;
       if (orderId) orderIds.add(orderId);
       else pedidosFallback += Number(row.pedidos_validos ?? row.pedidos ?? 0);
       pares += Number(row.pares || 0);
-      receita += Number((row.receita_bruta ?? row.receita) || 0);
+      receita += dashboardRevenueNumber(row);
     });
 
     return {
@@ -1165,10 +1274,10 @@
     const win = getWindow(launch, key);
     if (!win) return '—';
     if (win.origem === 'historico_backfill') return badge('parcial', 'Hist. estim.', 'Histórico agregado foi distribuído entre marcos para permitir curva visual. Não é dado diário real.');
-    if (win.origem === 'historico' || normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Benchmark estático vindo de data/lancamentos_historico.json. Use para comparação, não como pipeline em tempo real.');
+    if (win.origem === 'historico') return badge('historico', 'Histórico', 'Benchmark estático vindo de data/lancamentos_historico.json, normalizado no mesmo contrato do pipeline.');
     const endDay = windowEndDay(key);
     if (endDay !== null && (launch.dPlus ?? 0) < endDay) return badge('parcial', `Parcial D+${Math.max(0, launch.dPlus)}`, `Janela ${windowLabel(key)} ainda não fechou no snapshot. O acumulado atual vai até D+${Math.max(0, launch.dPlus ?? 0)}.`);
-    return badge('pipeline', 'Pipeline', `Janela ${windowLabel(key)} fechada com dados reais do pipeline de vendas exportado pelo Apps Script.`);
+    return badge('pipeline', 'Pipeline SSOT', `Janela ${windowLabel(key)} fechada com dados reais do pipeline exportado pelo Apps Script e normalizado no mesmo contrato do histórico.`);
   }
 
   function sourceBadge(launch) {
@@ -1176,10 +1285,10 @@
     if (auditBadge) return auditBadge;
     const hasAnyWindow = WINDOW_KEYS.some((key) => Boolean(getWindow(launch, key)));
     if (launch.isFuture) return badge('planejado', 'Planejado', 'Modelo com D0 futuro no snapshot. Fica fora de vendas, mídia, CRM e projeção até entrar dado real.');
-    if (normalizedStatus(launch.status) === 'historico') return badge('historico', 'Histórico', 'Modelo usado como benchmark histórico, com dados agregados em JSON versionado.');
     if (!hasAnyWindow && hasPipelineRows(launch)) return badge('parcial', `Atual D+${Math.max(0, launch.dPlus)}`, 'Há linhas reais no pipeline, mas nenhuma janela fixa fechada ainda.');
     if (!hasAnyWindow) return badge('parcial', `Sem dados D+${Math.max(0, launch.dPlus)}`, 'Não há janela fechada nem acumulado suficiente no JSON. Ausência permanece vazia, não vira zero.');
-    if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline D+${Math.max(0, launch.dPlus)}`, 'Dados reais vindos de lancamentos_produtos_dia.json, gerado pelo Apps Script a partir do SSOT.');
+    if (launch.origem === 'pipeline') return badge('pipeline', `Pipeline SSOT D+${Math.max(0, launch.dPlus)}`, 'Dados reais vindos de lancamentos_produtos_dia.json, normalizados no mesmo contrato do histórico.');
+    if (launch.origem === 'historico') return badge('historico', 'Histórico normalizado', 'Benchmark estático vindo de data/lancamentos_historico.json e convertido para o mesmo contrato de janelas do pipeline.');
     return badge('parcial', 'Sem dados', 'Fonte insuficiente para classificar a leitura.');
   }
 
@@ -1761,6 +1870,230 @@
     return [];
   }
 
+  function stockRowsForLaunch(launch) {
+    const id = String(launch?.modelo_id || '').trim();
+    if (!id) return [];
+    return optionalRows('estoque').filter((row) => String(row.modelo_id || '').trim() === id);
+  }
+
+  function stockStatsForLaunch(launch) {
+    const rows = stockRowsForLaunch(launch).map((row) => {
+      const stock = numberOrNull(row.estoque_atual ?? row.estoque ?? row.saldo);
+      const coverage = numberOrNull(row.cobertura_dias ?? row.cobertura);
+      return {
+        row,
+        stock,
+        coverage,
+        label: String(row.sub_modelo || row.sku || row.nome_produto || row.cor || 'SKU sem nome'),
+        detail: [row.cor, row.tamanho].filter(Boolean).join(' · ')
+      };
+    });
+    const totalRows = rows.length;
+    const availableUnits = rows.reduce((acc, item) => acc + Math.max(0, numberOrNull(item.stock) ?? 0), 0);
+    const zeroOrNegative = rows.filter((item) => item.stock !== null && item.stock <= 0);
+    const lowCoverage = rows.filter((item) => item.coverage !== null && item.coverage < 15 && (item.stock ?? 0) > 0);
+    const criticalRows = rows
+      .filter((item) => (item.stock !== null && item.stock <= 0) || (item.coverage !== null && item.coverage < 15))
+      .sort((a, b) => {
+        const stockRiskA = a.stock !== null && a.stock <= 0 ? 0 : 1;
+        const stockRiskB = b.stock !== null && b.stock <= 0 ? 0 : 1;
+        if (stockRiskA !== stockRiskB) return stockRiskA - stockRiskB;
+        return (a.coverage ?? 9999) - (b.coverage ?? 9999) || (a.stock ?? 9999) - (b.stock ?? 9999);
+      });
+    return {
+      rows,
+      totalRows,
+      availableUnits,
+      zeroOrNegativeCount: zeroOrNegative.length,
+      lowCoverageCount: lowCoverage.length,
+      criticalRows
+    };
+  }
+
+  function readingAlertBadgeType(alerts) {
+    if (alerts.some((alert) => alert.type === 'neg')) return 'neg';
+    if (alerts.some((alert) => alert.type === 'warn')) return 'parcial';
+    return 'pipeline';
+  }
+
+  function stockBadgeType(stockStats) {
+    if (!stockStats.totalRows) return 'parcial';
+    if (stockStats.zeroOrNegativeCount) return 'neg';
+    if (stockStats.lowCoverageCount) return 'parcial';
+    return 'pipeline';
+  }
+
+  function buildReadingAlerts(selected, stockStats) {
+    if (!selected) return [];
+    const periodKey = selectedPeriodKey();
+    const periodLabel = selectedPeriodLabel();
+    const comparison = comparisonLaunchesWithFocus(selected);
+    const selectedWindow = getWindow(selected, periodKey);
+    const missingWindow = comparison.filter((launch) => !getWindow(launch, periodKey));
+    const audit = auditQualityForLaunch(selected);
+    const mediaBlocked = optionalRows('midia_paga').filter((row) => row.atribuicao_bloqueada || normalizeText(row.metodologia) === 'receita janela agregada');
+    const manifestWarnings = Array.isArray(state.data?.manifest?.warnings) ? state.data.manifest.warnings : [];
+
+    const alerts = [];
+    if (!selectedWindow) {
+      alerts.push({
+        type: 'warn',
+        title: 'Janela ainda em maturação',
+        copy: `${selected.modelo} ainda não tem ${periodLabel} fechado. A leitura mantém a janela vazia e evita transformar ausência em zero.`
+      });
+    }
+    if (missingWindow.length) {
+      alerts.push({
+        type: 'warn',
+        title: 'Comparativo com linhas em curso',
+        copy: `${fmtNum(missingWindow.length)} de ${fmtNum(comparison.length)} linhas ainda não fecharam ${periodLabel}; elas continuam visíveis como pendentes.`
+      });
+    }
+    if (audit?.status === 'divergente') {
+      alerts.push({
+        type: 'neg',
+        title: 'Auditoria divergente',
+        copy: `${selected.modelo} diverge da auditoria independente em pedidos, pares ou receita. Priorize investigação antes de decisão.`
+      });
+    }
+    if (stockStats.totalRows && stockStats.zeroOrNegativeCount) {
+      alerts.push({
+        type: 'warn',
+        title: 'Estoque pode limitar a curva',
+        copy: `${fmtNum(stockStats.zeroOrNegativeCount)} SKU(s) da linha destacada estão sem saldo ou negativos. Leia estoque como contexto operacional, não como venda.`
+      });
+    } else if (!stockStats.totalRows) {
+      alerts.push({
+        type: 'warn',
+        title: 'Estoque pendente',
+        copy: `O pacote atual não trouxe itens de estoque para ${selected.modelo}. A curva comercial segue válida, mas sem leitura operacional de cobertura.`
+      });
+    }
+    if (mediaBlocked.length) {
+      alerts.push({
+        type: 'warn',
+        title: 'Canal ainda incompleto',
+        copy: `${fmtNum(mediaBlocked.length)} linha(s) de mídia seguem sem atribuição real por pedido; ROAS por canal fica bloqueado onde a receita não for confiável.`
+      });
+    }
+    const technicalWarning = manifestWarnings.find((warning) => /ALERTA|falhou/i.test(String(warning)));
+    if (technicalWarning) {
+      alerts.push({
+        type: /ALERTA|falhou/i.test(String(technicalWarning)) ? 'neg' : 'warn',
+        title: 'Aviso do pacote de dados',
+        copy: String(technicalWarning)
+      });
+    }
+    if (!alerts.length) {
+      alerts.push({
+        type: 'pos',
+        title: 'Sem alerta bloqueante',
+        copy: 'Janela comparativa, pacote público e leitura executiva estão prontos para análise visual.'
+      });
+    }
+    return alerts.slice(0, 4);
+  }
+
+  function renderReadingSupport(selected) {
+    const wrap = $('reading-support');
+    if (!wrap || !selected) return;
+    const stockStats = stockStatsForLaunch(selected);
+    const alerts = buildReadingAlerts(selected, stockStats);
+    const alertCount = alerts.filter((alert) => alert.type !== 'pos').length;
+    const alertBadgeLabel = alertCount === 1 ? '1 alerta' : alertCount ? `${fmtNum(alertCount)} alertas` : 'Sem alerta';
+    const d0 = analysisDayZero(selected);
+    const periodLabel = selectedPeriodLabel();
+    const alertType = readingAlertBadgeType(alerts);
+    const stockType = stockBadgeType(stockStats);
+    const stockRiskCount = stockStats.zeroOrNegativeCount || stockStats.lowCoverageCount;
+    const stockLabel = stockStats.totalRows
+      ? stockRiskCount
+        ? `${fmtNum(stockStats.totalRows)} itens · ${fmtNum(stockRiskCount)} riscos`
+        : `${fmtNum(stockStats.totalRows)} itens · ${fmtNum(stockStats.availableUnits)} un.`
+      : 'Estoque pendente';
+    const methodRows = [
+      {
+        title: 'Linha do tempo',
+        copy: `${periodLabel} sempre começa no D0 canônico de cada lançamento. A linha destacada usa ${d0 ? fmtDateSlash(d0) : 'D0 não carregado'}.`
+      },
+      {
+        title: 'Comparação',
+        copy: 'Cada lançamento é comparado na própria idade de venda. As datas de calendário não são misturadas entre modelos.'
+      },
+      {
+        title: 'Faturamento',
+        copy: 'A leitura visual usa receita bruta do SSOT. Receita líquida fica como apoio financeiro, não como base do placar.'
+      },
+      {
+        title: 'Meta',
+        copy: 'A meta é a meta total do mês em metas_mensais.json. Quando a janela cruza meses, a leitura mostra mês a mês, sem acumular meta artificial.'
+      },
+      {
+        title: 'Ausência',
+        copy: 'Janela aberta ou dado não carregado aparece vazio. O dashboard não transforma falta de dado em zero.'
+      }
+    ];
+    const stockRows = stockStats.criticalRows.slice(0, 4);
+    const stockRowsHtml = stockRows.length
+      ? `<div class="stock-risk-list">
+          ${stockRows.map((item) => `
+            <div class="stock-risk-row">
+              <div>
+                <strong title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</strong>
+                <small>${escapeHtml(item.detail || 'sem detalhe')} · cobertura ${item.coverage === null ? 'sem dado' : `${fmtNum(item.coverage)} dias`}</small>
+              </div>
+              <em>${item.stock === null ? 'sem saldo' : `${fmtNum(item.stock)} un.`}</em>
+            </div>
+          `).join('')}
+        </div>`
+      : '<div class="reading-support-empty">Sem ruptura crítica nos SKUs vinculados à linha destacada.</div>';
+
+    wrap.innerHTML = `
+      <details class="reading-support-panel"${alerts.some((alert) => alert.type === 'neg') ? ' open' : ''}>
+        <summary>
+          <span class="reading-support-title">
+            <span>Apoio de leitura</span>
+            <strong>Metodologia, alertas e estoque</strong>
+          </span>
+          <span class="reading-support-badges">
+            ${badge(alertType, alertBadgeLabel, 'Mostra ressalvas que mudam a forma de ler a análise, sem esconder o dado.')}
+            ${badge('orange', d0 ? `D0 ${fmtDateSlash(d0)}` : 'D0 pendente', 'D0 canônico usado para alinhar as janelas comparativas.')}
+            ${badge(stockType, stockLabel, 'Resumo do estoque atual da linha destacada; não substitui a venda realizada.')}
+          </span>
+        </summary>
+        <div class="reading-support-grid">
+          <div class="reading-support-card">
+            <h3>Como ler</h3>
+            <div class="reading-support-list">
+              ${methodRows.map((item) => `
+                <div class="reading-support-row">
+                  <b>${escapeHtml(item.title)}</b>
+                  <span>${escapeHtml(item.copy)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <div class="reading-support-card reading-support-card--${alertType === 'neg' ? 'negative' : alertType === 'parcial' ? 'warning' : 'positive'}">
+            <h3>Alertas de leitura</h3>
+            ${alerts.map((alert) => `
+              <div class="reading-support-alert reading-support-alert--${escapeHtml(alert.type)}">
+                <strong>${escapeHtml(alert.title)}</strong>
+                <p>${escapeHtml(alert.copy)}</p>
+              </div>
+            `).join('')}
+          </div>
+          <div class="reading-support-card reading-support-card--${stockType === 'neg' ? 'negative' : stockType === 'parcial' ? 'warning' : 'positive'}">
+            <h3>Estoque de apoio</h3>
+            <p>${stockStats.totalRows
+              ? `${fmtNum(stockStats.totalRows)} SKUs ligados a ${escapeHtml(selected.modelo)}; ${fmtNum(stockStats.zeroOrNegativeCount)} sem saldo e ${fmtNum(stockStats.lowCoverageCount)} com cobertura menor que 15 dias.`
+              : `Estoque ainda não disponível para ${escapeHtml(selected.modelo)} no pacote atual.`}</p>
+            ${stockRowsHtml}
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
   function monthKeyFromIso(value) {
     const text = String(value || '').trim();
     return /^\d{4}-\d{2}/.test(text) ? text.slice(0, 7) : '';
@@ -1962,7 +2295,7 @@
   function latestLaunchDataDay(launch) {
     const days = optionalRows('lancamentos_produtos_dia')
       .filter((row) => row.modelo_id === launch?.modelo_id)
-      .map((row) => dayIndex(launch?.d0 || launch?.day_zero_base, row.data))
+      .map((row) => dayIndex(analysisDayZero(launch), row.data))
       .filter((idx) => idx !== null && idx >= 0);
     return days.length ? Math.max(...days) : null;
   }
@@ -1971,11 +2304,11 @@
     if (!rows.length) {
       return { receita: null, pedidos: null, pares: null, row: null };
     }
-    const orderIds = new Set(rows.map((row) => row.order_sk || row.source_order_id).filter(Boolean));
+    const orderIds = new Set(rows.map((row) => row.order_sk).filter(Boolean));
     const pedidosSomados = rows.some((row) => row.pedidos_validos !== null && row.pedidos_validos !== undefined)
       ? rows.reduce((acc, row) => acc + Number(row.pedidos_validos || 0), 0)
       : rows.reduce((acc, row) => acc + Number(row.pedidos || 0), 0);
-    const receita = rows.reduce((acc, row) => acc + Number((row.receita_bruta ?? row.receita) || 0), 0);
+    const receita = rows.reduce((acc, row) => acc + dashboardRevenueNumber(row), 0);
     const pares = rows.some((row) => row.pares !== null && row.pares !== undefined)
       ? rows.reduce((acc, row) => acc + Number(row.pares || 0), 0)
       : null;
@@ -1989,7 +2322,7 @@
   }
 
   function launchRevenueForDayRange(launch, startDay, endDay) {
-    const d0 = launch?.d0 || launch?.day_zero_base;
+    const d0 = analysisDayZero(launch);
     const rows = optionalRows('lancamentos_produtos_dia').filter((row) => {
       if (row.modelo_id !== launch?.modelo_id) return false;
       const idx = dayIndex(d0, row.data);
@@ -1999,7 +2332,7 @@
   }
 
   function launchRevenueForIsoRange(launch, startIso, endIso) {
-    const d0 = launch?.d0 || launch?.day_zero_base;
+    const d0 = analysisDayZero(launch);
     if (!d0 || !startIso || !endIso) {
       return { receita: null, pedidos: null, pares: null, row: null };
     }
@@ -2107,7 +2440,7 @@
     if (!validParts.length) {
       return { receita: null, pedidos: null, pares: null, row: null };
     }
-    const d0 = launch?.d0 || launch?.day_zero_base;
+    const d0 = analysisDayZero(launch);
     const coverageDates = new Set();
     validParts.forEach((part) => {
       const dates = Array.isArray(part[dateKey]) && part[dateKey].length
@@ -2135,7 +2468,7 @@
   }
 
   function goalRowForWindow(launch, window, availableDay = null) {
-    const d0 = launch?.d0 || launch?.day_zero_base;
+    const d0 = analysisDayZero(launch);
     if (!d0) return null;
     const dataEndDay = availableDay === null ? window.endDay : Math.min(window.endDay, availableDay);
     const notStarted = dataEndDay < window.startDay;
@@ -2191,7 +2524,7 @@
   }
 
   function representationGoalRows(launch, limitDay = null) {
-    const d0 = launch?.d0 || launch?.day_zero_base;
+    const d0 = analysisDayZero(launch);
     if (!d0) return [];
     if (limitDay !== null && !getWindow(launch, selectedPeriodKey())) return [];
     const latestDay = latestLaunchDataDay(launch);
@@ -3296,7 +3629,13 @@
   }
 
   function shareModelForLine(modelId) {
-    return state.data?.share_trajetoria?.modelos?.[modelId] || null;
+    const model = state.data?.share_trajetoria?.modelos?.[modelId] || null;
+    if (!model) return null;
+    const launch = lineLaunchById(modelId);
+    return {
+      ...model,
+      day_zero_base: model.day_zero_base || analysisDayZero(launch)
+    };
   }
 
   function sharePointsForLine(modelId) {
@@ -3407,7 +3746,7 @@
           receita: 0
         };
         current.pares += Number(row.pares || row.quantidade || 0);
-        current.receita += Number((row.receita_bruta ?? row.receita) || 0);
+        current.receita += dashboardRevenueNumber(row);
         grouped.set(key, current);
       });
 
@@ -3440,7 +3779,7 @@
   function subModelRowsForWindow(launch, subId = '') {
     if (!launch?.modelo_id) return [];
     const endDay = selectedPeriodEndDay(launch);
-    const d0 = launch.d0 || launch.day_zero_base;
+    const d0 = analysisDayZero(launch);
     return subModelDailyRows(launch.modelo_id).filter((row) => {
       if (subId && row.sub_modelo_id !== subId) return false;
       if (!d0 || !row.data || endDay === null) return true;
@@ -3569,7 +3908,7 @@
 
   function storySalesRowsForWindow(launch) {
     if (!launch?.modelo_id) return [];
-    const d0 = launch.d0 || launch.day_zero_base;
+    const d0 = analysisDayZero(launch);
     const endDay = selectedPeriodEndDay(launch);
     return optionalRows('lancamentos_produtos_dia').filter((row) => {
       if (row.modelo_id !== launch.modelo_id) return false;
@@ -3611,7 +3950,7 @@
       ? rawRows.map((row) => ({
         cor: extractColor({ ...row, modelo_id: launch.modelo_id }, launch),
         pares: Number(row.pares || row.quantidade || 0),
-        receita_bruta: Number((row.receita_bruta ?? row.receita) || 0),
+        receita_bruta: dashboardRevenueNumber(row),
         receita_liquida: numberOrNull(row.receita_liquida),
         pedidos: Number(row.pedidos_validos ?? row.pedidos ?? 0),
         data: row.data || row.data_venda
@@ -3639,7 +3978,7 @@
         dias: new Set()
       };
       const pares = Number(row.pares || 0);
-      const receita = numberOrNull(row.receita_liquida) ?? numberOrNull(row.receita_bruta) ?? numberOrNull(row.receita);
+      const receita = dashboardRevenueValue(row);
       current.metricValue += pares;
       current.sortValue += pares;
       current.pares += pares;
@@ -3994,7 +4333,15 @@
         </section>
       `;
     }
-    const d0 = model.data_lancamento;
+    const d0 = analysisDayZero(model);
+    if (!d0) {
+      return `
+        <section class="drill-section">
+          <div class="drill-section-title">Momento da empresa</div>
+          <p class="drill-empty">D0 analitico indisponivel</p>
+        </section>
+      `;
+    }
     const preStart = toIsoDate(addDays(d0, -days));
     const preEnd = toIsoDate(addDays(d0, -1));
     const posEnd = toIsoDate(addDays(d0, days - 1));
@@ -4851,8 +5198,9 @@
     const days = janelaEmDias(key) ?? WINDOW_DAYS[key] ?? null;
     if (days !== null) return days <= selectedEnd;
     if (row.data_inicio || row.data_fim) {
-      const startIdx = row.data_inicio ? dayIndex(launch?.d0 || launch?.day_zero_base, row.data_inicio) : null;
-      const endIdx = row.data_fim ? dayIndex(launch?.d0 || launch?.day_zero_base, row.data_fim) : startIdx;
+      const d0 = analysisDayZero(launch);
+      const startIdx = row.data_inicio ? dayIndex(d0, row.data_inicio) : null;
+      const endIdx = row.data_fim ? dayIndex(d0, row.data_fim) : startIdx;
       if (startIdx === null && endIdx === null) return true;
       return (startIdx ?? endIdx) <= selectedEnd && (endIdx ?? startIdx) >= 0;
     }
@@ -4864,7 +5212,7 @@
     const endDay = selectedPeriodEndDay(launch);
     if (endDay === null) return true;
     const data = row.data_disparo || row.data || row.date;
-    const idx = dayIndex(launch?.d0 || launch?.day_zero_base, data);
+    const idx = dayIndex(analysisDayZero(launch), data);
     return idx !== null && idx >= 0 && idx <= endDay;
   }
 
@@ -5356,7 +5704,7 @@
       return rows.map((row) => ({
         cor: extractColor({ ...row, modelo_id: launch.modelo_id }, launch),
         pares: Number(row.pares || row.quantidade || 0),
-        receita_bruta: Number((row.receita_bruta ?? row.receita) || 0),
+        receita_bruta: dashboardRevenueNumber(row),
         receita_liquida: Number(row.receita_liquida || 0),
         hasReceitaLiquida: row.receita_liquida !== null && row.receita_liquida !== undefined,
         pedidos: Number(row.pedidos_validos ?? row.pedidos ?? 0)
@@ -5398,7 +5746,7 @@
           pedidos: 0
         };
         current.pares += Number(row.pares || 0);
-        current.receita_bruta += Number((row.receita_bruta ?? row.receita) || 0);
+        current.receita_bruta += dashboardRevenueNumber(row);
         if (row.receita_liquida !== null && row.receita_liquida !== undefined) {
           current.receita_liquida += Number(row.receita_liquida || 0);
           current.hasReceitaLiquida = true;
@@ -6818,6 +7166,7 @@
     renderCompareSelector();
     renderTopMeta();
     renderAnalysisContext(selected);
+    renderReadingSupport(selected);
     renderStoryBrief(selected);
     renderState(selected);
     renderComparison();

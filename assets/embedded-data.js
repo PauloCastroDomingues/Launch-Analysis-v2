@@ -573,7 +573,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132123",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -592,7 +591,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132124",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -611,7 +609,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132130",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -630,7 +627,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132132",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -649,7 +645,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132133",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -668,7 +663,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132137",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -687,7 +681,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132139",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -706,7 +699,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132140",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 38",
@@ -725,7 +717,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132142",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 38",
@@ -744,7 +735,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132143",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -763,7 +753,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132143",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -782,7 +771,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132146",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 39",
@@ -801,7 +789,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132148",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-46",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 46",
@@ -820,7 +807,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132150",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -839,7 +825,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132151",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 38",
@@ -858,7 +843,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132152",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -877,7 +861,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132153",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -896,7 +879,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132154",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -915,7 +897,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132155",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -934,7 +915,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132163",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -953,7 +933,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132165",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 38",
@@ -972,7 +951,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132166",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -991,7 +969,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132166",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -1010,7 +987,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132170",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 39",
@@ -1029,7 +1005,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132172",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1048,7 +1023,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132179",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -1067,7 +1041,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132184",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -1086,7 +1059,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132188",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 44",
@@ -1105,7 +1077,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132197",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -1124,7 +1095,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132209",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 38",
@@ -1143,7 +1113,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132220",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1162,7 +1131,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132227",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1181,7 +1149,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132229",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1200,7 +1167,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132230",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -1219,7 +1185,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132232",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -1238,7 +1203,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132234",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -1257,7 +1221,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132234",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -1276,7 +1239,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132241",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1295,7 +1257,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132242",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -1314,7 +1275,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132242",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -1333,7 +1293,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132249",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -1352,7 +1311,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132256",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -1371,7 +1329,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132257",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -1390,7 +1347,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-25",
-      "source_order_id": "#132257",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -1409,7 +1365,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132269",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -1428,7 +1383,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132269",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -1447,7 +1401,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132270",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 45",
@@ -1466,7 +1419,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132274",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -1485,7 +1437,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132274",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -1504,7 +1455,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132275",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -1523,7 +1473,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132280",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 45",
@@ -1542,7 +1491,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132314",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1561,7 +1509,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132324",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -1580,7 +1527,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132338",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 39",
@@ -1599,7 +1545,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132345",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -1618,7 +1563,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132348",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -1637,7 +1581,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132348",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -1656,7 +1599,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132354",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -1675,7 +1617,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132358",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -1694,7 +1635,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132368",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -1713,7 +1653,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132372",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -1732,7 +1671,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132377",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -1751,7 +1689,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132378",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 39",
@@ -1770,7 +1707,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132386",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 44",
@@ -1789,7 +1725,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132391",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -1808,7 +1743,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132404",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -1827,7 +1761,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132415",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -1846,7 +1779,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132415",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -1865,7 +1797,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132424",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -1884,7 +1815,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-26",
-      "source_order_id": "#132429",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -1903,7 +1833,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132440",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -1922,7 +1851,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132440",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -1941,7 +1869,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132441",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -1960,7 +1887,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132443",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -1979,7 +1905,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132459",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 38",
@@ -1998,7 +1923,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132469",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -2017,7 +1941,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132473",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -2036,7 +1959,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132474",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -2055,7 +1977,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132481",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -2074,7 +1995,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132493",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -2093,7 +2013,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132493",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -2112,7 +2031,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132512",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -2131,7 +2049,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132512",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -2150,7 +2067,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132512",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -2169,7 +2085,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132535",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -2188,7 +2103,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132535",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
@@ -2207,7 +2121,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132535",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -2226,7 +2139,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132537",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -2245,7 +2157,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132537",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -2264,7 +2175,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132537",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -2283,7 +2193,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132540",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -2302,7 +2211,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132569",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -2321,7 +2229,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132572",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -2340,7 +2247,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132577",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -2359,7 +2265,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-27",
-      "source_order_id": "#132593",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -2378,7 +2283,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132596",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-46",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 46",
@@ -2397,7 +2301,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132614",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 45",
@@ -2416,7 +2319,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132614",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 45",
@@ -2435,7 +2337,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132617",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -2454,7 +2355,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132618",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -2473,7 +2373,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132639",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -2492,7 +2391,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132641",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -2511,7 +2409,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132643",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -2530,7 +2427,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132651",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -2549,7 +2445,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132658",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -2568,7 +2463,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132662",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -2587,7 +2481,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132672",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -2606,7 +2499,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132689",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -2625,7 +2517,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132691",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -2644,7 +2535,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132695",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -2663,7 +2553,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132695",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -2682,7 +2571,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132736",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -2701,7 +2589,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132736",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -2720,7 +2607,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132738",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 39",
@@ -2739,7 +2625,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132751",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -2758,7 +2643,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132751",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -2777,7 +2661,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132751",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -2796,7 +2679,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132754",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -2815,7 +2697,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132754",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -2834,7 +2715,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132754",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -2853,7 +2733,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132763",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 44",
@@ -2872,7 +2751,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132763",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -2891,7 +2769,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132766",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -2910,7 +2787,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132767",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -2929,7 +2805,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132767",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -2948,7 +2823,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132767",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -2967,7 +2841,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132773",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 38",
@@ -2986,7 +2859,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-28",
-      "source_order_id": "#132774",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -3005,7 +2877,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132793",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 38",
@@ -3024,7 +2895,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132809",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 39",
@@ -3043,7 +2913,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132810",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -3062,7 +2931,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132817",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -3081,7 +2949,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132820",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3100,7 +2967,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132823",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -3119,7 +2985,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132824",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -3138,7 +3003,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132825",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 44",
@@ -3157,7 +3021,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132825",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -3176,7 +3039,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132828",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 38",
@@ -3195,7 +3057,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132836",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -3214,7 +3075,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132842",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -3233,7 +3093,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132868",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 44",
@@ -3252,7 +3111,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132881",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -3271,7 +3129,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132881",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -3290,7 +3147,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132898",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3309,7 +3165,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132898",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -3328,7 +3183,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132898",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -3347,7 +3201,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132916",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -3366,7 +3219,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-29",
-      "source_order_id": "#132917",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 44",
@@ -3385,7 +3237,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132926",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -3404,7 +3255,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132943",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3423,7 +3273,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132960",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -3442,7 +3291,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132960",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -3461,7 +3309,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132973",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 39",
@@ -3480,7 +3327,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132993",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -3499,7 +3345,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#132993",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -3518,7 +3363,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#133020",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -3537,7 +3381,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#133031",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -3556,7 +3399,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#133034",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3575,7 +3417,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-06-30",
-      "source_order_id": "#133038",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 45",
@@ -3594,7 +3435,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133094",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -3613,7 +3453,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133094",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -3632,7 +3471,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133094",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -3651,7 +3489,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133098",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -3670,7 +3507,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133102",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -3689,7 +3525,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133103",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3708,7 +3543,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133123",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -3727,7 +3561,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133131",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3746,7 +3579,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133136",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -3765,7 +3597,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133137",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -3784,7 +3615,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133146",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -3803,7 +3633,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133146",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -3822,7 +3651,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133146",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -3841,7 +3669,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133161",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3860,7 +3687,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133166",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -3879,7 +3705,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133172",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -3898,7 +3723,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133189",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3917,7 +3741,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133199",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -3936,7 +3759,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133202",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 44",
@@ -3955,7 +3777,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133202",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -3974,7 +3795,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133206",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -3993,7 +3813,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133206",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -4012,7 +3831,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133206",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -4031,7 +3849,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133206",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -4050,7 +3867,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133211",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -4069,7 +3885,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133224",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -4088,7 +3903,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-01",
-      "source_order_id": "#133236",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -4107,7 +3921,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133244",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -4126,7 +3939,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133247",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -4145,7 +3957,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133251",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -4164,7 +3975,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133267",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -4183,7 +3993,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133270",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -4202,7 +4011,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133288",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -4221,7 +4029,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133304",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -4240,7 +4047,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133316",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -4259,7 +4065,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133338",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -4278,7 +4083,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133352",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -4297,7 +4101,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133362",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -4316,7 +4119,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133368",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-46",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 46",
@@ -4335,7 +4137,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133377",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -4354,7 +4155,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133383",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 44",
@@ -4373,7 +4173,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133383",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -4392,7 +4191,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133386",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -4411,7 +4209,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133397",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -4430,7 +4227,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133397",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -4449,7 +4245,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133397",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -4468,7 +4263,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133408",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -4487,7 +4281,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133416",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -4506,7 +4299,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133417",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -4525,7 +4317,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133419",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -4544,7 +4335,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133423",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -4563,7 +4353,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133427",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -4582,7 +4371,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-02",
-      "source_order_id": "#133427",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -4601,7 +4389,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133434",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 39",
@@ -4620,7 +4407,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133443",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -4639,7 +4425,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133443",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -4658,7 +4443,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133443",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -4677,7 +4461,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133450",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -4696,7 +4479,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133454",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -4715,7 +4497,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133473",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -4734,7 +4515,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133473",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -4753,7 +4533,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133476",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -4772,7 +4551,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133476",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -4791,7 +4569,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133493",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -4810,7 +4587,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133510",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -4829,7 +4605,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133512",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -4848,7 +4623,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133512",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -4867,7 +4641,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133519",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -4886,7 +4659,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133520",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 38",
@@ -4905,7 +4677,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133528",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -4924,7 +4695,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133528",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -4943,7 +4713,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133528",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -4962,7 +4731,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133530",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -4981,7 +4749,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133540",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -5000,7 +4767,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133545",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -5019,7 +4785,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133560",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -5038,7 +4803,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133563",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 39",
@@ -5057,7 +4821,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133563",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -5076,7 +4839,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-03",
-      "source_order_id": "#133569",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 39",
@@ -5095,7 +4857,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133606",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -5114,7 +4875,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133614",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 45",
@@ -5133,7 +4893,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133636",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -5152,7 +4911,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133648",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 45",
@@ -5171,7 +4929,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133654",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 44",
@@ -5190,7 +4947,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133662",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
@@ -5209,7 +4965,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133681",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -5228,7 +4983,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133683",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -5247,7 +5001,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133700",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -5266,7 +5019,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133711",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -5285,7 +5037,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133721",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -5304,7 +5055,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133738",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -5323,7 +5073,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133741",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -5342,7 +5091,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133772",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -5361,7 +5109,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-04",
-      "source_order_id": "#133777",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5380,7 +5127,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133786",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5399,7 +5145,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133791",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5418,7 +5163,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133812",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -5437,7 +5181,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133824",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5456,7 +5199,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133845",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -5475,7 +5217,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133845",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
@@ -5494,7 +5235,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133845",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -5513,7 +5253,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133849",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -5532,7 +5271,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133852",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -5551,7 +5289,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133852",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -5570,7 +5307,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133853",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -5589,7 +5325,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133857",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5608,7 +5343,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133860",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -5627,7 +5361,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133860",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
@@ -5646,7 +5379,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133891",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -5665,7 +5397,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133905",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -5684,7 +5415,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133906",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 43",
@@ -5703,7 +5433,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133906",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
@@ -5722,7 +5451,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-05",
-      "source_order_id": "#133915",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -5741,7 +5469,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#133954",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -5760,7 +5487,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#133978",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -5779,7 +5505,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#133984",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -5798,7 +5523,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#133986",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 41",
@@ -5817,7 +5541,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#133986",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -5836,7 +5559,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#133986",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5855,7 +5577,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134020",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 43",
@@ -5874,7 +5595,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134021",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -5893,7 +5613,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134033",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -5912,7 +5631,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134034",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -5931,7 +5649,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134034",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -5950,7 +5667,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134043",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -5969,7 +5685,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134046",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 44",
@@ -5988,7 +5703,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134053",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -6007,7 +5721,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134056",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -6026,7 +5739,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134056",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -6045,7 +5757,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134068",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 39",
@@ -6064,7 +5775,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134071",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 42",
@@ -6083,7 +5793,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134073",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -6102,7 +5811,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134082",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-46",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 46",
@@ -6121,7 +5829,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134102",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -6140,7 +5847,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-06",
-      "source_order_id": "#134107",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 41",
@@ -6159,7 +5865,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134122",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 44",
@@ -6178,7 +5883,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134122",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 44",
@@ -6197,7 +5901,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134122",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-44",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 44",
@@ -6216,7 +5919,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134151",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 40",
@@ -6235,7 +5937,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134151",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -6254,7 +5955,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134151",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -6273,7 +5973,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134155",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-45",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 45",
@@ -6292,7 +5991,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134164",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 40",
@@ -6311,7 +6009,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134164",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 40",
@@ -6330,7 +6027,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134213",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-38",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 38",
@@ -6349,7 +6045,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134253",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -6368,7 +6063,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134262",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 42",
@@ -6387,7 +6081,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134264",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -6406,7 +6099,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134266",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 42",
@@ -6425,7 +6117,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134271",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 41",
@@ -6444,7 +6135,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134277",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 39",
@@ -6463,7 +6153,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134277",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 39",
@@ -6482,7 +6171,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134277",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-39",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 39",
@@ -6501,7 +6189,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134305",
       "origem": "ssot_core",
       "sku": "RS8AVANT-AB-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome All Black - 43",
@@ -6520,7 +6207,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134311",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CF-42",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 42",
@@ -6539,7 +6225,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-07",
-      "source_order_id": "#134320",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -6558,7 +6243,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-08",
-      "source_order_id": "#134336",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -6577,7 +6261,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-08",
-      "source_order_id": "#134351",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-40",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 40",
@@ -6596,7 +6279,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-08",
-      "source_order_id": "#134367",
       "origem": "ssot_core",
       "sku": "RS8AVANT-CT-41",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 41",
@@ -6615,7 +6297,6 @@ window.REISE_FALLBACK_DATA = {
     {
       "modelo_id": "rs8_monochrome",
       "data": "2026-07-08",
-      "source_order_id": "#134394",
       "origem": "ssot_core",
       "sku": "RS8AVANT-MC-43",
       "nome_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 43",
