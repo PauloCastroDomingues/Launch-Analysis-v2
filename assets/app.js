@@ -7102,17 +7102,34 @@
     const result = numberOrNull(scenario?.value);
     const currentMark = windowPlainLabel(scenario?.baseKey);
     const nextMark = windowPlainLabel(selectedPeriodKey());
-    const refCount = (scenario?.refs || []).filter(Boolean).length;
+    const referenceRows = (scenario?.refs || []).filter(Boolean);
+    const refCount = referenceRows.length;
     const referenceText = refCount
       ? `${fmtNum(refCount)} lançamento${refCount === 1 ? '' : 's'} que já complet${refCount === 1 ? 'ou' : 'aram'} 90 dias`
       : 'lançamentos parecidos que já completaram 90 dias';
     const grewText = refCount === 1 ? 'cresceu' : 'cresceram';
+    const referenceLines = referenceRows.length
+      ? referenceRows.map((row) => (
+        `- ${row.launch?.modelo || 'Lançamento'}: ${fmtBRL(row.finalWindow?.receita)} em 90 dias ÷ ${fmtBRL(row.baseWindow?.receita)} em ${currentMark} = ${fmtNum(row.multiplier, 2)} vezes`
+      )).join('\n')
+      : '- sem referências abertas no JSON';
+    const referenceSumText = referenceRows.map((row) => fmtNum(row.multiplier, 2)).join(' + ');
+    const scenarioChoice = scenario?.base
+      ? `média dos valores acima: (${referenceSumText}) ÷ ${fmtNum(refCount)} = ${fmtNum(growthTimes, 2)} vezes`
+      : scenario?.name === 'Conservador'
+        ? `menor valor observado no grupo: ${fmtNum(growthTimes, 2)} vezes`
+        : `maior valor observado no grupo: ${fmtNum(growthTimes, 2)} vezes`;
     const pendingText = scenario?.isFallbackBase
       ? `\n\nPor que usamos esse ponto: a próxima marca (${nextMark}) ainda não fechou para este lançamento.`
       : '';
     return `Leitura: estimativa de faturamento em 90 dias baseada em lançamentos comparáveis que já completaram esse ciclo. O valor orienta a decisão, mas não substitui meta ou previsão oficial.
 
 Origem do cálculo: ${referenceText} ${grewText}, em média, ${fmtNum(growthTimes, 2)} vezes entre o início e o fechamento de 90 dias.
+
+Como encontramos o valor "vezes": para cada lançamento de referência, dividimos o faturamento em 90 dias pelo faturamento na mesma marca usada neste lançamento (${currentMark}).
+${referenceLines}
+
+Valor usado neste cenário: ${scenarioChoice}.
 
 Aplicação no lançamento atual: ${launch?.modelo || 'este lançamento'} acumulou ${fmtBRL(baseRevenue)} até agora (${currentMark}).
 ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pendingText}`;
