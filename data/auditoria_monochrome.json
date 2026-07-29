@@ -8,14 +8,14 @@
   },
   "resumo": {
     "primeira_venda": "2026-06-25",
-    "ultima_venda": "2026-07-28",
-    "pedidos": 498,
-    "pares_vendidos": 664,
-    "receita_bruta_itens": 477416,
-    "desconto_itens": "101701.88",
-    "receita_liquida_itens": "375714.12",
+    "ultima_venda": "2026-07-29",
+    "pedidos": 504,
+    "pares_vendidos": 674,
+    "receita_bruta_itens": 484606,
+    "desconto_itens": "104279.85",
+    "receita_liquida_itens": "380326.15",
     "preco_medio_bruto": 719,
-    "preco_medio_liquido": "565.83"
+    "preco_medio_liquido": "564.28"
   },
   "por_dia": [
     {
@@ -350,13 +350,23 @@
     },
     {
       "data": "2026-07-28",
-      "pedidos": 1,
-      "pares_vendidos": 1,
-      "receita_bruta_itens": 719,
-      "desconto_itens": "275.47",
-      "receita_liquida_itens": "443.53",
+      "pedidos": 5,
+      "pares_vendidos": 5,
+      "receita_bruta_itens": 3595,
+      "desconto_itens": "1127.84",
+      "receita_liquida_itens": "2467.16",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "443.53"
+      "preco_medio_liquido": "493.43"
+    },
+    {
+      "data": "2026-07-29",
+      "pedidos": 2,
+      "pares_vendidos": 6,
+      "receita_bruta_itens": 4314,
+      "desconto_itens": "1725.6",
+      "receita_liquida_itens": "2588.4",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "431.4"
     }
   ],
   "por_produto": [
@@ -647,6 +657,17 @@
       "preco_medio_liquido": "519.12"
     },
     {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 42",
+      "sku": "RS8AVANT-MC-42",
+      "pedidos": 4,
+      "pares_vendidos": 5,
+      "receita_bruta_itens": 3595,
+      "desconto_itens": "1097.54",
+      "receita_liquida_itens": "2497.46",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "499.49"
+    },
+    {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - 45",
       "sku": "RS8AVANT-MC-45",
       "pedidos": 5,
@@ -779,17 +800,6 @@
       "preco_medio_liquido": "558.82"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 42",
-      "sku": "RS8AVANT-MC-42",
-      "pedidos": 2,
-      "pares_vendidos": 3,
-      "receita_bruta_itens": 2157,
-      "desconto_itens": "563.91",
-      "receita_liquida_itens": "1593.09",
-      "preco_medio_bruto": 719,
-      "preco_medio_liquido": "531.03"
-    },
-    {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 41",
       "sku": "RS8AVANT-MC-41",
       "pedidos": 3,
@@ -801,8 +811,8 @@
       "preco_medio_liquido": "494.73"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 46",
-      "sku": "RS8AVANT-CF-46",
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 46",
+      "sku": "RS8AVANT-CT-46",
       "pedidos": 2,
       "pares_vendidos": 2,
       "receita_bruta_itens": 1438,
@@ -812,8 +822,8 @@
       "preco_medio_liquido": "683.05"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - 46",
-      "sku": "RS8AVANT-CT-46",
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - 46",
+      "sku": "RS8AVANT-CF-46",
       "pedidos": 2,
       "pares_vendidos": 2,
       "receita_bruta_itens": 1438,
@@ -832,6 +842,39 @@
       "receita_liquida_itens": "980.22",
       "preco_medio_bruto": 719,
       "preco_medio_liquido": "490.11"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - Tamanho do calçado: 43",
+      "sku": "RS8AVANT-AB-43",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_bruta_itens": 1438,
+      "desconto_itens": "470.04",
+      "receita_liquida_itens": "967.96",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "483.98"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - Tamanho do calçado: 42",
+      "sku": "RS8AVANT-AB-42",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_bruta_itens": 1438,
+      "desconto_itens": "563.07",
+      "receita_liquida_itens": "874.93",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "437.47"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - Tamanho do calçado: 43",
+      "sku": "RS8AVANT-CF-43",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_bruta_itens": 1438,
+      "desconto_itens": "563.07",
+      "receita_liquida_itens": "874.93",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "437.47"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - 46",
@@ -856,15 +899,37 @@
       "preco_medio_liquido": "323.55"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome All Black - Tamanho do calçado: 43",
-      "sku": "RS8AVANT-AB-43",
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - Tamanho do calçado: 43",
+      "sku": "RS8AVANT-CT-43",
       "pedidos": 1,
       "pares_vendidos": 1,
       "receita_bruta_itens": 719,
-      "desconto_itens": "182.44",
-      "receita_liquida_itens": "536.56",
+      "desconto_itens": "161.9",
+      "receita_liquida_itens": "557.1",
       "preco_medio_bruto": 719,
-      "preco_medio_liquido": "536.56"
+      "preco_medio_liquido": "557.1"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 45",
+      "sku": "RS8AVANT-MC-45",
+      "pedidos": 1,
+      "pares_vendidos": 1,
+      "receita_bruta_itens": 719,
+      "desconto_itens": "168.97",
+      "receita_liquida_itens": "550.03",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "550.03"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - Tamanho do calçado: 42",
+      "sku": "RS8AVANT-CF-42",
+      "pedidos": 2,
+      "pares_vendidos": 2,
+      "receita_bruta_itens": 1438,
+      "desconto_itens": "908.5",
+      "receita_liquida_itens": "529.5",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "264.75"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 39",
@@ -878,17 +943,6 @@
       "preco_medio_liquido": "479.33"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - Tamanho do calçado: 38",
-      "sku": "RS8AVANT-CF-38",
-      "pedidos": 1,
-      "pares_vendidos": 1,
-      "receita_bruta_itens": 719,
-      "desconto_itens": "275.47",
-      "receita_liquida_itens": "443.53",
-      "preco_medio_bruto": 719,
-      "preco_medio_liquido": "443.53"
-    },
-    {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Caqui - Tamanho do calçado: 42",
       "sku": "RS8AVANT-CT-42",
       "pedidos": 1,
@@ -900,8 +954,8 @@
       "preco_medio_liquido": "443.53"
     },
     {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - Tamanho do calçado: 43",
-      "sku": "RS8AVANT-CF-43",
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - Tamanho do calçado: 38",
+      "sku": "RS8AVANT-CF-38",
       "pedidos": 1,
       "pares_vendidos": 1,
       "receita_bruta_itens": 719,
@@ -909,6 +963,17 @@
       "receita_liquida_itens": "443.53",
       "preco_medio_bruto": 719,
       "preco_medio_liquido": "443.53"
+    },
+    {
+      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 43",
+      "sku": "RS8AVANT-MC-43",
+      "pedidos": 1,
+      "pares_vendidos": 1,
+      "receita_bruta_itens": 719,
+      "desconto_itens": "287.6",
+      "receita_liquida_itens": "431.4",
+      "preco_medio_bruto": 719,
+      "preco_medio_liquido": "431.4"
     },
     {
       "titulo_produto": "Tênis Casual RS8 Avant Monochrome Cinza - Tamanho do calçado: 40",
@@ -942,17 +1007,6 @@
       "receita_liquida_itens": "98.1",
       "preco_medio_bruto": 719,
       "preco_medio_liquido": "98.1"
-    },
-    {
-      "titulo_produto": "Tênis Casual RS8 Avant Monochrome Marrom - Tamanho do calçado: 42",
-      "sku": "RS8AVANT-CF-42",
-      "pedidos": 1,
-      "pares_vendidos": 1,
-      "receita_bruta_itens": 719,
-      "desconto_itens": "620.9",
-      "receita_liquida_itens": "98.1",
-      "preco_medio_bruto": 719,
-      "preco_medio_liquido": "98.1"
     }
   ],
   "por_cor": [
@@ -972,17 +1026,17 @@
     },
     {
       "cor": "42",
-      "pedidos": 95,
-      "pares_vendidos": 133,
-      "receita_bruta_itens": 95627,
-      "receita_liquida_itens": "74590.85"
+      "pedidos": 98,
+      "pares_vendidos": 138,
+      "receita_bruta_itens": 99222,
+      "receita_liquida_itens": "76801.55"
     },
     {
       "cor": "43",
-      "pedidos": 60,
-      "pares_vendidos": 78,
-      "receita_bruta_itens": 56082,
-      "receita_liquida_itens": "46556.6"
+      "pedidos": 62,
+      "pares_vendidos": 82,
+      "receita_bruta_itens": 58958,
+      "receita_liquida_itens": "48407.9"
     },
     {
       "cor": "39",
@@ -1007,10 +1061,10 @@
     },
     {
       "cor": "45",
-      "pedidos": 9,
-      "pares_vendidos": 14,
-      "receita_bruta_itens": 10066,
-      "receita_liquida_itens": "6768.68"
+      "pedidos": 10,
+      "pares_vendidos": 15,
+      "receita_bruta_itens": 10785,
+      "receita_liquida_itens": "7318.71"
     },
     {
       "cor": "46",
@@ -1037,17 +1091,17 @@
     },
     {
       "tamanho": "42",
-      "pedidos": 95,
-      "pares_vendidos": 133,
-      "receita_bruta_itens": 95627,
-      "receita_liquida_itens": "74590.85"
+      "pedidos": 98,
+      "pares_vendidos": 138,
+      "receita_bruta_itens": 99222,
+      "receita_liquida_itens": "76801.55"
     },
     {
       "tamanho": "43",
-      "pedidos": 60,
-      "pares_vendidos": 78,
-      "receita_bruta_itens": 56082,
-      "receita_liquida_itens": "46556.6"
+      "pedidos": 62,
+      "pares_vendidos": 82,
+      "receita_bruta_itens": 58958,
+      "receita_liquida_itens": "48407.9"
     },
     {
       "tamanho": "39",
@@ -1072,10 +1126,10 @@
     },
     {
       "tamanho": "45",
-      "pedidos": 9,
-      "pares_vendidos": 14,
-      "receita_bruta_itens": 10066,
-      "receita_liquida_itens": "6768.68"
+      "pedidos": 10,
+      "pares_vendidos": 15,
+      "receita_bruta_itens": 10785,
+      "receita_liquida_itens": "7318.71"
     },
     {
       "tamanho": "46",
@@ -1154,116 +1208,6 @@
       "sku_norm": "rs6avantp41"
     },
     {
-      "pedido": "#133064",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#133850",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#134148",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#133198",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#135356",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#135249",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#132323",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#136315",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#135825",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
-      "pedido": "#135511",
-      "sku": "RS8AVANT-B-38",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 38",
-      "sku_norm": "rs8avantb38"
-    },
-    {
       "pedido": "#134972",
       "sku": "RS8AVANT-B-38",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
@@ -1286,6 +1230,17 @@
       "sku_norm": "rs8avantb38"
     },
     {
+      "pedido": "#133850",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
       "pedido": "#135777",
       "sku": "RS8AVANT-B-38",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
@@ -1297,18 +1252,117 @@
       "sku_norm": "rs8avantb38"
     },
     {
-      "pedido": "#136302",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "pedido": "#134148",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#135825",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
       "quantidade": 1,
       "valor_bruto_item": 610,
       "desconto_item": 0,
       "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#133198",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#133064",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#136315",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#135356",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#135511",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#132323",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#135249",
+      "sku": "RS8AVANT-B-38",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 38",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 38",
+      "sku_norm": "rs8avantb38"
+    },
+    {
+      "pedido": "#135581",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 151,
+      "valor_liquido_item": 459,
       "item_name_norm": "tenis casual branco rs8 avant branco 39",
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#135735",
+      "pedido": "#134382",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
@@ -1330,18 +1384,62 @@
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#135940",
+      "pedido": "#135484",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
       "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
       "item_name_norm": "tenis casual branco rs8 avant branco 39",
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#136082",
+      "pedido": "#133990",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#132768",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#133504",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#136075",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#133063",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
@@ -1363,7 +1461,7 @@
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#133990",
+      "pedido": "#136302",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
@@ -1374,7 +1472,7 @@
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#132809",
+      "pedido": "#136082",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
@@ -1385,40 +1483,18 @@
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#135581",
+      "pedido": "#133723",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
       "valor_bruto_item": 610,
-      "desconto_item": 151,
-      "valor_liquido_item": 459,
+      "desconto_item": "115.9",
+      "valor_liquido_item": "494.1",
       "item_name_norm": "tenis casual branco rs8 avant branco 39",
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#132768",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#135484",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#133309",
+      "pedido": "#135819",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
@@ -1440,101 +1516,13 @@
       "sku_norm": "rs8avantb39"
     },
     {
-      "pedido": "#133063",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#136075",
+      "pedido": "#133309",
       "sku": "RS8AVANT-B-39",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
       "quantidade": 1,
       "valor_bruto_item": 610,
       "desconto_item": 0,
       "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#133723",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "115.9",
-      "valor_liquido_item": "494.1",
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#133240",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#135819",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#134382",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#133504",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#136034",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 39",
-      "sku_norm": "rs8avantb39"
-    },
-    {
-      "pedido": "#133333",
-      "sku": "RS8AVANT-B-39",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
       "item_name_norm": "tenis casual branco rs8 avant branco 39",
       "sku_norm": "rs8avantb39"
     },
@@ -1550,6 +1538,424 @@
       "sku_norm": "rs8avantb39"
     },
     {
+      "pedido": "#135940",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#136034",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#135735",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#132809",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#133333",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#133240",
+      "sku": "RS8AVANT-B-39",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 39",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 39",
+      "sku_norm": "rs8avantb39"
+    },
+    {
+      "pedido": "#136208",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#133490",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#133931",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "115.9",
+      "valor_liquido_item": "494.1",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#136191",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134081",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "115.9",
+      "valor_liquido_item": "494.1",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#136028",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132663",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#136462",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132706",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134301",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "103.7",
+      "valor_liquido_item": "506.3",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#133812",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#136035",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132965",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#133019",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134970",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "152.5",
+      "valor_liquido_item": "457.5",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#135177",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134771",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 388,
+      "valor_liquido_item": 222,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132518",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132257",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#135761",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#136523",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134164",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#135964",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#133408",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134843",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132845",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "190.42",
+      "valor_liquido_item": "419.58",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134436",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#133924",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132637",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#135547",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#135412",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#134559",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "115.9",
+      "valor_liquido_item": "494.1",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
       "pedido": "#133763",
       "sku": "RS8AVANT-B-40",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
@@ -1557,6 +1963,50 @@
       "valor_bruto_item": 610,
       "desconto_item": 0,
       "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132235",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 610,
+      "valor_liquido_item": 0,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#136476",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "143.35",
+      "valor_liquido_item": "466.65",
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132546",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 40",
+      "sku_norm": "rs8avantb40"
+    },
+    {
+      "pedido": "#132149",
+      "sku": "RS8AVANT-B-40",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
       "item_name_norm": "tenis casual branco rs8 avant branco 40",
       "sku_norm": "rs8avantb40"
     },
@@ -1583,161 +2033,18 @@
       "sku_norm": "rs8avantb40"
     },
     {
-      "pedido": "#136462",
+      "pedido": "#135148",
       "sku": "RS8AVANT-B-40",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
       "quantidade": 1,
       "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
+      "desconto_item": "91.5",
+      "valor_liquido_item": "518.5",
       "item_name_norm": "tenis casual branco rs8 avant branco 40",
       "sku_norm": "rs8avantb40"
     },
     {
-      "pedido": "#136208",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135177",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132637",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132706",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135547",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#136476",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "143.35",
-      "valor_liquido_item": "466.65",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134843",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#133931",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "115.9",
-      "valor_liquido_item": "494.1",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135740",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#133019",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134081",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "115.9",
-      "valor_liquido_item": "494.1",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132235",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132663",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134436",
+      "pedido": "#132896",
       "sku": "RS8AVANT-B-40",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
       "quantidade": 1,
@@ -1759,29 +2066,7 @@
       "sku_norm": "rs8avantb40"
     },
     {
-      "pedido": "#134164",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#133924",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#133490",
+      "pedido": "#135740",
       "sku": "RS8AVANT-B-40",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
       "quantidade": 1,
@@ -1792,244 +2077,24 @@
       "sku_norm": "rs8avantb40"
     },
     {
-      "pedido": "#133812",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132546",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#136191",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#133408",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132257",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132149",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132845",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "190.42",
-      "valor_liquido_item": "419.58",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135412",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135148",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "91.5",
-      "valor_liquido_item": "518.5",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132965",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135964",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#136028",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#136523",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#136035",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132518",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#132896",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134970",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "152.5",
-      "valor_liquido_item": "457.5",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134301",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "103.7",
-      "valor_liquido_item": "506.3",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134771",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 388,
-      "valor_liquido_item": 222,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#135761",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#134559",
-      "sku": "RS8AVANT-B-40",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 40",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "115.9",
-      "valor_liquido_item": "494.1",
-      "item_name_norm": "tenis casual branco rs8 avant branco 40",
-      "sku_norm": "rs8avantb40"
-    },
-    {
-      "pedido": "#133902",
+      "pedido": "#135550",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
       "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 41",
+      "sku_norm": "rs8avantb41"
+    },
+    {
+      "pedido": "#132747",
+      "sku": "RS8AVANT-B-41",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "143.35",
+      "valor_liquido_item": "466.65",
       "item_name_norm": "tenis casual branco rs8 avant branco 41",
       "sku_norm": "rs8avantb41"
     },
@@ -2045,7 +2110,7 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#132860",
+      "pedido": "#135026",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
@@ -2056,18 +2121,7 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#135550",
-      "sku": "RS8AVANT-B-41",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 0,
-      "valor_liquido_item": 610,
-      "item_name_norm": "tenis casual branco rs8 avant branco 41",
-      "sku_norm": "rs8avantb41"
-    },
-    {
-      "pedido": "#132763",
+      "pedido": "#132505",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
@@ -2078,7 +2132,18 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#136373",
+      "pedido": "#136408",
+      "sku": "RS8AVANT-B-41",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": "529.05",
+      "valor_liquido_item": "80.95",
+      "item_name_norm": "tenis casual branco rs8 avant branco 41",
+      "sku_norm": "rs8avantb41"
+    },
+    {
+      "pedido": "#135820",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
@@ -2089,7 +2154,7 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#134622",
+      "pedido": "#135889",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
@@ -2100,7 +2165,29 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#133231",
+      "pedido": "#133841",
+      "sku": "RS8AVANT-B-41",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
+      "item_name_norm": "tenis casual branco rs8 avant branco 41",
+      "sku_norm": "rs8avantb41"
+    },
+    {
+      "pedido": "#136322",
+      "sku": "RS8AVANT-B-41",
+      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
+      "quantidade": 1,
+      "valor_bruto_item": 610,
+      "desconto_item": 61,
+      "valor_liquido_item": 549,
+      "item_name_norm": "tenis casual branco rs8 avant branco 41",
+      "sku_norm": "rs8avantb41"
+    },
+    {
+      "pedido": "#132589",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
@@ -2122,29 +2209,7 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#134388",
-      "sku": "RS8AVANT-B-41",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 41",
-      "sku_norm": "rs8avantb41"
-    },
-    {
-      "pedido": "#132939",
-      "sku": "RS8AVANT-B-41",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": 61,
-      "valor_liquido_item": 549,
-      "item_name_norm": "tenis casual branco rs8 avant branco 41",
-      "sku_norm": "rs8avantb41"
-    },
-    {
-      "pedido": "#135081",
+      "pedido": "#132763",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
@@ -2155,29 +2220,18 @@
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#132101",
+      "pedido": "#133231",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
       "valor_bruto_item": 610,
-      "desconto_item": 610,
-      "valor_liquido_item": 0,
+      "desconto_item": 0,
+      "valor_liquido_item": 610,
       "item_name_norm": "tenis casual branco rs8 avant branco 41",
       "sku_norm": "rs8avantb41"
     },
     {
-      "pedido": "#132855",
-      "sku": "RS8AVANT-B-41",
-      "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
-      "quantidade": 1,
-      "valor_bruto_item": 610,
-      "desconto_item": "115.9",
-      "valor_liquido_item": "494.1",
-      "item_name_norm": "tenis casual branco rs8 avant branco 41",
-      "sku_norm": "rs8avantb41"
-    },
-    {
-      "pedido": "#132641",
+      "pedido": "#136373",
       "sku": "RS8AVANT-B-41",
       "titulo_produto": "Tênis Casual Branco RS8 Avant - Branco / 41",
       "quantidade": 1,
