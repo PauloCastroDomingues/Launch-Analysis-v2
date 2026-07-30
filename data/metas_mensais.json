@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-29T07:11:19-03:00",
+  "generated_at": "2026-07-30T07:11:42-03:00",
   "source": "bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal",
   "rows": [
     {
@@ -231,45 +231,14 @@
       "realizado_ate": "2026-03-31",
       "meta_investimento": 600000,
       "investimento_realizado": 689714.42,
-      "investimento_aquisicao": 19326.16375,
-      "sessoes_aquisicao": 12417,
-      "pedidos_aquisicao": 159,
-      "receita_aquisicao": 142415.08,
-      "novos_clientes_aquisicao": 103,
-      "cps_aquisicao": 1.55642778,
-      "roas_aquisicao": 7.369029976,
-      "canais_aquisicao": [
-        {
-          "canal": "Meta Ads",
-          "investimento": 12935.91375,
-          "sessoes": 4557,
-          "pedidos": 42,
-          "receita": 39789.45,
-          "novos_clientes": 22,
-          "cps": 2.83869075,
-          "roas": 3.075890174
-        },
-        {
-          "canal": "Google Ads",
-          "investimento": 5590.32,
-          "sessoes": 3524,
-          "pedidos": 22,
-          "receita": 16183.69,
-          "novos_clientes": 17,
-          "cps": 1.586356413,
-          "roas": 2.894948769
-        },
-        {
-          "canal": "Outros",
-          "investimento": 799.93,
-          "sessoes": 4336,
-          "pedidos": 95,
-          "receita": 86441.94,
-          "novos_clientes": 64,
-          "cps": 0.184485701,
-          "roas": 1.080619
-        }
-      ],
+      "investimento_aquisicao": null,
+      "sessoes_aquisicao": null,
+      "pedidos_aquisicao": null,
+      "receita_aquisicao": null,
+      "novos_clientes_aquisicao": null,
+      "cps_aquisicao": null,
+      "roas_aquisicao": null,
+      "canais_aquisicao": [],
       "daily": [
         {
           "data": "2026-03-01",
@@ -1811,57 +1780,57 @@
       "modelo_id": null,
       "linha": null,
       "meta_receita": 3602085.01,
-      "realizado_receita": 2684622.48,
+      "realizado_receita": 2765419.04,
       "meta_pedidos": 5245,
-      "realizado_pedidos": 3731,
+      "realizado_pedidos": 3854,
       "meta_pares": null,
       "realizado_pares": null,
-      "atingimento": 0.745297,
+      "atingimento": 0.767727,
       "goal_scope": "shopify_geral",
       "version_id": "2026-07_shopify_geral_published_20260727130351",
       "month_label": "Julho 2026",
       "dias_meta_receita": 31,
-      "dias_realizado_receita": 29,
-      "realizado_ate": "2026-07-29",
+      "dias_realizado_receita": 30,
+      "realizado_ate": "2026-07-30",
       "meta_investimento": 839505.49,
-      "investimento_realizado": 785245.32,
-      "investimento_aquisicao": 850381.7975,
-      "sessoes_aquisicao": 398369,
-      "pedidos_aquisicao": 3731,
-      "receita_aquisicao": 2684622.48,
-      "novos_clientes_aquisicao": 2509,
-      "cps_aquisicao": 2.134658564,
-      "roas_aquisicao": 3.156961365,
+      "investimento_realizado": 811413.43,
+      "investimento_aquisicao": 878486.72125,
+      "sessoes_aquisicao": 411573,
+      "pedidos_aquisicao": 3854,
+      "receita_aquisicao": 2765419.04,
+      "novos_clientes_aquisicao": 2603,
+      "cps_aquisicao": 2.134461496,
+      "roas_aquisicao": 3.147934935,
       "canais_aquisicao": [
         {
           "canal": "Meta Ads",
-          "investimento": 586003.2975,
-          "sessoes": 195900,
-          "pedidos": 768,
-          "receita": 591238.11,
-          "novos_clientes": 460,
-          "cps": 2.991338936,
-          "roas": 1.008933077
+          "investimento": 604305.46125,
+          "sessoes": 201580,
+          "pedidos": 792,
+          "receita": 607129.59,
+          "novos_clientes": 479,
+          "cps": 2.997844336,
+          "roas": 1.004673346
         },
         {
           "canal": "Google Ads",
-          "investimento": 247090.86,
-          "sessoes": 100198,
-          "pedidos": 619,
-          "receita": 386096.54,
-          "novos_clientes": 386,
-          "cps": 2.466025869,
-          "roas": 1.562569089
+          "investimento": 255972.79,
+          "sessoes": 103447,
+          "pedidos": 654,
+          "receita": 406127.44,
+          "novos_clientes": 410,
+          "cps": 2.474434155,
+          "roas": 1.586603951
         },
         {
           "canal": "Outros",
-          "investimento": 17287.64,
-          "sessoes": 102271,
-          "pedidos": 2344,
-          "receita": 1707287.83,
-          "novos_clientes": 1663,
-          "cps": 0.169037557,
-          "roas": 98.757715339
+          "investimento": 18208.47,
+          "sessoes": 106546,
+          "pedidos": 2408,
+          "receita": 1752162.01,
+          "novos_clientes": 1714,
+          "cps": 0.170897734,
+          "roas": 96.227854949
         }
       ],
       "daily": [
@@ -1934,13 +1903,13 @@
         {
           "data": "2026-07-07",
           "meta_receita": 97771.39,
-          "realizado_receita": 110577.07,
+          "realizado_receita": 110129.77,
           "meta_pedidos": 142,
-          "realizado_pedidos": 154,
+          "realizado_pedidos": 153,
           "meta_investimento": 22786.7,
           "investimento_realizado": 30475.63,
           "roas_meta": 4.29,
-          "roas_realizado": 3.628376837
+          "roas_realizado": 3.613699536
         },
         {
           "data": "2026-07-08",
@@ -2158,9 +2127,9 @@
           "meta_pedidos": 241,
           "realizado_pedidos": 146,
           "meta_investimento": 38616.41,
-          "investimento_realizado": 26270.46,
+          "investimento_realizado": 26270.48,
           "roas_meta": 4.29,
-          "roas_realizado": 4.354745977
+          "roas_realizado": 4.354742662
         },
         {
           "data": "2026-07-28",
@@ -2169,31 +2138,31 @@
           "meta_pedidos": 241,
           "realizado_pedidos": 124,
           "meta_investimento": 38616.41,
-          "investimento_realizado": 25526.75,
+          "investimento_realizado": 25534.78,
           "roas_meta": 4.29,
-          "roas_realizado": 3.585456433
+          "roas_realizado": 3.584328904
         },
         {
           "data": "2026-07-29",
           "meta_receita": 165692.31,
-          "realizado_receita": 5301.18,
+          "realizado_receita": 78071.33,
           "meta_pedidos": 241,
-          "realizado_pedidos": 8,
+          "realizado_pedidos": 123,
           "meta_investimento": 38616.41,
-          "investimento_realizado": 2011.59,
+          "investimento_realizado": 26184.81,
           "roas_meta": 4.29,
-          "roas_realizado": 2.63531833
+          "roas_realizado": 2.981550372
         },
         {
           "data": "2026-07-30",
           "meta_receita": 165692.31,
-          "realizado_receita": null,
+          "realizado_receita": 8473.71,
           "meta_pedidos": 241,
-          "realizado_pedidos": null,
+          "realizado_pedidos": 9,
           "meta_investimento": 38616.41,
-          "investimento_realizado": null,
+          "investimento_realizado": 1986.84,
           "roas_meta": 4.29,
-          "roas_realizado": null
+          "roas_realizado": 4.264918162
         },
         {
           "data": "2026-07-31",
