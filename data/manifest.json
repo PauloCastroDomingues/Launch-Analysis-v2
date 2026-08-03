@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-03T07:10:45-03:00",
+  "generated_at": "2026-08-03T09:52:14-03:00",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -45,6 +45,97 @@
       "diferenca_receita_pct": 0,
       "linhas_suspeitas": 100,
       "duplicidades": 0
+    },
+    "atribuicao_canal": {
+      "enabled": true,
+      "status": "sem_atribuicao_real",
+      "mensagem": "Nenhum pedido exportado veio com tipo_real; mirror ausente ou sem match.",
+      "pedidos_total": 5436,
+      "pedidos_classificados": 0,
+      "cobertura_pedidos_pct": 0,
+      "receita_total": 4793006,
+      "receita_classificada": 0,
+      "cobertura_receita_pct": 0,
+      "receita_paga": 0,
+      "receita_organica": 0,
+      "receita_outros_canais": 0,
+      "por_modelo": [
+        {
+          "modelo_id": "avant",
+          "pedidos_total": 2790,
+          "pedidos_classificados": 0,
+          "cobertura_pedidos_pct": 0,
+          "pedidos_pagos": 0,
+          "pedidos_organicos": 0,
+          "pedidos_outros_canais": 0,
+          "receita_total": 2072894,
+          "receita_classificada": 0,
+          "cobertura_receita_pct": 0,
+          "receita_paga": 0,
+          "receita_organica": 0,
+          "receita_outros_canais": 0
+        },
+        {
+          "modelo_id": "gt",
+          "pedidos_total": 903,
+          "pedidos_classificados": 0,
+          "cobertura_pedidos_pct": 0,
+          "pedidos_pagos": 0,
+          "pedidos_organicos": 0,
+          "pedidos_outros_canais": 0,
+          "receita_total": 888175,
+          "receita_classificada": 0,
+          "cobertura_receita_pct": 0,
+          "receita_paga": 0,
+          "receita_organica": 0,
+          "receita_outros_canais": 0
+        },
+        {
+          "modelo_id": "phantom",
+          "pedidos_total": 1294,
+          "pedidos_classificados": 0,
+          "cobertura_pedidos_pct": 0,
+          "pedidos_pagos": 0,
+          "pedidos_organicos": 0,
+          "pedidos_outros_canais": 0,
+          "receita_total": 1220143,
+          "receita_classificada": 0,
+          "cobertura_receita_pct": 0,
+          "receita_paga": 0,
+          "receita_organica": 0,
+          "receita_outros_canais": 0
+        },
+        {
+          "modelo_id": "rs8_monochrome",
+          "pedidos_total": 535,
+          "pedidos_classificados": 0,
+          "cobertura_pedidos_pct": 0,
+          "pedidos_pagos": 0,
+          "pedidos_organicos": 0,
+          "pedidos_outros_canais": 0,
+          "receita_total": 514804,
+          "receita_classificada": 0,
+          "cobertura_receita_pct": 0,
+          "receita_paga": 0,
+          "receita_organica": 0,
+          "receita_outros_canais": 0
+        },
+        {
+          "modelo_id": "series_2",
+          "pedidos_total": 142,
+          "pedidos_classificados": 0,
+          "cobertura_pedidos_pct": 0,
+          "pedidos_pagos": 0,
+          "pedidos_organicos": 0,
+          "pedidos_outros_canais": 0,
+          "receita_total": 96990,
+          "receita_classificada": 0,
+          "cobertura_receita_pct": 0,
+          "receita_paga": 0,
+          "receita_organica": 0,
+          "receita_outros_canais": 0
+        }
+      ]
     }
   },
   "export_status": {
@@ -81,6 +172,7 @@
     "Modelos elegiveis para analise usam status historico/ativo e day_zero_base valido.",
     "day_zero_base define o D0 analitico de cada modelo.",
     "Vendas de modelos usam fct_order_item com is_valid_order TRUE, order_sk como identificador de pedido e receita_bruta como faturamento do dashboard.",
+    "Atribuicao real de canal: sem_atribuicao_real. Nenhum pedido exportado veio com tipo_real; mirror ausente ou sem match.",
     "investigacao_linhas_suspeitas skipped: ANTHROPIC_API_KEY nao configurada",
     "impacto_investimento.json aposentado: correlacao por janela nao e atribuicao real."
   ]
