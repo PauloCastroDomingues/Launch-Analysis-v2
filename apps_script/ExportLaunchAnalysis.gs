@@ -9,6 +9,7 @@
  * - GITHUB_BRANCH = main
  * - DATA_PATH = data
  * - MIDIA_SPREADSHEET_ID (opcional, usado apenas para midia_paga e crm_disparos)
+ * - ATRIBUICAO_REAL_CANAL_ENABLED = true|false (opcional; false volta ao estado atual sem pago/organico real)
  *
  * Serviços avançados necessários:
  * - BigQuery API
@@ -21,7 +22,8 @@ const CONFIG = {
   githubRepo: normalizeGitHubRepo_(getProp_('GITHUB_REPO', '')),
   githubBranch: getProp_('GITHUB_BRANCH', 'main'),
   dataPath: getProp_('DATA_PATH', 'data'),
-  timeZone: 'America/Sao_Paulo'
+  timeZone: 'America/Sao_Paulo',
+  canalAttributionEnabled: getBoolProp_('ATRIBUICAO_REAL_CANAL_ENABLED', true)
 };
 
 const SHARE_TRAJETORIA_REQUIRED_TABLES = [
@@ -60,6 +62,13 @@ function exportarTudo() {
       Logger.log(alerta);
       warnings.push(alerta);
     }
+  }
+
+  dataQuality.atribuicao_canal = auditarAtribuicaoCanal_(produtosDia);
+  if (!CONFIG.canalAttributionEnabled) {
+    warnings.push('Atribuicao real de canal desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; receita_paga/receita_organica permanecem null.');
+  } else if (dataQuality.atribuicao_canal.status !== 'ok') {
+    warnings.push(`Atribuicao real de canal: ${dataQuality.atribuicao_canal.status}. ${dataQuality.atribuicao_canal.mensagem}`);
   }
 
   logProdutosDiaExport_(exportaveis, produtosDia);
@@ -749,8 +758,10 @@ function consultarProdutosDia_(modelos) {
     const skuPrefixos = skuPrefixos_(m);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
-  const canalAtribuicaoDisponivel = tabelaMartSharedExiste_('canal_atribuicao_pedido_mirror');
-  if (!canalAtribuicaoDisponivel) {
+  const canalAtribuicaoDisponivel = CONFIG.canalAttributionEnabled && tabelaMartSharedExiste_('canal_atribuicao_pedido_mirror');
+  if (!CONFIG.canalAttributionEnabled) {
+    Logger.log('atribuicao_real: desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; exportacao continua no estado atual sem paid/organic real.');
+  } else if (!canalAtribuicaoDisponivel) {
     Logger.log('atribuicao_real: mart_shared.canal_atribuicao_pedido_mirror ausente; exportacao continua sem receita_paga/receita_organica por canal real.');
   }
   const canalAtribuicaoCteSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoCteSql_() : '';
@@ -999,6 +1010,127 @@ function sanitizarProdutosDiaPublicos_(rows) {
     delete clean.atribuicao_match_key;
     return clean;
   });
+}
+
+function auditarAtribuicaoCanal_(rows) {
+  const resumoVazio = {
+    enabled: CONFIG.canalAttributionEnabled,
+    status: CONFIG.canalAttributionEnabled ? 'sem_vendas' : 'desligada',
+    mensagem: CONFIG.canalAttributionEnabled
+      ? 'Nenhuma linha de venda exportada para auditar.'
+      : 'Atribuicao real de canal desligada por Script Property.',
+    pedidos_total: 0,
+    pedidos_classificados: 0,
+    cobertura_pedidos_pct: null,
+    receita_total: 0,
+    receita_classificada: 0,
+    cobertura_receita_pct: null,
+    receita_paga: 0,
+    receita_organica: 0,
+    receita_outros_canais: 0,
+    por_modelo: []
+  };
+  if (!rows || !rows.length) return resumoVazio;
+
+  const buildBucket = (modeloId) => ({
+    modelo_id: modeloId,
+    pedidos: {},
+    pedidos_classificados: {},
+    pedidos_pagos: {},
+    pedidos_organicos: {},
+    pedidos_outros: {},
+    receita_total: 0,
+    receita_classificada: 0,
+    receita_paga: 0,
+    receita_organica: 0,
+    receita_outros_canais: 0
+  });
+  const total = buildBucket('total');
+  const byModel = {};
+
+  const addToBucket = (bucket, row, orderKey, receita, tipo) => {
+    bucket.pedidos[orderKey] = true;
+    bucket.receita_total += receita;
+    if (tipo) {
+      bucket.pedidos_classificados[orderKey] = true;
+      bucket.receita_classificada += receita;
+    }
+    if (tipo === 'paid') {
+      bucket.pedidos_pagos[orderKey] = true;
+      bucket.receita_paga += receita;
+    } else if (tipo === 'organic') {
+      bucket.pedidos_organicos[orderKey] = true;
+      bucket.receita_organica += receita;
+    } else if (tipo) {
+      bucket.pedidos_outros[orderKey] = true;
+      bucket.receita_outros_canais += receita;
+    }
+  };
+
+  rows.forEach(row => {
+    const modeloId = String(row.modelo_id || 'sem_modelo').trim() || 'sem_modelo';
+    const orderKey = String(row.order_sk || `${row.data || ''}|${row.sku || ''}|${row.nome_produto || ''}`);
+    const receita = numberOrNull_(row.receita_bruta) ?? numberOrNull_(row.receita) ?? 0;
+    const tipo = String(row.tipo_real || '').trim().toLowerCase();
+    if (!byModel[modeloId]) byModel[modeloId] = buildBucket(modeloId);
+    addToBucket(total, row, orderKey, receita, tipo);
+    addToBucket(byModel[modeloId], row, orderKey, receita, tipo);
+  });
+
+  const countKeys = obj => Object.keys(obj || {}).length;
+  const summarize = bucket => {
+    const pedidosTotal = countKeys(bucket.pedidos);
+    const pedidosClassificados = countKeys(bucket.pedidos_classificados);
+    const receitaTotal = round2_(bucket.receita_total);
+    const receitaClassificada = round2_(bucket.receita_classificada);
+    return {
+      modelo_id: bucket.modelo_id,
+      pedidos_total: pedidosTotal,
+      pedidos_classificados: pedidosClassificados,
+      cobertura_pedidos_pct: pedidosTotal ? round6_(pedidosClassificados / pedidosTotal) : null,
+      pedidos_pagos: countKeys(bucket.pedidos_pagos),
+      pedidos_organicos: countKeys(bucket.pedidos_organicos),
+      pedidos_outros_canais: countKeys(bucket.pedidos_outros),
+      receita_total: receitaTotal,
+      receita_classificada: receitaClassificada,
+      cobertura_receita_pct: bucket.receita_total ? round6_(bucket.receita_classificada / bucket.receita_total) : null,
+      receita_paga: round2_(bucket.receita_paga),
+      receita_organica: round2_(bucket.receita_organica),
+      receita_outros_canais: round2_(bucket.receita_outros_canais)
+    };
+  };
+
+  const totalSummary = summarize(total);
+  const porModelo = Object.keys(byModel).sort().map(modeloId => summarize(byModel[modeloId]));
+  const status = !CONFIG.canalAttributionEnabled
+    ? 'desligada'
+    : totalSummary.pedidos_classificados === 0
+      ? 'sem_atribuicao_real'
+      : totalSummary.cobertura_pedidos_pct < 0.8
+        ? 'cobertura_baixa'
+        : 'ok';
+  const mensagem = {
+    desligada: 'Atribuicao real de canal desligada por Script Property.',
+    sem_atribuicao_real: 'Nenhum pedido exportado veio com tipo_real; mirror ausente ou sem match.',
+    cobertura_baixa: 'Menos de 80% dos pedidos exportados receberam tipo_real; trate paid/organic como parcial.',
+    ok: 'Pedidos classificados com cobertura suficiente para leitura paga/organica.'
+  }[status] || 'Status de atribuicao indefinido.';
+
+  return {
+    enabled: CONFIG.canalAttributionEnabled,
+    status,
+    mensagem,
+    pedidos_total: totalSummary.pedidos_total,
+    pedidos_classificados: totalSummary.pedidos_classificados,
+    cobertura_pedidos_pct: totalSummary.cobertura_pedidos_pct,
+    receita_total: totalSummary.receita_total,
+    receita_classificada: totalSummary.receita_classificada,
+    cobertura_receita_pct: totalSummary.cobertura_receita_pct,
+    receita_paga: totalSummary.receita_paga,
+    receita_organica: totalSummary.receita_organica,
+    receita_outros_canais: totalSummary.receita_outros_canais,
+    por_modelo: porModelo
+  };
 }
 
 function exportarSubModelosDiaSeDisponivel_(modelos) {
@@ -3814,4 +3946,13 @@ function sql_(value) {
 
 function getProp_(key, fallback) {
   return PropertiesService.getScriptProperties().getProperty(key) || fallback;
+}
+
+function getBoolProp_(key, fallback) {
+  const raw = PropertiesService.getScriptProperties().getProperty(key);
+  if (raw === null || raw === undefined || raw === '') return Boolean(fallback);
+  const value = String(raw).trim().toLowerCase();
+  if (['false', '0', 'no', 'nao', 'não', 'off', 'desligado'].includes(value)) return false;
+  if (['true', '1', 'yes', 'sim', 'on', 'ligado'].includes(value)) return true;
+  return Boolean(fallback);
 }

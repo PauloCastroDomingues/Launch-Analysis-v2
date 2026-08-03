@@ -153,6 +153,7 @@ Script Property opcional:
 
 ```txt
 MIDIA_SPREADSHEET_ID
+ATRIBUICAO_REAL_CANAL_ENABLED = true|false
 ```
 
 Serviço avançado necessário:
@@ -336,6 +337,32 @@ Esse script resume cobertura de `metas_mensais`, investimento de aquisição, pl
 ### Atribuição por pedido
 
 `sql/canal_atribuicao_pedido_mirror.sql` documenta a rotina cross-region: ler a classificacao last-click em `mart_growth_us`, exportar por GCS e carregar a tabela `mart_shared.canal_atribuicao_pedido_mirror` em `southamerica-east1`. O dashboard cruza essa mirror por `email_norm + paid_date_brt + total_amount`; `order_id`, `order_name` e `customer_sk` não são chave de junção entre regiões.
+
+Essa camada separa **venda atribuida por pedido** de **investimento**:
+
+- `receita_paga`, `receita_organica`, `pedidos_pagos` e `pedidos_organicos` vêm do pedido real classificado por last-click/UTM e depois limitado aos itens da linha lancamento.
+- Investimento continua vindo de `metas_mensais.json` ou dos cadastros manuais de mídia/CRM. Ele nao e deduzido a partir dos pedidos.
+- ROAS de campanha so deve ser tratado como atribuicao quando existir custo e receita na mesma granularidade. Caso contrario, investimento e contexto, nao prova de causalidade.
+
+Rollback operacional:
+
+```txt
+ATRIBUICAO_REAL_CANAL_ENABLED=false
+```
+
+Com essa Script Property, `exportarTudo()` ignora `mart_shared.canal_atribuicao_pedido_mirror` mesmo que ela exista e volta ao comportamento anterior, mantendo `receita_paga`/`receita_organica` como `null`.
+
+Auditoria local depois de exportar:
+
+```bash
+node scripts/auditar_atribuicao_canal.js
+```
+
+Para comparar contra um arquivo anterior:
+
+```bash
+node scripts/auditar_atribuicao_canal.js --baseline data/lancamentos_produtos_dia.before.json
+```
 
 ## Como Rodar Localmente
 
