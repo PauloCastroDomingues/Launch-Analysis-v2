@@ -2664,11 +2664,50 @@ h2 {
 .actions-comparison {
   margin: 0 0 14px;
 }
+.channel-attribution-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+.channel-attribution-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+  padding: 14px 16px;
+  min-width: 0;
+}
+.channel-attribution-card strong {
+  display: block;
+  font-size: 1.25rem;
+  line-height: 1.08;
+  margin: 6px 0 4px;
+}
+.channel-attribution-card small,
+.channel-attribution-card span {
+  display: block;
+  color: var(--txt-muted);
+  font-size: .78rem;
+}
+.channel-attribution-card .metric-label {
+  margin-bottom: 0;
+}
+.channel-attribution-card--paid { border-left: 3px solid var(--orange); }
+.channel-attribution-card--organic { border-left: 3px solid var(--positive); }
+.channel-attribution-card--crm { border-left: 3px solid #7B8FE0; }
+.channel-attribution-card--other { border-left: 3px solid var(--warning); }
+.channel-attribution-note {
+  grid-column: 1 / -1;
+  color: var(--txt-secondary);
+  font-size: .82rem;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
 .commercial-table {
   margin-bottom: 14px;
 }
 .commercial-table table {
-  min-width: 1320px;
+  min-width: 1520px;
 }
 .commercial-table th,
 .commercial-table td {
@@ -4250,6 +4289,9 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   .command-center .selector-panel .selector-block:last-child {
     grid-column: 1 / -1;
   }
+  .channel-attribution-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .selector-panel { grid-template-columns: minmax(0, 1fr) minmax(170px, .5fr); }
   .selector-panel .selector-block:last-child { grid-column: 1 / -1; }
   .analysis-context-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4377,6 +4419,7 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   .compare-dropdown-count { display: none; }
   .compare-menu { position: static; width: 100%; margin-top: 6px; max-height: none; }
   .nav-list { grid-template-columns: 1fr; }
+  .channel-attribution-summary { grid-template-columns: 1fr; }
   .compare-toolbar { display: grid; grid-template-columns: 1fr; }
   .compare-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .compare-action { width: 100%; min-width: 0; padding-inline: 6px; overflow: hidden; text-overflow: ellipsis; }

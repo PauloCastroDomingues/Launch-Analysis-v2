@@ -49,14 +49,17 @@ function emptyBucket(modeloId) {
     classified: new Set(),
     paid: new Set(),
     organic: new Set(),
+    crm: new Set(),
     other: new Set(),
     receita_total: 0,
     receita_classificada: 0,
     receita_paga_tipo: 0,
     receita_organica_tipo: 0,
+    receita_crm_tipo: 0,
     receita_outros_tipo: 0,
     receita_paga_campo: 0,
-    receita_organica_campo: 0
+    receita_organica_campo: 0,
+    receita_crm_campo: 0
   };
 }
 
@@ -66,11 +69,13 @@ function addToBucket(bucket, row) {
   const receita = numberOrNull(row.receita_bruta) ?? numberOrNull(row.receita) ?? 0;
   const receitaPagaCampo = numberOrNull(row.receita_paga);
   const receitaOrganicaCampo = numberOrNull(row.receita_organica);
+  const receitaCrmCampo = numberOrNull(row.receita_crm);
 
   addOrder(bucket.orders, key);
   bucket.receita_total += receita;
   if (receitaPagaCampo !== null) bucket.receita_paga_campo += receitaPagaCampo;
   if (receitaOrganicaCampo !== null) bucket.receita_organica_campo += receitaOrganicaCampo;
+  if (receitaCrmCampo !== null) bucket.receita_crm_campo += receitaCrmCampo;
 
   if (!tipo) return;
   addOrder(bucket.classified, key);
@@ -81,6 +86,9 @@ function addToBucket(bucket, row) {
   } else if (tipo === 'organic') {
     addOrder(bucket.organic, key);
     bucket.receita_organica_tipo += receita;
+  } else if (tipo === 'owned' || tipo === 'crm') {
+    addOrder(bucket.crm, key);
+    bucket.receita_crm_tipo += receita;
   } else {
     addOrder(bucket.other, key);
     bucket.receita_outros_tipo += receita;
@@ -95,17 +103,21 @@ function summarizeBucket(bucket) {
     cobertura_pedidos_pct: pct(bucket.classified.size, bucket.orders.size),
     pedidos_pagos: bucket.paid.size,
     pedidos_organicos: bucket.organic.size,
+    pedidos_crm: bucket.crm.size,
     pedidos_outros_canais: bucket.other.size,
     receita_total: round(bucket.receita_total),
     receita_classificada: round(bucket.receita_classificada),
     cobertura_receita_pct: pct(bucket.receita_classificada, bucket.receita_total),
     receita_paga_por_tipo: round(bucket.receita_paga_tipo),
     receita_organica_por_tipo: round(bucket.receita_organica_tipo),
+    receita_crm_por_tipo: round(bucket.receita_crm_tipo),
     receita_outros_canais: round(bucket.receita_outros_tipo),
     receita_paga_no_campo: round(bucket.receita_paga_campo),
     receita_organica_no_campo: round(bucket.receita_organica_campo),
+    receita_crm_no_campo: round(bucket.receita_crm_campo),
     diff_receita_paga_campo_vs_tipo: round(bucket.receita_paga_campo - bucket.receita_paga_tipo),
-    diff_receita_organica_campo_vs_tipo: round(bucket.receita_organica_campo - bucket.receita_organica_tipo)
+    diff_receita_organica_campo_vs_tipo: round(bucket.receita_organica_campo - bucket.receita_organica_tipo),
+    diff_receita_crm_campo_vs_tipo: round(bucket.receita_crm_campo - bucket.receita_crm_tipo)
   };
 }
 
@@ -150,16 +162,19 @@ if (!rows.length) {
   issues.push('lancamentos_produtos_dia.json nao tem linhas.');
 }
 if (audit.total.pedidos_total && !audit.total.pedidos_classificados) {
-  issues.push('Nenhum pedido veio com tipo_real; a mirror ainda nao alimentou paid/organic.');
+  issues.push('Nenhum pedido veio com tipo_real; a mirror ainda nao alimentou canal real.');
 }
 if (audit.total.cobertura_pedidos_pct !== null && audit.total.cobertura_pedidos_pct < 0.8) {
-  warnings.push('Cobertura de tipo_real abaixo de 80%; leitura paga/organica deve ser tratada como parcial.');
+  warnings.push('Cobertura de tipo_real abaixo de 80%; leitura por canal deve ser tratada como parcial.');
 }
 if (Math.abs(audit.total.diff_receita_paga_campo_vs_tipo || 0) > 0.01) {
   issues.push('receita_paga no campo nao bate com a soma das linhas tipo_real=paid.');
 }
 if (Math.abs(audit.total.diff_receita_organica_campo_vs_tipo || 0) > 0.01) {
   issues.push('receita_organica no campo nao bate com a soma das linhas tipo_real=organic.');
+}
+if (Math.abs(audit.total.diff_receita_crm_campo_vs_tipo || 0) > 0.01) {
+  issues.push('receita_crm no campo nao bate com a soma das linhas tipo_real=owned.');
 }
 
 let baseline = null;

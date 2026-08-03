@@ -449,6 +449,14 @@ SELECT
     ELSE ROUND(SUM(IF(tipo_real = 'organic', receita_bruta, 0)), 2)
   END AS receita_organica,
   CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(IF(tipo_real = 'owned', receita_bruta, 0)), 2)
+  END AS receita_crm,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(IF(tipo_real IS NOT NULL AND tipo_real NOT IN ('paid', 'organic', 'owned'), receita_bruta, 0)), 2)
+  END AS receita_outros_canais,
+  CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
     ELSE COUNT(DISTINCT IF(tipo_real = 'paid', order_sk, NULL))
   END AS pedidos_pagos,
@@ -456,6 +464,14 @@ SELECT
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
     ELSE COUNT(DISTINCT IF(tipo_real = 'organic', order_sk, NULL))
   END AS pedidos_organicos,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(tipo_real = 'owned', order_sk, NULL))
+  END AS pedidos_crm,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(tipo_real IS NOT NULL AND tipo_real NOT IN ('paid', 'organic', 'owned'), order_sk, NULL))
+  END AS pedidos_outros_canais,
   COUNT(DISTINCT sku) AS skus_distintos,
   TO_JSON_STRING(STRUCT(
     'fct_order_item' AS fonte_base,

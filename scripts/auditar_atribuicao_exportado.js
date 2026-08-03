@@ -43,15 +43,18 @@ function emptyGroup(row) {
     pedidos_com_atribuicao: new Set(),
     pedidos_pagos: new Set(),
     pedidos_organicos: new Set(),
+    pedidos_crm: new Set(),
     pedidos_direct_unknown: new Set(),
     pedidos_sem_atribuicao: new Set(),
     receita_aprovada: 0,
     receita_paga: 0,
     receita_organica: 0,
+    receita_crm: 0,
     receita_direct_unknown: 0,
     receita_sem_atribuicao: 0,
     receita_paga_campo: 0,
     receita_organica_campo: 0,
+    receita_crm_campo: 0,
     regras_atribuicao: new Set()
   };
 }
@@ -72,6 +75,7 @@ function summarize(rows) {
     group.receita_aprovada += receita;
     group.receita_paga_campo += toNumber(row.receita_paga);
     group.receita_organica_campo += toNumber(row.receita_organica);
+    group.receita_crm_campo += toNumber(row.receita_crm);
     if (row.d0 && (!group.d0 || row.d0 < group.d0)) group.d0 = row.d0;
     if (row.regra_atribuicao_real) group.regras_atribuicao.add(row.regra_atribuicao_real);
     if (pedido) group.pedidos_aprovados.add(pedido);
@@ -84,6 +88,9 @@ function summarize(rows) {
       } else if (tipo === 'organic') {
         group.receita_organica += receita;
         if (pedido) group.pedidos_organicos.add(pedido);
+      } else if (tipo === 'owned' || tipo === 'crm') {
+        group.receita_crm += receita;
+        if (pedido) group.pedidos_crm.add(pedido);
       } else {
         group.receita_direct_unknown += receita;
         if (pedido) group.pedidos_direct_unknown.add(pedido);
@@ -98,7 +105,7 @@ function summarize(rows) {
     .sort((a, b) => String(a.d0 || '').localeCompare(String(b.d0 || '')) || String(a.modelo_id).localeCompare(String(b.modelo_id)))
     .map(group => {
       const pedidosAprovados = group.pedidos_aprovados.size;
-      const receitaPartes = group.receita_paga + group.receita_organica + group.receita_direct_unknown + group.receita_sem_atribuicao;
+      const receitaPartes = group.receita_paga + group.receita_organica + group.receita_crm + group.receita_direct_unknown + group.receita_sem_atribuicao;
       return {
         modelo_id: group.modelo_id,
         modelo: group.modelo,
@@ -109,15 +116,18 @@ function summarize(rows) {
         cobertura_atribuicao_pct: pedidosAprovados ? pct(group.pedidos_com_atribuicao.size / pedidosAprovados) : null,
         pedidos_pagos: group.pedidos_pagos.size,
         pedidos_organicos: group.pedidos_organicos.size,
+        pedidos_crm: group.pedidos_crm.size,
         pedidos_direct_unknown: group.pedidos_direct_unknown.size,
         pedidos_sem_atribuicao: group.pedidos_sem_atribuicao.size,
         receita_aprovada: roundMoney(group.receita_aprovada),
         receita_paga: roundMoney(group.receita_paga),
         receita_organica: roundMoney(group.receita_organica),
+        receita_crm: roundMoney(group.receita_crm),
         receita_direct_unknown: roundMoney(group.receita_direct_unknown),
         receita_sem_atribuicao: roundMoney(group.receita_sem_atribuicao),
         receita_paga_campo: roundMoney(group.receita_paga_campo),
         receita_organica_campo: roundMoney(group.receita_organica_campo),
+        receita_crm_campo: roundMoney(group.receita_crm_campo),
         reconciliacao_receita_ok: Math.abs(group.receita_aprovada - receitaPartes) < 0.05,
         regras_atribuicao: Array.from(group.regras_atribuicao).sort()
       };

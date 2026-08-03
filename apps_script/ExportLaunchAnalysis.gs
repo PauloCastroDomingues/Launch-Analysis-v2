@@ -9,7 +9,7 @@
  * - GITHUB_BRANCH = main
  * - DATA_PATH = data
  * - MIDIA_SPREADSHEET_ID (opcional, usado apenas para midia_paga e crm_disparos)
- * - ATRIBUICAO_REAL_CANAL_ENABLED = true|false (opcional; false volta ao estado atual sem pago/organico real)
+ * - ATRIBUICAO_REAL_CANAL_ENABLED = true|false (opcional; false volta ao estado atual sem canal real)
  *
  * Serviços avançados necessários:
  * - BigQuery API
@@ -66,7 +66,7 @@ function exportarTudo() {
 
   dataQuality.atribuicao_canal = auditarAtribuicaoCanal_(produtosDia);
   if (!CONFIG.canalAttributionEnabled) {
-    warnings.push('Atribuicao real de canal desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; receita_paga/receita_organica permanecem null.');
+    warnings.push('Atribuicao real de canal desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; receita_paga/receita_organica/receita_crm permanecem null.');
   } else if (dataQuality.atribuicao_canal.status !== 'ok') {
     warnings.push(`Atribuicao real de canal: ${dataQuality.atribuicao_canal.status}. ${dataQuality.atribuicao_canal.mensagem}`);
   }
@@ -760,9 +760,9 @@ function consultarProdutosDia_(modelos) {
   }).join('\nUNION ALL\n');
   const canalAtribuicaoDisponivel = CONFIG.canalAttributionEnabled && tabelaMartSharedExiste_('canal_atribuicao_pedido_mirror');
   if (!CONFIG.canalAttributionEnabled) {
-    Logger.log('atribuicao_real: desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; exportacao continua no estado atual sem paid/organic real.');
+    Logger.log('atribuicao_real: desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; exportacao continua no estado atual sem canal real.');
   } else if (!canalAtribuicaoDisponivel) {
-    Logger.log('atribuicao_real: mart_shared.canal_atribuicao_pedido_mirror ausente; exportacao continua sem receita_paga/receita_organica por canal real.');
+    Logger.log('atribuicao_real: mart_shared.canal_atribuicao_pedido_mirror ausente; exportacao continua sem receita_paga/receita_organica/receita_crm por canal real.');
   }
   const canalAtribuicaoCteSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoCteSql_() : '';
   const canalAtribuicaoSelectSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoSelectSql_() : canalAtribuicaoPedidoNullSelectSql_();
@@ -969,6 +969,14 @@ SELECT
     ELSE ROUND(SUM(IF(tipo_real = 'organic', receita_bruta, 0)), 2)
   END AS receita_organica,
   CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(IF(tipo_real = 'owned', receita_bruta, 0)), 2)
+  END AS receita_crm,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(IF(tipo_real IS NOT NULL AND tipo_real NOT IN ('paid', 'organic', 'owned'), receita_bruta, 0)), 2)
+  END AS receita_outros_canais,
+  CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
     ELSE COUNT(DISTINCT IF(tipo_real = 'paid', order_sk, NULL))
   END AS pedidos_pagos,
@@ -976,6 +984,14 @@ SELECT
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
     ELSE COUNT(DISTINCT IF(tipo_real = 'organic', order_sk, NULL))
   END AS pedidos_organicos,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(tipo_real = 'owned', order_sk, NULL))
+  END AS pedidos_crm,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(tipo_real IS NOT NULL AND tipo_real NOT IN ('paid', 'organic', 'owned'), order_sk, NULL))
+  END AS pedidos_outros_canais,
   COUNT(DISTINCT sku) AS skus_distintos,
   TO_JSON_STRING(STRUCT(
     'fct_order_item' AS fonte_base,
@@ -1027,6 +1043,7 @@ function auditarAtribuicaoCanal_(rows) {
     cobertura_receita_pct: null,
     receita_paga: 0,
     receita_organica: 0,
+    receita_crm: 0,
     receita_outros_canais: 0,
     por_modelo: []
   };
@@ -1038,11 +1055,13 @@ function auditarAtribuicaoCanal_(rows) {
     pedidos_classificados: {},
     pedidos_pagos: {},
     pedidos_organicos: {},
+    pedidos_crm: {},
     pedidos_outros: {},
     receita_total: 0,
     receita_classificada: 0,
     receita_paga: 0,
     receita_organica: 0,
+    receita_crm: 0,
     receita_outros_canais: 0
   });
   const total = buildBucket('total');
@@ -1061,6 +1080,9 @@ function auditarAtribuicaoCanal_(rows) {
     } else if (tipo === 'organic') {
       bucket.pedidos_organicos[orderKey] = true;
       bucket.receita_organica += receita;
+    } else if (tipo === 'owned' || tipo === 'crm') {
+      bucket.pedidos_crm[orderKey] = true;
+      bucket.receita_crm += receita;
     } else if (tipo) {
       bucket.pedidos_outros[orderKey] = true;
       bucket.receita_outros_canais += receita;
@@ -1090,12 +1112,14 @@ function auditarAtribuicaoCanal_(rows) {
       cobertura_pedidos_pct: pedidosTotal ? round6_(pedidosClassificados / pedidosTotal) : null,
       pedidos_pagos: countKeys(bucket.pedidos_pagos),
       pedidos_organicos: countKeys(bucket.pedidos_organicos),
+      pedidos_crm: countKeys(bucket.pedidos_crm),
       pedidos_outros_canais: countKeys(bucket.pedidos_outros),
       receita_total: receitaTotal,
       receita_classificada: receitaClassificada,
       cobertura_receita_pct: bucket.receita_total ? round6_(bucket.receita_classificada / bucket.receita_total) : null,
       receita_paga: round2_(bucket.receita_paga),
       receita_organica: round2_(bucket.receita_organica),
+      receita_crm: round2_(bucket.receita_crm),
       receita_outros_canais: round2_(bucket.receita_outros_canais)
     };
   };
@@ -1112,8 +1136,8 @@ function auditarAtribuicaoCanal_(rows) {
   const mensagem = {
     desligada: 'Atribuicao real de canal desligada por Script Property.',
     sem_atribuicao_real: 'Nenhum pedido exportado veio com tipo_real; mirror ausente ou sem match.',
-    cobertura_baixa: 'Menos de 80% dos pedidos exportados receberam tipo_real; trate paid/organic como parcial.',
-    ok: 'Pedidos classificados com cobertura suficiente para leitura paga/organica.'
+    cobertura_baixa: 'Menos de 80% dos pedidos exportados receberam tipo_real; trate canal atribuido como parcial.',
+    ok: 'Pedidos classificados com cobertura suficiente para leitura paga/organica/CRM.'
   }[status] || 'Status de atribuicao indefinido.';
 
   return {
@@ -1128,6 +1152,7 @@ function auditarAtribuicaoCanal_(rows) {
     cobertura_receita_pct: totalSummary.cobertura_receita_pct,
     receita_paga: totalSummary.receita_paga,
     receita_organica: totalSummary.receita_organica,
+    receita_crm: totalSummary.receita_crm,
     receita_outros_canais: totalSummary.receita_outros_canais,
     por_modelo: porModelo
   };

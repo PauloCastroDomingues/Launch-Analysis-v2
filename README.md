@@ -192,7 +192,7 @@ Funções principais:
 - Quando existe `lancamentos_produtos_dia.json` para um modelo, o front prioriza o pipeline diário. `lancamentos_historico.json` fica como fallback/benchmark estático e passa pela mesma normalização de contrato das janelas do pipeline.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries do dashboard em `southamerica-east1`.
-- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region. O join do dashboard usa email normalizado + data paga BRT + valor total arredondado. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica` como `null`.
+- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region. O join do dashboard usa email normalizado + data paga BRT + valor total arredondado. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica`/`receita_crm` como `null`.
 
 ## Pipeline de Vendas por Modelo
 
@@ -205,7 +205,8 @@ modelo_id | data | order_sk | origem | sku | nome_produto
 variant_title | sub_modelo | cor | tamanho | pedidos | pedidos_validos | pares
 receita | receita_bruta | desconto | receita_liquida | novos | recorrentes
 match_text_norm | modelo_id_detectado | d0 | dia_desde_d0 | canal_real | tipo_real
-receita_paga | receita_organica | pedidos_pagos | pedidos_organicos
+receita_paga | receita_organica | receita_crm | receita_outros_canais
+pedidos_pagos | pedidos_organicos | pedidos_crm | pedidos_outros_canais
 flags_qualidade | fonte
 ```
 
@@ -340,9 +341,10 @@ Esse script resume cobertura de `metas_mensais`, investimento de aquisição, pl
 
 Essa camada separa **venda atribuida por pedido** de **investimento**:
 
-- `receita_paga`, `receita_organica`, `pedidos_pagos` e `pedidos_organicos` vêm do pedido real classificado por last-click/UTM e depois limitado aos itens da linha lancamento.
+- `receita_paga`, `receita_organica`, `receita_crm`, `receita_outros_canais` e seus pedidos vêm do pedido real classificado por last-click/UTM e depois limitado aos itens da linha lancamento.
 - Investimento continua vindo de `metas_mensais.json` ou dos cadastros manuais de mídia/CRM. Ele nao e deduzido a partir dos pedidos.
 - ROAS de campanha so deve ser tratado como atribuicao quando existir custo e receita na mesma granularidade. Caso contrario, investimento e contexto, nao prova de causalidade.
+- As tabelas manuais de midia paga e CRM nao recebem campanhas extras. Vendas de campanhas nao declaradas aparecem apenas no resumo agregado por canal do lancamento.
 
 Rollback operacional:
 
@@ -350,7 +352,7 @@ Rollback operacional:
 ATRIBUICAO_REAL_CANAL_ENABLED=false
 ```
 
-Com essa Script Property, `exportarTudo()` ignora `mart_shared.canal_atribuicao_pedido_mirror` mesmo que ela exista e volta ao comportamento anterior, mantendo `receita_paga`/`receita_organica` como `null`.
+Com essa Script Property, `exportarTudo()` ignora `mart_shared.canal_atribuicao_pedido_mirror` mesmo que ela exista e volta ao comportamento anterior, mantendo `receita_paga`/`receita_organica`/`receita_crm` como `null`.
 
 Auditoria local depois de exportar:
 

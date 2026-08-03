@@ -583,43 +583,77 @@
       const novos = sumNullable(filtered, 'novos');
       const recorrentes = sumNullable(filtered, 'recorrentes');
       const clientesClassificados = novos !== null && recorrentes !== null ? novos + recorrentes : null;
-      const receitaPaga = sumNullable(filtered, 'receita_paga');
-      const receitaOrganica = sumNullable(filtered, 'receita_organica');
-      const pedidosPagos = sumNullable(filtered, 'pedidos_pagos');
-      const pedidosOrganicos = sumNullable(filtered, 'pedidos_organicos');
+      const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
+      const receitaPagaCampo = sumNullable(filtered, 'receita_paga');
+      const receitaOrganicaCampo = sumNullable(filtered, 'receita_organica');
+      const receitaCrmCampo = sumNullable(filtered, 'receita_crm');
+      const receitaOutrosCampo = sumNullable(filtered, 'receita_outros_canais');
+      const pedidosPagosCampo = sumNullable(filtered, 'pedidos_pagos');
+      const pedidosOrganicosCampo = sumNullable(filtered, 'pedidos_organicos');
+      const pedidosCrmCampo = sumNullable(filtered, 'pedidos_crm');
+      const pedidosOutrosCampo = sumNullable(filtered, 'pedidos_outros_canais');
+      const typedAttributionSignal = filtered.some((row) => String(row.tipo_real || '').trim());
       const attributionSignal = filtered.some((row) => (
         row.tipo_real !== null && row.tipo_real !== undefined
         || row.canal_real !== null && row.canal_real !== undefined
         || row.regra_atribuicao_real !== null && row.regra_atribuicao_real !== undefined
         || row.receita_paga !== null && row.receita_paga !== undefined
         || row.receita_organica !== null && row.receita_organica !== undefined
+        || row.receita_crm !== null && row.receita_crm !== undefined
+        || row.receita_outros_canais !== null && row.receita_outros_canais !== undefined
       ));
-      let receitaOutrosCanais = 0;
-      let receitaSemMatchAtribuicao = 0;
-      let outrosPedidosSomados = 0;
-      let semMatchPedidosSomados = 0;
-      const pedidosOutrosCanais = new Set();
-      const pedidosSemMatchAtribuicao = new Set();
+      const channelBuckets = {
+        paid: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
+        organic: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
+        crm: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
+        other: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
+        unmatched: { receita: 0, pedidos: new Set(), pedidosFallback: 0 }
+      };
+      const addChannelRow = (bucket, row) => {
+        bucket.receita += receitaBrutaRow(row);
+        const orderId = pedidoId(row);
+        if (orderId) bucket.pedidos.add(orderId);
+        else bucket.pedidosFallback += Number(row.pedidos_validos ?? row.pedidos ?? 0);
+      };
+      const bucketOrderCount = (bucket) => {
+        if (bucket.pedidos.size) return bucket.pedidos.size;
+        return bucket.pedidosFallback || (typedAttributionSignal ? 0 : null);
+      };
       filtered.forEach((row) => {
         const tipo = String(row.tipo_real || '').trim().toLowerCase();
-        const orderId = pedidoId(row);
         const hasAttributionMatch = Boolean(
           tipo
           || row.canal_real
           || (row.regra_atribuicao_real && row.regra_atribuicao_real !== 'sem_atribuicao_real')
         );
-        if (tipo && tipo !== 'paid' && tipo !== 'organic') {
-          receitaOutrosCanais += receitaBrutaRow(row);
-          if (orderId) pedidosOutrosCanais.add(orderId);
-          else outrosPedidosSomados += Number(row.pedidos_validos ?? row.pedidos ?? 0);
+        if (tipo === 'paid') {
+          addChannelRow(channelBuckets.paid, row);
+          return;
+        }
+        if (tipo === 'organic') {
+          addChannelRow(channelBuckets.organic, row);
+          return;
+        }
+        if (tipo === 'owned' || tipo === 'crm') {
+          addChannelRow(channelBuckets.crm, row);
+          return;
+        }
+        if (tipo) {
+          addChannelRow(channelBuckets.other, row);
           return;
         }
         if (!hasAttributionMatch) {
-          receitaSemMatchAtribuicao += receitaBrutaRow(row);
-          if (orderId) pedidosSemMatchAtribuicao.add(orderId);
-          else semMatchPedidosSomados += Number(row.pedidos_validos ?? row.pedidos ?? 0);
+          addChannelRow(channelBuckets.unmatched, row);
         }
       });
+      const receitaPaga = typedAttributionSignal ? roundMoney(channelBuckets.paid.receita) : receitaPagaCampo;
+      const receitaOrganica = typedAttributionSignal ? roundMoney(channelBuckets.organic.receita) : receitaOrganicaCampo;
+      const receitaCrm = typedAttributionSignal ? roundMoney(channelBuckets.crm.receita) : receitaCrmCampo;
+      const receitaOutrosCanais = typedAttributionSignal ? roundMoney(channelBuckets.other.receita) : receitaOutrosCampo;
+      const pedidosPagos = typedAttributionSignal ? bucketOrderCount(channelBuckets.paid) : pedidosPagosCampo;
+      const pedidosOrganicos = typedAttributionSignal ? bucketOrderCount(channelBuckets.organic) : pedidosOrganicosCampo;
+      const pedidosCrm = typedAttributionSignal ? bucketOrderCount(channelBuckets.crm) : pedidosCrmCampo;
+      const pedidosOutrosCanais = typedAttributionSignal ? bucketOrderCount(channelBuckets.other) : pedidosOutrosCampo;
       return {
         receita,
         receita_bruta: receita,
@@ -634,12 +668,14 @@
         novos_pct: clientesClassificados ? novos / clientesClassificados : null,
         receita_paga: receitaPaga,
         receita_organica: receitaOrganica,
+        receita_crm: receitaCrm,
         pedidos_pagos: pedidosPagos,
         pedidos_organicos: pedidosOrganicos,
-        receita_outros_canais: attributionSignal ? Math.round(receitaOutrosCanais * 100) / 100 : null,
-        pedidos_outros_canais: attributionSignal ? (pedidosOutrosCanais.size || outrosPedidosSomados) : null,
-        receita_sem_match_atribuicao: attributionSignal ? Math.round(receitaSemMatchAtribuicao * 100) / 100 : null,
-        pedidos_sem_match_atribuicao: attributionSignal ? (pedidosSemMatchAtribuicao.size || semMatchPedidosSomados) : null,
+        pedidos_crm: pedidosCrm,
+        receita_outros_canais: attributionSignal ? receitaOutrosCanais : null,
+        pedidos_outros_canais: attributionSignal ? pedidosOutrosCanais : null,
+        receita_sem_match_atribuicao: attributionSignal ? roundMoney(channelBuckets.unmatched.receita) : null,
+        pedidos_sem_match_atribuicao: attributionSignal ? bucketOrderCount(channelBuckets.unmatched) : null,
         origem,
         day
       };
@@ -754,8 +790,10 @@
       acumulado_lancamento: acumuladoLancamento,
       receita_paga: acumuladoLancamento?.receita_paga ?? acumuladoAtual?.receita_paga ?? null,
       receita_organica: acumuladoLancamento?.receita_organica ?? acumuladoAtual?.receita_organica ?? null,
+      receita_crm: acumuladoLancamento?.receita_crm ?? acumuladoAtual?.receita_crm ?? null,
       pedidos_pagos: acumuladoLancamento?.pedidos_pagos ?? acumuladoAtual?.pedidos_pagos ?? null,
       pedidos_organicos: acumuladoLancamento?.pedidos_organicos ?? acumuladoAtual?.pedidos_organicos ?? null,
+      pedidos_crm: acumuladoLancamento?.pedidos_crm ?? acumuladoAtual?.pedidos_crm ?? null,
       receita_outros_canais: acumuladoLancamento?.receita_outros_canais ?? acumuladoAtual?.receita_outros_canais ?? null,
       pedidos_outros_canais: acumuladoLancamento?.pedidos_outros_canais ?? acumuladoAtual?.pedidos_outros_canais ?? null,
       receita_sem_match_atribuicao: acumuladoLancamento?.receita_sem_match_atribuicao ?? acumuladoAtual?.receita_sem_match_atribuicao ?? null,
@@ -3210,8 +3248,14 @@
     return {
       receita_organica: numberOrNull(data.receita_organica),
       receita_paga: numberOrNull(data.receita_paga),
+      receita_crm: numberOrNull(data.receita_crm),
+      receita_outros_canais: numberOrNull(data.receita_outros_canais),
+      receita_sem_match_atribuicao: numberOrNull(data.receita_sem_match_atribuicao),
       pedidos_organicos: numberOrNull(data.pedidos_organicos),
-      pedidos_pagos: numberOrNull(data.pedidos_pagos)
+      pedidos_pagos: numberOrNull(data.pedidos_pagos),
+      pedidos_crm: numberOrNull(data.pedidos_crm),
+      pedidos_outros_canais: numberOrNull(data.pedidos_outros_canais),
+      pedidos_sem_match_atribuicao: numberOrNull(data.pedidos_sem_match_atribuicao)
     };
   }
 
@@ -4392,9 +4436,11 @@
     const aggregate = aggregateMediaRows(mediaRows, launch)[0] || null;
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
+    const crmRevenue = numberOrNull(launch?.receita_crm);
+    const otherRevenue = numberOrNull(launch?.receita_outros_canais);
 
-    if (paidRevenue !== null || organicRevenue !== null) {
-      const total = Number(paidRevenue || 0) + Number(organicRevenue || 0);
+    if (paidRevenue !== null || organicRevenue !== null || crmRevenue !== null || otherRevenue !== null) {
+      const total = Number(paidRevenue || 0) + Number(organicRevenue || 0) + Number(crmRevenue || 0) + Number(otherRevenue || 0);
       const channelMeta = (revenue) => {
         const parts = [];
         parts.push(total && revenue !== null ? `${fmtPct(revenue / total, 1)} do total atribuido` : 'venda aguardando');
@@ -4406,6 +4452,8 @@
           <div class="drill-impact-grid">
             <div><span>Venda paga</span><strong>${paidRevenue !== null ? fmtBRL(paidRevenue) : 'Aguardando'}</strong><small>${channelMeta(paidRevenue)}</small></div>
             <div><span>Venda organica</span><strong>${organicRevenue !== null ? fmtBRL(organicRevenue) : 'Aguardando'}</strong><small>${channelMeta(organicRevenue)}</small></div>
+            <div><span>CRM / owned</span><strong>${crmRevenue !== null ? fmtBRL(crmRevenue) : 'Aguardando'}</strong><small>${channelMeta(crmRevenue)}</small></div>
+            <div><span>Outros canais</span><strong>${otherRevenue !== null ? fmtBRL(otherRevenue) : 'Aguardando'}</strong><small>${channelMeta(otherRevenue)}</small></div>
           </div>
         </section>
       `;
@@ -5144,8 +5192,8 @@
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
           <td>${fmtBRL(metricWindow?.receita)}<div class="metric-sub">${day !== null && day !== undefined ? `D+${day}` : 'sem janela'} · ${escapeHtml(metricRange)}</div></td>
-          <td class="num">${comparisonAttributionCell(attribution.receita_organica)}</td>
-          <td class="num">${comparisonAttributionCell(attribution.receita_paga)}</td>
+          <td class="num">${comparisonAttributionCell(attribution.receita_organica, attribution.pedidos_organicos)}</td>
+          <td class="num">${comparisonAttributionCell(attribution.receita_paga, attribution.pedidos_pagos)}</td>
           <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
@@ -5162,12 +5210,13 @@
     tbody.innerHTML = rows || `<tr><td colspan="15" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
   }
 
-  function comparisonAttributionCell(revenue) {
+  function comparisonAttributionCell(revenue, orders) {
     const revenueValue = numberOrNull(revenue);
     if (revenueValue === null) {
       return '<span class="cell-muted">Aguardando vendas</span><div class="metric-sub">sem receita no JSON</div>';
     }
-    return `${organicPaidValue(revenueValue)}<div class="metric-sub">venda atribuida</div>`;
+    const orderValue = numberOrNull(orders);
+    return `${organicPaidValue(revenueValue)}<div class="metric-sub">${orderValue === null ? 'pedidos aguardando' : `${fmtNum(orderValue)} pedidos atribuídos`}</div>`;
   }
 
   function firstKnownCommercialNumber(row, keys) {
@@ -6743,13 +6792,95 @@
     return fmtBRL(value);
   }
 
+  function channelAttributionTotals(summaries) {
+    const empty = () => ({ receita: 0, pedidos: 0, hasReceita: false, hasPedidos: false });
+    const totals = {
+      paid: empty(),
+      organic: empty(),
+      crm: empty(),
+      other: empty(),
+      unmatched: empty()
+    };
+    const add = (bucket, receita, pedidos) => {
+      const revenueValue = numberOrNull(receita);
+      const orderValue = numberOrNull(pedidos);
+      if (revenueValue !== null) {
+        bucket.receita += revenueValue;
+        bucket.hasReceita = true;
+      }
+      if (orderValue !== null) {
+        bucket.pedidos += orderValue;
+        bucket.hasPedidos = true;
+      }
+    };
+    (summaries || []).forEach((row) => {
+      const attribution = attributionForSelectedPeriod(row.launch);
+      add(totals.paid, attribution.receita_paga, attribution.pedidos_pagos);
+      add(totals.organic, attribution.receita_organica, attribution.pedidos_organicos);
+      add(totals.crm, attribution.receita_crm, attribution.pedidos_crm);
+      add(totals.other, attribution.receita_outros_canais, attribution.pedidos_outros_canais);
+      add(totals.unmatched, attribution.receita_sem_match_atribuicao, attribution.pedidos_sem_match_atribuicao);
+    });
+    totals.hasAnyAttributed = ['paid', 'organic', 'crm', 'other'].some((key) => totals[key].hasReceita || totals[key].hasPedidos);
+    totals.receitaClassificada = ['paid', 'organic', 'crm', 'other']
+      .reduce((acc, key) => acc + (totals[key].hasReceita ? totals[key].receita : 0), 0);
+    totals.pedidosClassificados = ['paid', 'organic', 'crm', 'other']
+      .reduce((acc, key) => acc + (totals[key].hasPedidos ? totals[key].pedidos : 0), 0);
+    return totals;
+  }
+
+  function channelAttributionCard(title, bucket, className, totalRevenue) {
+    const revenue = bucket.hasReceita ? fmtBRL(bucket.receita) : 'Aguardando';
+    const orders = bucket.hasPedidos ? `${fmtNum(bucket.pedidos)} pedidos` : 'pedidos aguardando';
+    const share = bucket.hasReceita && totalRevenue
+      ? ` · ${fmtPct(bucket.receita / totalRevenue, 1)} das vendas atribu&iacute;das`
+      : '';
+    return `
+      <div class="channel-attribution-card ${className}">
+        <div class="metric-label">${escapeHtml(title)}</div>
+        <strong>${revenue}</strong>
+        <span>${orders}${share}</span>
+      </div>
+    `;
+  }
+
+  function renderChannelAttributionSummary(summaries) {
+    const wrap = $('channel-attribution-summary');
+    if (!wrap) return;
+    if (!summaries.length) {
+      wrap.innerHTML = `<div class="empty-state"><div><strong>Selecione ao menos um modelo.</strong>O resumo por canal acompanha os modelos comparados.</div></div>`;
+      return;
+    }
+    const totals = channelAttributionTotals(summaries);
+    const audit = state.data?.manifest?.data_quality?.atribuicao_canal || {};
+    const coverage = numberOrNull(audit.cobertura_pedidos_pct);
+    const status = String(audit.status || '').trim();
+    const period = selectedPeriodLabel();
+    const modelCount = summaries.length;
+    const coverageCopy = coverage !== null ? ` Cobertura atual do export: ${fmtPct(coverage, 1)} dos pedidos.` : '';
+    const statusCopy = totals.hasAnyAttributed
+      ? `Vendas classificadas por canal real dentro da janela ${escapeHtml(period)} dos ${fmtNum(modelCount)} lan&ccedil;amentos comparados.${coverageCopy}`
+      : status === 'sem_atribuicao_real'
+        ? 'Aguardando a tabela mirror casar os pedidos. Enquanto isso, a tela n&atilde;o transforma aus&ecirc;ncia de atribui&ccedil;&atilde;o em zero.'
+        : 'Ainda sem receita_paga, receita_organica ou receita_crm no JSON para a janela selecionada.';
+    wrap.innerHTML = `
+      ${channelAttributionCard('Pago total', totals.paid, 'channel-attribution-card--paid', totals.receitaClassificada)}
+      ${channelAttributionCard('Orgânico total', totals.organic, 'channel-attribution-card--organic', totals.receitaClassificada)}
+      ${channelAttributionCard('CRM / owned total', totals.crm, 'channel-attribution-card--crm', totals.receitaClassificada)}
+      ${channelAttributionCard('Outros canais', totals.other, 'channel-attribution-card--other', totals.receitaClassificada)}
+      <div class="channel-attribution-note">
+        Resultado por canal do lan&ccedil;amento, n&atilde;o por campanha individual. As tabelas de m&iacute;dia paga e CRM abaixo continuam mostrando apenas investimento e linhas manuais declaradas; vendas de outras campanhas entram no total do canal, sem criar novas campanhas no dashboard. ${statusCopy}
+      </div>
+    `;
+  }
+
   function mediaRevenueCell(row) {
     const value = numberOrNull(row?.receita_atribuida);
     if (value !== null) return `${fmtBRL(value)}${metodologiaComercialBadge(row)}`;
     if (row?.janela_isolada_confiavel && numberOrNull(row?.receita_janela_isolada) !== null) {
       return `${fmtBRL(row.receita_janela_isolada)} ${badge('parcial', 'isolada', row.janela_isolada_motivo || 'Estimativa isolada por janela unica de campanha.')}`;
     }
-    return `<span class="cell-muted">Sem receita atribuída</span>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
+    return `<span class="cell-muted">Não atribuída à campanha</span><div class="metric-sub">ver total por canal acima</div>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
   }
 
   function prepareMediaDisplayRow(row) {
@@ -6900,10 +7031,14 @@
               ${thTip('ROAS comercial', 'ROAS agregado ponderado pelo investimento das linhas que possuem ROAS informado ou calculável por receita atribuída real.', 'num')}
               ${thTip('Vendas orgânicas', 'Receita orgânica do lançamento atribuída por last-click. Fica pendente até receita_organica estar no lancamentos_produtos_dia.json.', 'num')}
               ${thTip('Vendas pagas', 'Receita paga do lançamento atribuída por last-click. Fica pendente até receita_paga estar no lancamentos_produtos_dia.json.', 'num')}
+              ${thTip('Vendas CRM', 'Receita do lançamento classificada como CRM / Owned por last-click. Não vem das linhas manuais de disparo.', 'num')}
+              ${thTip('Outros canais', 'Receita classificada como direct, referral, unknown ou outro canal não pago/orgânico/CRM. Mantém o total transparente sem inventar campanha.', 'num')}
             </tr>
           </thead>
           <tbody>
-            ${summaries.map((row) => `
+            ${summaries.map((row) => {
+              const attribution = attributionForSelectedPeriod(row.launch);
+              return `
               <tr>
                 <td class="model-name">${escapeHtml(row.launch.modelo)}</td>
                 <td>${escapeHtml(row.janelaModelo)}</td>
@@ -6920,9 +7055,12 @@
                 <td class="num">${mediaValue(row.investimentoTotal, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}${metodologiaComercialBadge(row)}</td>
                 <td class="num">${roasValue(row.roasComercial)}${metodologiaComercialBadge(row)}</td>
-                <td class="num">${organicPaidValue(attributionForSelectedPeriod(row.launch).receita_organica)}</td>
-                <td class="num">${organicPaidValue(attributionForSelectedPeriod(row.launch).receita_paga)}</td>
-              </tr>`).join('')}
+                <td class="num">${comparisonAttributionCell(attribution.receita_organica, attribution.pedidos_organicos)}</td>
+                <td class="num">${comparisonAttributionCell(attribution.receita_paga, attribution.pedidos_pagos)}</td>
+                <td class="num">${comparisonAttributionCell(attribution.receita_crm, attribution.pedidos_crm)}</td>
+                <td class="num">${comparisonAttributionCell(attribution.receita_outros_canais, attribution.pedidos_outros_canais)}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
       </div>` : `<div class="empty-state"><div><strong>Selecione ao menos um modelo.</strong>A frente comercial usa os modelos marcados em Comparar com.</div></div>`;
@@ -6933,6 +7071,7 @@
     const launches = selectedCompareLaunches().filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
     if (!launches.length) {
       renderActionsComparison([]);
+      renderChannelAttributionSummary([]);
       $('media-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar mídia paga.</td></tr>`;
       $('crm-table').innerHTML = `<tr><td colspan="9" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar CRM.</td></tr>`;
       return;
@@ -6957,11 +7096,13 @@
       return rows;
     });
 
-    renderActionsComparison(launches.map((launch) => commercialSummaryFor(
+    const commercialSummaries = launches.map((launch) => commercialSummaryFor(
       launch,
       mediaByModel.get(launch.modelo_id) || [],
       crmByModel.get(launch.modelo_id) || []
-    )));
+    ));
+    renderActionsComparison(commercialSummaries);
+    renderChannelAttributionSummary(commercialSummaries);
 
     const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows]
       .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.janela).localeCompare(String(b.janela)) || a.campanha.localeCompare(b.campanha));
