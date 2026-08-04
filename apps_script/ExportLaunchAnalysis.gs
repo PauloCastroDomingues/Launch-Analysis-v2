@@ -9,11 +9,17 @@
  * - GITHUB_BRANCH = main
  * - DATA_PATH = data
  * - MIDIA_SPREADSHEET_ID (opcional, usado apenas para midia_paga e crm_disparos)
+ * - METAS_DIARIAS_SPREADSHEET_IDS (opcional, IDs separados por virgula das planilhas diarias)
  * - ATRIBUICAO_REAL_CANAL_ENABLED = true|false (opcional; false volta ao estado atual sem canal real)
  *
  * Serviços avançados necessários:
  * - BigQuery API
  */
+
+const DEFAULT_METAS_DIARIAS_SPREADSHEET_IDS = [
+  '1TmMbN2wYDbheTvBO6fvN4oT_cNJa1VqXkgWTPTF_ye0',
+  '1mHfXkIptr09DgjcZ0V35pePAljMUZzd74IyPI0fDE_Q'
+];
 
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
@@ -23,6 +29,7 @@ const CONFIG = {
   githubBranch: getProp_('GITHUB_BRANCH', 'main'),
   dataPath: getProp_('DATA_PATH', 'data'),
   timeZone: 'America/Sao_Paulo',
+  metasDiariasSpreadsheetIds: getProp_('METAS_DIARIAS_SPREADSHEET_IDS', DEFAULT_METAS_DIARIAS_SPREADSHEET_IDS.join(',')),
   canalAttributionEnabled: getBoolProp_('ATRIBUICAO_REAL_CANAL_ENABLED', true)
 };
 
@@ -2854,7 +2861,7 @@ function exportarMetasMensaisSeConfigurado_() {
       const rows = mesclarMetasMensais_(baseRows, rowsBq);
       const payload = {
         generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
-        source: 'bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal',
+        source: 'bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal + planilhas_diarias_fallback',
         rows
       };
       escreverJsonGitHub_('metas_mensais.json', payload);
@@ -2904,24 +2911,262 @@ function exportarMetasMensaisSeConfigurado_() {
 }
 
 function carregarMetasMensaisBase_() {
+  let rows = [];
   const spreadsheetId = getProp_('MIDIA_SPREADSHEET_ID', '');
   if (spreadsheetId) {
     try {
       const ss = SpreadsheetApp.openById(spreadsheetId);
       const sheet = ss.getSheetByName('metas_mensais');
-      if (sheet) return normalizeMetasMensais_(sheetToObjects_(sheet));
+      if (sheet) rows = normalizeMetasMensais_(sheetToObjects_(sheet));
     } catch (error) {
       Logger.log(`Nao consegui carregar metas_mensais da planilha opcional: ${error.message}`);
     }
   }
 
-  try {
-    const atual = lerJsonGitHub_('metas_mensais.json');
-    return normalizeMetasMensaisPayload_(atual.rows || atual || []);
-  } catch (error) {
-    Logger.log(`Nao consegui carregar metas_mensais.json atual do GitHub: ${error.message}`);
-    return [];
+  if (!rows.length) {
+    try {
+      const atual = lerJsonGitHub_('metas_mensais.json');
+      rows = normalizeMetasMensaisPayload_(atual.rows || atual || []);
+    } catch (error) {
+      Logger.log(`Nao consegui carregar metas_mensais.json atual do GitHub: ${error.message}`);
+      rows = [];
+    }
   }
+
+  return complementarMetasMensaisComDailyPlanilhas_(rows);
+}
+
+function complementarMetasMensaisComDailyPlanilhas_(baseRows) {
+  const planilhaRows = carregarMetasDiariasPlanilhas_();
+  if (!planilhaRows.length) return normalizeMetasMensaisPayload_(baseRows);
+
+  const map = {};
+  normalizeMetasMensaisPayload_(baseRows).forEach(row => {
+    map[chaveMetaMensal_(row)] = row;
+  });
+
+  planilhaRows.forEach(row => {
+    const key = chaveMetaMensal_(row);
+    const current = map[key] || {
+      mes: row.mes,
+      modelo_id: null,
+      linha: null,
+      meta_pares: null,
+      realizado_pares: null,
+      status: null
+    };
+    const currentDaily = Array.isArray(current.daily) ? current.daily : [];
+    if (!currentDaily.length && row.daily && row.daily.length) current.daily = row.daily;
+    ['meta_receita', 'realizado_receita', 'meta_pedidos', 'realizado_pedidos', 'meta_investimento', 'investimento_realizado'].forEach(field => {
+      if (current[field] === null || current[field] === undefined) current[field] = row[field];
+    });
+    if (current.atingimento === null || current.atingimento === undefined) current.atingimento = row.atingimento;
+    current.observacao = current.observacao || row.observacao;
+    map[key] = current;
+  });
+
+  return Object.keys(map)
+    .map(key => map[key])
+    .sort((a, b) => String(a.mes || '').localeCompare(String(b.mes || '')) || String(a.modelo_id || '').localeCompare(String(b.modelo_id || '')));
+}
+
+function carregarMetasDiariasPlanilhas_() {
+  const ids = String(CONFIG.metasDiariasSpreadsheetIds || '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean);
+  if (!ids.length) return [];
+
+  const byMonth = {};
+  ids.forEach((spreadsheetId, index) => {
+    try {
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      const fallbackYear = inferirAnoPlanilhaDiaria_(ss.getName(), index);
+      ss.getSheets().forEach(sheet => {
+        const row = extrairMetaDiariaMes_(sheet, ss.getName(), fallbackYear);
+        if (!row || !row.daily.length || !mesFechado_(row.mes)) return;
+        if (!byMonth[row.mes] || !(byMonth[row.mes].daily || []).length) byMonth[row.mes] = row;
+      });
+    } catch (error) {
+      Logger.log(`Nao consegui carregar planilha diaria ${spreadsheetId}: ${error.message}`);
+    }
+  });
+
+  const rows = Object.keys(byMonth).sort().map(key => byMonth[key]);
+  if (rows.length) {
+    const dailyCount = rows.reduce((acc, row) => acc + (row.daily || []).length, 0);
+    Logger.log(`metas_mensais: ${dailyCount} linhas diarias complementares carregadas das planilhas diarias em ${rows.length} meses.`);
+  }
+  return rows;
+}
+
+function extrairMetaDiariaMes_(sheet, spreadsheetName, fallbackYear) {
+  const mes = inferirMesPlanilhaDiaria_(sheet.getName(), fallbackYear);
+  if (!mes) return null;
+
+  const rowCount = Math.min(Math.max(sheet.getLastRow(), 1), 90);
+  const colCount = Math.min(Math.max(sheet.getLastColumn(), 1), 60);
+  if (rowCount < 4 || colCount < 8) return null;
+  const values = sheet.getRange(1, 1, rowCount, colCount).getValues();
+  const headerIndex = values.findIndex(row => {
+    const headers = row.map(normalizarChavePlanilha_);
+    return headers.includes('data') && headers.includes('receita faturada') && headers.includes('pedidos aprovados');
+  });
+  if (headerIndex < 0) return null;
+
+  const headers = values[headerIndex].map(normalizarChavePlanilha_);
+  const dataIndex = indiceCabecalho_(headers, 'data');
+  const receitaIndex = indiceCabecalho_(headers, 'receita faturada');
+  const pedidosIndex = indiceCabecalho_(headers, 'pedidos aprovados');
+  const investimentoTotalIndex = indiceCabecalho_(headers, 'investimento total');
+  const budgetDiarioIndex = indiceCabecalho_(headers, 'budget diario');
+  const metaReceitaIndex = indiceMetaDia_(headers, receitaIndex, pedidosIndex);
+  const metaPedidosIndex = indiceMetaDia_(headers, pedidosIndex, headers.length);
+  const ticketIndex = indiceCabecalho_(headers, 'ticket medio');
+  const conversaoIndex = indiceCabecalho_(headers, 'taxa de conversao');
+  const cpsIndex = indiceCabecalho_(headers, 'cps geral');
+  const sessoesIndex = indiceCabecalho_(headers, 'sessoes');
+  const carrinhosIndex = indiceCabecalho_(headers, 'carrinhos');
+  const clientesNovosIndex = indiceCabecalho_(headers, 'clientes novos', pedidosIndex + 1);
+  const clientesRecorrentesIndex = indiceCabecalho_(headers, 'clientes recorrentes', pedidosIndex + 1);
+  const roasIndex = indiceCabecalho_(headers, 'roas geral');
+  const marketingIndex = indiceCabecalho_(headers, '% mkt') >= 0 ? indiceCabecalho_(headers, '% mkt') : indiceCabecalho_(headers, '% de marketing');
+  const cacIndex = indiceCabecalho_(headers, 'cac');
+
+  const daily = [];
+  for (let r = headerIndex + 1; r < values.length; r++) {
+    const row = values[r];
+    const rawDate = row[dataIndex];
+    const marker = normalizarChavePlanilha_(rawDate);
+    if (marker === 'total' || marker === 'meta' || marker === 'faturamento') break;
+    const data = dataDiariaPlanilha_(rawDate, mes);
+    if (!data) continue;
+    daily.push({
+      data,
+      meta_receita: valorCelulaNumero_(row, metaReceitaIndex),
+      realizado_receita: valorCelulaNumero_(row, receitaIndex),
+      meta_pedidos: valorCelulaNumero_(row, metaPedidosIndex),
+      realizado_pedidos: valorCelulaNumero_(row, pedidosIndex),
+      meta_investimento: valorCelulaNumero_(row, budgetDiarioIndex),
+      investimento_realizado: valorCelulaNumero_(row, investimentoTotalIndex),
+      roas_meta: null,
+      roas_realizado: roasOrNull_(valorCelulaNumero_(row, roasIndex)),
+      ticket_medio: valorCelulaNumero_(row, ticketIndex),
+      taxa_conversao: roasOrNull_(valorCelulaNumero_(row, conversaoIndex)),
+      cps_realizado: valorCelulaNumero_(row, cpsIndex),
+      sessoes: valorCelulaNumero_(row, sessoesIndex),
+      carrinhos: valorCelulaNumero_(row, carrinhosIndex),
+      clientes_novos: valorCelulaNumero_(row, clientesNovosIndex),
+      clientes_recorrentes: valorCelulaNumero_(row, clientesRecorrentesIndex),
+      percentual_marketing: roasOrNull_(valorCelulaNumero_(row, marketingIndex)),
+      cac: valorCelulaNumero_(row, cacIndex),
+      fonte: `Planilha diaria: ${spreadsheetName}, aba ${sheet.getName()}`
+    });
+  }
+
+  if (!daily.length) return null;
+  const metaReceita = somarCampoDaily_(daily, 'meta_receita');
+  const realizadoReceita = somarCampoDaily_(daily, 'realizado_receita');
+  return {
+    mes,
+    modelo_id: null,
+    linha: null,
+    meta_receita: metaReceita,
+    realizado_receita: realizadoReceita,
+    meta_pedidos: somarCampoDaily_(daily, 'meta_pedidos'),
+    realizado_pedidos: somarCampoDaily_(daily, 'realizado_pedidos'),
+    meta_pares: null,
+    realizado_pares: null,
+    atingimento: ratioSeguro_(realizadoReceita, metaReceita),
+    meta_investimento: somarCampoDaily_(daily, 'meta_investimento'),
+    investimento_realizado: somarCampoDaily_(daily, 'investimento_realizado'),
+    daily,
+    observacao: `fonte: ${spreadsheetName}, aba ${sheet.getName()}`,
+    status: null
+  };
+}
+
+function normalizarChavePlanilha_(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9%]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function indiceCabecalho_(headers, label, startIndex) {
+  const target = normalizarChavePlanilha_(label);
+  for (let i = Math.max(0, startIndex || 0); i < headers.length; i++) {
+    if (headers[i] === target) return i;
+  }
+  return -1;
+}
+
+function indiceMetaDia_(headers, startIndex, endIndex) {
+  for (let i = Math.max(0, startIndex || 0); i < Math.min(headers.length, endIndex || headers.length); i++) {
+    if (headers[i] === 'meta dia') return i;
+  }
+  return -1;
+}
+
+function valorCelulaNumero_(row, index) {
+  if (index === null || index === undefined || index < 0) return null;
+  return numberOrNull_(row[index]);
+}
+
+function dataDiariaPlanilha_(value, mes) {
+  const iso = dateIsoKey_(value);
+  if (iso && monthKey_(iso) === mes) return iso;
+  const day = numberOrNull_(value);
+  if (day === null || day < 1 || day > 31) return null;
+  const candidate = `${mes}-${String(Math.floor(day)).padStart(2, '0')}`;
+  const date = dateOnly_(candidate);
+  return date && monthKey_(date) === mes ? dateIsoKey_(date) : null;
+}
+
+function inferirAnoPlanilhaDiaria_(spreadsheetName, index) {
+  const match = String(spreadsheetName || '').match(/(20\d{2})/);
+  if (match) return Number(match[1]);
+  return index === 0 ? 2025 : 2026;
+}
+
+function inferirMesPlanilhaDiaria_(sheetName, fallbackYear) {
+  const text = normalizarChavePlanilha_(sheetName);
+  const months = {
+    janeiro: 1,
+    fevereiro: 2,
+    marco: 3,
+    abril: 4,
+    maio: 5,
+    junho: 6,
+    julho: 7,
+    agosto: 8,
+    setembro: 9,
+    outubro: 10,
+    novembro: 11,
+    dezembro: 12
+  };
+  const monthName = Object.keys(months).find(name => text.split(' ').includes(name));
+  if (!monthName) return '';
+  const yearMatch = String(sheetName || '').match(/(20\d{2})/);
+  const year = yearMatch ? Number(yearMatch[1]) : Number(fallbackYear);
+  if (!year) return '';
+  return `${year}-${String(months[monthName]).padStart(2, '0')}`;
+}
+
+function mesFechado_(mes) {
+  const currentMonth = Utilities.formatDate(new Date(), CONFIG.timeZone, 'yyyy-MM');
+  return Boolean(mes) && mes < currentMonth;
+}
+
+function somarCampoDaily_(rows, field) {
+  const values = (rows || [])
+    .map(row => numberOrNull_(row[field]))
+    .filter(value => value !== null);
+  return values.length ? round2_(values.reduce((acc, value) => acc + value, 0)) : null;
 }
 
 function consultarMetasMensaisBigQuery_() {
@@ -3827,7 +4072,10 @@ function inferJanelaMidia_(row, modelo) {
 function dateOnly_(value) {
   if (!value) return null;
   if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-  const parts = String(value).slice(0, 10).split('-').map(Number);
+  const text = String(value).trim();
+  const br = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (br) return new Date(Number(br[3]), Number(br[2]) - 1, Number(br[1]));
+  const parts = text.slice(0, 10).split('-').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }

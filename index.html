@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260803-channel-attribution-summary" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260803-presentation-mode" />
 </head>
 <body>
   <div class="app-shell">
@@ -26,8 +26,6 @@
         <a href="#curvas"><span>Curvas</span><span>03</span></a>
         <a href="#cores"><span>Composição</span><span>04</span></a>
         <a href="#acoes"><span>Canal</span><span>05</span></a>
-        <a href="#calendario"><span>Contexto</span><span>06</span></a>
-        <a href="#projecao"><span>Projeção</span><span>07</span></a>
       </nav>
 
       <div class="sidebar-note">
@@ -53,7 +51,7 @@
         <div>
           <div class="eyebrow">Dashboard interno · Produto / Growth / CRM</div>
           <h1>Análise de lançamentos</h1>
-          <p class="section-desc">Benchmark histórico, lançamentos em curso, sazonalidade, ações comerciais e projeção de 90 dias.</p>
+          <p class="section-desc">Resumo executivo, comparação histórica e sinais comerciais dos lançamentos.</p>
         </div>
         <div class="top-meta">
           <div><span>Último snapshot</span><strong id="last-update">—</strong></div>
@@ -66,7 +64,7 @@
       <div class="command-center" aria-label="Central de análise">
         <div class="command-center-head">
           <span>Central de análise</span>
-          <strong>Foco, janela e universo comparativo em um só lugar</strong>
+          <strong>Linha, janela e comparação</strong>
         </div>
       <div class="selector-panel">
         <div class="selector-block">
@@ -97,15 +95,13 @@
       </div>
       <div id="story-brief" class="story-brief" aria-live="polite"></div>
 
-      <p class="section-transition-label">Detalhamento comparativo — resultado, curva, composição, canal, contexto e projeção</p>
+      <p class="section-transition-label">Detalhamento técnico por tópico</p>
 
       <div class="topic-tabs" aria-label="Tópicos do dashboard">
         <button type="button" class="topic-tab" data-topic="placar">Placar</button>
         <button type="button" class="topic-tab" data-topic="curvas">Curvas</button>
         <button type="button" class="topic-tab" data-topic="produto">Composição</button>
         <button type="button" class="topic-tab" data-topic="canal-midia">Canal</button>
-        <button type="button" class="topic-tab" data-topic="contexto">Contexto</button>
-        <button type="button" class="topic-tab" data-topic="projecao-dado">Projeção</button>
       </div>
 
       <div class="topic-divider" id="topic-placar">Resultado e comparação</div>
@@ -117,7 +113,7 @@
               <h2><span id="selected-title">—</span></h2>
               <button class="help-button" type="button" data-tooltip="Mostra o placar do grupo comparativo na janela selecionada. Linhas sem janela fechada aparecem como pendentes, não como zero." aria-label="Ajuda sobre estado comparativo">?</button>
             </div>
-            <p class="section-desc">Esta seção é comparativa: cada indicador ranqueia todas as linhas na mesma idade de venda.</p>
+            <p class="section-desc">Ranking dos principais indicadores na janela escolhida.</p>
             <div id="selected-dates" class="selected-dates"></div>
           </div>
           <div class="section-head-actions">
@@ -248,37 +244,23 @@
         </details>
       </section>
 
-      <section id="promotores-cortes" data-topic="produto">
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">05 · Promotores e ofensores por corte</div>
-            <div class="section-title-row">
-              <h2>Cor e tamanho vs média do grupo</h2>
-              <button class="help-button" type="button" data-tooltip="Compara cada cor/tamanho na janela selecionada de cada lançamento contra a média do mesmo corte no grupo comparativo. Cada modelo usa a própria data de lançamento." aria-label="Ajuda sobre promotores e ofensores por corte">?</button>
-            </div>
-            <p class="section-desc">Desvio em pontos percentuais por corte, sempre cada lançamento na própria janela de venda.</p>
-          </div>
-        </div>
-        <div id="cut-promoters-detractors" class="cut-promoters-grid"></div>
-      </section>
-
       <div class="topic-divider" id="topic-canal-midia">Canal e ativação</div>
       <section id="acoes" data-topic="canal-midia">
         <div class="section-head">
           <div>
-            <div class="section-kicker">06 · Canal e ativação</div>
+            <div class="section-kicker">05 · Canal e ativação</div>
             <div class="section-title-row">
               <h2>Mídia paga e CRM comparados</h2>
               <button class="help-button" type="button" data-tooltip="Compara frentes comerciais por janela de lançamento: investimento, receita informada, ROAS, CPA e disparos. Cada modelo é lido a partir da própria data de lançamento, sem cruzar calendários." aria-label="Ajuda sobre ações comerciais">?</button>
             </div>
-            <p class="section-desc">A leitura compara investimento real de aquisição por janela do lançamento. Planilhas de mídia paga e CRM continuam como detalhe manual de campanha/disparo.</p>
+            <p class="section-desc">Investimento, receita e eficiência por janela de lançamento.</p>
           </div>
         </div>
         <div class="chart-card wide" style="margin-bottom:18px">
           <div class="chart-head">
             <div>
               <div class="chart-title chart-title--with-tip"><span>Acumulado de investimento e eficiência</span></div>
-              <div class="chart-sub" id="chart-normalized-media-sub">Aquisição SSOT por janela; campanhas manuais ficam no detalhe abaixo</div>
+              <div class="chart-sub" id="chart-normalized-media-sub">Base diária de aquisição por janela</div>
             </div>
             <div class="chart-mode-controls commercial-chart-controls">
               <div class="chart-mode-toggle" role="group" aria-label="Métrica do gráfico comercial">
@@ -296,17 +278,19 @@
 
         <p class="actions-module-label">Resumo comercial</p>
         <div id="actions-comparison" class="actions-comparison"></div>
-        <p class="actions-module-label">Resultado por canal do lan&ccedil;amento</p>
-        <div id="channel-attribution-summary" class="channel-attribution-summary"></div>
+        <p class="actions-module-label">Base di&aacute;ria da empresa</p>
+        <div id="daily-source-summary" class="daily-source-summary"></div>
         <div class="actions-grid">
           <p class="actions-module-label">Mídia paga — detalhe</p>
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
               <span>Mídia paga</span>
-              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/midia_paga.json, exportado da planilha configurada no Apps Script. Investimento vem da planilha; receita, ROAS e CPA só aparecem quando vierem atribuídos/informados, sem rateio pela janela do modelo." aria-label="Ajuda sobre mídia paga">i</button>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Mostra as métricas principais de aquisição da planilha diária na janela selecionada. A tabela abaixo fica como detalhe das campanhas manuais cadastradas." aria-label="Ajuda sobre mídia paga">i</button>
             </div>
+            <p class="metric-sub">Resultado consolidado da mídia paga na janela. Campanhas manuais ficam abaixo sem rateio de venda.</p>
+            <div id="paid-media-kpis" class="paid-media-kpis"></div>
             <div class="table-wrap">
-              <table style="min-width:960px">
+              <table class="actions-detail-table actions-detail-table--media">
                 <thead>
                   <tr>
                     <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo vinculado pela coluna modelo_id da planilha de mídia." aria-label="Ajuda sobre modelo mídia">i</button></span></th>
@@ -314,10 +298,7 @@
                     <th><span class="th-label">Janela <button class="help-button help-button--mini" type="button" data-tooltip="Janela informada ou inferida pelo Apps Script a partir de data_inicio/data_fim vs D0: pré-D0, 15d, 30d, 90d etc." aria-label="Ajuda sobre janela mídia">i</button></span></th>
                     <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal/canalizador declarado na planilha, como Facebook ADS, Google ADS ou outro." aria-label="Ajuda sobre canal mídia">i</button></span></th>
                     <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Investimento cadastrado. Fonte: planilha; o dashboard não recalcula gasto de plataformas." aria-label="Ajuda sobre investimento mídia">i</button></span></th>
-                    <th class="num"><span class="th-label">Receita atribuída <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuída informada na planilha. Quando a receita da janela aparecer repetida entre canais, o ROAS por canal é bloqueado e a leitura fica apenas agregada." aria-label="Ajuda sobre receita mídia">i</button></span></th>
-                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS informado na planilha ou calculado apenas quando existe receita atribuída real para a linha. Não usa faturamento total da janela do modelo." aria-label="Ajuda sobre ROAS mídia">i</button></span></th>
-                    <th class="num"><span class="th-label">CPA <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: investimento / pedidos, apenas quando os pedidos pertencem a esta linha de mídia. Sem rateio por janela do modelo." aria-label="Ajuda sobre CPA mídia">i</button></span></th>
-                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Classificação operacional derivada do ROAS ou informada no cadastro. Serve para leitura rápida, não substitui auditoria." aria-label="Ajuda sobre status mídia">i</button></span></th>
+                    <th><span class="th-label">Leitura <button class="help-button help-button--mini" type="button" data-tooltip="A linha declara investimento. O dashboard não cria ROAS por campanha quando a planilha não traz receita atribuída real para aquela campanha." aria-label="Ajuda sobre leitura mídia">i</button></span></th>
                   </tr>
                 </thead>
                 <tbody id="media-table"></tbody>
@@ -328,10 +309,10 @@
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
               <span>CRM / disparos</span>
-              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/crm_disparos.json, exportado da planilha. ROAS CRM usa a coluna roas quando existe; se vier vazia, calcula receita_linha ou receita_dia dividida pelo investimento." aria-label="Ajuda sobre CRM">i</button>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Linhas vindas de data/crm_disparos.json, exportado da planilha. Mostra disparos declarados e o resultado informado na própria base de CRM." aria-label="Ajuda sobre CRM">i</button>
             </div>
             <div class="table-wrap">
-              <table style="min-width:960px">
+              <table class="actions-detail-table actions-detail-table--crm">
                 <thead>
                   <tr>
                     <th><span class="th-label">Modelo <button class="help-button help-button--mini" type="button" data-tooltip="Modelo vinculado pelo modelo_id do disparo." aria-label="Ajuda sobre modelo CRM">i</button></span></th>
@@ -339,16 +320,15 @@
                     <th><span class="th-label">Disparo <button class="help-button help-button--mini" type="button" data-tooltip="Nome da campanha/disparo de CRM. Campo operacional para rastrear a ação." aria-label="Ajuda sobre disparo CRM">i</button></span></th>
                     <th><span class="th-label">Canal <button class="help-button help-button--mini" type="button" data-tooltip="Canal de CRM informado: email, WhatsApp, SMS, push ou outro." aria-label="Ajuda sobre canal CRM">i</button></span></th>
                     <th class="num"><span class="th-label">Invest. <button class="help-button help-button--mini" type="button" data-tooltip="Custo/investimento do disparo quando informado. Pode ser nulo para canais sem custo direto registrado." aria-label="Ajuda sobre investimento CRM">i</button></span></th>
-                    <th class="num"><span class="th-label">Receita linha <button class="help-button help-button--mini" type="button" data-tooltip="Receita atribuída ou observada para a linha do disparo. Fonte: planilha; não é recalculada pelo front." aria-label="Ajuda sobre receita linha">i</button></span></th>
-                    <th class="num"><span class="th-label">Receita dia <button class="help-button help-button--mini" type="button" data-tooltip="Receita do dia informada na planilha para contexto do disparo. Não substitui o campo roas." aria-label="Ajuda sobre receita dia">i</button></span></th>
-                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS informado na planilha ou calculado por receita_linha/receita_dia dividida pelo investimento quando o campo roas estiver vazio." aria-label="Ajuda sobre ROAS CRM">i</button></span></th>
-                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Leitura operacional do resultado do disparo, com base no status cadastrado ou no ROAS informado." aria-label="Ajuda sobre status CRM">i</button></span></th>
+                    <th class="num"><span class="th-label">Receita <button class="help-button help-button--mini" type="button" data-tooltip="Receita da linha de CRM quando houver atribuição real. Se for apenas contexto/correlação, o dashboard não trata como resultado do disparo." aria-label="Ajuda sobre receita CRM">i</button></span></th>
+                    <th class="num"><span class="th-label">ROAS <button class="help-button help-button--mini" type="button" data-tooltip="ROAS só aparece quando a linha tem atribuição real ou valor informado de forma confiável. Correlação e estimativa ficam ocultas." aria-label="Ajuda sobre ROAS CRM">i</button></span></th>
+                    <th><span class="th-label">Status <button class="help-button help-button--mini" type="button" data-tooltip="Mostra se a linha é resultado confiável ou apenas contexto declarado. Contexto não entra como performance real." aria-label="Ajuda sobre status CRM">i</button></span></th>
                   </tr>
                 </thead>
                 <tbody id="crm-table"></tbody>
               </table>
             </div>
-            <p class="metric-sub">Investimento vem da planilha. ROAS explícito tem prioridade; vendas por canal ficam no resumo acima e não são distribuídas em campanhas manuais.</p>
+            <p class="metric-sub">Disparos declarados; resultado só aparece quando há atribuição real.</p>
           </div>
           <p id="line-investment-label" class="actions-module-label" hidden>Investimento de linha</p>
           <div id="line-investment-card" class="card actions-line-investment-card" hidden>
@@ -356,7 +336,7 @@
               <span>Investimento de linha</span>
               <button class="help-button help-button--mini" type="button" data-tooltip="Linhas de data/midia_paga.json com linha preenchida e modelo_id vazio. Representam investimento para a linha inteira, sem atribuição a uma linha específica do grupo comparativo." aria-label="Ajuda sobre investimento de linha">i</button>
             </div>
-            <p class="metric-sub">Investimento registrado para a linha inteira, não atribuído a uma linha específica do grupo comparativo. Não entra no ROAS/CAC das linhas comparadas.</p>
+            <p class="metric-sub">Investimento da linha inteira, sem rateio entre lançamentos.</p>
             <div class="table-wrap">
               <table style="min-width:900px">
                 <thead>
@@ -377,11 +357,11 @@
         </div>
       </section>
 
-      <div class="topic-divider" id="topic-contexto">Contexto de nascimento</div>
-      <section id="calendario" data-topic="contexto">
+      <div class="topic-divider" id="topic-contexto" hidden>Contexto de nascimento</div>
+      <section id="calendario" data-topic="contexto" hidden>
         <div class="section-head">
           <div>
-            <div class="section-kicker">07 · Contexto sazonal</div>
+            <div class="section-kicker">06 · Contexto sazonal</div>
             <div class="section-title-row">
               <h2>Promotores, ofensores e neutros por janela</h2>
               <button class="help-button" type="button" data-tooltip="Classifica eventos de calendário por janela relativa ao D0. Promotor soma impacto positivo, ofensor soma negativo e neutro apenas contextualiza. Eventos futuros dentro da janela ainda não explicam o realizado." aria-label="Ajuda sobre calendário sazonal">?</button>
@@ -391,11 +371,11 @@
         <div id="calendar-grid" class="calendar-grid"></div>
       </section>
 
-      <div class="topic-divider" id="topic-projecao-dado">Projeção</div>
-      <section id="projecao" data-topic="projecao-dado">
+      <div class="topic-divider" id="topic-projecao-dado" hidden>Projeção</div>
+      <section id="projecao" data-topic="projecao-dado" hidden>
         <div class="section-head">
           <div>
-            <div class="section-kicker">08 · Projeção D+90</div>
+            <div class="section-kicker">07 · Projeção D+90</div>
             <div class="section-title-row">
               <h2>Estimativa de 90 dias</h2>
               <button class="help-button" type="button" data-tooltip="Se o lançamento já tem 90 dias completos, mostra o realizado. Se ainda está em curso, a tela pega a venda real até agora, compara com lançamentos antigos e monta três caminhos possíveis para o fechamento de 90 dias." aria-label="Ajuda sobre projeção">?</button>
@@ -408,7 +388,7 @@
       <section id="insights" data-topic="projecao-dado" hidden>
         <div class="section-head">
           <div>
-            <div class="section-kicker">09 · Qualidade do dado</div>
+            <div class="section-kicker">08 · Qualidade do dado</div>
             <div class="section-title-row">
               <h2>Alertas técnicos do pipeline</h2>
               <button class="help-button" type="button" data-tooltip="Lista problemas e ressalvas de dado: pipeline vazio, auditoria divergente, backfill, atribuição comercial ainda agregada e avisos do manifest. Não gera recomendação de negócio." aria-label="Ajuda sobre qualidade do dado">?</button>
@@ -431,8 +411,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
-  <script src="assets/embedded-data.js?v=20260803-channel-attribution-summary"></script>
-  <script src="assets/app.js?v=20260803-channel-attribution-summary"></script>
-  <script src="assets/presentation.js?v=20260803-channel-attribution-summary"></script>
+  <script src="assets/embedded-data.js?v=20260803-presentation-mode"></script>
+  <script src="assets/app.js?v=20260803-presentation-mode"></script>
+  <script src="assets/presentation.js?v=20260803-presentation-mode"></script>
 </body>
 </html>

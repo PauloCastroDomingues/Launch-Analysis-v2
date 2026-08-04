@@ -8,17 +8,20 @@
     appShellWasInert: false
   };
 
+  const WINDOW_DAYS = { '7d': 7, '15d': 15, '30d': 30, '60d': 60, '90d': 90 };
+  const WINDOW_LABELS = { '7d': '7 dias', '15d': '15 dias', '30d': '30 dias', '60d': '60 dias', '90d': '90 dias' };
+  const WINDOW_KEYS = Object.keys(WINDOW_DAYS);
+
   const TOOLTIPS = {
-    revenue: 'Soma da receita de cada lançamento dentro da sua própria janela de análise (D0 até D0+90, ou até hoje se ainda não completou). Não é o faturamento total da Reise — é só a soma do que essas linhas específicas venderam.',
-    shareAvg: 'Média simples do share de cada lançamento (receita do lançamento dividida pela receita total da Reise no mesmo período). Não é ponderada por receita — um lançamento pequeno pesa igual a um grande nessa média.',
-    activeNow: "Quantidade de lançamentos com status 'ativo' no cadastro, sobre o total de lançamentos elegíveis para esta análise.",
-    ticketAvg: 'Média do ticket médio da empresa (receita total / pedidos totais) calculado na janela de cada lançamento, não o ticket médio do produto em si.',
-    topShare: 'Lançamento com maior percentual de share entre os quatro. Atenção: comparar um lançamento com janela parcial (menos dias de dado) com um de janela completa não é comparação justa — ver o badge de cada um antes de tirar conclusão.',
-    quadrant: 'Eixo horizontal: quanto a receita da Reise variou nos mesmos N dias antes e depois do D0 desse lançamento. Eixo vertical: share acumulado do lançamento até hoje. Tamanho da bolha: receita do lançamento no período. Este gráfico mostra posição relativa, não causa — um lançamento à esquerda do zero não necessariamente causou a queda da empresa, só aconteceu num período em que ela caiu.',
-    ranking: 'Share acumulado de cada lançamento, do maior para o menor. A barra é proporcional ao maior valor do grupo, não a uma escala fixa de 0 a 100%.',
-    companyRevenue: 'Receita total da Reise (todos os produtos, não só este lançamento) nos N dias imediatamente antes do D0 comparada aos N dias imediatamente depois — mesmo número de dias nos dois lados. N é o número de dias que esse lançamento já tem de dado hoje, não fixo em 90. Este número descreve o momento do negócio como um todo, não é atribuído a este lançamento como efeito dele.',
-    events: "Sazonalidade: datas de calendário de varejo (Black Friday, Natal, Dia dos Pais etc.) que caem dentro da janela de 90 dias do lançamento. Comercial: promoções, rupturas de estoque ou campanhas específicas daquele produto, cadastradas manualmente. 'Pendente' significa que ainda não há nenhum cadastro para esse lançamento — não significa que nada aconteceu.",
-    stock: 'Estoque disponível mais recente por SKU, das linhas em análise. É uma fotografia do momento, não um histórico — reflete o snapshot mais atual da tabela de estoque, não a variação ao longo do tempo.'
+    revenue: 'Soma da receita dos lançamentos na janela selecionada. Cada linha é contada desde o próprio D0.',
+    shareAvg: 'Média do peso de cada lançamento na receita da empresa dentro da mesma janela de vida.',
+    activeNow: 'Quantidade de lançamentos ativos no cadastro, dentro do universo apresentado.',
+    orders: 'Pedidos aprovados dos lançamentos na janela selecionada.',
+    topShare: 'Linha com maior participação na receita da empresa dentro da janela selecionada.',
+    ranking: 'Ranking comparativo na janela escolhida. Linhas sem janela fechada aparecem como pendentes, não como zero.',
+    companyRevenue: 'Mostra se a empresa estava crescendo, pressionada ou sem base comparável no período do lançamento.',
+    channel: 'Resumo da base diária de aquisição na janela do lançamento em foco. Não rateia venda por campanha manual.',
+    seasonal: 'Eventos de calendário dentro da janela selecionada, lidos desde o D0 de cada lançamento.'
   };
 
   const focusableSelector = [
@@ -47,6 +50,10 @@
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
+
+  const normalizeText = (value) => normalizeStatus(value)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 
   function numberOrNull(value) {
     if (value === null || value === undefined || value === '') return null;
@@ -102,6 +109,63 @@
     return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: digits }).format(num);
   }
 
+  function ratioOrNull(numerator, denominator) {
+    const n = numberOrNull(numerator);
+    const d = numberOrNull(denominator);
+    if (n === null || d === null || d === 0) return null;
+    return n / d;
+  }
+
+  function toDate(value) {
+    if (!value) return null;
+    const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function addDays(value, days) {
+    const date = toDate(value);
+    if (!date) return null;
+    const copy = new Date(date.getTime());
+    copy.setDate(copy.getDate() + days);
+    return copy;
+  }
+
+  function dayIndex(d0, value) {
+    const start = toDate(d0);
+    const date = toDate(value);
+    if (!start || !date) return null;
+    return Math.round((date - start) / 86400000);
+  }
+
+  function periodKey(current) {
+    const key = current?.analysisPeriodKey;
+    return WINDOW_KEYS.includes(key) ? key : '30d';
+  }
+
+  function periodLabel(current) {
+    const key = periodKey(current);
+    return current?.analysisPeriodLabel || WINDOW_LABELS[key] || '30 dias';
+  }
+
+  function getWindow(launch, key) {
+    return launch?.janelas?.[key] || null;
+  }
+
+  function previousWindow(launch, key) {
+    const target = WINDOW_DAYS[key] || 30;
+    return [...WINDOW_KEYS]
+      .filter((item) => WINDOW_DAYS[item] <= target)
+      .reverse()
+      .map((item) => ({ key: item, data: getWindow(launch, item) }))
+      .find((item) => item.data && numberOrNull(item.data.receita) !== null) || null;
+  }
+
+  function pointAtOrBefore(points, day) {
+    return [...(points || [])]
+      .filter((point) => numberOrNull(point.dias_desde_lancamento) !== null && point.dias_desde_lancamento <= day)
+      .sort((a, b) => numberOrNull(b.dias_desde_lancamento) - numberOrNull(a.dias_desde_lancamento))[0] || null;
+  }
+
   function help(text) {
     return `<button class="help-button help-button--mini presentation-help" type="button" data-tooltip="${escapeHtml(text)}" aria-label="Ajuda executiva">?</button>`;
   }
@@ -118,13 +182,17 @@
     return Array.isArray(model?.pontos) ? model.pontos : [];
   }
 
-  function launchRevenue(launch, model) {
+  function launchWindowRevenue(launch, key) {
+    return round(numberOrNull(getWindow(launch, key)?.receita), 0);
+  }
+
+  function launchWindowShare(model, key) {
+    const day = WINDOW_DAYS[key] || 30;
+    const point = pointAtOrBefore(sharePoints(model), day);
     return round(
-      numberOrNull(model?.receita_lancamento_periodo)
-      ?? numberOrNull(launch?.acumulado_atual?.receita)
-      ?? numberOrNull(launch?.janelas?.['90d']?.receita)
-      ?? numberOrNull(launch?.janelas?.['30d']?.receita),
-      0
+      numberOrNull(point?.share_acumulado_ate_o_dia)
+      ?? (key === '90d' ? numberOrNull(model?.share_acumulado_atual) : null),
+      4
     );
   }
 
@@ -132,8 +200,72 @@
     return launch?.modelo || launch?.linha || launch?.modelo_id || '—';
   }
 
+  function seasonalWeight(value) {
+    const key = normalizeText(value);
+    if (key === 'forte') return 3;
+    if (key === 'medio') return 2;
+    return 1;
+  }
+
+  function seasonalScore(data, launch, days) {
+    const d0 = launchDate(launch);
+    const start = toDate(d0);
+    const end = addDays(d0, days);
+    if (!start || !end) return { label: 'Sem contexto', score: 0, promotores: 0, ofensores: 0, neutros: 0, strongest: null };
+    const events = (data.calendario_br || [])
+      .map((event) => {
+        const date = toDate(event.data);
+        const tipo = normalizeText(event.tipo);
+        const sign = tipo === 'promotor' ? 1 : tipo === 'ofensor' ? -1 : 0;
+        const score = sign * seasonalWeight(event.peso);
+        return { ...event, date, score };
+      })
+      .filter((event) => event.date && event.date >= start && event.date <= end);
+    const counts = events.reduce((acc, event) => {
+      const tipo = normalizeText(event.tipo);
+      if (tipo === 'promotor') acc.promotores += 1;
+      else if (tipo === 'ofensor') acc.ofensores += 1;
+      else acc.neutros += 1;
+      return acc;
+    }, { promotores: 0, ofensores: 0, neutros: 0 });
+    const score = events.reduce((acc, event) => acc + event.score, 0);
+    const strongest = [...events].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0] || null;
+    const label = !events.length ? 'Janela limpa' : score > 0 ? `Favorável +${score}` : score < 0 ? `Pressão ${score}` : 'Neutra';
+    return { label, score, strongest, ...counts };
+  }
+
+  function dailyRows(data) {
+    return (data.metas_mensais?.rows || []).flatMap((month) => (
+      Array.isArray(month.daily) ? month.daily : []
+    ));
+  }
+
+  function acquisitionForLaunch(data, launch, days) {
+    const d0 = launchDate(launch);
+    const start = toDate(d0);
+    const end = addDays(d0, days);
+    if (!start || !end) return null;
+    const rows = dailyRows(data).filter((row) => {
+      const date = toDate(row.data);
+      return date && date >= start && date <= end;
+    });
+    const investimento = sumNullable(rows.map((row) => row.investimento_realizado));
+    const receita = sumNullable(rows.map((row) => row.realizado_receita));
+    const pedidos = sumNullable(rows.map((row) => row.realizado_pedidos));
+    if (investimento === null && receita === null && pedidos === null) return null;
+    return {
+      investimento,
+      receita,
+      pedidos,
+      roas: ratioOrNull(receita, investimento),
+      cpa: ratioOrNull(investimento, pedidos)
+    };
+  }
+
   function exportableLaunches(current) {
     const data = current?.data || {};
+    const key = periodKey(current);
+    const days = WINDOW_DAYS[key] || 30;
     const exportedIds = new Set((data.manifest?.exported_models || []).map(String));
     const launches = current?.launches || [];
     return launches
@@ -144,21 +276,35 @@
       ))
       .map((launch) => {
         const model = shareModel(data, launch);
+        const win = getWindow(launch, key);
+        const fallback = previousWindow(launch, key);
+        const revenue = launchWindowRevenue(launch, key);
+        const pedidos = round(numberOrNull(win?.pedidos), 0);
+        const pares = round(numberOrNull(win?.pares), 0);
+        const seasonal = seasonalScore(data, launch, days);
+        const acquisition = acquisitionForLaunch(data, launch, days);
         return {
           launch,
           model,
           id: launch.modelo_id,
           label: launchLabel(launch),
           status: normalizeStatus(launch.status),
-          revenue: launchRevenue(launch, model),
-          share: round(model?.share_acumulado_atual, 4),
-          ticket: round(model?.ticket_medio_empresa_periodo, 0),
+          windowKey: key,
+          window: win,
+          fallbackWindow: fallback,
+          revenue,
+          pedidos,
+          pares,
+          share: win ? launchWindowShare(model, key) : null,
+          ticket: ratioOrNull(revenue, pedidos),
           variation: round(model?.variacao_receita_empresa_pct, 4),
           companyPre: round(model?.receita_empresa_pre_periodo, 0),
           companyPost: round(model?.receita_empresa_pos_periodo, 0),
           days: round(model?.dias_pos_disponiveis, 0),
           complete: model?.janela_completa === true,
           eventsRegistered: round(model?.eventos_comerciais_cadastrados, 0),
+          seasonal,
+          acquisition,
           points: sharePoints(model)
         };
       });
@@ -201,22 +347,35 @@
 
   function buildViewModel(current) {
     const data = current?.data || {};
+    const key = periodKey(current);
+    const label = periodLabel(current);
     const rows = exportableLaunches(current);
     const activeNow = rows.filter((row) => row.status === 'ativo').length;
+    const focus = rows.find((row) => row.id === current?.primaryModelId) || rows[0] || null;
+    const rowsWithWindow = rows.filter((row) => row.revenue !== null);
     const topShareRow = rows
       .filter((row) => row.share !== null)
       .sort((a, b) => b.share - a.share)[0] || null;
+    const topRevenueRow = rowsWithWindow
+      .sort((a, b) => b.revenue - a.revenue)[0] || null;
 
     return {
       data,
+      periodKey: key,
+      periodLabel: label,
+      periodDays: WINDOW_DAYS[key] || 30,
       rows,
+      focus,
+      rowsWithWindow,
       stock: stockRows(data, rows),
       kpis: {
-        revenue: sumNullable(rows.map((row) => row.revenue)),
+        revenue: sumNullable(rowsWithWindow.map((row) => row.revenue)),
         shareAvg: avgNullable(rows.map((row) => row.share), 4),
         activeNow,
-        ticketAvg: avgNullable(rows.map((row) => row.ticket), 0),
-        topShare: topShareRow
+        orders: sumNullable(rowsWithWindow.map((row) => row.pedidos)),
+        topShare: topShareRow,
+        topRevenue: topRevenueRow,
+        windowCoverage: `${fmtNum(rowsWithWindow.length)} de ${fmtNum(rows.length)}`
       }
     };
   }
@@ -243,21 +402,28 @@
       </section>`;
   }
 
-  function rankingHtml(rows) {
+  function metricRankingHtml(rows, field, formatter, emptyText = 'Sem dado') {
     const ranked = rows
-      .filter((row) => row.share !== null)
-      .sort((a, b) => b.share - a.share);
-    const max = ranked.length ? Math.max(...ranked.map((row) => row.share || 0)) : 0;
-    if (!ranked.length || !max) return '<div class="compact-empty">Sem share acumulado disponível.</div>';
+      .map((row) => ({ ...row, value: numberOrNull(row[field]) }))
+      .sort((a, b) => {
+        if (a.value === null && b.value === null) return a.label.localeCompare(b.label);
+        if (a.value === null) return 1;
+        if (b.value === null) return -1;
+        return b.value - a.value;
+      });
+    const max = Math.max(...ranked.map((row) => row.value || 0), 0);
+    if (!ranked.length || !max) return `<div class="compact-empty">${escapeHtml(emptyText)}.</div>`;
     return `
       <div class="compact-share-ranking">
         ${ranked.map((row) => {
-          const width = round((row.share / max) * 100, 1);
+          const hasValue = row.value !== null && max > 0;
+          const width = hasValue ? round((row.value / max) * 100, 1) : 0;
+          const status = hasValue ? formatter(row.value) : row.fallbackWindow ? 'janela pendente' : 'em maturação';
           return `
-            <div class="compact-share-row">
+            <div class="compact-share-row ${hasValue ? '' : 'is-muted'}">
               <div class="compact-share-label">
                 <span>${escapeHtml(row.label)}</span>
-                <strong>${fmtPct(row.share, 1)}</strong>
+                <strong>${escapeHtml(status)}</strong>
               </div>
               <div class="compact-share-track">
                 <span style="width:${width}%"></span>
@@ -267,49 +433,89 @@
       </div>`;
   }
 
-  function companyRevenueHtml(rows) {
+  function companyRevenueHtml(rows, focusId = null) {
+    const ordered = [...rows].sort((a, b) => {
+      const av = numberOrNull(a.variation);
+      const bv = numberOrNull(b.variation);
+      if (av === null && bv === null) return a.label.localeCompare(b.label);
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      return bv - av;
+    });
     return `
       <div class="compact-company-list">
-        ${rows.map((row) => {
-          const hasComparison = row.companyPre !== null && row.companyPost !== null && row.variation !== null;
+        ${ordered.map((row) => {
+          const baselineInsuficiente = row.companyPre !== null && row.companyPost !== null && row.companyPre < Math.max(1000, row.companyPost * 0.01);
+          const hasComparison = row.companyPre !== null && row.companyPost !== null && row.variation !== null && !baselineInsuficiente;
           const positive = row.variation === null || row.variation >= 0;
+          const label = hasComparison ? (positive ? 'empresa acelerando' : 'empresa pressionada') : baselineInsuficiente ? 'sem base comparável' : 'sem contexto';
           return `
-            <div class="compact-company-item">
+            <div class="compact-company-item ${row.id === focusId ? 'is-selected' : ''}">
               <p>${escapeHtml(row.label)}</p>
               ${hasComparison ? `
                 <div class="compact-company-values">
-                  <span>${fmtBRL(row.companyPre, true)} → ${fmtBRL(row.companyPost, true)}</span>
-                  <span class="${positive ? 'is-positive' : 'is-negative'}">${positive ? '↑' : '↓'} ${fmtPct(Math.abs(row.variation), 1)}</span>
+                  <span>${escapeHtml(label)}</span>
+                  <span class="${positive ? 'is-positive' : 'is-negative'}">${fmtPct(row.variation, 1)}</span>
                 </div>
-                <p>${fmtNum(row.days)} dias antes vs. ${fmtNum(row.days)} dias depois do D0</p>
+                <p>${fmtBRL(row.companyPre, true)} antes · ${fmtBRL(row.companyPost, true)} depois</p>
               ` : `
-                <div class="compact-company-values compact-company-values--missing">comparativo indisponível</div>
-                <p>${row.days === null ? 'Janela pré-D0 insuficiente' : `${fmtNum(row.days)} dias disponíveis no pós-D0`}</p>
+                <div class="compact-company-values compact-company-values--missing">${escapeHtml(label)}</div>
+                <p>${row.companyPre !== null && row.companyPost !== null ? `${fmtBRL(row.companyPre, true)} antes · ${fmtBRL(row.companyPost, true)} depois` : 'Base incompleta para comparar.'}</p>
               `}
             </div>`;
         }).join('')}
       </div>`;
   }
 
-  function eventsHtml(rows) {
+  function activityHtml(rows, periodLabelText) {
     return `
-      <table class="compact-table">
-        <thead>
-          <tr>
-            <th>Lançamento</th>
-            <th>Sazonalidade</th>
-            <th>Comercial</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((row) => `
-            <tr>
-              <td>${escapeHtml(row.label)}</td>
-              <td>${escapeHtml(seasonalText(row))}</td>
-              <td>${escapeHtml(commercialText(row))}</td>
-            </tr>`).join('')}
-        </tbody>
-      </table>`;
+      <div class="compact-activity-list">
+        ${rows.map((row) => `
+          <div class="compact-activity-item ${row.revenue === null ? 'is-muted' : ''}">
+            <strong>${escapeHtml(row.label)}</strong>
+            <span><b>${fmtBRL(row.revenue, true)}</b><small>receita</small></span>
+            <span><b>${fmtNum(row.pedidos)}</b><small>pedidos</small></span>
+            <span><b>${fmtNum(row.pares)}</b><small>pares</small></span>
+            <em>${row.revenue === null ? `sem ${escapeHtml(periodLabelText)}` : 'com dado'}</em>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  function seasonalHtml(rows) {
+    const ordered = [...rows].sort((a, b) => b.seasonal.score - a.seasonal.score || a.label.localeCompare(b.label));
+    return `
+      <div class="compact-seasonal-list">
+        ${ordered.map((row) => `
+          <div class="compact-seasonal-item">
+            <div>
+              <strong>${escapeHtml(row.label)}</strong>
+              <span>${escapeHtml(row.seasonal.strongest?.nome || 'Sem evento forte')}</span>
+            </div>
+            <em class="${row.seasonal.score > 0 ? 'is-positive' : row.seasonal.score < 0 ? 'is-negative' : ''}">${escapeHtml(row.seasonal.label)}</em>
+            <small>+${fmtNum(row.seasonal.promotores)} promotor · -${fmtNum(row.seasonal.ofensores)} ofensor · ${fmtNum(row.seasonal.neutros)} neutro</small>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  function channelHtml(view) {
+    const focus = view.focus;
+    if (!focus?.acquisition) {
+      return '<div class="compact-empty">Sem base diária de aquisição para a linha em foco nesta janela.</div>';
+    }
+    const comparable = view.rows.map((row) => row.acquisition).filter(Boolean);
+    const avgRoas = avgNullable(comparable.map((row) => row.roas), 2);
+    const avgCpa = avgNullable(comparable.map((row) => row.cpa), 0);
+    return `
+      <div class="compact-channel-grid">
+        <div><span>Investimento</span><strong>${fmtBRL(focus.acquisition.investimento, true)}</strong></div>
+        <div><span>Receita</span><strong>${fmtBRL(focus.acquisition.receita, true)}</strong></div>
+        <div><span>ROAS</span><strong>${focus.acquisition.roas === null ? '—' : `${fmtNum(focus.acquisition.roas, 2)}x`}</strong></div>
+        <div><span>CPA</span><strong>${fmtBRL(focus.acquisition.cpa)}</strong></div>
+      </div>
+      <p class="compact-panel-note">Linha em foco: ${escapeHtml(focus.label)}. Média do grupo: ROAS ${avgRoas === null ? '—' : `${fmtNum(avgRoas, 2)}x`} · CPA ${fmtBRL(avgCpa)}.</p>
+    `;
   }
 
   function stockHtml(rows) {
@@ -336,23 +542,34 @@
 
   function overviewHtml(view) {
     const topShare = view.kpis.topShare;
+    const topRevenue = view.kpis.topRevenue;
+    const focus = view.focus;
     return `
-      <section class="compact-overview" aria-label="Visão geral compacta do modo apresentação">
+      <section class="compact-overview compact-overview--executive" aria-label="Visão executiva do modo apresentação">
+        <div class="compact-presentation-head">
+          <div>
+            <span>Modo apresentação</span>
+            <h1>Análise comparativa dos lançamentos</h1>
+            <p>Janela: ${escapeHtml(view.periodLabel)} · linha em foco: ${escapeHtml(focus?.label || '—')} · cada lançamento contado desde o próprio D0.</p>
+          </div>
+          <strong>${escapeHtml(view.kpis.windowCoverage)} com dado</strong>
+        </div>
         <div class="compact-row compact-row--kpis">
-          ${kpiCard(`Receita total dos ${view.rows.length}`, fmtBRL(view.kpis.revenue), TOOLTIPS.revenue)}
+          ${kpiCard('Receita da janela', fmtBRL(view.kpis.revenue), TOOLTIPS.revenue)}
+          ${kpiCard('Pedidos', fmtNum(view.kpis.orders), TOOLTIPS.orders)}
           ${kpiCard('Share médio', fmtPct(view.kpis.shareAvg, 1), TOOLTIPS.shareAvg, 'accent')}
           ${kpiCard('Ativos agora', `${fmtNum(view.kpis.activeNow)} de ${fmtNum(view.rows.length)}`, TOOLTIPS.activeNow)}
-          ${kpiCard('Ticket médio', fmtBRL(view.kpis.ticketAvg), TOOLTIPS.ticketAvg)}
-          ${kpiCard('Maior share', topShare ? topShare.label : '—', TOOLTIPS.topShare)}
+          ${kpiCard('Maior receita', topRevenue ? topRevenue.label : '—', TOOLTIPS.ranking)}
         </div>
         <div class="compact-row compact-row--middle">
-          ${panel('Quadrante share × variação da empresa', TOOLTIPS.quadrant, '<div class="compact-chart"><canvas id="presentation-bubble-chart" aria-label="Quadrante de share acumulado por variação da receita da empresa"></canvas></div>', 'compact-panel--quadrant')}
-          ${panel('Ranking por share', TOOLTIPS.ranking, rankingHtml(view.rows), 'compact-panel--ranking')}
-          ${panel('Receita da empresa, antes → depois do D0', TOOLTIPS.companyRevenue, companyRevenueHtml(view.rows), 'compact-panel--company')}
+          ${panel('Ranking de faturamento', TOOLTIPS.ranking, metricRankingHtml(view.rows, 'revenue', (value) => fmtBRL(value, true), 'Sem faturamento fechado na janela'), 'compact-panel--ranking')}
+          ${panel('Share da janela', TOOLTIPS.topShare, metricRankingHtml(view.rows, 'share', (value) => fmtPct(value, 1), 'Sem share calculado na janela'), 'compact-panel--ranking')}
+          ${panel('Atividade por lançamento', TOOLTIPS.orders, activityHtml(view.rows, view.periodLabel), 'compact-panel--activity')}
         </div>
         <div class="compact-row compact-row--bottom">
-          ${panel('Eventos no período', TOOLTIPS.events, eventsHtml(view.rows), 'compact-panel--events')}
-          ${panel('Estoque atual · top SKUs', TOOLTIPS.stock, stockHtml(view.stock), 'compact-panel--stock')}
+          ${panel('Momento da empresa', TOOLTIPS.companyRevenue, companyRevenueHtml(view.rows, focus?.id), 'compact-panel--company')}
+          ${panel('Canal e investimento', TOOLTIPS.channel, channelHtml(view), 'compact-panel--channel')}
+          ${panel('Contexto sazonal', TOOLTIPS.seasonal, seasonalHtml(view.rows), 'compact-panel--events')}
         </div>
       </section>`;
   }
