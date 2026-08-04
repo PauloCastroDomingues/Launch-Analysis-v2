@@ -1755,6 +1755,18 @@
     });
   }
 
+  function configureStoryDrawerAccordion() {
+    document.addEventListener('toggle', (event) => {
+      const details = event.target;
+      if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+      const grid = details.closest('.story-drawer-grid');
+      if (!grid) return;
+      grid.querySelectorAll('details[open]').forEach((item) => {
+        if (item !== details) item.open = false;
+      });
+    }, true);
+  }
+
   function configureTooltips() {
     const tooltip = document.createElement('div');
     tooltip.className = 'app-tooltip';
@@ -8031,6 +8043,7 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     configureCommercialChartMetricToggle();
     configureTopicTabs();
     configureStorySubModelControls();
+    configureStoryDrawerAccordion();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();
