@@ -3652,7 +3652,7 @@
           ${storySeasonalDrawerHtml(selected)}
           ${storyProjectionDrawerHtml(selected)}
           <details class="story-step-details">
-            <summary><span>Ver resumo das fontes</span>${tip('Abre os quatro blocos que sustentam a leitura executiva, em linguagem de decisão: momento da empresa, meta, representatividade e atividade comparativa.')}</summary>
+            <summary><span>Ver resumo das fontes</span><small>Origem dos numeros</small>${tip('Abre os quatro blocos que sustentam a leitura executiva, em linguagem de decisão: momento da empresa, meta, representatividade e atividade comparativa.')}</summary>
             <div class="story-step-grid">
               ${cards.map((card) => `
                 <div class="story-step story-step--${card.state}">
