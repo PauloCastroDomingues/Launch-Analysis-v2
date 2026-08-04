@@ -1756,14 +1756,34 @@
   }
 
   function configureStoryDrawerAccordion() {
+    const renderPanel = (grid) => {
+      const panel = grid?.querySelector?.('.story-drawer-panel');
+      if (!panel) return;
+      const active = grid.querySelector('details[open]');
+      if (!active) {
+        panel.hidden = true;
+        panel.innerHTML = '';
+        return;
+      }
+      const body = [...active.children]
+        .filter((child) => child.tagName?.toLowerCase() !== 'summary')
+        .map((child) => child.outerHTML)
+        .join('');
+      panel.innerHTML = body;
+      panel.hidden = !body.trim();
+    };
+
     document.addEventListener('toggle', (event) => {
       const details = event.target;
-      if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+      if (!(details instanceof HTMLDetailsElement)) return;
       const grid = details.closest('.story-drawer-grid');
       if (!grid) return;
-      grid.querySelectorAll('details[open]').forEach((item) => {
-        if (item !== details) item.open = false;
-      });
+      if (details.open) {
+        grid.querySelectorAll('details[open]').forEach((item) => {
+          if (item !== details) item.open = false;
+        });
+      }
+      renderPanel(grid);
     }, true);
   }
 
@@ -3679,6 +3699,7 @@
               `).join('')}
             </div>
           </details>
+          <div id="story-drawer-panel" class="story-drawer-panel" hidden></div>
         </div>
       </div>
     `;

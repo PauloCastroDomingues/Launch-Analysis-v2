@@ -1671,11 +1671,34 @@ h1 {
   background: rgb(var(--rgb-black) / .15);
   overflow: hidden;
 }
+.story-drawer-grid .story-cut-details > :not(summary),
+.story-drawer-grid .story-step-details > :not(summary) {
+  display: none;
+}
 .story-drawer-grid .story-projection-details[open] {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 .story-drawer-grid .story-seasonal-details[open] {
+  grid-column: auto;
+}
+.story-drawer-panel {
   grid-column: 1 / -1;
+  min-width: 0;
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--layer-2), rgb(var(--rgb-black) / .14));
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.story-drawer-panel[hidden] {
+  display: none !important;
+}
+.story-drawer-panel > p {
+  margin: 0;
+  padding: 12px 14px 4px;
+  color: var(--txt-secondary);
+  font-size: .74rem;
+  line-height: 1.4;
 }
 .story-drawer-grid .story-cut-details summary,
 .story-drawer-grid .story-step-details summary {
@@ -5888,7 +5911,7 @@ tbody tr:nth-child(even) td {
 
 .story-drawer-grid .story-cut-details[open],
 .story-drawer-grid .story-step-details[open] {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 
 .story-drawer-grid .story-cut-details summary,
@@ -5928,7 +5951,7 @@ tbody tr:nth-child(even) td {
 
 .story-drawer-grid .story-cut-details[open] summary small,
 .story-drawer-grid .story-step-details[open] summary small {
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .story-drawer-grid .story-step-details summary .help-button {
@@ -5944,8 +5967,7 @@ tbody tr:nth-child(even) td {
   right: 14px;
 }
 
-.story-drawer-grid .story-cut-details[open] > :not(summary),
-.story-drawer-grid .story-step-details[open] > :not(summary) {
+.story-drawer-panel > :not(summary) {
   min-width: 0;
 }
 
