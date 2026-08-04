@@ -3836,6 +3836,10 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   display: flex;
   flex-direction: column;
 }
+.actions-grid > .card[hidden],
+.actions-grid > .actions-module-label[hidden] {
+  display: none !important;
+}
 #line-investment-label,
 #line-investment-card {
   grid-column: 1 / -1;
