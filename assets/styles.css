@@ -1940,6 +1940,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: start;
 }
 .story-visual-metrics--three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1949,7 +1950,7 @@ h1 {
 }
 .story-visual-metric {
   min-width: 0;
-  height: 100%;
+  height: auto;
   border: 1px solid var(--border-2);
   border-radius: 8px;
   background: rgb(var(--rgb-black) / .18);

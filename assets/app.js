@@ -2713,6 +2713,30 @@
     return ` · comparável em ${fmtNum(row.metaDays)}/${fmtNum(row.totalDays)} dias${end}`;
   }
 
+  function availableLaunchDay(launch) {
+    const latestDay = latestLaunchDataDay(launch);
+    const dPlus = numberOrNull(launch?.dPlus);
+    return [latestDay, dPlus].filter((value) => value !== null).reduce((acc, value) => (
+      acc === null ? value : Math.min(acc, value)
+    ), null);
+  }
+
+  function selectedPartialShareForLaunch(launch, activityRow = null) {
+    if (getWindow(launch, selectedPeriodKey())) return null;
+    const requestedEndDay = selectedPeriodEndDay(launch);
+    const activityEndDay = numberOrNull(activityRow?.data_day)
+      ?? numberOrNull(activityRow?.activity_day)
+      ?? numberOrNull(activityRow?.day)
+      ?? availableLaunchDay(launch);
+    if (requestedEndDay === null || activityEndDay === null || activityEndDay < 0) return null;
+    const endDay = Math.min(requestedEndDay, activityEndDay);
+    const row = goalRowForWindow(launch, { index: 1, startDay: 0, endDay: requestedEndDay }, endDay);
+    const receita = numberOrNull(activityRow?.receita) ?? numberOrNull(row?.receita);
+    const actual = numberOrNull(row?.actual);
+    if (receita === null || actual === null) return null;
+    return ratioOrNull(receita, actual);
+  }
+
   function representationGoalSummary(rows, launch = null) {
     const first = rows[0];
     if (!first) return 'Meta mensal ainda não conectada para este lançamento.';
@@ -2854,6 +2878,17 @@
     const label = selectedPeriodLabel();
     const analysis = seasonalAnalysisForLaunch(selected, endDay, label);
     const strongest = [...analysis.events].sort((a, b) => Math.abs(b.score) - Math.abs(a.score))[0] || null;
+    const eventTooltip = (events = []) => {
+      if (!events.length) return 'Sem promotor, ofensor ou neutro cadastrado nesta janela.';
+      const groupText = (title, rows) => rows.length
+        ? `${title}: ${rows.map((event) => `${event.nome} (${fmtDate(event.data)} - D+${fmtNum(event.day)})`).join('; ')}`
+        : '';
+      return [
+        groupText('Promotores', events.filter((event) => event.score > 0)),
+        groupText('Ofensores', events.filter((event) => event.score < 0)),
+        groupText('Neutros', events.filter((event) => event.score === 0))
+      ].filter(Boolean).join('\n') || 'Sem promotor, ofensor ou neutro cadastrado nesta janela.';
+    };
     const summary = analysis.events.length
       ? `${analysis.scoreLabel} · ${fmtNum(analysis.counts.promotores)} promotores · ${fmtNum(analysis.counts.ofensores)} ofensores`
       : `Janela limpa em ${label}`;
@@ -2884,17 +2919,17 @@
               <span>${escapeHtml(analysis.read)}</span>
             </div>
             <div class="story-seasonal-mini-grid">
-              <i><span>Promotores</span><b>${fmtNum(analysis.counts.promotores)}</b></i>
-              <i><span>Ofensores</span><b>${fmtNum(analysis.counts.ofensores)}</b></i>
-              <i><span>Neutros</span><b>${fmtNum(analysis.counts.neutros)}</b></i>
-              <i><span>Mais forte</span><b>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</b></i>
+              <i tabindex="0" data-tooltip="${tooltipMultilineAttr(eventTooltip(analysis.events.filter((event) => event.score > 0)))}"><span>Promotores</span><b>${fmtNum(analysis.counts.promotores)}</b></i>
+              <i tabindex="0" data-tooltip="${tooltipMultilineAttr(eventTooltip(analysis.events.filter((event) => event.score < 0)))}"><span>Ofensores</span><b>${fmtNum(analysis.counts.ofensores)}</b></i>
+              <i tabindex="0" data-tooltip="${tooltipMultilineAttr(eventTooltip(analysis.events.filter((event) => event.score === 0)))}"><span>Neutros</span><b>${fmtNum(analysis.counts.neutros)}</b></i>
+              <i tabindex="0" data-tooltip="${tooltipMultilineAttr(strongest ? eventTooltip([strongest]) : eventTooltip([]))}"><span>Mais forte</span><b>${strongest ? escapeHtml(strongest.nome) : '&mdash;'}</b></i>
             </div>
           </div>
           <div class="story-seasonal-section">
             <strong>Comparativo entre lançamentos</strong>
             <div class="story-seasonal-cohort">
               ${rows.map((row) => `
-                <div class="${row.launch.modelo_id === selected.modelo_id ? 'is-selected' : ''}">
+                <div class="${row.launch.modelo_id === selected.modelo_id ? 'is-selected' : ''}" tabindex="0" data-tooltip="${tooltipMultilineAttr(eventTooltip(row.events))}">
                   <span>${escapeHtml(row.launch.modelo)}</span>
                   <em class="seasonal-score--${row.cls}">${escapeHtml(row.scoreLabel)}</em>
                   <small>+${fmtNum(row.counts.promotores)} promotor · -${fmtNum(row.counts.ofensores)} ofensor · ${fmtNum(row.counts.neutros)} neutro</small>
@@ -3101,8 +3136,8 @@
     const fixedEndDay = requestedEndDay;
     const displayedEndDay = selectedWindow.data ? fixedEndDay : dataDay;
     const daysActive = specificPeriod
-      ? (current && displayedEndDay !== null ? Math.max(1, displayedEndDay + 1) : null)
-      : activityDay !== null ? Math.max(1, activityDay + 1) : null;
+      ? (current && displayedEndDay !== null ? Math.max(1, displayedEndDay) : null)
+      : activityDay !== null ? Math.max(1, activityDay) : null;
     const receita = numberOrNull(current?.receita);
     const pedidos = numberOrNull(current?.pedidos);
     const pares = numberOrNull(current?.pares);
@@ -3479,9 +3514,12 @@
 
     const model = shareModelForLine(selected.modelo_id);
     const selectedWindow = selectedAnalysisWindow(selected);
+    const activity = launchActivityNarrative(selected, selectedWindow);
     const metaRow = metaMensalForLaunch(selected);
-    const selectedShare = selectedPeriodShareForLaunch(selected);
-    const share = selectedShare;
+    const selectedShareContext = selectedPeriodShareContext(selected);
+    const selectedShare = selectedShareContext.share;
+    const partialShare = selectedShare === null ? selectedPartialShareForLaunch(selected, activity.row) : null;
+    const share = selectedShare ?? partialShare;
     const launchRevenue = numberOrNull(selectedWindow.data?.receita);
     const meta = metaNarrative(metaRow, { launchShare: share, launchRevenue, launchD0: selected.d0 });
     const periodLimitDay = isSpecificAnalysisPeriod() ? selectedPeriodEndDay(selected) : null;
@@ -3491,23 +3529,24 @@
     const firstGoal = companyGoal || goalRows[0];
     const firstGoalPct = firstGoal ? numberOrNull(goalDisplayPctMeta(firstGoal, selected)) : null;
     const firstGoalMonthText = firstGoal ? goalMonthBreakdownText(firstGoal, selected) : '';
-    const representationPartialNote = firstGoal?.selectedPeriodPartial ? `; dados até ${goalDayLabel(firstGoal.observedEndDay)}` : '';
-    const representationValue = firstGoalPct !== null ? fmtPct(firstGoalPct, 1) : firstGoalMonthText ? 'Mês a mês' : firstGoal ? 'Sem meta' : fmtPct(share, 1);
+    const shareLabel = selectedShare === null && partialShare !== null ? 'Share até o momento' : 'Share na janela';
+    const representationValue = firstGoalPct !== null
+      ? fmtPct(firstGoalPct, 1)
+      : firstGoalMonthText
+        ? 'Mês a mês'
+        : firstGoal
+          ? 'Sem meta'
+          : fmtPct(share, 1);
     const representationDetail = firstGoal
-      ? `${selectedPeriodLabel()}: ${firstGoalPct !== null ? `${fmtPct(firstGoalPct, 1)} da meta do mês` : firstGoalMonthText ? 'meta lida mês a mês' : 'sem meta cadastrada'}. Share na janela: ${fmtPct(share, 1)}.`
-      : `${representationGoalSummary(goalRows, selected)} Share na janela: ${fmtPct(share, 1)}.`;
-    const activity = launchActivityNarrative(selected, selectedWindow);
+      ? `${selectedPeriodLabel()}: ${firstGoalPct !== null ? `${fmtPct(firstGoalPct, 1)} da meta do mês` : firstGoalMonthText ? 'meta lida mês a mês' : 'sem meta cadastrada'}. ${shareLabel}: ${fmtPct(share, 1)}.`
+      : `${representationGoalSummary(goalRows, selected)} ${shareLabel}: ${fmtPct(share, 1)}.`;
     const companyVariation = numberOrNull(model?.variacao_receita_empresa_pct);
-    const metaTarget = firstKnownCommercialNumber(metaRow, ['meta_receita', 'meta_faturamento', 'meta']);
-    const metaActual = firstKnownCommercialNumber(metaRow, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
-    const metaPct = roasNumberOrNull(metaRow?.atingimento) ?? ratioOrNull(metaActual, metaTarget);
     const metaPending = meta.label === 'Pendente';
     const metaOpen = metaRow?.__meta_status === 'month_open'
       || (Array.isArray(metaRow?.daily) && metaRow.daily.length && metaRow.realizado_ate && monthEndIso(metaMonthKey(metaRow)) && String(metaRow.realizado_ate).slice(0, 10) < monthEndIso(metaMonthKey(metaRow)));
     const signal = storySignal({ share, companyVariation, metaPending });
     const companyWidth = companyVariation === null ? 0 : Math.max(6, Math.min(100, (Math.abs(companyVariation) / 0.22) * 100));
     const shareWidth = share === null ? 0 : Math.max(4, Math.min(100, share * 100));
-    const metaWidth = metaPct === null ? shareWidth : Math.max(4, Math.min(100, metaPct * 100));
     const historicalUniverse = historicalShareUniverse(selected);
     const rankWindowLabel = `cada modelo na própria data de lançamento -> ${selectedPeriodLabel()}`;
     const comparisonRows = sortShareContexts(historicalUniverse.launches.map(selectedPeriodShareContext));
@@ -3561,14 +3600,6 @@
         tooltip: 'Compara faturamento da empresa, meta do mês e participação do produto.',
         extraHtml: `${storyFactChips(company.facts)}${company.extraHtml || ''}${storySourceNote('Meta da empresa e venda do produto no mesmo período.')}`,
         showTrack: false
-      }),
-      storyMetricHtml({
-        label: 'Meta mensal da empresa',
-        value: meta.value,
-        detail: meta.copy,
-        width: metaWidth,
-        state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Mostra se a empresa bateu a meta do mês ligado à janela do lançamento.'
       })
     ];
     const decisionNotes = [
@@ -3618,15 +3649,6 @@
       },
       {
         step: '03',
-        title: 'Meta mensal da empresa',
-        value: meta.value,
-        label: meta.label,
-        copy: `${storyEvidenceCopy(meta.copy)}${executiveEvidenceSourceLine('meta', { metaRow })}`,
-        state: metaPending ? 'pending' : metaOpen ? 'warn' : 'ok',
-        tooltip: 'Evidência técnica de meta: mês do lançamento, meta esperada, realizado e share do produto no período coberto. Se o mês ainda está aberto, usa o último mês fechado como contexto.'
-      },
-      {
-        step: '04',
         title: 'Atividade comparativa',
         value: activity.value,
         label: activity.label,
@@ -3660,7 +3682,7 @@
             ${storySubModelHtml(selected)}
           </div>
           <div>
-            <div class="story-visual-metrics story-visual-metrics--three">
+            <div class="story-visual-metrics">
               ${evidence.join('')}
             </div>
             <div class="story-visual-metric story-visual-metric--wide">
