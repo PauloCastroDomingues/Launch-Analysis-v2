@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-06T11:56:35-03:00",
+  "generated_at": "2026-08-06T13:29:06-03:00",
   "source": "bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal + planilhas_diarias_fallback",
   "rows": [
     {
@@ -2184,12 +2184,12 @@
       "modelo_id": null,
       "linha": null,
       "meta_receita": 3500000.1,
-      "realizado_receita": 709623.21,
+      "realizado_receita": 718540.99,
       "meta_pedidos": 4888,
-      "realizado_pedidos": 1021,
+      "realizado_pedidos": 1033,
       "meta_pares": null,
       "realizado_pares": null,
-      "atingimento": 0.202749,
+      "atingimento": 0.205297,
       "goal_scope": "shopify_geral",
       "version_id": "2026-08_shopify_geral_published_20260805121624",
       "month_label": "Agosto 2026",
@@ -2197,44 +2197,44 @@
       "dias_realizado_receita": 6,
       "realizado_ate": "2026-08-06",
       "meta_investimento": 832037.5,
-      "investimento_realizado": 148810.4,
-      "investimento_aquisicao": 159779.38625,
-      "sessoes_aquisicao": 69711,
-      "pedidos_aquisicao": 1021,
-      "receita_aquisicao": 709623.21,
-      "novos_clientes_aquisicao": 684,
-      "cps_aquisicao": 2.292025452,
-      "roas_aquisicao": 4.441268844,
+      "investimento_realizado": 151118.34,
+      "investimento_aquisicao": 162034.875,
+      "sessoes_aquisicao": 70602,
+      "pedidos_aquisicao": 1032,
+      "receita_aquisicao": 717946.99,
+      "novos_clientes_aquisicao": 693,
+      "cps_aquisicao": 2.295046528,
+      "roas_aquisicao": 4.430817687,
       "canais_aquisicao": [
         {
           "canal": "Meta Ads",
-          "investimento": 99013.46625,
-          "sessoes": 32736,
-          "pedidos": 211,
-          "receita": 172087.31,
-          "novos_clientes": 161,
-          "cps": 3.024604907,
-          "roas": 1.738019246
+          "investimento": 100350.585,
+          "sessoes": 33084,
+          "pedidos": 213,
+          "receita": 173804.31,
+          "novos_clientes": 163,
+          "cps": 3.03320593,
+          "roas": 1.731971069
         },
         {
           "canal": "Google Ads",
-          "investimento": 54299.21,
-          "sessoes": 16252,
-          "pedidos": 232,
-          "receita": 143649.79,
-          "novos_clientes": 150,
-          "cps": 3.341078636,
-          "roas": 2.645522651
+          "investimento": 55207.2,
+          "sessoes": 16479,
+          "pedidos": 235,
+          "receita": 145820.58,
+          "novos_clientes": 152,
+          "cps": 3.350154742,
+          "roas": 2.641332652
         },
         {
           "canal": "Outros",
-          "investimento": 6466.71,
-          "sessoes": 20723,
-          "pedidos": 578,
-          "receita": 393886.11,
-          "novos_clientes": 373,
-          "cps": 0.312054722,
-          "roas": 60.909815037
+          "investimento": 6477.09,
+          "sessoes": 21039,
+          "pedidos": 584,
+          "receita": 398322.1,
+          "novos_clientes": 378,
+          "cps": 0.307861115,
+          "roas": 61.497076619
         }
       ],
       "daily": [
@@ -2289,20 +2289,20 @@
           "meta_pedidos": 173,
           "realizado_pedidos": 261,
           "meta_investimento": 29496.56,
-          "investimento_realizado": 31783.52,
+          "investimento_realizado": 31783.89,
           "roas_meta": 4.21,
-          "roas_realizado": 5.75100807
+          "roas_realizado": 5.750941121
         },
         {
           "data": "2026-08-06",
           "meta_receita": 124078.5,
-          "realizado_receita": 40488.36,
+          "realizado_receita": 49406.14,
           "meta_pedidos": 173,
-          "realizado_pedidos": 58,
+          "realizado_pedidos": 70,
           "meta_investimento": 29496.56,
-          "investimento_realizado": 8315.7,
+          "investimento_realizado": 10623.27,
           "roas_meta": 4.21,
-          "roas_realizado": 4.868905805
+          "roas_realizado": 4.650746898
         },
         {
           "data": "2026-08-07",
