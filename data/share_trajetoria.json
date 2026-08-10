@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-09T07:10:41-03:00",
+  "generated_at": "2026-08-10T07:16:05-03:00",
   "modelos": {
     "avant": {
       "linha": "Avant",
@@ -3589,16 +3589,16 @@
       "day_zero_base": "2026-06-25",
       "data_lancamento": "2026-06-25",
       "janela_completa": false,
-      "dias_disponiveis": 44,
+      "dias_disponiveis": 45,
       "janela_alvo_dias": 90,
-      "share_acumulado_atual": 0.118817226,
-      "receita_lancamento_periodo": 550035,
-      "ticket_medio_empresa_periodo": 947.0648527,
-      "dado_ate": "2026-08-08",
-      "dias_pos_disponiveis": 45,
-      "receita_empresa_pre_periodo": 5987201.87,
-      "receita_empresa_pos_periodo": 4629253,
-      "variacao_receita_empresa_pct": -0.226808599,
+      "share_acumulado_atual": 0.118569454,
+      "receita_lancamento_periodo": 560820,
+      "ticket_medio_empresa_periodo": 949.585625376,
+      "dado_ate": "2026-08-09",
+      "dias_pos_disponiveis": 46,
+      "receita_empresa_pre_periodo": 6099769.87,
+      "receita_empresa_pos_periodo": 4729886,
+      "variacao_receita_empresa_pct": -0.224579599,
       "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
@@ -4186,6 +4186,19 @@
           "evento_sazonal": null,
           "evento_comercial_tipo": null,
           "evento_comercial_descricao": null
+        },
+        {
+          "dias_desde_lancamento": 45,
+          "data_calendario": "2026-08-09",
+          "receita_produto": 10785,
+          "receita_empresa": 100633,
+          "pedidos_empresa": 93,
+          "share_do_dia": 0.107171604,
+          "share_acumulado_ate_o_dia": 0.118569454,
+          "regra_receita_empresa": "fct_order_item_valid_orders",
+          "evento_sazonal": "Dia dos Pais",
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
         }
       ]
     },
@@ -4194,16 +4207,16 @@
       "day_zero_base": "2026-07-16",
       "data_lancamento": "2026-07-16",
       "janela_completa": false,
-      "dias_disponiveis": 23,
+      "dias_disponiveis": 24,
       "janela_alvo_dias": 90,
-      "share_acumulado_atual": 0.060496493,
-      "receita_lancamento_periodo": 117120,
-      "ticket_medio_empresa_periodo": 944.841386042,
-      "dado_ate": "2026-08-08",
-      "dias_pos_disponiveis": 24,
-      "receita_empresa_pre_periodo": 3020775,
-      "receita_empresa_pos_periodo": 1935980,
-      "variacao_receita_empresa_pct": -0.359111486,
+      "share_acumulado_atual": 0.060502413,
+      "receita_lancamento_periodo": 123220,
+      "ticket_medio_empresa_periodo": 950.799719888,
+      "dado_ate": "2026-08-09",
+      "dias_pos_disponiveis": 25,
+      "receita_empresa_pre_periodo": 3184694,
+      "receita_empresa_pos_periodo": 2036613,
+      "variacao_receita_empresa_pct": -0.360499627,
       "eventos_comerciais_cadastrados": 0,
       "d0_coincide_com_sazonalidade": false,
       "pontos": [
@@ -4516,6 +4529,19 @@
           "share_acumulado_ate_o_dia": 0.060496493,
           "regra_receita_empresa": "fct_order_item_valid_orders",
           "evento_sazonal": null,
+          "evento_comercial_tipo": null,
+          "evento_comercial_descricao": null
+        },
+        {
+          "dias_desde_lancamento": 24,
+          "data_calendario": "2026-08-09",
+          "receita_produto": 6100,
+          "receita_empresa": 100633,
+          "pedidos_empresa": 93,
+          "share_do_dia": 0.060616299,
+          "share_acumulado_ate_o_dia": 0.060502413,
+          "regra_receita_empresa": "fct_order_item_valid_orders",
+          "evento_sazonal": "Dia dos Pais",
           "evento_comercial_tipo": null,
           "evento_comercial_descricao": null
         }
