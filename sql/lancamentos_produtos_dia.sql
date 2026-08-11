@@ -12,8 +12,10 @@
 -- 8) janelas D+N sao inclusivas: BETWEEN d0 AND DATE_ADD(d0, INTERVAL N DAY);
 -- 9) classificacao prioriza Monochrome > Series 2 > Phantom > GT > Avant > genericos;
 -- 10) ausencia permanece null, nao vira zero.
--- 11) atribuicao paga/organica real vem da tabela mirror regional
---     mart_shared.canal_atribuicao_pedido_mirror, ligada por email + data + valor.
+-- 11) atribuicao paga/organica real prefere a tabela mirror regional
+--     mart_shared.canal_atribuicao_pedido_mirror, ligada por source_order_id
+--     quando disponivel, por order_name como segunda chave e por email + data + valor como fallback,
+--     e cai para campos de origem do pedido quando a mirror nao encontra match.
 
 WITH modelos AS (
   -- O Apps Script preenche este CTE dinamicamente a partir de data/lancamentos_modelos.json.
@@ -82,26 +84,218 @@ modelos_norm AS (
     ), r'[^a-z0-9|]+', '') AS sku_prefixos_compact
   FROM modelos
 ),
-pedido_atribuicao AS (
+pedido_atribuicao_raw AS (
   SELECT
     CAST(o.order_sk AS STRING) AS order_sk,
-    canal_real.canal AS canal_real,
-    canal_real.tipo AS tipo_real,
-    COALESCE(canal_real.regra_atribuicao_real, 'email_data_valor_last_click_mirror') AS regra_atribuicao_real,
+    canal_real.canal AS canal_mirror,
     CASE
+      WHEN canal_real.tipo IS NULL THEN CAST(NULL AS STRING)
+      WHEN canal_real.tipo = 'paid' THEN 'paid'
+      ELSE 'organic'
+    END AS tipo_mirror,
+    canal_real.regra_atribuicao_real AS regra_mirror,
+    CASE
+      WHEN canal_real.source_order_id IS NOT NULL THEN CONCAT('source_order_id:', canal_real.source_order_id)
+      WHEN canal_real.order_name IS NOT NULL THEN CONCAT('order_name:', canal_real.order_name)
       WHEN canal_real.email_norm IS NULL THEN CAST(NULL AS STRING)
       ELSE CONCAT(canal_real.email_norm, '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
-    END AS atribuicao_match_key
-  FROM `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
+    END AS match_key_mirror,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_source_description'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referring_channel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringChannel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.marketing_channel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.marketingChannel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.order_channel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.orderChannel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.channel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.Channel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.chanel'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.canal'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.origem'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_name'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceName'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site_ref'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referring_site'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl')
+    ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_channel,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.utm_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.utmSource'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.ga_session_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.gaSessionSource'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.session_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.traffic_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.acquisition_source'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source'),
+      REGEXP_EXTRACT(LOWER(CONCAT(
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site_ref'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referring_site'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
+      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)')
+    ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_medium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.utm_medium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.utmMedium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.ga_session_medium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.gaSessionMedium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.session_medium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.traffic_medium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.acquisition_medium'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.medium'),
+      REGEXP_EXTRACT(LOWER(CONCAT(
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site_ref'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referring_site'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
+      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)')
+    ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_campaign'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.utm_campaign'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.utmCampaign'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.ga_session_campaign'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.gaSessionCampaign'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.session_campaign'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaign_name'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaignName'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaign'),
+      REGEXP_EXTRACT(LOWER(CONCAT(
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site_ref'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referring_site'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
+        COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
+      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)')
+    ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_source_type'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_type'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceType'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.channel_type'),
+      JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.channelType')
+    ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source_type
+  FROM `reise-ssot.core.order` o
   LEFT JOIN `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` canal_real
-    ON canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
-   AND canal_real.paid_date_brt = DATE(o.paid_at, 'America/Sao_Paulo')
-   AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    ON (
+      canal_real.source_order_id IS NOT NULL
+      AND canal_real.source_order_id = NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '')
+    )
+    OR (
+      canal_real.order_name IS NOT NULL
+      AND canal_real.order_name = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
+    )
+    OR (
+      canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
+      AND canal_real.paid_date_brt = DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo')
+      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    )
   WHERE DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos_norm)
     AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND o.is_valid_order = TRUE
+),
+pedido_atribuicao_norm AS (
+  SELECT
+    *,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_channel, ''), NFD), r'\p{M}', '') AS raw_channel_match,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_source, ''), NFD), r'\p{M}', '') AS raw_source_match,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_medium, ''), NFD), r'\p{M}', '') AS raw_medium_match,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_campaign, ''), NFD), r'\p{M}', '') AS raw_campaign_match,
+    REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_source_type, ''), NFD), r'\p{M}', '') AS raw_source_type_match,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(CONCAT(
+        COALESCE(raw_channel, ''), ' ',
+        COALESCE(raw_source, ''), ' ',
+        COALESCE(raw_medium, ''), ' ',
+        COALESCE(raw_campaign, ''), ' ',
+        COALESCE(raw_source_type, '')
+      ), NFD),
+      r'\p{M}',
+      ''
+    ), r'[^a-z0-9]+', ' ')) AS origem_match
+  FROM pedido_atribuicao_raw
+),
+pedido_atribuicao_classificada AS (
+  SELECT
+    *,
+    CASE
+      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads)( |$)') THEN 'Meta'
+      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)') THEN 'Google Ads'
+      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)') THEN 'Midia paga'
+      WHEN origem_match = ''
+        OR REGEXP_CONTAINS(origem_match, r'(^| )(unattributed|unknown|an unknown source|not set)( |$)')
+        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|unattributed|unknown|referral|linktr|ga4)')
+        THEN 'Organico'
+      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(crm|email|newsletter|klaviyo|rdstation|rd station|sms|whatsapp|disparo)( |$)') THEN 'CRM / Organico'
+      WHEN REGEXP_CONTAINS(raw_channel_match, r'(instagram|facebook)') THEN 'Organic Social'
+      WHEN REGEXP_CONTAINS(raw_channel_match, r'(google|bing|yahoo|duckduckgo|brave)') THEN 'Organic Search'
+      WHEN REGEXP_CONTAINS(origem_match, r'(^| )ga4( |$)') THEN 'GA4'
+      WHEN raw_channel IS NOT NULL THEN INITCAP(raw_channel)
+      WHEN raw_source IS NOT NULL THEN INITCAP(raw_source)
+      ELSE 'Origem BigQuery'
+    END AS canal_origem_pedido,
+    CASE
+      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)')
+        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
+        THEN 'paid'
+      WHEN origem_match = ''
+        OR REGEXP_CONTAINS(origem_match, r'(^| )(unattributed|unknown|an unknown source|not set)( |$)')
+        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|referral|linktr|ga4)')
+        THEN 'organic'
+      ELSE 'organic'
+    END AS tipo_origem_pedido
+  FROM pedido_atribuicao_norm
+),
+pedido_atribuicao AS (
+  SELECT
+    order_sk,
+    CASE
+      WHEN tipo_mirror = 'paid' THEN canal_mirror
+      WHEN tipo_origem_pedido = 'paid' THEN canal_origem_pedido
+      ELSE COALESCE(canal_mirror, canal_origem_pedido)
+    END AS canal_real,
+    CASE
+      WHEN tipo_mirror = 'paid' OR tipo_origem_pedido = 'paid' THEN 'paid'
+      ELSE 'organic'
+    END AS tipo_real,
+    CASE
+      WHEN tipo_mirror = 'paid' THEN COALESCE(regra_mirror, 'email_data_valor_last_click_mirror')
+      WHEN tipo_origem_pedido = 'paid' THEN 'core_order_origin_fields'
+      WHEN tipo_mirror IS NOT NULL THEN COALESCE(regra_mirror, 'email_data_valor_last_click_mirror')
+      WHEN tipo_origem_pedido IS NOT NULL THEN 'core_order_origin_fields'
+      ELSE CAST(NULL AS STRING)
+    END AS regra_atribuicao_real,
+    CASE
+      WHEN tipo_mirror = 'paid' AND match_key_mirror IS NOT NULL THEN match_key_mirror
+      WHEN tipo_origem_pedido = 'paid' THEN CONCAT('order_origin:', order_sk)
+      WHEN match_key_mirror IS NOT NULL THEN match_key_mirror
+      WHEN tipo_origem_pedido IS NOT NULL THEN CONCAT('order_origin:', order_sk)
+      ELSE CAST(NULL AS STRING)
+    END AS atribuicao_match_key
+  FROM pedido_atribuicao_classificada
   QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY CAST(o.order_sk AS STRING)
-    ORDER BY canal_real.canal, canal_real.tipo
+    PARTITION BY order_sk
+    ORDER BY
+      CASE WHEN tipo_mirror IS NOT NULL THEN 0 ELSE 1 END,
+      CASE WHEN tipo_mirror = 'paid' OR tipo_origem_pedido = 'paid' THEN 1 ELSE 2 END,
+      COALESCE(canal_mirror, canal_origem_pedido)
   ) = 1
 ),
 itens_validos AS (
@@ -152,7 +346,7 @@ itens_validos AS (
     REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
   FROM `reise-ssot.mart_shared.fct_order_item` i
-  LEFT JOIN `reise-ssot.mart_shared.orders_all_valid_no_migracao` o
+  LEFT JOIN `reise-ssot.core.order` o
     ON CAST(o.order_sk AS STRING) = CAST(i.order_sk AS STRING)
   LEFT JOIN pedido_atribuicao pa
     ON pa.order_sk = CAST(i.order_sk AS STRING)
@@ -446,39 +640,47 @@ SELECT
   END AS receita_paga,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE ROUND(SUM(IF(tipo_real = 'organic', receita_bruta, 0)), 2)
+    ELSE ROUND(SUM(IF(tipo_real IS NOT NULL AND tipo_real != 'paid', receita_bruta, 0)), 2)
   END AS receita_organica,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE ROUND(SUM(IF(tipo_real = 'owned', receita_bruta, 0)), 2)
+    ELSE CAST(0 AS NUMERIC)
   END AS receita_crm,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE ROUND(SUM(IF(tipo_real IS NOT NULL AND tipo_real NOT IN ('paid', 'organic', 'owned'), receita_bruta, 0)), 2)
+    ELSE CAST(0 AS NUMERIC)
   END AS receita_outros_canais,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE CAST(0 AS NUMERIC)
+  END AS receita_sem_match_atribuicao,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
     ELSE COUNT(DISTINCT IF(tipo_real = 'paid', order_sk, NULL))
   END AS pedidos_pagos,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
-    ELSE COUNT(DISTINCT IF(tipo_real = 'organic', order_sk, NULL))
+    ELSE COUNT(DISTINCT IF(tipo_real IS NOT NULL AND tipo_real != 'paid', order_sk, NULL))
   END AS pedidos_organicos,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
-    ELSE COUNT(DISTINCT IF(tipo_real = 'owned', order_sk, NULL))
+    ELSE 0
   END AS pedidos_crm,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
-    ELSE COUNT(DISTINCT IF(tipo_real IS NOT NULL AND tipo_real NOT IN ('paid', 'organic', 'owned'), order_sk, NULL))
+    ELSE 0
   END AS pedidos_outros_canais,
+  CASE
+    WHEN COUNTIF(tipo_real IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE 0
+  END AS pedidos_sem_match_atribuicao,
   COUNT(DISTINCT sku) AS skus_distintos,
   TO_JSON_STRING(STRUCT(
     'fct_order_item' AS fonte_base,
     'is_valid_order = TRUE' AS regra_pedido_valido,
     'receita = receita_bruta' AS regra_receita_dashboard,
     COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real')) AS regra_atribuicao_real,
-    IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'mart_shared.canal_atribuicao_pedido_mirror', 'sem_match_last_click') AS regra_join_atribuicao,
+    COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'atribuicao_real_pedido', 'origem_pedido_binaria')) AS regra_join_atribuicao,
     ANY_VALUE(regra_classificacao) AS regra_classificacao
   )) AS flags_qualidade,
   'reise-ssot.mart_shared.fct_order_item' AS fonte
