@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-11T11:36:17-03:00",
-  "script_version": "20260811-existing-journey-binary-v12",
+  "generated_at": "2026-08-11T13:10:43-03:00",
+  "script_version": "20260811-paid-organic-unmatched-v14",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -19,7 +19,7 @@
     "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "canal_atribuicao_pedido_mirror": 25942,
+    "canal_atribuicao_pedido_mirror": 25958,
     "lancamentos_produtos_dia": 7523,
     "auditoria_monochrome": 1,
     "investigacao_linhas_suspeitas": "skipped",
@@ -54,14 +54,16 @@
       "mensagem": "Pedidos classificados com cobertura suficiente para leitura paga/organica/CRM.",
       "pedidos_total": 5528,
       "pedidos_classificados": 5528,
+      "pedidos_sem_match_atribuicao": 3164,
       "cobertura_pedidos_pct": 1,
       "receita_total": 4875492,
       "receita_classificada": 4875492,
       "cobertura_receita_pct": 1,
       "receita_paga": 730042,
-      "receita_organica": 4145450,
+      "receita_organica": 1458511,
       "receita_crm": 0,
       "receita_outros_canais": 0,
+      "receita_sem_match_atribuicao": 2686939,
       "por_modelo": [
         {
           "modelo_id": "avant",
@@ -69,16 +71,18 @@
           "pedidos_classificados": 2790,
           "cobertura_pedidos_pct": 1,
           "pedidos_pagos": 291,
-          "pedidos_organicos": 2499,
+          "pedidos_organicos": 445,
           "pedidos_crm": 0,
           "pedidos_outros_canais": 0,
+          "pedidos_sem_match_atribuicao": 2054,
           "receita_total": 2072894,
           "receita_classificada": 2072894,
           "cobertura_receita_pct": 1,
           "receita_paga": 211193,
-          "receita_organica": 1861701,
+          "receita_organica": 351870,
           "receita_crm": 0,
-          "receita_outros_canais": 0
+          "receita_outros_canais": 0,
+          "receita_sem_match_atribuicao": 1509831
         },
         {
           "modelo_id": "gt",
@@ -86,16 +90,18 @@
           "pedidos_classificados": 903,
           "cobertura_pedidos_pct": 1,
           "pedidos_pagos": 81,
-          "pedidos_organicos": 822,
+          "pedidos_organicos": 154,
           "pedidos_crm": 0,
           "pedidos_outros_canais": 0,
+          "pedidos_sem_match_atribuicao": 668,
           "receita_total": 888175,
           "receita_classificada": 888175,
           "cobertura_receita_pct": 1,
           "receita_paga": 71480,
-          "receita_organica": 816695,
+          "receita_organica": 144405,
           "receita_crm": 0,
-          "receita_outros_canais": 0
+          "receita_outros_canais": 0,
+          "receita_sem_match_atribuicao": 672290
         },
         {
           "modelo_id": "phantom",
@@ -103,16 +109,18 @@
           "pedidos_classificados": 1294,
           "cobertura_pedidos_pct": 1,
           "pedidos_pagos": 324,
-          "pedidos_organicos": 970,
+          "pedidos_organicos": 740,
           "pedidos_crm": 0,
           "pedidos_outros_canais": 0,
+          "pedidos_sem_match_atribuicao": 230,
           "receita_total": 1220143,
           "receita_classificada": 1220143,
           "cobertura_receita_pct": 1,
           "receita_paga": 308451,
-          "receita_organica": 911692,
+          "receita_organica": 700306,
           "receita_crm": 0,
-          "receita_outros_canais": 0
+          "receita_outros_canais": 0,
+          "receita_sem_match_atribuicao": 211386
         },
         {
           "modelo_id": "rs8_monochrome",
@@ -120,16 +128,18 @@
           "pedidos_classificados": 592,
           "cobertura_pedidos_pct": 1,
           "pedidos_pagos": 126,
-          "pedidos_organicos": 466,
+          "pedidos_organicos": 228,
           "pedidos_crm": 0,
           "pedidos_outros_canais": 0,
+          "pedidos_sem_match_atribuicao": 238,
           "receita_total": 568010,
           "receita_classificada": 568010,
           "cobertura_receita_pct": 1,
           "receita_paga": 123668,
-          "receita_organica": 444342,
+          "receita_organica": 222890,
           "receita_crm": 0,
-          "receita_outros_canais": 0
+          "receita_outros_canais": 0,
+          "receita_sem_match_atribuicao": 221452
         },
         {
           "modelo_id": "series_2",
@@ -137,26 +147,29 @@
           "pedidos_classificados": 186,
           "cobertura_pedidos_pct": 1,
           "pedidos_pagos": 22,
-          "pedidos_organicos": 164,
+          "pedidos_organicos": 58,
           "pedidos_crm": 0,
           "pedidos_outros_canais": 0,
+          "pedidos_sem_match_atribuicao": 106,
           "receita_total": 126270,
           "receita_classificada": 126270,
           "cobertura_receita_pct": 1,
           "receita_paga": 15250,
-          "receita_organica": 111020,
+          "receita_organica": 39040,
           "receita_crm": 0,
-          "receita_outros_canais": 0
+          "receita_outros_canais": 0,
+          "receita_sem_match_atribuicao": 71980
         }
       ],
       "mirror_sync": {
         "status": "synced",
-        "rows": 25942,
+        "rows": 25958,
         "paid_rows": 5381,
-        "organic_rows": 20561,
+        "organic_rows": 8070,
+        "unmatched_rows": 12507,
         "source_counts": {
-          "shopify_customer_journey_last_click": 18558,
-          "sem_utm_tratado_como_organico": 7384
+          "shopify_customer_journey_last_click": 18574,
+          "sem_utm_sem_origem": 7384
         },
         "range": "2025-12-14..2026-10-14"
       }
