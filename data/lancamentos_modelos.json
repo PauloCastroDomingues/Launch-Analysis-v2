@@ -3,13 +3,13 @@
     "modelo_id": "gt",
     "modelo": "GT Collection",
     "linha": "GT Collection",
-    "data_lancamento": "2024-10-18",
-    "data_oficial": "2024-10-18",
-    "day_zero_base": "2025-12-17",
+    "data_lancamento": "2026-02-12",
+    "data_oficial": "2026-02-12",
+    "day_zero_base": "2026-02-12",
     "termos_busca": "GT Collection|RS6 GT|KNIT GT|911 GT",
     "sku_prefixos": "RS6-GT,KNIT-GT,911-GT",
     "status": "historico",
-    "observacao": "Historico recalculado pelo SSOT (core.order_item + core.order) usando o.is_valid_order = TRUE. D0 analitico = primeira venda valida encontrada: 2025-12-17."
+    "observacao": "D0 comercial corrigido para a data de campanha/lancamento usada na planilha: 2026-02-12. Nao usar primeira venda valida como D0 deste historico."
   },
   {
     "modelo_id": "avant",
@@ -17,11 +17,11 @@
     "linha": "Avant",
     "data_lancamento": "2025-10-02",
     "data_oficial": "2025-10-02",
-    "day_zero_base": "2025-12-14",
+    "day_zero_base": "2025-10-02",
     "termos_busca": "Avant|RS8 Avant|RS6 Avant|RS7 Avant",
     "sku_prefixos": "RS8-AVANT,RS6-AVANT,RS7-AVANT",
     "status": "historico",
-    "observacao": "Historico recalculado pelo SSOT (core.order_item + core.order) usando o.is_valid_order = TRUE. D0 analitico = primeira venda valida encontrada: 2025-12-14."
+    "observacao": "D0 comercial corrigido para a data de campanha/lancamento usada na planilha: 2025-10-02. Nao usar primeira venda valida como D0 deste historico."
   },
   {
     "modelo_id": "phantom",
