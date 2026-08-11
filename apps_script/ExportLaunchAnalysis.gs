@@ -425,6 +425,144 @@ ORDER BY data, origem, order_id, sku`;
   return rows;
 }
 
+function diagnosticarAvantGtOrigemPedido() {
+  const query = `
+WITH modelos AS (
+  SELECT
+    'avant' AS modelo_id,
+    DATE('2025-12-14') AS d0,
+    r'(^|[^a-z0-9])(avant|rs8 avant|rs6 avant|rs7 avant)([^a-z0-9]|$)' AS termo_regex,
+    r'^(rs8avant|rs6avant|rs7avant)' AS sku_regex
+
+  UNION ALL
+
+  SELECT
+    'gt' AS modelo_id,
+    DATE('2025-12-17') AS d0,
+    r'(^|[^a-z0-9])(gt collection|rs6 gt|knit gt|911 gt)([^a-z0-9]|$)' AS termo_regex,
+    r'^(rs6gt|knitgt|911gt)' AS sku_regex
+),
+janelas AS (
+  SELECT 7 AS dias UNION ALL
+  SELECT 15 UNION ALL
+  SELECT 30 UNION ALL
+  SELECT 60 UNION ALL
+  SELECT 90
+),
+itens AS (
+  SELECT
+    m.modelo_id,
+    CAST(i.order_sk AS STRING) AS order_sk,
+    DATE_DIFF(i.order_partition_date_brt, m.d0, DAY) AS dia_desde_d0,
+    ROUND(SUM(SAFE_CAST(i.line_gross_amount AS NUMERIC)), 2) AS receita
+  FROM \`${CONFIG.bqProjectId}.mart_shared.fct_order_item\` i
+  JOIN modelos m
+    ON i.order_partition_date_brt BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 89 DAY)
+   AND (
+      REGEXP_CONTAINS(
+        REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ''),
+        m.sku_regex
+      )
+      OR REGEXP_CONTAINS(
+        TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')),
+        m.termo_regex
+      )
+    )
+  WHERE i.is_valid_order = TRUE
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+  GROUP BY m.modelo_id, CAST(i.order_sk AS STRING), DATE_DIFF(i.order_partition_date_brt, m.d0, DAY)
+),
+pedidos AS (
+  SELECT
+    i.*,
+    j.dias AS janela_dias,
+    DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data_pedido,
+    COALESCE(
+      NULLIF(UPPER(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_system'))), ''),
+      NULLIF(UPPER(TRIM(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceSystem'))), ''),
+      'SEM_SOURCE_SYSTEM'
+    ) AS source_system,
+    NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '') AS source_order_id,
+    NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '') AS order_name,
+    TO_JSON_STRING(o) AS order_json,
+    canal_real.tipo AS tipo_mirror,
+    canal_real.canal AS canal_mirror,
+    canal_real.regra_atribuicao_real AS regra_mirror
+  FROM itens i
+  JOIN janelas j
+    ON i.dia_desde_d0 BETWEEN 0 AND j.dias - 1
+  LEFT JOIN \`${CONFIG.bqProjectId}.core.order\` o
+    ON CAST(o.order_sk AS STRING) = i.order_sk
+  LEFT JOIN \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\` canal_real
+    ON (
+      canal_real.source_order_id IS NOT NULL
+      AND canal_real.source_order_id = NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '')
+    )
+    OR (
+      canal_real.order_name IS NOT NULL
+      AND canal_real.order_name = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
+    )
+    OR (
+      canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
+      AND canal_real.paid_date_brt = DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo')
+      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    )
+),
+sinais AS (
+  SELECT
+    *,
+    REGEXP_CONTAINS(LOWER(COALESCE(order_json, '')), r'(utm|gclid|fbclid|cpc|ppc|pmax|paid|adwords|gads|googleadservices)') AS json_tem_sinal_marketing,
+    REGEXP_CONTAINS(LOWER(COALESCE(order_json, '')), r'(utm_medium|utm%5fmedium|cpc|ppc|cpm|pmax|paid|adwords|gads|gclid|fbclid)') AS json_tem_sinal_pago,
+    COALESCE(
+      REGEXP_EXTRACT(LOWER(COALESCE(order_json, '')), r'"(?:last[_ -]?)?utm[_ -]?medium"\\s*:\\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(COALESCE(order_json, '')), r'(?:utm_medium|utm%5fmedium)(?:=|%3d)([^&#"\\\\ ]+)')
+    ) AS utm_medium_encontrado,
+    COALESCE(
+      REGEXP_EXTRACT(LOWER(COALESCE(order_json, '')), r'"(?:last[_ -]?)?utm[_ -]?source"\\s*:\\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(COALESCE(order_json, '')), r'(?:utm_source|utm%5fsource)(?:=|%3d)([^&#"\\\\ ]+)')
+    ) AS utm_source_encontrado
+  FROM pedidos
+)
+SELECT
+  modelo_id,
+  janela_dias,
+  source_system,
+  COALESCE(tipo_mirror, 'sem_mirror') AS tipo_mirror,
+  COALESCE(canal_mirror, 'sem_canal') AS canal_mirror,
+  COALESCE(regra_mirror, 'sem_regra') AS regra_mirror,
+  json_tem_sinal_marketing,
+  json_tem_sinal_pago,
+  COALESCE(utm_medium_encontrado, 'sem_utm_medium') AS utm_medium_encontrado,
+  COALESCE(utm_source_encontrado, 'sem_utm_source') AS utm_source_encontrado,
+  COUNT(DISTINCT order_sk) AS pedidos,
+  ROUND(SUM(receita), 2) AS receita,
+  ARRAY_AGG(DISTINCT source_order_id IGNORE NULLS LIMIT 5) AS exemplos_source_order_id,
+  ARRAY_AGG(DISTINCT order_name IGNORE NULLS LIMIT 5) AS exemplos_order_name,
+  MIN(data_pedido) AS primeira_data,
+  MAX(data_pedido) AS ultima_data
+FROM sinais
+GROUP BY
+  modelo_id,
+  janela_dias,
+  source_system,
+  tipo_mirror,
+  canal_mirror,
+  regra_mirror,
+  json_tem_sinal_marketing,
+  json_tem_sinal_pago,
+  utm_medium_encontrado,
+  utm_source_encontrado
+ORDER BY
+  modelo_id,
+  janela_dias,
+  pedidos DESC`;
+
+  const rows = runBq_(query);
+  Logger.log(`diagnosticarAvantGtOrigemPedido: ${rows.length} linhas`);
+  rows.forEach(row => Logger.log(JSON.stringify(row)));
+  return rows;
+}
+
 function diagnosticarMonochromeAmplo() {
   const query = `
 WITH params AS (
