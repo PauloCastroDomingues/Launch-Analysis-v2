@@ -135,6 +135,9 @@ pedido_atribuicao_raw AS (
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.traffic_source'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.acquisition_source'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last[_ -]?)?utm[_ -]?source"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last)?utmsource"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"source"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
@@ -143,7 +146,8 @@ pedido_atribuicao_raw AS (
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'(?:utm_source|utm%5fsource)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_medium'),
@@ -155,6 +159,9 @@ pedido_atribuicao_raw AS (
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.traffic_medium'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.acquisition_medium'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.medium'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last[_ -]?)?utm[_ -]?medium"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last)?utmmedium"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"medium"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
@@ -163,7 +170,8 @@ pedido_atribuicao_raw AS (
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'(?:utm_medium|utm%5fmedium)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_campaign'),
@@ -175,6 +183,9 @@ pedido_atribuicao_raw AS (
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaign_name'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaignName'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaign'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last[_ -]?)?utm[_ -]?campaign"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last)?utmcampaign"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"campaign"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
@@ -183,7 +194,8 @@ pedido_atribuicao_raw AS (
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'(?:utm_campaign|utm%5fcampaign)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_source_type'),

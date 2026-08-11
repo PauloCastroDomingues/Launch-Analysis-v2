@@ -17,7 +17,7 @@
 
 const DEFAULT_INVESTMENT_SPREADSHEET_ID = '1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68';
 
-const EXPORT_SCRIPT_VERSION = '20260811-shopify-utm-paid-priority-v17';
+const EXPORT_SCRIPT_VERSION = '20260811-shopify-nested-utm-v18';
 
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
@@ -2498,6 +2498,9 @@ orders AS (
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.traffic_source'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.acquisition_source'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.source'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"(?:last[_ -]?)?utm[_ -]?source"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"(?:last)?utmsource"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"source"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.landingSite'), ''), ' ',
@@ -2506,7 +2509,8 @@ orders AS (
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'(?:utm_source|utm%5fsource)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS direct_source,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.last_utm_medium'),
@@ -2518,6 +2522,9 @@ orders AS (
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.traffic_medium'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.acquisition_medium'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.medium'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"(?:last[_ -]?)?utm[_ -]?medium"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"(?:last)?utmmedium"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"medium"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.landingSite'), ''), ' ',
@@ -2526,7 +2533,8 @@ orders AS (
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'(?:utm_medium|utm%5fmedium)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS direct_medium,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.last_utm_campaign'),
@@ -2538,6 +2546,9 @@ orders AS (
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.campaign_name'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.campaignName'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.campaign'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"(?:last[_ -]?)?utm[_ -]?campaign"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"(?:last)?utmcampaign"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'"campaign"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.landingSite'), ''), ' ',
@@ -2546,7 +2557,8 @@ orders AS (
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(b)), r'(?:utm_campaign|utm%5fcampaign)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS direct_campaign,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(b), '$.last_source_type'),
@@ -2892,6 +2904,9 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.traffic_source'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.acquisition_source'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last[_ -]?)?utm[_ -]?source"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last)?utmsource"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"source"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
@@ -2900,7 +2915,8 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_source(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'(?:utm_source|utm%5fsource)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_medium'),
@@ -2912,6 +2928,9 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.traffic_medium'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.acquisition_medium'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.medium'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last[_ -]?)?utm[_ -]?medium"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last)?utmmedium"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"medium"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
@@ -2920,7 +2939,8 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_medium(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'(?:utm_medium|utm%5fmedium)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_utm_campaign'),
@@ -2932,6 +2952,9 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaign_name'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaignName'),
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.campaign'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last[_ -]?)?utm[_ -]?campaign"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"(?:last)?utmcampaign"\s*:\s*"([^"]+)"'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'"campaign"\s*:\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(CONCAT(
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landing_site'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.landingSite'), ''), ' ',
@@ -2940,7 +2963,8 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.referringSite'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.source_url'), ''), ' ',
         COALESCE(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.sourceUrl'), '')
-      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)')
+      )), r'(?:[?&]|%26)utm_campaign(?:=|%3d)([^&#% ]+)'),
+      REGEXP_EXTRACT(LOWER(TO_JSON_STRING(o)), r'(?:utm_campaign|utm%5fcampaign)(?:=|%3d)([^&#"\\ ]+)')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.last_source_type'),
