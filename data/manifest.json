@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T10:51:33-03:00",
+  "generated_at": "2026-08-11T11:00:54-03:00",
   "script_version": "20260811-shopify-last-click-v10",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
@@ -19,7 +19,7 @@
     "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "canal_atribuicao_pedido_mirror": 25940,
+    "canal_atribuicao_pedido_mirror": 25941,
     "lancamentos_produtos_dia": 7523,
     "auditoria_monochrome": 1,
     "investigacao_linhas_suspeitas": "skipped",
@@ -151,11 +151,11 @@
       ],
       "mirror_sync": {
         "status": "synced",
-        "rows": 25940,
+        "rows": 25941,
         "paid_rows": 5381,
-        "organic_rows": 20559,
+        "organic_rows": 20560,
         "source_counts": {
-          "shopify_customer_journey_last_click": 18556,
+          "shopify_customer_journey_last_click": 18557,
           "sem_utm_tratado_como_organico": 7384
         },
         "range": "2025-12-14..2026-10-14"
