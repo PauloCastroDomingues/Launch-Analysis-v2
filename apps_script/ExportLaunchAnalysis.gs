@@ -9,6 +9,7 @@
  * - GITHUB_BRANCH = main
  * - DATA_PATH = data
  * - INVESTMENT_SPREADSHEET_ID ou MIDIA_SPREADSHEET_ID (opcional, usado para midia_paga e crm_disparos)
+ * - ORDER_ATTRIBUTION_SPREADSHEET_ID (opcional; se ausente usa a planilha de investimento)
  * - ATRIBUICAO_REAL_CANAL_ENABLED = true|false (opcional; false volta ao estado atual sem canal real)
  *
  * Serviços avançados necessários:
@@ -17,7 +18,7 @@
 
 const DEFAULT_INVESTMENT_SPREADSHEET_ID = '1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68';
 
-const EXPORT_SCRIPT_VERSION = '20260811-shopify-nested-utm-v18';
+const EXPORT_SCRIPT_VERSION = '20260811-sheet-order-attribution-v19';
 
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
@@ -33,6 +34,17 @@ const CONFIG = {
 function investmentSpreadsheetId_() {
   return getProp_('INVESTMENT_SPREADSHEET_ID', getProp_('MIDIA_SPREADSHEET_ID', DEFAULT_INVESTMENT_SPREADSHEET_ID));
 }
+
+function orderAttributionSpreadsheetId_() {
+  return getProp_('ORDER_ATTRIBUTION_SPREADSHEET_ID', investmentSpreadsheetId_());
+}
+
+const ORDER_ATTRIBUTION_SHEET_NAMES = [
+  'atribuicao_pedidos',
+  'pedidos_atribuicao',
+  'canal_atribuicao_pedidos',
+  'order_attribution'
+];
 
 const SHARE_TRAJETORIA_REQUIRED_TABLES = [
   'datas_sazonais',
@@ -2556,7 +2568,16 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
 
   try {
     garantirTabelaCanalAtribuicaoMirror_();
-    const rows = consultarCanalAtribuicaoMirrorUs_(bounds);
+    const sheetStatus = consultarCanalAtribuicaoPlanilhaSeConfigurada_(bounds);
+    let bqRows = [];
+    let bqError = null;
+    try {
+      bqRows = consultarCanalAtribuicaoMirrorUs_(bounds);
+    } catch (error) {
+      bqError = error;
+      Logger.log(`canal_atribuicao_pedido_mirror: fonte BigQuery/Shopify existente indisponivel; tentando seguir com planilha. Erro: ${error.message}`);
+    }
+    const rows = deduplicarCanalAtribuicaoRows_([...(sheetStatus.rows_data || []), ...bqRows]);
     limparCanalAtribuicaoMirror_(bounds);
     if (rows.length) inserirCanalAtribuicaoMirror_(rows);
     const sourceCounts = rows.reduce((acc, row) => {
@@ -2566,19 +2587,302 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
     }, {});
     const paidRows = rows.filter(row => row.tipo === 'paid').length;
     const organicRows = rows.filter(row => row.tipo === 'organic').length;
-    Logger.log(`canal_atribuicao_pedido_mirror sincronizada: ${rows.length} pedidos; paid=${paidRows}; organic=${organicRows}; fontes=${JSON.stringify(sourceCounts)}.`);
+    const status = bqError && !bqRows.length ? 'synced_sheet_only' : (bqError ? 'synced_partial' : 'synced');
+    Logger.log(`canal_atribuicao_pedido_mirror sincronizada: ${rows.length} pedidos; paid=${paidRows}; organic=${organicRows}; fontes=${JSON.stringify(sourceCounts)}; planilha=${sheetStatus.rows}; bq=${bqRows.length}.`);
     return {
-      status: 'synced',
+      status,
       rows: rows.length,
       paid_rows: paidRows,
       organic_rows: organicRows,
       source_counts: sourceCounts,
+      sheet_rows: sheetStatus.rows,
+      sheet_status: sheetStatus.status,
+      bq_rows: bqRows.length,
+      bq_status: bqError ? 'failed' : 'synced',
+      bq_error: bqError ? resumirErro_(bqError) : null,
       range: `${bounds.minDate}..${bounds.maxDate}`
     };
   } catch (error) {
     Logger.log(`canal_atribuicao_pedido_mirror nao sincronizada; export segue com tabela existente/fallback. Erro: ${error.message}`);
     return { status: 'failed', rows: 'skipped', error: error.message, error_summary: error.message };
   }
+}
+
+function consultarCanalAtribuicaoPlanilhaSeConfigurada_(bounds) {
+  const spreadsheetId = orderAttributionSpreadsheetId_();
+  if (!spreadsheetId) {
+    return { status: 'skipped', rows: 0, rows_data: [], error_summary: 'ORDER_ATTRIBUTION_SPREADSHEET_ID nao configurado' };
+  }
+
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = encontrarAbaAtribuicaoPedidos_(ss);
+    if (!sheet) {
+      return {
+        status: 'skipped',
+        rows: 0,
+        rows_data: [],
+        error_summary: `aba nao encontrada: ${ORDER_ATTRIBUTION_SHEET_NAMES.join(', ')}`
+      };
+    }
+
+    const rawRows = sheetToObjects_(sheet);
+    let ignoredRows = 0;
+    const rows = rawRows.map((row, index) => {
+      const normalized = normalizarAtribuicaoPedidoPlanilhaRow_(row, index + 2, bounds);
+      if (!normalized) ignoredRows++;
+      return normalized;
+    }).filter(Boolean);
+
+    Logger.log(`atribuicao_pedidos planilha: ${rows.length} linhas validas; ${ignoredRows} ignoradas; aba=${sheet.getName()}.`);
+    return {
+      status: 'loaded',
+      rows: rows.length,
+      ignored_rows: ignoredRows,
+      rows_data: rows,
+      sheet_name: sheet.getName()
+    };
+  } catch (error) {
+    Logger.log(`atribuicao_pedidos planilha nao carregada. Erro: ${error.message}`);
+    return { status: 'failed', rows: 0, rows_data: [], error: error.message, error_summary: resumirErro_(error) };
+  }
+}
+
+function encontrarAbaAtribuicaoPedidos_(spreadsheet) {
+  for (let i = 0; i < ORDER_ATTRIBUTION_SHEET_NAMES.length; i++) {
+    const sheet = spreadsheet.getSheetByName(ORDER_ATTRIBUTION_SHEET_NAMES[i]);
+    if (sheet) return sheet;
+  }
+  return null;
+}
+
+function normalizarAtribuicaoPedidoPlanilhaRow_(row, lineNumber, bounds) {
+  const sourceOrderId = stringOrNull_(pickRowValue_(row, [
+    'source_order_id',
+    'order_id',
+    'shopify_order_id',
+    'id_pedido',
+    'pedido_id',
+    'id'
+  ]));
+  const orderName = normalizarOrderName_(pickRowValue_(row, [
+    'order_name',
+    'nome_pedido',
+    'numero_pedido',
+    'numero do pedido',
+    'pedido',
+    'order',
+    'name'
+  ]));
+  const email = stringOrNull_(pickRowValue_(row, [
+    'email',
+    'customer_email',
+    'email_cliente',
+    'cliente_email'
+  ]));
+  const paidDate = dateIsoKey_(pickRowValue_(row, [
+    'paid_date_brt',
+    'data_pedido',
+    'data',
+    'processed_at',
+    'created_at',
+    'paid_at'
+  ]));
+  const totalAmount = numberOrNull_(pickRowValue_(row, [
+    'total_amount',
+    'valor_pedido',
+    'valor',
+    'receita',
+    'net_sales',
+    'total'
+  ]));
+
+  if (!sourceOrderId && !orderName && !(email && paidDate && totalAmount !== null)) {
+    Logger.log(`atribuicao_pedidos linha ${lineNumber} ignorada: informe source_order_id, order_name/pedido ou email+data_pedido+valor_pedido.`);
+    return null;
+  }
+
+  if (paidDate && bounds && (paidDate < bounds.minDate || paidDate > bounds.maxDate)) {
+    return null;
+  }
+
+  const rawChannel = stringOrNull_(pickRowValue_(row, [
+    'canal',
+    'canal_de_indicacao',
+    'canal de indicacao',
+    'canal de indicação',
+    'referring_channel',
+    'channel',
+    'chanel',
+    'last_source_description'
+  ]));
+  const rawSource = stringOrNull_(pickRowValue_(row, [
+    'utm_source',
+    'origem_utm',
+    'origem_da_campanha_utm',
+    'origem da campanha utm',
+    'source',
+    'last_utm_source',
+    'raw_source'
+  ]));
+  const rawMedium = stringOrNull_(pickRowValue_(row, [
+    'utm_medium',
+    'midia_utm',
+    'midia_da_campanha_utm',
+    'mídia da campanha utm',
+    'media_da_campanha_utm',
+    'medium',
+    'last_utm_medium',
+    'raw_medium'
+  ]));
+  const rawCampaign = stringOrNull_(pickRowValue_(row, [
+    'utm_campaign',
+    'campanha_utm',
+    'campanha',
+    'last_utm_campaign'
+  ]));
+  const explicitType = stringOrNull_(pickRowValue_(row, [
+    'tipo',
+    'tipo_real',
+    'tipo_canal',
+    'grupo_canal',
+    'paid_organic',
+    'pago_organico'
+  ]));
+
+  const tipo = tipoCanalPedidoRow_({
+    tipo: explicitType,
+    tipo_real: explicitType,
+    canal: rawChannel,
+    canal_real: rawChannel,
+    grupo_canal: explicitType,
+    raw_channel: rawChannel,
+    raw_source: rawSource,
+    raw_medium: rawMedium,
+    utm_source: rawSource,
+    utm_medium: rawMedium
+  });
+  const canal = canalAtribuicaoManual_(tipo, rawChannel, rawSource, rawMedium);
+
+  return {
+    email_norm: email ? email.trim().toLowerCase() : null,
+    paid_date_brt: paidDate || null,
+    total_amount: totalAmount,
+    source_order_id: sourceOrderId,
+    order_name: orderName,
+    canal,
+    tipo,
+    grupo_canal: tipo === 'paid' ? 'Midia paga' : 'Organico',
+    utm_source: rawSource,
+    utm_medium: rawMedium,
+    utm_campaign: rawCampaign,
+    raw_channel: rawChannel,
+    raw_medium: rawMedium,
+    raw_source: rawSource,
+    pedidos_na_chave: null,
+    regra_atribuicao_real: 'planilha_atribuicao_pedido'
+  };
+}
+
+function canalAtribuicaoManual_(tipo, rawChannel, rawSource, rawMedium) {
+  const text = normalizarCanalPedido_([rawChannel, rawSource, rawMedium].filter(Boolean).join(' '));
+  if (tipo === 'paid') {
+    if (/(^| )(google|google ads|googleads|adwords|gads|pmax|performance max)( |$)/.test(text)) return 'Google Ads';
+    if (/(^| )(meta|facebook|instagram|fb ads|ig ads)( |$)/.test(text)) return 'Meta';
+    return 'Midia paga';
+  }
+  if (/(^| )(email|newsletter|crm|klaviyo|rd station|rdstation|sms|whatsapp|disparo)( |$)/.test(text)) return 'CRM / Organico';
+  if (/(^| )(instagram|facebook)( |$)/.test(text)) return 'Organic Social';
+  if (/(^| )(google|bing|yahoo|duckduckgo|brave)( |$)/.test(text)) return 'Organic Search';
+  if (/(^| )(direct|direto)( |$)/.test(text)) return 'Direct';
+  return rawChannel || rawSource || 'Organico';
+}
+
+function deduplicarCanalAtribuicaoRows_(rows) {
+  const seen = {};
+  const deduped = [];
+  (rows || []).forEach(row => {
+    const key = chaveCanalAtribuicaoRow_(row);
+    if (!key) return;
+    if (seen[key]) return;
+    seen[key] = true;
+    deduped.push(row);
+  });
+  return deduped;
+}
+
+function chaveCanalAtribuicaoRow_(row) {
+  const sourceOrderId = normalizarChavePedido_(row.source_order_id);
+  if (sourceOrderId) return `source:${sourceOrderId}`;
+  const orderName = normalizarChavePedido_(row.order_name);
+  if (orderName) return `name:${orderName}`;
+  const email = stringOrNull_(row.email_norm);
+  const date = dateIsoKey_(row.paid_date_brt);
+  const amount = numberOrNull_(row.total_amount);
+  if (email && date && amount !== null) return `fallback:${email.toLowerCase()}|${date}|${round2_(amount)}`;
+  return '';
+}
+
+function normalizarChavePedido_(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function normalizarOrderName_(value) {
+  const text = stringOrNull_(value);
+  if (!text) return null;
+  return text.trim().toLowerCase();
+}
+
+function pickRowValue_(row, names) {
+  if (!row) return null;
+  const byNorm = {};
+  Object.keys(row).forEach(key => {
+    byNorm[normalizarHeaderPlanilha_(key)] = row[key];
+  });
+  for (let i = 0; i < names.length; i++) {
+    const key = normalizarHeaderPlanilha_(names[i]);
+    if (Object.prototype.hasOwnProperty.call(byNorm, key)) {
+      const value = byNorm[key];
+      if (value !== '' && value !== null && value !== undefined) return value;
+    }
+  }
+  return null;
+}
+
+function normalizarHeaderPlanilha_(value) {
+  return normalizarCanalPedido_(value).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function stringOrNull_(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text ? text : null;
+}
+
+function criarTemplateAtribuicaoPedidos() {
+  const spreadsheetId = orderAttributionSpreadsheetId_();
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  let sheet = ss.getSheetByName('atribuicao_pedidos');
+  if (!sheet) sheet = ss.insertSheet('atribuicao_pedidos');
+  const headers = [
+    'order_name',
+    'source_order_id',
+    'data_pedido',
+    'valor_pedido',
+    'canal_de_indicacao',
+    'origem_da_campanha_utm',
+    'midia_da_campanha_utm',
+    'campanha_utm',
+    'tipo'
+  ];
+  if (sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  Logger.log(`Template atribuicao_pedidos pronto na planilha ${spreadsheetId}.`);
+  return { status: 'ready', spreadsheetId, sheet: sheet.getName(), headers };
 }
 
 function consultarCanalAtribuicaoMirrorUs_(bounds) {
@@ -2926,7 +3230,8 @@ function limparCanalAtribuicaoMirror_(bounds) {
   )).join('\n  OR ');
   const query = `
 DELETE FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\`
-WHERE ${predicate}`;
+WHERE ${predicate}
+   OR regra_atribuicao_real = 'planilha_atribuicao_pedido'`;
   runBq_(query);
 }
 
@@ -2970,14 +3275,14 @@ function canalAtribuicaoPedidoCteSql_(usarMirror, usarSourceOrderMirror, usarOrd
   const sourceOrderJoinSql = usarSourceOrderMirror
     ? `    (
       canal_real.source_order_id IS NOT NULL
-      AND canal_real.source_order_id = NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '')
+      AND REGEXP_REPLACE(LOWER(canal_real.source_order_id), r'[^a-z0-9]+', '') = REGEXP_REPLACE(LOWER(COALESCE(NULLIF(TRIM(CAST(o.source_order_id AS STRING)), ''), '')), r'[^a-z0-9]+', '')
     )
     OR `
     : '';
   const orderNameJoinSql = usarOrderNameMirror
     ? `    (
       canal_real.order_name IS NOT NULL
-      AND canal_real.order_name = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
+      AND REGEXP_REPLACE(LOWER(canal_real.order_name), r'[^a-z0-9]+', '') = REGEXP_REPLACE(LOWER(COALESCE(NULLIF(TRIM(CAST(o.order_name AS STRING)), ''), '')), r'[^a-z0-9]+', '')
     )
     OR `
     : '';
