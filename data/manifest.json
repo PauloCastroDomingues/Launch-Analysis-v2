@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-11T15:34:29-03:00",
+  "generated_at": "2026-08-11T16:00:01-03:00",
   "script_version": "20260811-sheet-order-attribution-v19",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
@@ -19,7 +19,7 @@
     "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "canal_atribuicao_pedido_mirror": 25969,
+    "canal_atribuicao_pedido_mirror": 25971,
     "lancamentos_produtos_dia": 7525,
     "auditoria_monochrome": 1,
     "investigacao_linhas_suspeitas": "skipped",
@@ -163,16 +163,16 @@
       ],
       "mirror_sync": {
         "status": "synced",
-        "rows": 25969,
+        "rows": 25971,
         "paid_rows": 5380,
-        "organic_rows": 20589,
+        "organic_rows": 20591,
         "source_counts": {
-          "shopify_customer_journey_last_click": 18585,
+          "shopify_customer_journey_last_click": 18587,
           "sem_utm_organico": 7384
         },
         "sheet_rows": 0,
-        "sheet_status": "skipped",
-        "bq_rows": 25969,
+        "sheet_status": "loaded",
+        "bq_rows": 25971,
         "bq_status": "synced",
         "bq_error": null,
         "range": "2025-12-14..2026-10-14"
