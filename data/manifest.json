@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-11T16:39:25-03:00",
-  "script_version": "20260811-ssot-channel-fallback-quality-v22",
+  "generated_at": "2026-08-11T16:48:30-03:00",
+  "script_version": "20260811-ssot-cache-safe-v23",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -19,7 +19,7 @@
     "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "canal_atribuicao_pedido_mirror": 25976,
+    "canal_atribuicao_pedido_mirror": 25977,
     "lancamentos_produtos_dia": 7527,
     "auditoria_monochrome": 1,
     "investigacao_linhas_suspeitas": "skipped",
@@ -163,16 +163,16 @@
       ],
       "mirror_sync": {
         "status": "synced",
-        "rows": 25976,
+        "rows": 25977,
         "paid_rows": 5380,
-        "organic_rows": 20596,
+        "organic_rows": 20597,
         "source_counts": {
-          "shopify_customer_journey_last_click": 18592,
+          "shopify_customer_journey_last_click": 18593,
           "sem_utm_organico": 7384
         },
         "sheet_rows": 0,
         "sheet_status": "loaded",
-        "bq_rows": 25976,
+        "bq_rows": 25977,
         "bq_status": "synced",
         "bq_error": null,
         "daily_share": {
