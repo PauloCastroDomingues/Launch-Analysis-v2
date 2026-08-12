@@ -1,0 +1,2192 @@
+{
+  "summary": {
+    "generated_at": "2026-08-12T13:25:50.190Z",
+    "snapshot": "2026-08-11",
+    "modelos": 5,
+    "janelas": 25,
+    "janelas_revisar": 0,
+    "janelas_sem_canal_pedido": 0,
+    "janelas_com_receita_reconciliada": 25,
+    "janelas_com_pedidos_reconciliados": 25
+  },
+  "windows": [
+    {
+      "modelo_id": "gt",
+      "modelo": "GT Collection",
+      "janela": "7d",
+      "status_janela": "fechada",
+      "range": "2025-12-17..2025-12-24",
+      "observed_day": 7,
+      "target_day": 7,
+      "pipeline": {
+        "key": "7d",
+        "targetDay": 7,
+        "observedDay": 7,
+        "status": "fechada",
+        "range": "2025-12-17..2025-12-24",
+        "linhas": 133,
+        "pedidos": 115,
+        "pares": 133,
+        "receita": 103341,
+        "ticket": 898.62,
+        "receita_paga": 96506.8,
+        "receita_crm": 0,
+        "receita_organica": 6834.2,
+        "pedidos_pagos": 106.94879999999982,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 8.051199999999987,
+        "pedidos_classificados": 114.9999999999998,
+        "cobertura_origem_pct": 0.9999999999999982
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-02-12",
+        "investimento": 1049.28,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM GT · 12/02/2026",
+            "janela": null,
+            "data": "2026-02-12",
+            "investimento": 1049.28,
+            "receita_fallback": 7162.2,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 96506.8,
+        "investmentOrders": 106.94879999999982,
+        "organicRevenue": 6834.2,
+        "organicOrders": 8.051199999999987
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999982,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "gt",
+      "modelo": "GT Collection",
+      "janela": "15d",
+      "status_janela": "fechada",
+      "range": "2025-12-17..2026-01-01",
+      "observed_day": 15,
+      "target_day": 15,
+      "pipeline": {
+        "key": "15d",
+        "targetDay": 15,
+        "observedDay": 15,
+        "status": "fechada",
+        "range": "2025-12-17..2026-01-01",
+        "linhas": 190,
+        "pedidos": 167,
+        "pares": 190,
+        "receita": 147574,
+        "ticket": 883.68,
+        "receita_paga": 135056.02,
+        "receita_crm": 0,
+        "receita_organica": 12517.98,
+        "pedidos_pagos": 151.82909999999993,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 15.170899999999973,
+        "pedidos_classificados": 166.9999999999999,
+        "cobertura_origem_pct": 0.9999999999999993
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-02-12",
+        "investimento": 3846.92,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento GT 15d",
+            "janela": "15d",
+            "data": null,
+            "investimento": 2797.64,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM GT · 12/02/2026",
+            "janela": null,
+            "data": "2026-02-12",
+            "investimento": 1049.28,
+            "receita_fallback": 7162.2,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 135056.02,
+        "investmentOrders": 151.82909999999993,
+        "organicRevenue": 12517.98,
+        "organicOrders": 15.170899999999973
+      },
+      "roas": 35.10757177170307,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999993,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "gt",
+      "modelo": "GT Collection",
+      "janela": "30d",
+      "status_janela": "fechada",
+      "range": "2025-12-17..2026-01-16",
+      "observed_day": 30,
+      "target_day": 30,
+      "pipeline": {
+        "key": "30d",
+        "targetDay": 30,
+        "observedDay": 30,
+        "status": "fechada",
+        "range": "2025-12-17..2026-01-16",
+        "linhas": 339,
+        "pedidos": 272,
+        "pares": 339,
+        "receita": 263347,
+        "ticket": 968.19,
+        "receita_paga": 238986.42,
+        "receita_crm": 0,
+        "receita_organica": 24360.58,
+        "pedidos_pagos": 245.40930000000083,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 26.590700000000083,
+        "pedidos_classificados": 272.0000000000009,
+        "cobertura_origem_pct": 1.0000000000000033
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-02-12",
+        "investimento": 5608.99,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento GT 30d",
+            "janela": "30d",
+            "data": null,
+            "investimento": 4559.71,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM GT · 12/02/2026",
+            "janela": null,
+            "data": "2026-02-12",
+            "investimento": 1049.28,
+            "receita_fallback": 7162.2,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 238986.42,
+        "investmentOrders": 245.40930000000083,
+        "organicRevenue": 24360.58,
+        "organicOrders": 26.590700000000083
+      },
+      "roas": 42.6077457795432,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000033,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "gt",
+      "modelo": "GT Collection",
+      "janela": "60d",
+      "status_janela": "fechada",
+      "range": "2025-12-17..2026-02-15",
+      "observed_day": 60,
+      "target_day": 60,
+      "pipeline": {
+        "key": "60d",
+        "targetDay": 60,
+        "observedDay": 60,
+        "status": "fechada",
+        "range": "2025-12-17..2026-02-15",
+        "linhas": 678,
+        "pedidos": 525,
+        "pares": 678,
+        "receita": 522830,
+        "ticket": 995.87,
+        "receita_paga": 463472.1,
+        "receita_crm": 0,
+        "receita_organica": 59357.9,
+        "pedidos_pagos": 460.48700000000196,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 64.51300000000026,
+        "pedidos_classificados": 525.0000000000023,
+        "cobertura_origem_pct": 1.0000000000000044
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-02-12",
+        "investimento": 14416.95,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento GT 60d",
+            "janela": "60d",
+            "data": null,
+            "investimento": 13367.67,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM GT · 12/02/2026",
+            "janela": null,
+            "data": "2026-02-12",
+            "investimento": 1049.28,
+            "receita_fallback": 7162.2,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 463472.1,
+        "investmentOrders": 460.48700000000196,
+        "organicRevenue": 59357.9,
+        "organicOrders": 64.51300000000026
+      },
+      "roas": 32.14772195228533,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000044,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "gt",
+      "modelo": "GT Collection",
+      "janela": "90d",
+      "status_janela": "fechada",
+      "range": "2025-12-17..2026-03-17",
+      "observed_day": 90,
+      "target_day": 90,
+      "pipeline": {
+        "key": "90d",
+        "targetDay": 90,
+        "observedDay": 90,
+        "status": "fechada",
+        "range": "2025-12-17..2026-03-17",
+        "linhas": 1149,
+        "pedidos": 903,
+        "pares": 1151,
+        "receita": 888175,
+        "ticket": 983.58,
+        "receita_paga": 665586.15,
+        "receita_crm": 0,
+        "receita_organica": 222588.87,
+        "pedidos_pagos": 671.0536000000013,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 231.94640000000007,
+        "pedidos_classificados": 903.0000000000014,
+        "cobertura_origem_pct": 1.0000000000000016
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-02-12",
+        "investimento": 40236.7,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento GT 90d",
+            "janela": "90d",
+            "data": null,
+            "investimento": 39187.42,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM GT · 12/02/2026",
+            "janela": null,
+            "data": "2026-02-12",
+            "investimento": 1049.28,
+            "receita_fallback": 7162.2,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 665586.15,
+        "investmentOrders": 671.0536000000013,
+        "organicRevenue": 222588.87,
+        "organicOrders": 231.94640000000007
+      },
+      "roas": 16.541767838813822,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000016,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "avant",
+      "modelo": "Avant",
+      "janela": "7d",
+      "status_janela": "fechada",
+      "range": "2025-12-14..2025-12-21",
+      "observed_day": 7,
+      "target_day": 7,
+      "pipeline": {
+        "key": "7d",
+        "targetDay": 7,
+        "observedDay": 7,
+        "status": "fechada",
+        "range": "2025-12-14..2025-12-21",
+        "linhas": 209,
+        "pedidos": 172,
+        "pares": 209,
+        "receita": 110618,
+        "ticket": 643.13,
+        "receita_paga": 102600.87,
+        "receita_crm": 0,
+        "receita_organica": 8017.13,
+        "pedidos_pagos": 159.15100000000038,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 12.849000000000032,
+        "pedidos_classificados": 172.0000000000004,
+        "cobertura_origem_pct": 1.0000000000000022
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2025-10-02",
+        "investimento": 1276.5,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 02/10/2025",
+            "janela": null,
+            "data": "2025-10-02",
+            "investimento": 1276.5,
+            "receita_fallback": 1060,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 102600.87,
+        "investmentOrders": 159.15100000000038,
+        "organicRevenue": 8017.13,
+        "organicOrders": 12.849000000000032
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000022,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "avant",
+      "modelo": "Avant",
+      "janela": "15d",
+      "status_janela": "fechada",
+      "range": "2025-12-14..2025-12-29",
+      "observed_day": 15,
+      "target_day": 15,
+      "pipeline": {
+        "key": "15d",
+        "targetDay": 15,
+        "observedDay": 15,
+        "status": "fechada",
+        "range": "2025-12-14..2025-12-29",
+        "linhas": 375,
+        "pedidos": 315,
+        "pares": 375,
+        "receita": 199224,
+        "ticket": 632.46,
+        "receita_paga": 184217.11,
+        "receita_crm": 0,
+        "receita_organica": 15006.89,
+        "pedidos_pagos": 289.71199999999976,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 25.288000000000114,
+        "pedidos_classificados": 314.9999999999999,
+        "cobertura_origem_pct": 0.9999999999999997
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2025-10-02",
+        "investimento": 22186.94,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 1,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Avant 15d",
+            "janela": "15d",
+            "data": null,
+            "investimento": 20910.44,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 02/10/2025",
+            "janela": null,
+            "data": "2025-10-02",
+            "investimento": 1276.5,
+            "receita_fallback": 1060,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 184217.11,
+        "investmentOrders": 289.71199999999976,
+        "organicRevenue": 15006.89,
+        "organicOrders": 25.288000000000114
+      },
+      "roas": 8.302952547760079,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999997,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "avant",
+      "modelo": "Avant",
+      "janela": "30d",
+      "status_janela": "fechada",
+      "range": "2025-12-14..2026-01-13",
+      "observed_day": 30,
+      "target_day": 30,
+      "pipeline": {
+        "key": "30d",
+        "targetDay": 30,
+        "observedDay": 30,
+        "status": "fechada",
+        "range": "2025-12-14..2026-01-13",
+        "linhas": 720,
+        "pedidos": 536,
+        "pares": 720,
+        "receita": 383922,
+        "ticket": 716.27,
+        "receita_paga": 351890.19,
+        "receita_crm": 0,
+        "receita_organica": 32031.81,
+        "pedidos_pagos": 494.6069999999943,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 41.39299999999979,
+        "pedidos_classificados": 535.9999999999941,
+        "cobertura_origem_pct": 0.999999999999989
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2025-10-02",
+        "investimento": 50739.06,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 2,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Avant 30d",
+            "janela": "30d",
+            "data": null,
+            "investimento": 49230.42,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 02/10/2025",
+            "janela": null,
+            "data": "2025-10-02",
+            "investimento": 1276.5,
+            "receita_fallback": 1060,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 27/10/2025",
+            "janela": null,
+            "data": "2025-10-27",
+            "investimento": 232.14,
+            "receita_fallback": 7830.12,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 351890.19,
+        "investmentOrders": 494.6069999999943,
+        "organicRevenue": 32031.81,
+        "organicOrders": 41.39299999999979
+      },
+      "roas": 6.935291863901303,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.999999999999989,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "avant",
+      "modelo": "Avant",
+      "janela": "60d",
+      "status_janela": "fechada",
+      "range": "2025-12-14..2026-02-12",
+      "observed_day": 60,
+      "target_day": 60,
+      "pipeline": {
+        "key": "60d",
+        "targetDay": 60,
+        "observedDay": 60,
+        "status": "fechada",
+        "range": "2025-12-14..2026-02-12",
+        "linhas": 1893,
+        "pedidos": 1460,
+        "pares": 1894,
+        "receita": 1023250,
+        "ticket": 700.86,
+        "receita_paga": 928463.32,
+        "receita_crm": 0,
+        "receita_organica": 94786.68,
+        "pedidos_pagos": 1326.826599999989,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 133.17339999999865,
+        "pedidos_classificados": 1459.9999999999877,
+        "cobertura_origem_pct": 0.9999999999999916
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2025-10-02",
+        "investimento": 106724.79,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Avant 60d",
+            "janela": "60d",
+            "data": null,
+            "investimento": 105149.78,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 02/10/2025",
+            "janela": null,
+            "data": "2025-10-02",
+            "investimento": 1276.5,
+            "receita_fallback": 1060,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 27/10/2025",
+            "janela": null,
+            "data": "2025-10-27",
+            "investimento": 232.14,
+            "receita_fallback": 7830.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 18/11/2025",
+            "janela": null,
+            "data": "2025-11-18",
+            "investimento": 66.37,
+            "receita_fallback": 328.5,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 928463.32,
+        "investmentOrders": 1326.826599999989,
+        "organicRevenue": 94786.68,
+        "organicOrders": 133.17339999999865
+      },
+      "roas": 8.699603156867303,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999916,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "avant",
+      "modelo": "Avant",
+      "janela": "90d",
+      "status_janela": "fechada",
+      "range": "2025-12-14..2026-03-14",
+      "observed_day": 90,
+      "target_day": 90,
+      "pipeline": {
+        "key": "90d",
+        "targetDay": 90,
+        "observedDay": 90,
+        "status": "fechada",
+        "range": "2025-12-14..2026-03-14",
+        "linhas": 3684,
+        "pedidos": 2790,
+        "pares": 3692,
+        "receita": 2072894,
+        "ticket": 742.97,
+        "receita_paga": 1593519.47,
+        "receita_crm": 0,
+        "receita_organica": 479374.53,
+        "pedidos_pagos": 2158.6909999999907,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 631.308999999999,
+        "pedidos_classificados": 2789.9999999999895,
+        "cobertura_origem_pct": 0.9999999999999962
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2025-10-02",
+        "investimento": 230711.3,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Avant 90d",
+            "janela": "90d",
+            "data": null,
+            "investimento": 229136.29,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 02/10/2025",
+            "janela": null,
+            "data": "2025-10-02",
+            "investimento": 1276.5,
+            "receita_fallback": 1060,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 27/10/2025",
+            "janela": null,
+            "data": "2025-10-27",
+            "investimento": 232.14,
+            "receita_fallback": 7830.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "CRM Avant · 18/11/2025",
+            "janela": null,
+            "data": "2025-11-18",
+            "investimento": 66.37,
+            "receita_fallback": 328.5,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 1593519.47,
+        "investmentOrders": 2158.6909999999907,
+        "organicRevenue": 479374.53,
+        "organicOrders": 631.308999999999
+      },
+      "roas": 6.906984920114446,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999962,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "phantom",
+      "modelo": "Phantom",
+      "janela": "7d",
+      "status_janela": "fechada",
+      "range": "2026-04-16..2026-04-23",
+      "observed_day": 7,
+      "target_day": 7,
+      "pipeline": {
+        "key": "7d",
+        "targetDay": 7,
+        "observedDay": 7,
+        "status": "fechada",
+        "range": "2026-04-16..2026-04-23",
+        "linhas": 182,
+        "pedidos": 144,
+        "pares": 182,
+        "receita": 130858,
+        "ticket": 908.74,
+        "receita_paga": 48800.98,
+        "receita_crm": 0,
+        "receita_organica": 82057.02,
+        "pedidos_pagos": 45.9435,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 98.0565,
+        "pedidos_classificados": 144,
+        "cobertura_origem_pct": 1
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-04-16",
+        "investimento": 4439.58,
+        "hasMediaInvestment": true,
+        "mediaRows": 2,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 7d",
+            "janela": "7d",
+            "data": "2026-04-16",
+            "investimento": 3342.39,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 7d",
+            "janela": "7d",
+            "data": "2026-04-16",
+            "investimento": 191.05,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 42.69,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 357.96,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento Phantom",
+            "janela": null,
+            "data": "2026-04-23",
+            "investimento": 505.49,
+            "receita_fallback": 503,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 48800.98,
+        "investmentOrders": 45.9435,
+        "organicRevenue": 82057.02,
+        "organicOrders": 98.0565
+      },
+      "roas": 10.992251519287862,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "phantom",
+      "modelo": "Phantom",
+      "janela": "15d",
+      "status_janela": "fechada",
+      "range": "2026-04-16..2026-05-01",
+      "observed_day": 15,
+      "target_day": 15,
+      "pipeline": {
+        "key": "15d",
+        "targetDay": 15,
+        "observedDay": 15,
+        "status": "fechada",
+        "range": "2026-04-16..2026-05-01",
+        "linhas": 316,
+        "pedidos": 244,
+        "pares": 316,
+        "receita": 227204,
+        "ticket": 931.16,
+        "receita_paga": 86907.98,
+        "receita_crm": 0,
+        "receita_organica": 140296.02,
+        "pedidos_pagos": 82.9435,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 161.0565,
+        "pedidos_classificados": 244,
+        "cobertura_origem_pct": 1
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-04-16",
+        "investimento": 14191.95,
+        "hasMediaInvestment": true,
+        "mediaRows": 2,
+        "crmRows": 4,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 15d",
+            "janela": "15d",
+            "data": "2026-04-16",
+            "investimento": 12861.54,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 15d",
+            "janela": "15d",
+            "data": "2026-04-16",
+            "investimento": 322.27,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 42.69,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 357.96,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento Phantom",
+            "janela": null,
+            "data": "2026-04-23",
+            "investimento": 505.49,
+            "receita_fallback": 503,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom",
+            "janela": null,
+            "data": "2026-04-25",
+            "investimento": 102,
+            "receita_fallback": 1161.19,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 86907.98,
+        "investmentOrders": 82.9435,
+        "organicRevenue": 140296.02,
+        "organicOrders": 161.0565
+      },
+      "roas": 6.123751845236208,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "phantom",
+      "modelo": "Phantom",
+      "janela": "30d",
+      "status_janela": "fechada",
+      "range": "2026-04-16..2026-05-16",
+      "observed_day": 30,
+      "target_day": 30,
+      "pipeline": {
+        "key": "30d",
+        "targetDay": 30,
+        "observedDay": 30,
+        "status": "fechada",
+        "range": "2026-04-16..2026-05-16",
+        "linhas": 580,
+        "pedidos": 434,
+        "pares": 580,
+        "receita": 417020,
+        "ticket": 960.88,
+        "receita_paga": 128250.61,
+        "receita_crm": 0,
+        "receita_organica": 288769.39,
+        "pedidos_pagos": 122.4671,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 311.5329,
+        "pedidos_classificados": 434,
+        "cobertura_origem_pct": 1
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-04-16",
+        "investimento": 204803.04,
+        "hasMediaInvestment": true,
+        "mediaRows": 2,
+        "crmRows": 8,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 30d",
+            "janela": "30d",
+            "data": "2026-04-16",
+            "investimento": 202939.43,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 30d",
+            "janela": "30d",
+            "data": "2026-04-17",
+            "investimento": 473.6,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 42.69,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 357.96,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento Phantom",
+            "janela": null,
+            "data": "2026-04-23",
+            "investimento": 505.49,
+            "receita_fallback": 503,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom",
+            "janela": null,
+            "data": "2026-04-25",
+            "investimento": 102,
+            "receita_fallback": 1161.19,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 54.42,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 69.38,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 61.51,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom: Leve 3 Tênis e Pague 2",
+            "janela": null,
+            "data": "2026-05-14",
+            "investimento": 196.56,
+            "receita_fallback": 2214,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 128250.61,
+        "investmentOrders": 122.4671,
+        "organicRevenue": 288769.39,
+        "organicOrders": 311.5329
+      },
+      "roas": 0.6262143862708288,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "phantom",
+      "modelo": "Phantom",
+      "janela": "60d",
+      "status_janela": "fechada",
+      "range": "2026-04-16..2026-06-15",
+      "observed_day": 60,
+      "target_day": 60,
+      "pipeline": {
+        "key": "60d",
+        "targetDay": 60,
+        "observedDay": 60,
+        "status": "fechada",
+        "range": "2026-04-16..2026-06-15",
+        "linhas": 1222,
+        "pedidos": 932,
+        "pares": 1223,
+        "receita": 879337,
+        "ticket": 943.49,
+        "receita_paga": 229852.5,
+        "receita_crm": 0,
+        "receita_organica": 649484.5,
+        "pedidos_pagos": 237.1685,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 694.8314999999999,
+        "pedidos_classificados": 931.9999999999999,
+        "cobertura_origem_pct": 0.9999999999999999
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-04-16",
+        "investimento": 36802.64,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 8,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 60d",
+            "janela": "60d",
+            "data": null,
+            "investimento": 35412.63,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 42.69,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 357.96,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento Phantom",
+            "janela": null,
+            "data": "2026-04-23",
+            "investimento": 505.49,
+            "receita_fallback": 503,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom",
+            "janela": null,
+            "data": "2026-04-25",
+            "investimento": 102,
+            "receita_fallback": 1161.19,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 54.42,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 69.38,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 61.51,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom: Leve 3 Tênis e Pague 2",
+            "janela": null,
+            "data": "2026-05-14",
+            "investimento": 196.56,
+            "receita_fallback": 2214,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 229852.5,
+        "investmentOrders": 237.1685,
+        "organicRevenue": 649484.5,
+        "organicOrders": 694.8314999999999
+      },
+      "roas": 6.24554379794493,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999999,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "phantom",
+      "modelo": "Phantom",
+      "janela": "90d",
+      "status_janela": "fechada",
+      "range": "2026-04-16..2026-07-15",
+      "observed_day": 90,
+      "target_day": 90,
+      "pipeline": {
+        "key": "90d",
+        "targetDay": 90,
+        "observedDay": 90,
+        "status": "fechada",
+        "range": "2026-04-16..2026-07-15",
+        "linhas": 1696,
+        "pedidos": 1294,
+        "pares": 1697,
+        "receita": 1220143,
+        "ticket": 942.92,
+        "receita_paga": 331590.09,
+        "receita_crm": 0,
+        "receita_organica": 888552.91,
+        "pedidos_pagos": 347.3821000000002,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 946.6179000000003,
+        "pedidos_classificados": 1294.0000000000005,
+        "cobertura_origem_pct": 1.0000000000000004
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-04-16",
+        "investimento": 51361.69,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 8,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Phantom 90d",
+            "janela": "90d",
+            "data": null,
+            "investimento": 49971.68,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 42.69,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Compre seu Phantom e Ganhe 25% de Cashback",
+            "janela": null,
+            "data": "2026-04-17",
+            "investimento": 357.96,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento Phantom",
+            "janela": null,
+            "data": "2026-04-23",
+            "investimento": 505.49,
+            "receita_fallback": 503,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom",
+            "janela": null,
+            "data": "2026-04-25",
+            "investimento": 102,
+            "receita_fallback": 1161.19,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 54.42,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 69.38,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Phantom Knit",
+            "janela": null,
+            "data": "2026-05-11",
+            "investimento": 61.51,
+            "receita_fallback": 0,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Linha Phantom: Leve 3 Tênis e Pague 2",
+            "janela": null,
+            "data": "2026-05-14",
+            "investimento": 196.56,
+            "receita_fallback": 2214,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 331590.09,
+        "investmentOrders": 347.3821000000002,
+        "organicRevenue": 888552.91,
+        "organicOrders": 946.6179000000003
+      },
+      "roas": 6.455980907170305,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000004,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "rs8_monochrome",
+      "modelo": "RS8 Avant Monochrome",
+      "janela": "7d",
+      "status_janela": "fechada",
+      "range": "2026-06-25..2026-07-02",
+      "observed_day": 7,
+      "target_day": 7,
+      "pipeline": {
+        "key": "7d",
+        "targetDay": 7,
+        "observedDay": 7,
+        "status": "fechada",
+        "range": "2026-06-25..2026-07-02",
+        "linhas": 212,
+        "pedidos": 167,
+        "pares": 212,
+        "receita": 152428,
+        "ticket": 912.74,
+        "receita_paga": 46427.09,
+        "receita_crm": 0,
+        "receita_organica": 106000.91,
+        "pedidos_pagos": 48.9779,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 118.0221,
+        "pedidos_classificados": 167,
+        "cobertura_origem_pct": 1
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-06-25",
+        "investimento": 2110.86,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1032.11,
+            "receita_fallback": 5042.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1039.67,
+            "receita_fallback": 2660.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Leve 3 Tênis e Pague 2: Monochrome",
+            "janela": null,
+            "data": "2026-06-29",
+            "investimento": 39.08,
+            "receita_fallback": 1329,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 46427.09,
+        "investmentOrders": 48.9779,
+        "organicRevenue": 106000.91,
+        "organicOrders": 118.0221
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "rs8_monochrome",
+      "modelo": "RS8 Avant Monochrome",
+      "janela": "15d",
+      "status_janela": "fechada",
+      "range": "2026-06-25..2026-07-10",
+      "observed_day": 15,
+      "target_day": 15,
+      "pipeline": {
+        "key": "15d",
+        "targetDay": 15,
+        "observedDay": 15,
+        "status": "fechada",
+        "range": "2026-06-25..2026-07-10",
+        "linhas": 371,
+        "pedidos": 289,
+        "pares": 371,
+        "receita": 266749,
+        "ticket": 923.01,
+        "receita_paga": 81486.18,
+        "receita_crm": 0,
+        "receita_organica": 185262.82,
+        "pedidos_pagos": 90.67460000000001,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 198.32539999999995,
+        "pedidos_classificados": 288.99999999999994,
+        "cobertura_origem_pct": 0.9999999999999998
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-06-25",
+        "investimento": 22365.61,
+        "hasMediaInvestment": true,
+        "mediaRows": 2,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Facebook ADS Monochrome",
+            "janela": "15d",
+            "data": "2026-06-25",
+            "investimento": 17670.54,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "midia_paga",
+            "campanha": "Google ADS Monochrome",
+            "janela": "15d",
+            "data": "2026-06-25",
+            "investimento": 2584.21,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1032.11,
+            "receita_fallback": 5042.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1039.67,
+            "receita_fallback": 2660.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Leve 3 Tênis e Pague 2: Monochrome",
+            "janela": null,
+            "data": "2026-06-29",
+            "investimento": 39.08,
+            "receita_fallback": 1329,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 81486.18,
+        "investmentOrders": 90.67460000000001,
+        "organicRevenue": 185262.82,
+        "organicOrders": 198.32539999999995
+      },
+      "roas": 3.643369440851378,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 0.9999999999999998,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "rs8_monochrome",
+      "modelo": "RS8 Avant Monochrome",
+      "janela": "30d",
+      "status_janela": "fechada",
+      "range": "2026-06-25..2026-07-25",
+      "observed_day": 30,
+      "target_day": 30,
+      "pipeline": {
+        "key": "30d",
+        "targetDay": 30,
+        "observedDay": 30,
+        "status": "fechada",
+        "range": "2026-06-25..2026-07-25",
+        "linhas": 643,
+        "pedidos": 485,
+        "pares": 644,
+        "receita": 463036,
+        "ticket": 954.71,
+        "receita_paga": 143241.9,
+        "receita_crm": 0,
+        "receita_organica": 319794.1,
+        "pedidos_pagos": 150.7743999999999,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 334.22560000000016,
+        "pedidos_classificados": 485.00000000000006,
+        "cobertura_origem_pct": 1.0000000000000002
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-06-25",
+        "investimento": 43932.85,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Monochrome 30d",
+            "janela": "30d",
+            "data": null,
+            "investimento": 41821.99,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1032.11,
+            "receita_fallback": 5042.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1039.67,
+            "receita_fallback": 2660.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Leve 3 Tênis e Pague 2: Monochrome",
+            "janela": null,
+            "data": "2026-06-29",
+            "investimento": 39.08,
+            "receita_fallback": 1329,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 143241.9,
+        "investmentOrders": 150.7743999999999,
+        "organicRevenue": 319794.1,
+        "organicOrders": 334.22560000000016
+      },
+      "roas": 3.2604736546798123,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000002,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "rs8_monochrome",
+      "modelo": "RS8 Avant Monochrome",
+      "janela": "60d",
+      "status_janela": "parcial",
+      "range": "2026-06-25..2026-08-11",
+      "observed_day": 47,
+      "target_day": 60,
+      "pipeline": {
+        "key": "60d",
+        "targetDay": 60,
+        "observedDay": 47,
+        "status": "parcial",
+        "range": "2026-06-25..2026-08-11",
+        "linhas": 791,
+        "pedidos": 595,
+        "pares": 794,
+        "receita": 570886,
+        "ticket": 959.47,
+        "receita_paga": 184454.38,
+        "receita_crm": 0,
+        "receita_organica": 386431.62,
+        "pedidos_pagos": 182.75500000000005,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 412.2450000000003,
+        "pedidos_classificados": 595.0000000000003,
+        "cobertura_origem_pct": 1.0000000000000007
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-06-25",
+        "investimento": 2110.86,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1032.11,
+            "receita_fallback": 5042.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1039.67,
+            "receita_fallback": 2660.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Leve 3 Tênis e Pague 2: Monochrome",
+            "janela": null,
+            "data": "2026-06-29",
+            "investimento": 39.08,
+            "receita_fallback": 1329,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 184454.38,
+        "investmentOrders": 182.75500000000005,
+        "organicRevenue": 386431.62,
+        "organicOrders": 412.2450000000003
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000007,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "rs8_monochrome",
+      "modelo": "RS8 Avant Monochrome",
+      "janela": "90d",
+      "status_janela": "parcial",
+      "range": "2026-06-25..2026-08-11",
+      "observed_day": 47,
+      "target_day": 90,
+      "pipeline": {
+        "key": "90d",
+        "targetDay": 90,
+        "observedDay": 47,
+        "status": "parcial",
+        "range": "2026-06-25..2026-08-11",
+        "linhas": 791,
+        "pedidos": 595,
+        "pares": 794,
+        "receita": 570886,
+        "ticket": 959.47,
+        "receita_paga": 184454.38,
+        "receita_crm": 0,
+        "receita_organica": 386431.62,
+        "pedidos_pagos": 182.75500000000005,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 412.2450000000003,
+        "pedidos_classificados": 595.0000000000003,
+        "cobertura_origem_pct": 1.0000000000000007
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-06-25",
+        "investimento": 2110.86,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 3,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1032.11,
+            "receita_fallback": 5042.12,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Monochrome",
+            "janela": null,
+            "data": "2026-06-25",
+            "investimento": 1039.67,
+            "receita_fallback": 2660.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Leve 3 Tênis e Pague 2: Monochrome",
+            "janela": null,
+            "data": "2026-06-29",
+            "investimento": 39.08,
+            "receita_fallback": 1329,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 184454.38,
+        "investmentOrders": 182.75500000000005,
+        "organicRevenue": 386431.62,
+        "organicOrders": 412.2450000000003
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000007,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "janela": "7d",
+      "status_janela": "fechada",
+      "range": "2026-07-16..2026-07-23",
+      "observed_day": 7,
+      "target_day": 7,
+      "pipeline": {
+        "key": "7d",
+        "targetDay": 7,
+        "observedDay": 7,
+        "status": "fechada",
+        "range": "2026-07-16..2026-07-23",
+        "linhas": 115,
+        "pedidos": 102,
+        "pares": 115,
+        "receita": 70150,
+        "ticket": 687.75,
+        "receita_paga": 17154.34,
+        "receita_crm": 0,
+        "receita_organica": 52995.66,
+        "pedidos_pagos": 25.364399999999996,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 76.63560000000001,
+        "pedidos_classificados": 102,
+        "cobertura_origem_pct": 1
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-07-16",
+        "investimento": 7401.09,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 2,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Series 2 7d",
+            "janela": "7d",
+            "data": null,
+            "investimento": 6931.74,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-16",
+            "investimento": 213.62,
+            "receita_fallback": 2686.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Último Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-22",
+            "investimento": 255.73,
+            "receita_fallback": 0,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 17154.34,
+        "investmentOrders": 25.364399999999996,
+        "organicRevenue": 52995.66,
+        "organicOrders": 76.63560000000001
+      },
+      "roas": 2.3178126465155806,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "janela": "15d",
+      "status_janela": "fechada",
+      "range": "2026-07-16..2026-07-31",
+      "observed_day": 15,
+      "target_day": 15,
+      "pipeline": {
+        "key": "15d",
+        "targetDay": 15,
+        "observedDay": 15,
+        "status": "fechada",
+        "range": "2026-07-16..2026-07-31",
+        "linhas": 149,
+        "pedidos": 133,
+        "pares": 149,
+        "receita": 90890,
+        "ticket": 683.38,
+        "receita_paga": 21846.21,
+        "receita_crm": 0,
+        "receita_organica": 69043.79,
+        "pedidos_pagos": 37.3968,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 95.60320000000009,
+        "pedidos_classificados": 133.00000000000009,
+        "cobertura_origem_pct": 1.0000000000000007
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-07-16",
+        "investimento": 16917.97,
+        "hasMediaInvestment": true,
+        "mediaRows": 1,
+        "crmRows": 2,
+        "rows": [
+          {
+            "source": "midia_paga",
+            "campanha": "Investimento Series 2 15d",
+            "janela": "15d",
+            "data": null,
+            "investimento": 16448.62,
+            "receita_fallback": null,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-16",
+            "investimento": 213.62,
+            "receita_fallback": 2686.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Último Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-22",
+            "investimento": 255.73,
+            "receita_fallback": 0,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 21846.21,
+        "investmentOrders": 37.3968,
+        "organicRevenue": 69043.79,
+        "organicOrders": 95.60320000000009
+      },
+      "roas": 1.2913020888439923,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000007,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "janela": "30d",
+      "status_janela": "parcial",
+      "range": "2026-07-16..2026-08-11",
+      "observed_day": 26,
+      "target_day": 30,
+      "pipeline": {
+        "key": "30d",
+        "targetDay": 30,
+        "observedDay": 26,
+        "status": "parcial",
+        "range": "2026-07-16..2026-08-11",
+        "linhas": 207,
+        "pedidos": 186,
+        "pares": 207,
+        "receita": 126270,
+        "ticket": 678.87,
+        "receita_paga": 42849.87,
+        "receita_crm": 0,
+        "receita_organica": 83420.13,
+        "pedidos_pagos": 54.448800000000006,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 131.5512000000001,
+        "pedidos_classificados": 186.0000000000001,
+        "cobertura_origem_pct": 1.0000000000000007
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-07-16",
+        "investimento": 469.35,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 2,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-16",
+            "investimento": 213.62,
+            "receita_fallback": 2686.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Último Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-22",
+            "investimento": 255.73,
+            "receita_fallback": 0,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 42849.87,
+        "investmentOrders": 54.448800000000006,
+        "organicRevenue": 83420.13,
+        "organicOrders": 131.5512000000001
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000007,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "janela": "60d",
+      "status_janela": "parcial",
+      "range": "2026-07-16..2026-08-11",
+      "observed_day": 26,
+      "target_day": 60,
+      "pipeline": {
+        "key": "60d",
+        "targetDay": 60,
+        "observedDay": 26,
+        "status": "parcial",
+        "range": "2026-07-16..2026-08-11",
+        "linhas": 207,
+        "pedidos": 186,
+        "pares": 207,
+        "receita": 126270,
+        "ticket": 678.87,
+        "receita_paga": 42849.87,
+        "receita_crm": 0,
+        "receita_organica": 83420.13,
+        "pedidos_pagos": 54.448800000000006,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 131.5512000000001,
+        "pedidos_classificados": 186.0000000000001,
+        "cobertura_origem_pct": 1.0000000000000007
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-07-16",
+        "investimento": 469.35,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 2,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-16",
+            "investimento": 213.62,
+            "receita_fallback": 2686.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Último Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-22",
+            "investimento": 255.73,
+            "receita_fallback": 0,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 42849.87,
+        "investmentOrders": 54.448800000000006,
+        "organicRevenue": 83420.13,
+        "organicOrders": 131.5512000000001
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000007,
+        "status": "ok",
+        "issues": []
+      }
+    },
+    {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "janela": "90d",
+      "status_janela": "parcial",
+      "range": "2026-07-16..2026-08-11",
+      "observed_day": 26,
+      "target_day": 90,
+      "pipeline": {
+        "key": "90d",
+        "targetDay": 90,
+        "observedDay": 26,
+        "status": "parcial",
+        "range": "2026-07-16..2026-08-11",
+        "linhas": 207,
+        "pedidos": 186,
+        "pares": 207,
+        "receita": 126270,
+        "ticket": 678.87,
+        "receita_paga": 42849.87,
+        "receita_crm": 0,
+        "receita_organica": 83420.13,
+        "pedidos_pagos": 54.448800000000006,
+        "pedidos_crm": 0,
+        "pedidos_organicos": 131.5512000000001,
+        "pedidos_classificados": 186.0000000000001,
+        "cobertura_origem_pct": 1.0000000000000007
+      },
+      "investimento": {
+        "source": "base_investimento",
+        "referenceDate": "2026-07-16",
+        "investimento": 469.35,
+        "hasMediaInvestment": false,
+        "mediaRows": 0,
+        "crmRows": 2,
+        "rows": [
+          {
+            "source": "crm_disparos",
+            "campanha": "Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-16",
+            "investimento": 213.62,
+            "receita_fallback": 2686.3,
+            "pedidos": null
+          },
+          {
+            "source": "crm_disparos",
+            "campanha": "Último Lançamento: Series 2",
+            "janela": null,
+            "data": "2026-07-22",
+            "investimento": 255.73,
+            "receita_fallback": 0,
+            "pedidos": null
+          }
+        ]
+      },
+      "atribuicao": {
+        "source": "canal_pedido",
+        "investmentRevenue": 42849.87,
+        "investmentOrders": 54.448800000000006,
+        "organicRevenue": 83420.13,
+        "organicOrders": 131.5512000000001
+      },
+      "roas": null,
+      "checks": {
+        "receita_reconciliada": true,
+        "pedidos_reconciliados": true,
+        "cobertura_origem_pct": 1.0000000000000007,
+        "status": "ok",
+        "issues": []
+      }
+    }
+  ]
+}

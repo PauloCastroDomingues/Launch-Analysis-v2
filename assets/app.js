@@ -42,6 +42,11 @@
     { key: '60d', label: '60 dias' },
     { key: '90d', label: '90 dias' }
   ];
+  const CHANNEL_FILTERS = [
+    { key: 'all', label: 'Todos os canais' },
+    { key: 'investment', label: 'Midia paga' },
+    { key: 'organic', label: 'Organico' }
+  ];
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
   const COLLAPSIBLE_LIST_LIMIT = 5;
   const COLLAPSIBLE_LIST_SELECTORS = [
@@ -59,13 +64,19 @@
     primaryModelId: null,
     compareModelIds: [],
     analysisPeriodKey: '30d',
+    lineFilter: 'all',
+    productFilter: 'all',
+    productColorFilter: 'all',
+    channelFilter: 'all',
     snapshotClock: null,
     normalizedChartMode: 'linha',
+    launchChartView: 'normalized',
     commercialChartMetric: 'investimento',
     canibalLineFilter: null,
     storyAnalysisByModel: {},
     storySubModelByModel: {},
-    charts: {}
+    charts: {},
+    zoomChart: null
   };
 
   const $ = (id) => document.getElementById(id);
@@ -227,6 +238,118 @@
 
   function dashboardRevenueNumber(row) {
     return Number(dashboardRevenueValue(row) ?? 0);
+  }
+
+  function isDailyAllocatedAttribution(row = {}) {
+    const ruleText = normalizeText([
+      row.regra_atribuicao_real,
+      row.regra_join_atribuicao,
+      row.flags_qualidade
+    ].filter(Boolean).join(' '));
+    return ruleText.includes('allocated');
+  }
+
+  function orderChannelType(row = {}) {
+    const explicitType = normalizeText(row.tipo_real || row.tipo || row.tipo_canal || row.channel_type);
+    if (/(^| )(paid|pago|midia paga|paid media)( |$)/.test(explicitType)) return 'paid';
+    if (/(^| )(unmatched|sem origem|sem utm|sem atribuicao|sem match|unattributed|unknown|an unknown source|not set)( |$)/.test(explicitType)) return 'organic';
+    if (isUnattributedChannelRow(row)) return 'organic';
+    if (/(^| )(owned|crm|email|newsletter|whatsapp|sms|organic|organico|seo|direct|referral|other|outros)( |$)/.test(explicitType)) return 'organic';
+
+    const channelText = normalizeText([
+      row.canal_real,
+      row.canal,
+      row.channel,
+      row.chanel,
+      row.grupo_canal,
+      row.raw_channel,
+      row.raw_medium,
+      row.raw_source,
+      row.utm_medium,
+      row.utm_source
+    ].filter(Boolean).join(' '));
+    if (!channelText) return isDailyAllocatedAttribution(row) ? null : 'organic';
+    if (/(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen|cpc|ppc|cpm|paid|ads|anuncio|anuncios|patrocinad)( |$)/.test(channelText)) return 'paid';
+    if (isUnattributedChannelRow(row)) return 'organic';
+    return 'organic';
+  }
+
+  function attributionQualityMeta(granularPct, allocatedPct = null) {
+    const granular = numberOrNull(granularPct);
+    if (granular === null) {
+      return {
+        tone: 'neutral',
+        label: 'Sem origem',
+        reason: 'Nao ha base suficiente para medir cobertura granular de origem/UTM.'
+      };
+    }
+    const detail = `Cobertura granular ${fmtPct(granular, 1)}${allocatedPct === null ? '' : `; alocacao SSOT ${fmtPct(allocatedPct, 1)}`}.`;
+    if (granular >= .8) {
+      return {
+        tone: 'positive',
+        label: 'Granular',
+        reason: `${detail} Leitura mais forte para apresentar como origem por pedido.`
+      };
+    }
+    if (granular >= .5) {
+      return {
+        tone: 'warning',
+        label: 'Mista',
+        reason: `${detail} Use como leitura comercial, explicando que parte vem de alocacao binaria do SSOT.`
+      };
+    }
+    return {
+      tone: 'warning',
+      label: 'Alocada',
+      reason: `${detail} A divisao pago/organico fecha o total, mas depende majoritariamente de alocacao do SSOT.`
+    };
+  }
+
+  function attributionQualityFromRows(rows = [], totalOrders = null) {
+    const orderIds = new Set(rows.map((row) => row.order_sk || row.order_id || row.pedido_id).filter(Boolean));
+    const total = numberOrNull(totalOrders) ?? orderIds.size;
+    if (!total) return { total: null, granularOrders: null, allocatedOrders: null, granularPct: null, allocatedPct: null, ...attributionQualityMeta(null) };
+    const granularOrderIds = new Set(
+      rows
+        .filter((row) => !isDailyAllocatedAttribution(row) && ['paid', 'organic'].includes(orderChannelType(row)))
+        .map((row) => row.order_sk || row.order_id || row.pedido_id)
+        .filter(Boolean)
+    );
+    const allocatedOrderIds = new Set(
+      rows
+        .filter((row) => isDailyAllocatedAttribution(row))
+        .map((row) => row.order_sk || row.order_id || row.pedido_id)
+        .filter(Boolean)
+    );
+    const granularPct = granularOrderIds.size / total;
+    const allocatedPct = allocatedOrderIds.size / total;
+    return {
+      total,
+      granularOrders: granularOrderIds.size,
+      allocatedOrders: allocatedOrderIds.size,
+      granularPct,
+      allocatedPct,
+      ...attributionQualityMeta(granularPct, allocatedPct)
+    };
+  }
+
+  function isUnattributedChannelRow(row = {}) {
+    const text = normalizeText([
+      row.tipo_real,
+      row.tipo,
+      row.tipo_canal,
+      row.channel_type,
+      row.regra_atribuicao_real,
+      row.regra_join_atribuicao,
+      row.canal_real,
+      row.canal,
+      row.channel,
+      row.grupo_canal,
+      row.raw_channel,
+      row.raw_medium,
+      row.raw_source
+    ].filter(Boolean).join(' '));
+    return /(^| )(unmatched|sem origem|sem utm|sem atribuicao|sem match|unattributed|unknown|an unknown source|not set)( |$)/.test(text);
   }
 
   const hasValidDayZero = (model) => Boolean(toDate(canonicalDayZero(model)));
@@ -593,7 +716,8 @@
       const pedidosOrganicosCampo = sumNullable(filtered, 'pedidos_organicos');
       const pedidosCrmCampo = sumNullable(filtered, 'pedidos_crm');
       const pedidosOutrosCampo = sumNullable(filtered, 'pedidos_outros_canais');
-      const typedAttributionSignal = filtered.some((row) => String(row.tipo_real || '').trim());
+      const dailyAllocatedAttribution = filtered.some((row) => isDailyAllocatedAttribution(row));
+      const typedAttributionSignal = !dailyAllocatedAttribution && filtered.some((row) => orderChannelType(row));
       const attributionSignal = filtered.some((row) => (
         row.tipo_real !== null && row.tipo_real !== undefined
         || row.canal_real !== null && row.canal_real !== undefined
@@ -602,6 +726,8 @@
         || row.receita_organica !== null && row.receita_organica !== undefined
         || row.receita_crm !== null && row.receita_crm !== undefined
         || row.receita_outros_canais !== null && row.receita_outros_canais !== undefined
+        || row.receita_sem_match_atribuicao !== null && row.receita_sem_match_atribuicao !== undefined
+        || row.pedidos_sem_match_atribuicao !== null && row.pedidos_sem_match_atribuicao !== undefined
       ));
       const channelBuckets = {
         paid: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
@@ -621,7 +747,7 @@
         return bucket.pedidosFallback || (typedAttributionSignal ? 0 : null);
       };
       filtered.forEach((row) => {
-        const tipo = String(row.tipo_real || '').trim().toLowerCase();
+        const tipo = orderChannelType(row);
         const hasAttributionMatch = Boolean(
           tipo
           || row.canal_real
@@ -631,12 +757,8 @@
           addChannelRow(channelBuckets.paid, row);
           return;
         }
-        if (tipo === 'organic') {
+        if (tipo === 'organic' || tipo === 'owned' || tipo === 'crm' || tipo === 'unmatched') {
           addChannelRow(channelBuckets.organic, row);
-          return;
-        }
-        if (tipo === 'owned' || tipo === 'crm') {
-          addChannelRow(channelBuckets.crm, row);
           return;
         }
         if (tipo) {
@@ -644,17 +766,29 @@
           return;
         }
         if (!hasAttributionMatch) {
-          addChannelRow(channelBuckets.unmatched, row);
+          addChannelRow(channelBuckets.organic, row);
         }
       });
       const receitaPaga = typedAttributionSignal ? roundMoney(channelBuckets.paid.receita) : receitaPagaCampo;
-      const receitaOrganica = typedAttributionSignal ? roundMoney(channelBuckets.organic.receita) : receitaOrganicaCampo;
-      const receitaCrm = typedAttributionSignal ? roundMoney(channelBuckets.crm.receita) : receitaCrmCampo;
+      const receitaCrm = attributionSignal ? 0 : null;
       const receitaOutrosCanais = typedAttributionSignal ? roundMoney(channelBuckets.other.receita) : receitaOutrosCampo;
       const pedidosPagos = typedAttributionSignal ? bucketOrderCount(channelBuckets.paid) : pedidosPagosCampo;
-      const pedidosOrganicos = typedAttributionSignal ? bucketOrderCount(channelBuckets.organic) : pedidosOrganicosCampo;
-      const pedidosCrm = typedAttributionSignal ? bucketOrderCount(channelBuckets.crm) : pedidosCrmCampo;
+      const pedidosCrm = attributionSignal ? 0 : null;
       const pedidosOutrosCanais = typedAttributionSignal ? bucketOrderCount(channelBuckets.other) : pedidosOutrosCampo;
+      const receitaOrganicaBase = typedAttributionSignal
+        ? roundMoney(channelBuckets.organic.receita)
+        : explicitOrganicOrLegacyCrm(receitaOrganicaCampo, receitaCrmCampo);
+      const pedidosOrganicosBase = typedAttributionSignal
+        ? bucketOrderCount(channelBuckets.organic)
+        : explicitOrganicOrLegacyCrm(pedidosOrganicosCampo, pedidosCrmCampo);
+      const receitaOrganica = nonInvestmentRevenueForData(
+        { receita, receita_bruta: receita, receita_organica: receitaOrganicaBase },
+        receitaPaga
+      );
+      const pedidosOrganicos = nonInvestmentOrdersForData(
+        { pedidos, pedidos_validos: pedidos, pedidos_organicos: pedidosOrganicosBase },
+        pedidosPagos
+      );
       return {
         receita,
         receita_bruta: receita,
@@ -675,8 +809,8 @@
         pedidos_crm: pedidosCrm,
         receita_outros_canais: attributionSignal ? receitaOutrosCanais : null,
         pedidos_outros_canais: attributionSignal ? pedidosOutrosCanais : null,
-        receita_sem_match_atribuicao: attributionSignal ? roundMoney(channelBuckets.unmatched.receita) : null,
-        pedidos_sem_match_atribuicao: attributionSignal ? bucketOrderCount(channelBuckets.unmatched) : null,
+        receita_sem_match_atribuicao: attributionSignal ? 0 : null,
+        pedidos_sem_match_atribuicao: attributionSignal ? 0 : null,
         origem,
         day
       };
@@ -1435,6 +1569,41 @@
     }
   };
 
+  const rankingValueLabelsPlugin = {
+    id: 'rankingValueLabels',
+    afterDatasetsDraw(chart, args, opts) {
+      if (!opts?.enabled) return;
+      const datasetIndex = opts.datasetIndex || 0;
+      const dataset = chart.data.datasets?.[datasetIndex];
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (!dataset || !meta || meta.hidden) return;
+      const { ctx, chartArea } = chart;
+      ctx.save();
+      ctx.font = '800 11px Inter, "Segoe UI", Arial, sans-serif';
+      ctx.textBaseline = 'middle';
+      meta.data.forEach((bar, index) => {
+        const rawValue = dataset.data?.[index];
+        const value = numberOrNull(rawValue);
+        if (value === null || !bar) return;
+        const text = typeof opts.formatter === 'function'
+          ? opts.formatter(value, index, chart)
+          : fmtNum(value);
+        if (!text) return;
+        const props = bar.getProps(['x', 'y', 'base'], true);
+        const x = Number(props.x);
+        const base = Number(props.base);
+        const width = Math.abs(x - base);
+        const textWidth = ctx.measureText(text).width;
+        const outsideX = Math.min(chartArea.right - textWidth - 2, x + 8);
+        const insideX = Math.max(chartArea.left + 4, x - textWidth - 8);
+        ctx.textAlign = width > textWidth + 18 ? 'left' : 'left';
+        ctx.fillStyle = width > textWidth + 18 ? '#FFFFFF' : 'rgba(255,255,255,0.82)';
+        ctx.fillText(text, width > textWidth + 18 ? insideX : outsideX, props.y);
+      });
+      ctx.restore();
+    }
+  };
+
   const commercialMissingBarsPlugin = {
     id: 'commercialMissingBars',
     afterDatasetsDraw(chart, args, opts) {
@@ -1477,6 +1646,7 @@
     if (!window.Chart) return;
     Chart.register(launchCheckpointPlugin);
     Chart.register(clientMixLabelsPlugin);
+    Chart.register(rankingValueLabelsPlugin);
     Chart.register(commercialMissingBarsPlugin);
     Chart.defaults.font.family = 'Inter, "Segoe UI", Arial, sans-serif';
     Chart.defaults.font.size = 11;
@@ -1556,6 +1726,103 @@
     if (!canvas || !window.Chart) return null;
     state.charts[id] = new Chart(canvas, cfg);
     return state.charts[id];
+  }
+
+  function cloneChartValue(value) {
+    if (Array.isArray(value)) return value.map(cloneChartValue);
+    if (isPlainObject(value)) {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneChartValue(item)]));
+    }
+    return value;
+  }
+
+  function activeLaunchChart() {
+    const panel = document.querySelector('.launch-chart-panel.is-active:not([hidden])');
+    const canvas = panel?.querySelector?.('canvas');
+    if (!canvas || !window.Chart) return null;
+    const chart = Chart.getChart(canvas);
+    return chart ? { panel, canvas, chart } : null;
+  }
+
+  function closeChartZoom() {
+    const modal = $('chart-zoom-modal');
+    if (!modal) return;
+    state.zoomChart?.destroy?.();
+    state.zoomChart = null;
+    modal.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('chart-zoom-open');
+  }
+
+  function openChartZoom() {
+    const active = activeLaunchChart();
+    const modal = $('chart-zoom-modal');
+    const canvas = $('chart-zoom-canvas');
+    if (!active || !modal || !canvas || !window.Chart) return;
+
+    const title = active.panel.querySelector('.chart-title span, .chart-title')?.textContent?.trim() || 'Grafico ampliado';
+    const subtitle = active.panel.querySelector('.chart-sub')?.textContent?.trim() || '';
+    const titleEl = $('chart-zoom-title');
+    const subtitleEl = $('chart-zoom-subtitle');
+    if (titleEl) titleEl.textContent = title;
+    if (subtitleEl) subtitleEl.textContent = subtitle;
+
+    state.zoomChart?.destroy?.();
+    state.zoomChart = null;
+    modal.hidden = false;
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('chart-zoom-open');
+
+    const sourceConfig = active.chart.config?._config || active.chart.config || {};
+    const data = cloneChartValue(sourceConfig.data || active.chart.data || {});
+    const options = mergePlainObjects(cloneChartValue(sourceConfig.options || active.chart.options || {}), {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 14, right: 18, bottom: 8, left: 8 } },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          align: 'center'
+        }
+      }
+    });
+
+    state.zoomChart = new Chart(canvas, {
+      type: sourceConfig.type || active.chart.config?.type || 'line',
+      data,
+      options
+    });
+
+    requestAnimationFrame(() => {
+      state.zoomChart?.resize?.();
+      $('chart-zoom-close')?.focus?.({ preventScroll: true });
+    });
+  }
+
+  function configureLaunchChartZoom() {
+    document.querySelectorAll('.launch-chart-panel .chart-head').forEach((head) => {
+      if (head.querySelector('[data-chart-zoom-open]')) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'chart-zoom-button';
+      button.dataset.chartZoomOpen = '';
+      button.dataset.tooltip = 'Ampliar grafico';
+      button.setAttribute('aria-label', 'Ampliar grafico');
+      button.innerHTML = '<i class="ti ti-search" aria-hidden="true"></i>';
+      head.appendChild(button);
+    });
+
+    document.addEventListener('click', (event) => {
+      if (event.target?.closest?.('[data-chart-zoom-open]')) openChartZoom();
+      if (event.target?.closest?.('[data-chart-zoom-close]')) closeChartZoom();
+    });
+
+    $('chart-zoom-close')?.addEventListener('click', closeChartZoom);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !$('chart-zoom-modal')?.hidden) closeChartZoom();
+    });
   }
 
   function collapsibleListItems(container) {
@@ -1730,6 +1997,34 @@
     });
   }
 
+  function applyLaunchChartView(view = state.launchChartView || 'normalized') {
+    state.launchChartView = view;
+    document.querySelectorAll('[data-chart-view]').forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.chartView === view);
+    });
+    document.querySelectorAll('[data-chart-panel]').forEach((panel) => {
+      const active = panel.dataset.chartPanel === view;
+      panel.classList.toggle('is-active', active);
+      panel.hidden = !active;
+    });
+    const normalizedControls = document.querySelector('.normalized-chart-controls');
+    if (normalizedControls) normalizedControls.hidden = view !== 'normalized';
+    window.requestAnimationFrame(() => {
+      Object.values(state.charts).forEach((chart) => chart?.resize?.());
+    });
+  }
+
+  function configureLaunchChartViewToggle() {
+    const buttons = [...document.querySelectorAll('[data-chart-view]')];
+    if (!buttons.length) return;
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => {
+        applyLaunchChartView(button.dataset.chartView || 'normalized');
+      });
+    });
+    applyLaunchChartView();
+  }
+
   function configureTopicTabs() {
     document.querySelectorAll('.topic-tab').forEach((tab) => {
       tab.addEventListener('click', () => {
@@ -1785,6 +2080,29 @@
       }
       renderPanel(grid);
     }, true);
+  }
+
+  function configureLaunchTableInsights() {
+    const rowFromEvent = (event) => event.target?.closest?.('.launch-main-table tbody tr[data-launch-insight]');
+    const openFromRow = (row) => {
+      if (!row) return;
+      openLaunchRowInsightDrawer(row.dataset.launchInsight);
+    };
+
+    document.addEventListener('click', (event) => {
+      if (event.target?.closest?.('[data-launch-insight-close]')) {
+        closeLaunchRowInsightDrawer();
+        return;
+      }
+      openFromRow(rowFromEvent(event));
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const row = rowFromEvent(event);
+      if (!row || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      openFromRow(row);
+    });
   }
 
   function configureTooltips() {
@@ -1858,9 +2176,9 @@
 
   function renderModelSelector() {
     const wrap = $('model-selector');
-    const launches = comparableLaunches();
+    const launches = availableComparisonLaunches();
     wrap.innerHTML = `
-      <select class="model-select" aria-label="Linha destacada">
+      <select class="model-select" aria-label="Destaque visual">
         ${launches.map((launch) => {
           const status = launch.isActive ? ' · ativo' : isPlannedStatus(launch.status) ? ' · planejado' : '';
           return `<option value="${launch.modelo_id}" ${launch.modelo_id === state.primaryModelId ? 'selected' : ''}>${escapeHtml(launch.modelo)}${escapeHtml(status)}</option>`;
@@ -1906,7 +2224,7 @@
         </summary>
         <div class="compare-menu">
           <div class="compare-toolbar">
-            <div class="compare-summary">Modelos usados em rankings, curvas, comerciais e projeção.</div>
+            <div class="compare-summary">Este grupo entra em rankings, curvas, comerciais e projeção. O destaque visual só realça uma linha.</div>
             <div class="compare-actions">
               <button class="compare-action" type="button" data-compare-action="all">Todos</button>
               <button class="compare-action" type="button" data-compare-action="none">Limpar</button>
@@ -1940,12 +2258,138 @@
       });
     });
     if (!selectedLaunches.length) {
-      warning.textContent = 'Nenhum modelo marcado; marque linhas para manter a análise comparativa.';
+      warning.textContent = 'Nenhum lançamento no grupo; marque ao menos dois para comparar.';
     } else if (selectedLaunches.length === 1) {
-      warning.textContent = 'Com 1 linha, o painel perde leitura comparativa.';
+      warning.textContent = 'Com 1 lançamento, a tela vira leitura isolada. Inclua mais um para comparar.';
     } else {
       warning.textContent = '';
     }
+  }
+
+  function lineFilterOptions() {
+    const rows = new Map();
+    comparableLaunches().forEach((launch) => {
+      const label = launch.linha || launch.modelo;
+      const key = normalizeText(label || '');
+      if (!key) return;
+      if (!rows.has(key)) rows.set(key, { key, label });
+    });
+    return [...rows.values()].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+  }
+
+  function renderLineSelector() {
+    const wrap = $('line-selector');
+    if (!wrap) return;
+    const options = lineFilterOptions();
+    if (state.lineFilter !== 'all' && !options.some((item) => item.key === state.lineFilter)) {
+      state.lineFilter = 'all';
+    }
+    wrap.innerHTML = `
+      <select class="line-select" aria-label="Linha da analise">
+        <option value="all" ${state.lineFilter === 'all' ? 'selected' : ''}>Todas as linhas</option>
+        ${options.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.lineFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+      </select>`;
+    wrap.querySelector('select')?.addEventListener('change', (event) => {
+      state.lineFilter = event.target.value || 'all';
+      state.productFilter = 'all';
+      state.productColorFilter = 'all';
+      renderAll();
+    });
+  }
+
+  function productFilterOptions() {
+    const launches = selectedCompareLaunches().length ? selectedCompareLaunches() : comparableLaunches();
+    const options = new Map();
+    launches.forEach((launch) => {
+      subModelOptionsForStory(launch).forEach((item) => {
+        const key = normalizeText(item.label || item.id || '');
+        if (!key) return;
+        const current = options.get(key) || { key, label: item.label, models: new Set() };
+        current.models.add(launch.modelo_id);
+        options.set(key, current);
+      });
+    });
+    return [...options.values()]
+      .map((item) => ({ ...item, count: item.models.size }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'pt-BR'));
+  }
+
+  function productColorFilterOptions() {
+    const launches = selectedCompareLaunches().length ? selectedCompareLaunches() : availableComparisonLaunches();
+    const options = new Map();
+    launches.forEach((launch) => {
+      storySalesRowsForWindow(launch)
+        .filter((row) => {
+          if (state.productFilter === 'all') return true;
+          return productKeyForSalesRow(row, launch) === state.productFilter;
+        })
+        .forEach((row) => {
+          const label = extractColor(row, launch);
+          if (!validComparativeCutKey(label, 'Cor')) return;
+          const key = normalizeText(label);
+          const current = options.get(key) || { key, label, models: new Set(), pares: 0, receita: 0 };
+          current.models.add(launch.modelo_id);
+          current.pares += Number(row.pares || row.quantidade || 0);
+          current.receita += dashboardRevenueNumber(row);
+          options.set(key, current);
+        });
+    });
+    return [...options.values()]
+      .map((item) => ({ ...item, count: item.models.size }))
+      .sort((a, b) => b.receita - a.receita || b.pares - a.pares || String(a.label).localeCompare(String(b.label), 'pt-BR'));
+  }
+
+  function renderProductSelector() {
+    const wrap = $('product-selector');
+    if (!wrap) return;
+    const options = productFilterOptions();
+    if (state.productFilter !== 'all' && !options.some((item) => item.key === state.productFilter)) {
+      state.productFilter = 'all';
+      state.productColorFilter = 'all';
+    }
+    const colorOptions = productColorFilterOptions();
+    if (state.productColorFilter !== 'all' && !colorOptions.some((item) => item.key === state.productColorFilter)) {
+      state.productColorFilter = 'all';
+    }
+    const disabled = !options.length;
+    wrap.innerHTML = `
+      <div class="product-filter-stack">
+        <select class="product-select" aria-label="Produto da analise" ${disabled ? 'disabled' : ''}>
+          <option value="all" ${state.productFilter === 'all' ? 'selected' : ''}>Todos os produtos</option>
+          ${options.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productFilter ? 'selected' : ''}>${escapeHtml(item.label)}${item.count > 1 ? ` (${fmtNum(item.count)})` : ''}</option>`).join('')}
+        </select>
+        ${colorOptions.length ? `
+          <select class="product-color-select" aria-label="Cor do produto">
+            <option value="all" ${state.productColorFilter === 'all' ? 'selected' : ''}>Todas as cores</option>
+            ${colorOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productColorFilter ? 'selected' : ''}>${escapeHtml(item.label)}${item.count > 1 ? ` (${fmtNum(item.count)})` : ''}</option>`).join('')}
+          </select>
+        ` : ''}
+      </div>`;
+    wrap.querySelector('.product-select')?.addEventListener('change', (event) => {
+      state.productFilter = event.target.value || 'all';
+      state.productColorFilter = 'all';
+      renderAll();
+    });
+    wrap.querySelector('.product-color-select')?.addEventListener('change', (event) => {
+      state.productColorFilter = event.target.value || 'all';
+      renderAll();
+    });
+  }
+
+  function renderChannelSelector() {
+    const wrap = $('channel-selector');
+    if (!wrap) return;
+    if (state.channelFilter === 'paid') state.channelFilter = 'investment';
+    if (state.channelFilter === 'crm') state.channelFilter = 'organic';
+    if (!CHANNEL_FILTERS.some((item) => item.key === state.channelFilter)) state.channelFilter = 'all';
+    wrap.innerHTML = `
+      <select class="channel-select" aria-label="Canal de venda">
+        ${CHANNEL_FILTERS.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.channelFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+      </select>`;
+    wrap.querySelector('select')?.addEventListener('change', (event) => {
+      state.channelFilter = event.target.value || 'all';
+      renderAll();
+    });
   }
 
   function renderTopMeta() {
@@ -1962,14 +2406,28 @@
     const periodKey = selectedPeriodKey();
     const period = ANALYSIS_PERIODS.find((item) => item.key === periodKey);
     const compareCount = selectedCompareLaunches().length || 1;
+    const lineLabel = state.lineFilter === 'all'
+      ? 'Todas'
+      : lineFilterOptions().find((item) => item.key === state.lineFilter)?.label || 'Linha filtrada';
+    const productLabel = state.productFilter === 'all'
+      ? 'Todos'
+      : productFilterOptions().find((item) => item.key === state.productFilter)?.label || 'Produto filtrado';
+    const colorLabel = state.productColorFilter === 'all'
+      ? null
+      : productColorFilterOptions().find((item) => item.key === state.productColorFilter)?.label || 'cor filtrada';
+    const recorteLabel = colorLabel ? `${productLabel} / ${colorLabel}` : productLabel;
+    const channelLabel = CHANNEL_FILTERS.find((item) => item.key === state.channelFilter)?.label || 'Todos';
     const dLabel = selected.isFuture
       ? `D${selected.dPlus}`
       : `D+${Math.max(0, selected.dPlus ?? 0)}`;
     const items = [
-      { label: 'Modelo', value: selected.modelo },
-      { label: 'Janela', value: period?.label || selectedPeriodLabel() },
-      { label: 'Comparativo', value: `${fmtNum(compareCount)} modelos` },
-      { label: 'Snapshot', value: `${fmtDate(snapshotIso())} · ${dLabel}` }
+      { label: 'Grupo comparado', value: `${fmtNum(compareCount)} modelos` },
+      { label: 'Período', value: period?.label || selectedPeriodLabel() },
+      { label: 'Destaque visual', value: selected.modelo },
+      { label: 'Linha de produto', value: lineLabel },
+      { label: 'Recorte', value: recorteLabel },
+      { label: 'Canal de venda', value: channelLabel },
+      { label: 'Atualização', value: `${fmtDate(snapshotIso())} · ${dLabel}` }
     ];
     wrap.innerHTML = `
       <div class="analysis-context-main">
@@ -2094,7 +2552,7 @@
       alerts.push({
         type: 'warn',
         title: 'Canal ainda incompleto',
-        copy: `${fmtNum(mediaBlocked.length)} linha(s) de mídia seguem sem atribuição real por pedido; ROAS por canal fica bloqueado onde a receita não for confiável.`
+        copy: `${fmtNum(mediaBlocked.length)} linha(s) de investimento seguem sem atribuição real por pedido; ROAS fica vazio onde a receita não for confiável.`
       });
     }
     const technicalWarning = manifestWarnings.find((warning) => /ALERTA|falhou/i.test(String(warning)));
@@ -2173,7 +2631,7 @@
       <details class="reading-support-panel"${alerts.some((alert) => alert.type === 'neg') ? ' open' : ''}>
         <summary>
           <span class="reading-support-title">
-            <span>Apoio de leitura</span>
+            <span>Apoio à decisão</span>
             <strong>Metodologia, alertas e estoque</strong>
           </span>
           <span class="reading-support-badges">
@@ -2434,10 +2892,62 @@
       ? rows.reduce((acc, row) => acc + Number(row.pares || 0), 0)
       : null;
     const pedidos = orderIds.size || pedidosSomados;
+    const sumField = (field) => {
+      const values = rows
+        .map((row) => numberOrNull(row[field]))
+        .filter((value) => value !== null);
+      return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
+    };
+    const dailyAllocatedAttribution = rows.some((row) => isDailyAllocatedAttribution(row));
+    const hasChannelSignal = !dailyAllocatedAttribution && rows.some((row) => orderChannelType(row));
+    const rowsForTypes = (types) => rows.filter((row) => types.includes(orderChannelType(row)));
+    const receitaForTypes = (types) => {
+      const typedRows = rowsForTypes(types);
+      return typedRows.length ? typedRows.reduce((acc, row) => acc + dashboardRevenueNumber(row), 0) : 0;
+    };
+    const pedidosForTypes = (types) => {
+      const typedRows = rowsForTypes(types);
+      const ids = new Set(typedRows.map((row) => row.order_sk).filter(Boolean));
+      if (ids.size) return ids.size;
+      const fallback = typedRows.reduce((acc, row) => acc + Number(row.pedidos_validos ?? row.pedidos ?? 0), 0);
+      return fallback || 0;
+    };
+    const receitaPaga = hasChannelSignal ? receitaForTypes(['paid']) : sumField('receita_paga');
+    const receitaSemMatch = hasChannelSignal ? receitaForTypes(['unmatched']) : sumField('receita_sem_match_atribuicao');
+    const receitaCrmCampo = sumField('receita_crm');
+    const pedidosCrmCampo = sumField('pedidos_crm');
+    const receitaCrm = hasChannelSignal ? 0 : null;
+    const pedidosPagos = hasChannelSignal ? pedidosForTypes(['paid']) : sumField('pedidos_pagos');
+    const pedidosSemMatch = hasChannelSignal ? pedidosForTypes(['unmatched']) : sumField('pedidos_sem_match_atribuicao');
+    const pedidosCrm = hasChannelSignal ? 0 : null;
+    const receitaInvestimento = receitaPaga;
+    const pedidosInvestimento = pedidosPagos;
+    const receitaOrganicaBase = hasChannelSignal
+      ? receitaForTypes(['organic'])
+      : explicitOrganicOrLegacyCrm(sumField('receita_organica'), receitaCrmCampo);
+    const pedidosOrganicosBase = hasChannelSignal
+      ? pedidosForTypes(['organic'])
+      : explicitOrganicOrLegacyCrm(sumField('pedidos_organicos'), pedidosCrmCampo);
     return {
       receita,
       pedidos,
       pares,
+      receita_paga: receitaPaga,
+      receita_organica: nonInvestmentRevenueForData(
+        { receita, receita_bruta: receita, receita_organica: receitaOrganicaBase },
+        receitaInvestimento
+      ),
+      receita_crm: receitaCrm,
+      receita_outros_canais: sumField('receita_outros_canais'),
+      receita_sem_match_atribuicao: receitaSemMatch,
+      pedidos_pagos: pedidosPagos,
+      pedidos_organicos: nonInvestmentOrdersForData(
+        { pedidos, pedidos_validos: pedidos, pedidos_organicos: pedidosOrganicosBase },
+        pedidosInvestimento
+      ),
+      pedidos_crm: pedidosCrm,
+      pedidos_outros_canais: sumField('pedidos_outros_canais'),
+      pedidos_sem_match_atribuicao: pedidosSemMatch,
       row: { ...source, receita, pedidos, pares, linhas: rows.length }
     };
   }
@@ -2450,6 +2960,109 @@
       return idx !== null && idx >= startDay && idx <= endDay;
     });
     return aggregateLaunchSalesRows(rows, { start_day: startDay, end_day: endDay });
+  }
+
+  function isProductFilterActive() {
+    return Boolean(
+      (state.productFilter && state.productFilter !== 'all')
+      || (state.productColorFilter && state.productColorFilter !== 'all')
+    );
+  }
+
+  function isProductOnlyFilterActive() {
+    return Boolean(state.productFilter && state.productFilter !== 'all');
+  }
+
+  function isProductColorFilterActive() {
+    return Boolean(state.productColorFilter && state.productColorFilter !== 'all');
+  }
+
+  function isChannelFilterActive() {
+    return Boolean(state.channelFilter && state.channelFilter !== 'all');
+  }
+
+  function productKeyForSalesRow(row, launch) {
+    const subId = rowSubModelId(row, launch?.modelo_id || row?.modelo_id);
+    const label = subId ? subModelLabel(subId) : (row?.sub_modelo || row?.produto || row?.nome_produto || row?.product_title || '');
+    return normalizeText(label || '');
+  }
+
+  function rowMatchesProductFilter(row, launch) {
+    if (isProductOnlyFilterActive() && productKeyForSalesRow(row, launch) !== state.productFilter) return false;
+    if (isProductColorFilterActive()) {
+      const color = extractColor(row, launch);
+      if (normalizeText(color) !== state.productColorFilter) return false;
+    }
+    return true;
+  }
+
+  function salesRowsForLaunchDayRange(launch, startDay, endDay) {
+    const d0 = analysisDayZero(launch);
+    return optionalRows('lancamentos_produtos_dia').filter((row) => {
+      if (row.modelo_id !== launch?.modelo_id) return false;
+      if (!rowMatchesProductFilter(row, launch)) return false;
+      const idx = dayIndex(d0, row.data);
+      return idx !== null && idx >= startDay && idx <= endDay;
+    });
+  }
+
+  function channelFieldMap(channelKey = state.channelFilter) {
+    const map = {
+      investment: { receita: ['receita_paga'], pedidos: ['pedidos_pagos'], label: 'Midia paga' },
+      paid: { receita: ['receita_paga'], pedidos: ['pedidos_pagos'], label: 'Midia paga' },
+      crm: { receita: ['receita_organica'], pedidos: ['pedidos_organicos'], label: 'Organico' },
+      organic: { receita: 'receita_organica', pedidos: 'pedidos_organicos', label: 'Organico' },
+      other: { receita: 'receita_outros_canais', pedidos: 'pedidos_outros_canais', label: 'Outros' }
+    };
+    return map[channelKey] || null;
+  }
+
+  function applyChannelFilterToSalesData(data) {
+    if (!data || !isChannelFilterActive()) return data;
+    const fields = channelFieldMap();
+    if (!fields) return data;
+    const totalReceita = numberOrNull(data.receita);
+    const totalPedidos = numberOrNull(data.pedidos);
+    const fieldValue = (field) => (
+      Array.isArray(field)
+        ? sumValues(...field.map((item) => data[item]))
+        : numberOrNull(data[field])
+    );
+    const receita = fieldValue(fields.receita);
+    const pedidos = fieldValue(fields.pedidos);
+    return {
+      ...data,
+      receita,
+      pedidos,
+      receita_total_original: totalReceita,
+      pedidos_total_original: totalPedidos,
+      pares: null,
+      ticket: ratioOrNull(receita, pedidos),
+      preco_medio_par: null,
+      channelFiltered: fields.label
+    };
+  }
+
+  function filteredWindowDataForLaunch(launch, key = selectedPeriodKey()) {
+    const endDay = WINDOW_DAYS[key];
+    if (endDay === null || endDay === undefined) return null;
+    if (!isProductFilterActive()) {
+      return applyChannelFilterToSalesData(getWindow(launch, key));
+    }
+    const rows = salesRowsForLaunchDayRange(launch, 0, endDay);
+    const aggregated = aggregateLaunchSalesRows(rows, {
+      start_day: 0,
+      end_day: endDay,
+      produto: state.productFilter,
+      cor: state.productColorFilter
+    });
+    if (aggregated.receita === null && aggregated.pedidos === null && aggregated.pares === null) return null;
+    const data = {
+      ...aggregated,
+      ticket: ratioOrNull(aggregated.receita, aggregated.pedidos),
+      preco_medio_par: ratioOrNull(aggregated.receita, aggregated.pares)
+    };
+    return applyChannelFilterToSalesData(data);
   }
 
   function launchRevenueForIsoRange(launch, startIso, endIso) {
@@ -2911,7 +3524,7 @@
 
     return `
       <details class="story-seasonal-details story-step-details">
-        <summary><span>Contexto sazonal</span><small>${escapeHtml(summary)}</small></summary>
+        <summary><span>Calendário comercial</span><small>${escapeHtml(summary)}</small></summary>
         <div class="story-seasonal-body">
           <div class="story-seasonal-overview story-seasonal-overview--${analysis.cls}">
             <div>
@@ -2973,7 +3586,7 @@
     const actual = firstKnownCommercialNumber(meta, ['realizado_receita', 'receita_realizada', 'faturamento_realizado']);
     const pct = roasNumberOrNull(meta.atingimento) ?? ratioOrNull(actual, target);
     const productShare = numberOrNull(context.launchShare);
-    const shareCopy = productShare !== null ? ` \u00b7 share produto ${fmtPct(productShare, 1)}` : '';
+    const shareCopy = productShare !== null ? ` \u00b7 participação do produto ${fmtPct(productShare, 1)}` : '';
     const launchMonth = context.launchD0 ? monthKeyFromIso(context.launchD0) : null;
     const metaMonth = meta ? metaMonthKey(meta) : null;
     const monthEnd = monthEndIso(metaMonth);
@@ -3296,7 +3909,7 @@
           { label: 'Mês base', value: monthlyLabel },
           { label: 'Fat. empresa mês', value: fmtBRL(actual) },
           { label: 'Meta mês', value: 'sem meta' },
-          { label: 'Share produto', value: fmtPct(productActualPct, 1) },
+          { label: 'Participação do produto', value: fmtPct(productActualPct, 1) },
           { label: 'Receita produto', value: fmtBRL(revenue) }
         ],
         extraHtml: monthBreakdown
@@ -3307,7 +3920,7 @@
       return {
         label: 'Faturamento empresa pendente',
         value: 'Sem realizado',
-        copy: `${range}: a meta total de ${monthlyLabel} é ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado. Sem realizado da empresa, o share de participação do produto ainda não pode ser calculado.${monthModeNote}${comparableNote}${selectedPartialNote}`,
+        copy: `${range}: a meta total de ${monthlyLabel} é ${fmtBRL(target)}, mas o faturamento realizado da empresa ainda não está carregado. Sem realizado da empresa, a participação do produto ainda não pode ser calculada.${monthModeNote}${comparableNote}${selectedPartialNote}`,
         evidence: `${source} mes_base=${monthlyLabel} meta_mes=${fmtBRL(target)} meses=[${monthBreakdownEvidence}]. ${base.evidence || ''}`,
         source,
         state: 'pending',
@@ -3316,7 +3929,7 @@
           { label: 'Fat. empresa mês', value: 'sem dado' },
           { label: 'Meta mês', value: fmtBRL(target) },
           { label: 'Receita produto', value: fmtBRL(revenue) },
-          { label: 'Share produto', value: 'sem realizado' }
+          { label: 'Participação do produto', value: 'sem realizado' }
         ],
         extraHtml: monthBreakdown
       };
@@ -3345,7 +3958,7 @@
         { label: 'Fat. empresa mês', value: fmtBRL(actual) },
         { label: 'Meta mês', value: fmtBRL(target) },
         { label: 'Gap mês', value: fmtBRL(metaGap) },
-        { label: 'Share produto', value: fmtPct(productActualPct, 1) },
+        { label: 'Participação do produto', value: fmtPct(productActualPct, 1) },
         { label: 'Receita produto', value: fmtBRL(revenue) }
       ],
       extraHtml: monthBreakdown
@@ -3461,7 +4074,7 @@
         ? 'sem receita do produto na janela'
         : companyRevenue === null
           ? 'sem faturamento da empresa na janela'
-          : 'share não calculável';
+          : 'participação pendente';
     return {
       launch,
       share,
@@ -3472,6 +4085,1676 @@
         : status,
       goalRow
     };
+  }
+
+  function filteredComparisonLaunches() {
+    return selectedCompareLaunches()
+      .filter((launch) => launch && !launch.isFuture && !isPlannedStatus(launch.status));
+  }
+
+  function compactSalesWindowForLaunch(launch) {
+    const key = selectedPeriodKey();
+    const targetDay = selectedPeriodEndDay(launch);
+    const observedForExact = selectedPeriodEndDay(launch, { capToAvailable: true });
+    const exact = !isProductFilterActive()
+      ? filteredWindowDataForLaunch(launch, key)
+      : observedForExact !== null && targetDay !== null && observedForExact >= targetDay
+        ? filteredWindowDataForLaunch(launch, key)
+        : null;
+    const d0 = analysisDayZero(launch);
+    if (exact) {
+      return {
+        launch,
+        key,
+        data: exact,
+        status: 'fechada',
+        statusLabel: selectedPeriodLabel(),
+        range: launchWindowRangeLabel(launch, key),
+        observedDay: targetDay,
+        targetDay,
+        isPartial: false,
+        source: 'vendas do pipeline'
+      };
+    }
+
+    if (!d0 || targetDay === null) {
+      return {
+        launch,
+        key,
+        data: null,
+        status: 'sem_d0',
+        statusLabel: 'sem D0',
+        range: 'sem data de lancamento',
+        observedDay: null,
+        targetDay,
+        isPartial: false,
+        source: 'sem janela'
+      };
+    }
+
+    const observedDay = selectedPeriodEndDay(launch, { capToAvailable: true });
+    if (observedDay !== null && observedDay >= 0) {
+      const cappedDay = Math.max(0, Math.min(targetDay, observedDay));
+      const partial = isProductFilterActive()
+        ? aggregateLaunchSalesRows(salesRowsForLaunchDayRange(launch, 0, cappedDay), {
+          start_day: 0,
+          end_day: cappedDay,
+          produto: state.productFilter,
+          cor: state.productColorFilter
+        })
+        : launchRevenueForDayRange(launch, 0, cappedDay);
+      const partialData = applyChannelFilterToSalesData(partial);
+      if ([partialData.receita, partialData.pedidos, partialData.pares].some((value) => numberOrNull(value) !== null)) {
+        return {
+          launch,
+          key,
+          data: {
+            ...partialData,
+            ticket: ratioOrNull(partialData.receita, partialData.pedidos),
+            preco_medio_par: ratioOrNull(partialData.receita, partialData.pares)
+          },
+          status: cappedDay >= targetDay ? 'calculada' : 'parcial',
+          statusLabel: cappedDay >= targetDay ? selectedPeriodLabel() : `D+${fmtNum(cappedDay)} parcial`,
+          range: `${fmtDateSlash(d0)} a ${fmtDateSlash(toIsoDate(addDays(d0, cappedDay)))}`,
+          observedDay: cappedDay,
+          targetDay,
+          isPartial: cappedDay < targetDay,
+          source: 'vendas parciais do pipeline'
+        };
+      }
+    }
+
+    return {
+      launch,
+      key,
+      data: null,
+      status: 'em_maturacao',
+      statusLabel: 'em maturacao',
+      range: launchWindowRangeLabel(launch, key),
+      observedDay,
+      targetDay,
+      isPartial: true,
+      source: 'janela ainda sem venda'
+    };
+  }
+
+  function acquisitionChannelKey(label) {
+    const text = normalizeText(label);
+    if (/(paid media|meta ads|google ads|facebook ads|instagram ads|ads|paid|pago)/.test(text)) return 'paid';
+    if (/(organico|organic|seo)/.test(text)) return 'organic';
+    if (/(crm|email|whatsapp|sms|owned)/.test(text)) return 'organic';
+    return 'organic';
+  }
+
+  function acquisitionChannelRows(acquisition, { applyFilter = true } = {}) {
+    const rows = Array.isArray(acquisition?.canais) ? acquisition.canais : [];
+    if (!rows.length) return [];
+    const mapped = rows.map((row) => ({
+      key: acquisitionChannelKey(row.canal),
+      label: row.canal || 'Canal',
+      receita: numberOrNull(row.receita),
+      pedidos: numberOrNull(row.pedidos),
+      investimento: numberOrNull(row.investimento),
+      source: 'janela_empresa',
+      hasData: true
+    })).filter((row) => row.receita !== null || row.pedidos !== null || row.investimento !== null);
+    return applyFilter && isChannelFilterActive()
+      ? mapped.filter((row) => row.key === state.channelFilter)
+      : mapped;
+  }
+
+  function legacyChannelSummary(acquisition, targetKey) {
+    const keys = targetKey === 'investment' ? ['paid'] : [targetKey];
+    const rows = acquisitionChannelRows(acquisition, { applyFilter: false })
+      .filter((row) => keys.includes(row.key));
+    const receita = sumValues(...rows.map((row) => row.receita));
+    const pedidos = sumValues(...rows.map((row) => row.pedidos));
+    if (receita === null && pedidos === null) return null;
+    return {
+      key: targetKey,
+      label: targetKey === 'investment' ? 'Midia paga' : 'Organico',
+      receita,
+      pedidos,
+      source: 'base_antiga',
+      sourceLabel: 'base antiga',
+      hasData: true
+    };
+  }
+
+  function legacyChannelSummariesForSales(acquisition, data = {}) {
+    const investment = legacyChannelSummary(acquisition, 'investment');
+    const organic = legacyChannelSummary(acquisition, 'organic');
+    const total = numberOrNull(data?.receita_total_original)
+      ?? numberOrNull(data?.receita_bruta)
+      ?? numberOrNull(data?.receita);
+    const combined = sumValues(investment?.receita, organic?.receita);
+    const tolerance = total !== null ? Math.max(1, Math.abs(total) * 0.02) : null;
+    const exceeds = (value) => (
+      total !== null
+      && numberOrNull(value) !== null
+      && Number(value) - total > tolerance
+    );
+    const impossible = total !== null && (
+      exceeds(investment?.receita)
+      || exceeds(organic?.receita)
+      || (combined !== null && combined - total > tolerance)
+    );
+    if (impossible) return new Map();
+    return new Map([investment, organic].filter(Boolean).map((row) => [row.key, row]));
+  }
+
+  function manualChannelSummary(launch, key, targetKey, data = {}) {
+    if (!launch || !key) return null;
+    const attribution = manualAttributionFallbackForLaunch(launch, key, data);
+    if (targetKey === 'investment') {
+      if (attribution.receitaInvestimento === null && attribution.pedidosInvestimento === null) return null;
+      return {
+        key: 'investment',
+        label: 'Midia paga',
+        receita: attribution.receitaInvestimento,
+        pedidos: attribution.pedidosInvestimento,
+        source: 'base_manual',
+        sourceLabel: 'base manual',
+        hasData: true
+      };
+    }
+    if (targetKey === 'organic') {
+      if (attribution.receitaOrganica === null && attribution.pedidosOrganicos === null) return null;
+      return {
+        key: 'organic',
+        label: 'Organico',
+        receita: attribution.receitaOrganica,
+        pedidos: attribution.pedidosOrganicos,
+        source: 'base_manual',
+        sourceLabel: 'base manual',
+        hasData: true
+      };
+    }
+    return null;
+  }
+
+  function nonNegativeRoundedRemainder(total, known, precision = 2) {
+    const totalValue = numberOrNull(total);
+    const knownValue = numberOrNull(known);
+    if (totalValue === null || knownValue === null) return null;
+    const factor = 10 ** precision;
+    const value = Math.round((totalValue - knownValue) * factor) / factor;
+    return value < 0 ? 0 : value;
+  }
+
+  function nonInvestmentRevenueForData(data, investmentRevenue = null, { assumeAllWhenNoInvestment = false } = {}) {
+    const explicit = numberOrNull(data?.receita_organica);
+    if (explicit !== null) return explicit;
+    const total = numberOrNull(data?.receita_total_original)
+      ?? numberOrNull(data?.receita_bruta)
+      ?? numberOrNull(data?.receita);
+    const remainder = nonNegativeRoundedRemainder(total, investmentRevenue, 2);
+    if (remainder !== null) return remainder;
+    if (assumeAllWhenNoInvestment && total !== null) return total;
+    return numberOrNull(data?.receita_organica);
+  }
+
+  function nonInvestmentOrdersForData(data, investmentOrders = null, { assumeAllWhenNoInvestment = false } = {}) {
+    const explicit = numberOrNull(data?.pedidos_organicos);
+    if (explicit !== null) return explicit;
+    const total = numberOrNull(data?.pedidos) ?? numberOrNull(data?.pedidos_validos);
+    const remainder = nonNegativeRoundedRemainder(total, investmentOrders, 0);
+    if (remainder !== null) return remainder;
+    if (assumeAllWhenNoInvestment && total !== null) return total;
+    return numberOrNull(data?.pedidos_organicos);
+  }
+
+  function hasExplicitOrderAttribution(data = {}) {
+    return [
+      data.receita_paga,
+      data.pedidos_pagos,
+      data.receita_organica,
+      data.pedidos_organicos,
+      data.receita_sem_match_atribuicao,
+      data.pedidos_sem_match_atribuicao,
+      data.receita_outros_canais,
+      data.pedidos_outros_canais
+    ].some((value) => numberOrNull(value) !== null);
+  }
+
+  function channelRowsForSalesData(data, acquisition = null, options = {}) {
+    const hasOrderAttribution = hasExplicitOrderAttribution(data);
+    const receitaInvestimento = numberOrNull(data?.receita_paga);
+    const pedidosInvestimento = numberOrNull(data?.pedidos_pagos);
+    const receitaOrganicaBase = sumValues(
+      explicitOrganicOrLegacyCrm(data?.receita_organica, data?.receita_crm),
+      data?.receita_sem_match_atribuicao,
+      data?.receita_outros_canais
+    );
+    const pedidosOrganicosBase = sumValues(
+      explicitOrganicOrLegacyCrm(data?.pedidos_organicos, data?.pedidos_crm),
+      data?.pedidos_sem_match_atribuicao,
+      data?.pedidos_outros_canais
+    );
+    const dataComCrmOrganico = { ...data, receita_organica: receitaOrganicaBase, pedidos_organicos: pedidosOrganicosBase };
+    const hasDeclaredInvestment = numberOrNull(options.investmentValue) !== null;
+    const assumeAllWhenNoInvestment = options.assumeAllWhenNoInvestment === true && !hasDeclaredInvestment;
+    const allowAttributionFallbacks = options.allowAttributionFallbacks === true;
+    const legacyRows = allowAttributionFallbacks ? legacyChannelSummariesForSales(acquisition, data) : new Map();
+    const rows = [
+      { key: 'investment', label: 'Midia paga', receita: receitaInvestimento, pedidos: pedidosInvestimento },
+      {
+        key: 'organic',
+        label: 'Organico',
+        receita: nonInvestmentRevenueForData(dataComCrmOrganico, receitaInvestimento, { assumeAllWhenNoInvestment }),
+        pedidos: nonInvestmentOrdersForData(dataComCrmOrganico, pedidosInvestimento, { assumeAllWhenNoInvestment })
+      }
+    ];
+    const productRows = rows.map((row) => ({
+      ...row,
+      hasData: hasOrderAttribution && (row.receita !== null || row.pedidos !== null),
+      source: 'produto',
+      sourceLabel: assumeAllWhenNoInvestment && row.key === 'organic'
+          ? 'sem investimento'
+          : 'atrib. pedido'
+    }));
+    const fallbackRows = productRows.map((row) => {
+      if (row.hasData) return row;
+      if (row.key === 'investment' && !hasDeclaredInvestment) return row;
+      if (!allowAttributionFallbacks) return row;
+      return legacyRows.get(row.key)
+        || manualChannelSummary(options.launch, options.windowKey || selectedPeriodKey(), row.key, data)
+        || row;
+    });
+    const visibleRows = !options.ignoreFilter && isChannelFilterActive()
+      ? fallbackRows.filter((row) => row.key === state.channelFilter || (state.channelFilter === 'paid' && row.key === 'investment'))
+      : fallbackRows;
+    return visibleRows;
+  }
+
+  function channelCoverageForSalesData(data, acquisition = null, options = {}) {
+    const rows = channelRowsForSalesData(data, acquisition, options);
+    const source = rows.some((row) => row.hasData) ? 'produto' : 'sem_dado';
+    const totalReceita = numberOrNull(data?.receita_total_original) ?? numberOrNull(data?.receita);
+    const classifiedReceita = rows.reduce((acc, row) => acc + (row.receita || 0), 0);
+    const hasAny = rows.some((row) => row.hasData);
+    return {
+      rows,
+      totalReceita,
+      classifiedReceita: hasAny ? classifiedReceita : null,
+      hasAny,
+      source
+    };
+  }
+
+  function compactChannelBadges(data, acquisition = null) {
+    const coverage = channelCoverageForSalesData(data, acquisition);
+    if (!coverage.hasAny) return '<span class="channel-pill channel-pill--muted">Canal ainda não exportado</span>';
+    return coverage.rows.filter((row) => row.hasData).map((row) => (
+      `<span class="channel-pill channel-pill--${row.key}">${escapeHtml(row.label)}</span>`
+    )).join('');
+  }
+
+  function compactChannelSales(data, acquisition = null) {
+    const coverage = channelCoverageForSalesData(data, acquisition);
+    if (!coverage.hasAny) return '<span class="cell-muted">Canal ainda não exportado</span>';
+    return `
+      <div class="compact-channel-stack">
+        ${coverage.rows.filter((row) => row.hasData).map((row) => `
+          <span><b>${escapeHtml(row.label)}</b> ${fmtBRL(row.receita)}${row.pedidos !== null ? ` · ${fmtNum(row.pedidos)} pedidos` : ''}</span>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function compactChannelParticipation(data, acquisition = null) {
+    const coverage = channelCoverageForSalesData(data, acquisition);
+    if (!coverage.hasAny || !coverage.totalReceita) return '<span class="cell-muted">Participação ainda não exportada</span>';
+    return `
+      <div class="compact-channel-stack compact-channel-stack--share">
+        ${coverage.rows.filter((row) => row.hasData && row.receita !== null).map((row) => `
+          <span><b>${escapeHtml(row.label)}</b> ${fmtPct(row.receita / coverage.totalReceita, 1)}</span>
+        `).join('') || '<span class="cell-muted">Sem receita classificada</span>'}
+      </div>
+    `;
+  }
+
+  function compactPaidOrganicCell(data, acquisition = null, channelKey = 'paid', options = {}) {
+    const coverage = channelCoverageForSalesData(data, acquisition, options);
+    const row = coverage.rows.find((item) => item.key === channelKey && item.hasData);
+    if (!row) {
+      if (channelKey === 'unmatched') {
+        return '<span class="channel-empty">&mdash;</span>';
+      }
+      const hasDeclaredInvestment = numberOrNull(options.investmentValue) !== null;
+      if (channelKey === 'investment' && !hasDeclaredInvestment) {
+        return '<span class="channel-empty">—</span>';
+      }
+      const label = hasDeclaredInvestment ? 'Aguard. origem' : 'Sem dado';
+      const tooltip = hasDeclaredInvestment
+        ? 'Existe investimento declarado, mas o payload ainda nao trouxe origem real por pedido.'
+        : 'Sem venda ou classificacao de canal para esta janela.';
+      return `<span class="channel-empty" data-tooltip="${tooltipAttr(tooltip)}">${label}</span>`;
+    }
+    return `
+      <div class="paid-organic-simple">
+        <strong>${fmtBRL(row.receita, true)}</strong>
+        <span>${row.pedidos !== null ? `${fmtNum(row.pedidos)} pedidos` : 'sem pedido real'}</span>
+        ${row.sourceLabel ? `<small>${escapeHtml(row.sourceLabel)}</small>` : ''}
+      </div>
+    `;
+  }
+
+  function comparativeChannelMetricHtml(rows, row, channelKey) {
+    const options = {
+      launch: row.launch,
+      windowKey: selectedPeriodKey(),
+      investmentValue: row.investment?.value,
+      assumeAllWhenNoInvestment: channelKey === 'organic'
+    };
+    return `
+      <span class="channel-with-signal">
+        ${compactPaidOrganicCell(row.sales?.data, row.acquisition, channelKey, options)}
+        ${comparisonSignal(rows, row, (item) => compactPaidOrganicValue(
+          item.sales?.data,
+          item.acquisition,
+          channelKey,
+          {
+            launch: item.launch,
+            windowKey: selectedPeriodKey(),
+            investmentValue: item.investment?.value,
+            assumeAllWhenNoInvestment: channelKey === 'organic'
+          }
+        ), fmtBRL)}
+      </span>
+    `;
+  }
+
+  function compactPaidOrganicValue(data, acquisition = null, channelKey = 'paid', options = {}) {
+    const coverage = channelCoverageForSalesData(data, acquisition, options);
+    const row = coverage.rows.find((item) => item.key === channelKey && item.hasData);
+    return numberOrNull(row?.receita);
+  }
+
+  function closedComparisonRows(rows = []) {
+    return rows.filter((row) => !row.sales?.isPartial);
+  }
+
+  function comparisonSignal(rows, targetRow, getter, formatter = fmtNum) {
+    if (targetRow?.sales?.isPartial) return '';
+    const value = numberOrNull(getter(targetRow));
+    const values = closedComparisonRows(rows)
+      .filter((row) => row !== targetRow)
+      .map(getter)
+      .map(numberOrNull)
+      .filter((item) => item !== null);
+    if (value === null || !values.length) return '';
+    const average = values.reduce((acc, item) => acc + item, 0) / values.length;
+    const diff = average === 0 ? (value === 0 ? 0 : 1) : (value - average) / Math.abs(average);
+    const band = Math.abs(diff) <= 0.1 ? 'medium' : diff > 0 ? 'top' : 'bottom';
+    const arrow = band === 'top' ? '&uarr;' : band === 'bottom' ? '&darr;' : '&rarr;';
+    const label = band === 'top'
+      ? 'acima da média'
+      : band === 'bottom'
+        ? 'abaixo da média'
+        : 'próximo da média';
+    const tip = `${label}: ${formatter(value)} vs média ${formatter(average)} no grupo filtrado.`;
+    return `<span class="metric-signal metric-signal--${band}" data-tooltip="${tooltipAttr(tip)}" aria-label="${escapeHtml(tip)}">${arrow}</span>`;
+  }
+
+  function comparativeMetricHtml(rows, row, getter, formatter = fmtNum) {
+    const value = numberOrNull(getter(row));
+    return `
+      <span class="metric-with-signal">
+        <span>${formatter(value)}</span>
+        ${comparisonSignal(rows, row, getter, formatter)}
+      </span>
+    `;
+  }
+
+  function revenueVsAverageHtml(rows, row) {
+    const value = numberOrNull(row.receita);
+    if (row.sales?.isPartial) {
+      return '<span class="metric-with-signal metric-with-signal--stack"><span class="cell-muted">parcial</span><small>fora da média fechada</small></span>';
+    }
+    const values = closedComparisonRows(rows)
+      .filter((item) => item !== row)
+      .map((item) => numberOrNull(item.receita))
+      .filter((item) => item !== null);
+    if (value === null || !values.length) return '<span class="cell-muted">sem media</span>';
+    const average = values.reduce((acc, item) => acc + item, 0) / values.length;
+    const delta = average === 0 ? (value === 0 ? 0 : 1) : (value / average) - 1;
+    return `
+      <span class="metric-with-signal metric-with-signal--stack">
+        <span>${fmtPct(delta, 1)}</span>
+        ${comparisonSignal(rows, row, (item) => item.receita, fmtBRL)}
+        <small>media ${fmtBRL(average, true)}</small>
+      </span>
+    `;
+  }
+
+  function compactInvestmentForLaunch(launch) {
+    const rawRows = manualInvestmentRowsForLaunch(launch, selectedPeriodKey(), { capToAvailable: true });
+    const value = sumKnown(rawRows, 'investimento');
+    const mediaRows = rawRows.filter((row) => row.investment_source === 'midia_paga');
+    const crmRows = rawRows.filter((row) => row.investment_source === 'crm_disparos');
+    const mediaValue = sumKnown(mediaRows, 'investimento');
+    const crmValue = sumKnown(crmRows, 'investimento');
+    const source = value === null
+      ? 'sem base na planilha'
+      : mediaRows.length && crmRows.length
+        ? 'midia paga + CRM'
+        : mediaRows.length
+          ? 'midia paga'
+          : 'so CRM; midia sem base';
+    return {
+      value,
+      mediaValue,
+      crmValue,
+      hasMediaInvestment: mediaValue !== null,
+      hasCrmInvestment: crmValue !== null,
+      source,
+      detail: value !== null ? `${fmtNum(mediaRows.length)} mídia · ${fmtNum(crmRows.length)} CRM` : `sem linha ${selectedPeriodLabel()} em midia_paga/crm_disparos`
+    };
+  }
+
+  function selectedSalesWindowIsPartial(launch) {
+    const targetDay = selectedPeriodEndDay(launch);
+    const observedDay = selectedPeriodEndDay(launch, { capToAvailable: true });
+    return targetDay !== null && observedDay !== null && observedDay < targetDay;
+  }
+
+  function compactHistoricalRows(selected) {
+    const launches = filteredComparisonLaunches();
+    const rows = launches.map((launch) => {
+      const sales = compactSalesWindowForLaunch(launch);
+      const data = sales.data || {};
+      const acquisition = acquisitionWindowForLaunch(launch, selectedPeriodKey(), { requireClosed: false });
+      const investment = compactInvestmentForLaunch(launch);
+      const attribution = investmentAttributionForWindow(launch, selectedPeriodKey());
+      const channelRows = channelRowsForSalesData(data, acquisition, {
+        launch,
+        windowKey: selectedPeriodKey(),
+        investmentValue: investment.value,
+        assumeAllWhenNoInvestment: true,
+        ignoreFilter: true
+      });
+      const investmentChannel = channelRows.find((row) => row.key === 'investment' && row.hasData);
+      const organicChannel = channelRows.find((row) => row.key === 'organic' && row.hasData);
+      const receitaInvestimento = attribution.receitaInvestimento ?? numberOrNull(investmentChannel?.receita);
+      const pedidosInvestimento = attribution.pedidosInvestimento ?? numberOrNull(investmentChannel?.pedidos);
+      const receitaOrganica = attribution.receitaOrganica ?? numberOrNull(organicChannel?.receita);
+      const pedidosOrganicos = attribution.pedidosOrganicos ?? numberOrNull(organicChannel?.pedidos);
+      const receita = numberOrNull(data.receita);
+      const pedidos = numberOrNull(data.pedidos);
+      const pares = numberOrNull(data.pares);
+      const ticket = ratioOrNull(receita, pedidos);
+      const qualityEndDay = sales.observedDay ?? selectedPeriodEndDay(launch, { capToAvailable: true });
+      const attributionQuality = qualityEndDay === null || qualityEndDay === undefined
+        ? attributionQualityFromRows([], pedidos)
+        : attributionQualityFromRows(salesRowsForLaunchDayRange(launch, 0, qualityEndDay), pedidos);
+      const canComputeRoas = investment.hasMediaInvestment && !sales.isPartial;
+      return {
+        launch,
+        sales,
+        acquisition,
+        investment,
+        receita,
+        pedidos,
+        pares,
+        ticket,
+        roas: canComputeRoas ? ratioOrNull(receitaInvestimento, investment.value) : null,
+        receitaInvestimento,
+        pedidosInvestimento,
+        receitaOrganica,
+        pedidosOrganicos,
+        attributionQuality,
+        isFocus: launch?.modelo_id === selected?.modelo_id
+      };
+    });
+    return rows.sort((a, b) => {
+      if (a.isFocus !== b.isFocus) return a.isFocus ? -1 : 1;
+      if (a.receita !== null && b.receita !== null) return b.receita - a.receita;
+      if (a.receita !== null) return -1;
+      if (b.receita !== null) return 1;
+      return (a.launch?.order ?? 0) - (b.launch?.order ?? 0);
+    });
+  }
+
+  function compactLineProductLabel() {
+    const colorLabel = state.productColorFilter && state.productColorFilter !== 'all'
+      ? productColorFilterOptions().find((item) => item.key === state.productColorFilter)?.label || 'Cor filtrada'
+      : '';
+    if (isProductFilterActive()) {
+      const productLabel = state.productFilter && state.productFilter !== 'all'
+        ? productFilterOptions().find((item) => item.key === state.productFilter)?.label || 'Produto filtrado'
+        : 'Todos os produtos';
+      return colorLabel ? `${productLabel} / ${colorLabel}` : productLabel;
+    }
+    if (state.lineFilter && state.lineFilter !== 'all') {
+      return lineFilterOptions().find((item) => item.key === state.lineFilter)?.label || 'Linha filtrada';
+    }
+    return null;
+  }
+
+  const COMPACT_ROAS_VALIDATION_LIMIT = 20;
+
+  function compactRoasRequiresValidation(row) {
+    const roas = numberOrNull(row?.roas);
+    return roas !== null && roas > COMPACT_ROAS_VALIDATION_LIMIT;
+  }
+
+  function compactOrderOriginMetrics(row) {
+    const total = numberOrNull(row?.pedidos);
+    const paid = numberOrNull(row?.pedidosInvestimento);
+    const organic = numberOrNull(row?.pedidosOrganicos);
+    const classified = paid !== null || organic !== null ? Number(paid || 0) + Number(organic || 0) : null;
+    const coverage = ratioOrNull(classified, total);
+    return {
+      total,
+      paid,
+      organic,
+      classified,
+      paidShare: ratioOrNull(paid, total),
+      organicShare: ratioOrNull(organic, total),
+      coverage,
+      reconciled: coverage !== null && Math.abs(coverage - 1) <= 0.01,
+      quality: row?.attributionQuality || null
+    };
+  }
+
+  function compactCommercialFarol(row) {
+    if (row?.sales?.isPartial) {
+      return {
+        tone: 'warning',
+        label: 'Acompanhar',
+        reason: `A janela ainda está parcial em ${row.sales?.statusLabel || selectedPeriodLabel()}. O resultado fica visível, mas fora da decisão de vencedor ou perdedor.`
+      };
+    }
+    if (compactRoasRequiresValidation(row)) {
+      return {
+        tone: 'warning',
+        label: 'Validar base',
+        reason: `O ROAS de ${fmtNum(row.roas, 2)}x está acima do limite de controle de ${fmtNum(COMPACT_ROAS_VALIDATION_LIMIT)}x. Confirmar investimento e cobertura de atribuição antes de usar o valor em uma decisão.`
+      };
+    }
+    if (numberOrNull(row?.roas) === null) {
+      return {
+        tone: 'neutral',
+        label: 'Sem base',
+        reason: 'Não existe uma base fechada e comparável de mídia paga para classificar o retorno desta janela.'
+      };
+    }
+    if (row.roas < 1) {
+      return {
+        tone: 'negative',
+        label: 'Rever',
+        reason: `O retorno atribuído é ${fmtNum(row.roas, 2)}x. A receita paga ainda não recompõe o investimento declarado na janela.`
+      };
+    }
+    if (row.roas < 2) {
+      return {
+        tone: 'warning',
+        label: 'Otimizar',
+        reason: `O retorno atribuído é ${fmtNum(row.roas, 2)}x. Há tração, mas a eficiência pede otimização antes de ampliar verba.`
+      };
+    }
+    return {
+      tone: 'positive',
+      label: 'Favorável',
+      reason: `A janela está fechada e o retorno atribuído é ${fmtNum(row.roas, 2)}x, com base de mídia paga disponível.`
+    };
+  }
+
+  function compactFarolBadge(farol, reason = farol?.reason || '') {
+    if (!farol) return '';
+    const tooltip = reason
+      ? ` tabindex="0" data-tooltip="${tooltipAttr(reason)}" aria-label="${escapeHtml(reason)}"`
+      : '';
+    return `<span class="commercial-farol commercial-farol--${escapeHtml(farol.tone || 'neutral')}"${tooltip}><i aria-hidden="true"></i>${escapeHtml(farol.label || 'Sem base')}</span>`;
+  }
+
+  function compactRoasCellHtml(rows, row) {
+    const value = numberOrNull(row?.roas);
+    if (value === null) return '<span class="cell-muted">—</span>';
+    if (compactRoasRequiresValidation(row)) {
+      return `<span class="metric-with-signal metric-with-signal--stack"><span>${fmtNum(value, 2)}x</span><small>validar base</small></span>`;
+    }
+    const validRows = rows.filter((item) => !compactRoasRequiresValidation(item));
+    return comparativeMetricHtml(validRows, row, (item) => item.roas, (item) => item === null ? '—' : `${fmtNum(item, 2)}x`);
+  }
+
+  function launchInsightRank(rows, targetRow, field) {
+    if (targetRow?.sales?.isPartial) {
+      return { rank: null, total: closedComparisonRows(rows).length, status: 'partial' };
+    }
+    if (field === 'roas' && compactRoasRequiresValidation(targetRow)) {
+      return { rank: null, total: closedComparisonRows(rows).filter((row) => !compactRoasRequiresValidation(row) && numberOrNull(row.roas) !== null).length, status: 'validation' };
+    }
+    const ranked = closedComparisonRows(rows)
+      .filter((row) => field !== 'roas' || !compactRoasRequiresValidation(row))
+      .filter((row) => numberOrNull(row[field]) !== null)
+      .sort((a, b) => Number(b[field] || 0) - Number(a[field] || 0));
+    if (ranked.length < 2) {
+      return { rank: null, total: ranked.length, status: 'insufficient' };
+    }
+    const index = ranked.findIndex((row) => row.launch?.modelo_id === targetRow.launch?.modelo_id);
+    return index >= 0 ? { rank: index + 1, total: ranked.length, status: 'ranked' } : null;
+  }
+
+  function launchInsightRankLabel(rank) {
+    if (rank?.status === 'partial') return 'janela parcial, fora do ranking';
+    if (rank?.status === 'validation') return 'fora do ranking; validar base';
+    if (rank?.status === 'insufficient') return 'sem base fechada suficiente';
+    return rank ? `${fmtNum(rank.rank)}º de ${fmtNum(rank.total)}` : 'sem ranking';
+  }
+
+  function launchInsightAverage(rows, targetRow, field) {
+    if (targetRow?.sales?.isPartial) return null;
+    const values = closedComparisonRows(rows)
+      .filter((row) => row.launch?.modelo_id !== targetRow.launch?.modelo_id)
+      .map((row) => numberOrNull(row[field]))
+      .filter((value) => value !== null);
+    return values.length ? values.reduce((acc, value) => acc + value, 0) / values.length : null;
+  }
+
+  function launchInsightDeltaCopy(value, average, formatter = fmtBRL) {
+    if (value === null || average === null || average === 0) return 'sem média comparável';
+    const delta = (value / average) - 1;
+    if (Math.abs(delta) < 0.01) return 'em linha com a média do grupo';
+    return `${fmtPct(Math.abs(delta), 1)} ${delta > 0 ? 'acima' : 'abaixo'} da média do grupo (${formatter(average)})`;
+  }
+
+  function launchInsightKpi(label, value, detail = '') {
+    return `
+      <div class="launch-insight-kpi">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+      </div>
+    `;
+  }
+
+  function launchInsightChannelRows(data, acquisition = null) {
+    const channels = [
+      { key: 'investment', label: 'Midia paga', receita: ['receita_paga'], pedidos: ['pedidos_pagos'] },
+      { key: 'organic', label: 'Organico', receita: ['receita_organica'], pedidos: ['pedidos_organicos'] },
+      { key: 'other', label: 'Outros', receita: 'receita_outros_canais', pedidos: 'pedidos_outros_canais' }
+    ];
+    const rows = channels
+      .map((channel) => ({
+        ...channel,
+        receitaValue: Array.isArray(channel.receita) ? sumValues(...channel.receita.map((field) => data?.[field])) : numberOrNull(data?.[channel.receita]),
+        pedidosValue: Array.isArray(channel.pedidos) ? sumValues(...channel.pedidos.map((field) => data?.[field])) : numberOrNull(data?.[channel.pedidos])
+      }))
+      .filter((channel) => channel.receitaValue !== null || channel.pedidosValue !== null);
+    const totalReceita = rows
+      .map((channel) => channel.receitaValue)
+      .filter((value) => value !== null)
+      .reduce((acc, value) => acc + value, 0);
+    if (!rows.length) return [];
+    return rows.map((channel) => ({
+      ...channel,
+      source: 'produto',
+      share: channel.receitaValue !== null && totalReceita > 0 ? channel.receitaValue / totalReceita : null
+    })).sort((a, b) => Number(b.receitaValue || 0) - Number(a.receitaValue || 0));
+  }
+
+  function launchInsightProductGroup(launch) {
+    const groups = storyAnalysisGroups(launch);
+    const group = groups.find((item) => item.key === 'submodelos')
+      || groups.find((item) => item.key === 'cores')
+      || groups.find((item) => item.key === 'tamanhos')
+      || groups[0]
+      || null;
+    if (!group) return null;
+    const rows = group.options
+      .map((item) => {
+        const metricValue = numberOrNull(item.metricValue) ?? numberOrNull(item.receita) ?? numberOrNull(item.pares);
+        return {
+          ...item,
+          metricValue
+        };
+      })
+      .filter((item) => item.metricValue !== null)
+      .sort((a, b) => b.metricValue - a.metricValue);
+    const total = rows.reduce((acc, item) => acc + Number(item.metricValue || 0), 0);
+    return {
+      label: group.label,
+      rows: rows.slice(0, 5),
+      total
+    };
+  }
+
+  function launchInsightMetricText(item) {
+    const value = numberOrNull(item?.metricValue);
+    if (value === null) return '—';
+    if (item?.metricType === 'num') return `${fmtNum(value)} pares`;
+    return storyFormatMetric(value, item?.metricType || 'brl');
+  }
+
+  function launchComparisonScopeHtml(rows, activeRow) {
+    const closedRows = closedComparisonRows(rows).filter((row) => row.receita !== null);
+    const partialRows = rows.filter((row) => row.sales?.isPartial && row.receita !== null);
+    const activeState = activeRow?.sales?.isPartial
+      ? 'A linha selecionada está parcial e não entra no ranking conclusivo.'
+      : 'A linha selecionada participa do ranking de janelas fechadas.';
+    return `
+      <div class="launch-comparison-method">
+        <div>
+          <span>Janela comum</span>
+          <strong>${escapeHtml(selectedPeriodLabel())}</strong>
+          <small>Cada lançamento parte do próprio D0.</small>
+        </div>
+        <div>
+          <span>Base ranqueada</span>
+          <strong>${fmtNum(closedRows.length)} de ${fmtNum(rows.length)}</strong>
+          <small>${partialRows.length ? `${fmtNum(partialRows.length)} parcial${partialRows.length === 1 ? '' : 'is'} fora do ranking.` : 'Todas as janelas estão fechadas.'}</small>
+        </div>
+        <div>
+          <span>Critério de escala</span>
+          <strong>Faturamento bruto</strong>
+          <small>Pedidos, pares e ticket explicam a posição.</small>
+        </div>
+        <div>
+          <span>Critério de eficiência</span>
+          <strong>ROAS atribuído</strong>
+          <small>Receita paga ÷ investimento da mesma janela.</small>
+        </div>
+      </div>
+      <p class="launch-comparison-method-note">${escapeHtml(activeState)} Ranking não prova causalidade entre campanha e venda.</p>
+    `;
+  }
+
+  function launchInsightEvidenceHtml(row, rows) {
+    const revenueRank = launchInsightRank(rows, row, 'receita');
+    const paidShare = ratioOrNull(row.receitaInvestimento, row.receita);
+    const organicShare = ratioOrNull(row.receitaOrganica, row.receita);
+    const peerPaidShares = closedComparisonRows(rows)
+      .filter((item) => item !== row)
+      .map((item) => ratioOrNull(item.receitaInvestimento, item.receita))
+      .filter((value) => value !== null);
+    const peerPaidAverage = peerPaidShares.length
+      ? peerPaidShares.reduce((acc, value) => acc + value, 0) / peerPaidShares.length
+      : null;
+    const bestProductGroup = launchInsightProductGroup(row.launch);
+    const bestProduct = bestProductGroup?.rows?.[0] || null;
+    const bestProductShare = bestProduct && bestProductGroup?.total
+      ? bestProduct.metricValue / bestProductGroup.total
+      : null;
+    const facts = [
+      `${fmtBRL(row.receita)} de faturamento; ${launchInsightRankLabel(revenueRank)} entre janelas fechadas.`,
+      `${fmtNum(row.pedidos)} pedidos, ${fmtNum(row.pares)} pares e ticket médio de ${fmtBRL(row.ticket)}.`,
+      paidShare !== null || organicShare !== null
+        ? `Mix atribuído: ${paidShare === null ? 'mídia sem dado' : `${fmtPct(paidShare, 1)} mídia paga`} e ${organicShare === null ? 'orgânico sem dado' : `${fmtPct(organicShare, 1)} orgânico`}.`
+        : 'O pedido não trouxe composição de mídia paga e orgânico para esta janela.',
+      numberOrNull(row.investment?.value) === null
+        ? 'Não existe investimento cadastrado para esta linha na janela selecionada.'
+        : `${fmtBRL(row.investment.value)} de investimento (${row.investment.source}); ${row.roas === null ? 'ROAS ainda não comparável' : `ROAS de ${fmtNum(row.roas, 2)}x`}.`,
+      bestProduct
+        ? `${bestProduct.label} lidera o recorte interno${bestProductShare === null ? '' : ` com ${fmtPct(bestProductShare, 1)} do total analisado`}.`
+        : 'Sem recorte interno suficiente para apontar um produto líder.'
+    ];
+    const hypotheses = [];
+    if (row.sales?.isPartial) {
+      hypotheses.push(`A posição atual pode mudar até o fechamento de ${selectedPeriodLabel()}; não tratar o parcial como vencedor ou perdedor.`);
+    }
+    if (paidShare !== null && peerPaidAverage !== null && Math.abs(paidShare - peerPaidAverage) >= 0.08) {
+      hypotheses.push(
+        paidShare > peerPaidAverage
+          ? `A escala pode estar mais dependente de mídia paga: ${fmtPct(paidShare, 1)} da receita vs ${fmtPct(peerPaidAverage, 1)} nos pares. Validar por origem e campanha.`
+          : `A força relativa pode estar mais ligada ao orgânico: mídia paga representa ${fmtPct(paidShare, 1)} vs ${fmtPct(peerPaidAverage, 1)} nos pares. Validar direto, busca e CRM.`
+      );
+    }
+    if (bestProduct && bestProductShare !== null) {
+      hypotheses.push(
+        bestProductShare >= 0.55
+          ? `O desempenho pode estar concentrado em ${bestProduct.label}; verificar se as demais cores e submodelos sustentam a curva.`
+          : `O mix parece mais distribuído; verificar se essa diversidade melhora a sustentação após o pico inicial.`
+      );
+    }
+    if (row.roas !== null) {
+      const peerRoas = closedComparisonRows(rows)
+        .filter((item) => item !== row)
+        .map((item) => numberOrNull(item.roas))
+        .filter((value) => value !== null);
+      const averageRoas = peerRoas.length ? peerRoas.reduce((acc, value) => acc + value, 0) / peerRoas.length : null;
+      if (averageRoas !== null && Math.abs((row.roas / averageRoas) - 1) >= 0.15) {
+        hypotheses.push(
+          row.roas > averageRoas
+            ? `A eficiência de mídia pode explicar parte da posição: ${fmtNum(row.roas, 2)}x vs ${fmtNum(averageRoas, 2)}x no grupo. Confirmar com margem e CMV.`
+            : `A eficiência de mídia pode estar pressionando o resultado: ${fmtNum(row.roas, 2)}x vs ${fmtNum(averageRoas, 2)}x no grupo. Revisar mix, criativo e canal.`
+        );
+      }
+    }
+    if (!hypotheses.length) {
+      hypotheses.push('A base atual não mostra uma diferença forte o bastante para sustentar uma hipótese; aprofundar produto, canal e campanha antes de concluir.');
+    }
+    const list = (items) => `<ul>${items.slice(0, 4).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+    return `
+      <div class="launch-evidence-board">
+        <div class="launch-evidence-column launch-evidence-column--fact">
+          <div class="launch-evidence-head"><span>Fato</span><strong>O que os dados mostram</strong></div>
+          ${list(facts)}
+        </div>
+        <div class="launch-evidence-column launch-evidence-column--hypothesis">
+          <div class="launch-evidence-head"><span>Hipótese</span><strong>O que precisa ser validado</strong></div>
+          ${list(hypotheses)}
+        </div>
+      </div>
+    `;
+  }
+
+  function launchInsightLineRankingHtml(rows, activeRow) {
+    const ranked = closedComparisonRows(rows)
+      .filter((row) => row.receita !== null)
+      .sort((a, b) => Number(b.receita || 0) - Number(a.receita || 0))
+      .slice(0, 6);
+    const partialRows = rows
+      .filter((row) => row.sales?.isPartial && row.receita !== null)
+      .sort((a, b) => Number(b.receita || 0) - Number(a.receita || 0));
+    if (!ranked.length && !partialRows.length) {
+      return '<p class="launch-muted">Sem faturamento suficiente para comparar as linhas.</p>';
+    }
+    const max = Math.max(...ranked.map((row) => Number(row.receita || 0)), 1);
+    const rankedHtml = ranked.length >= 2 ? ranked.map((row, index) => {
+      const active = row.launch?.modelo_id === activeRow.launch?.modelo_id;
+      const width = Math.max(4, Math.min(100, (Number(row.receita || 0) / max) * 100));
+      const investment = numberOrNull(row.investment?.value);
+      const peers = ranked.filter((item) => item !== row);
+      const peerAverage = peers.length
+        ? peers.reduce((acc, item) => acc + Number(item.receita || 0), 0) / peers.length
+        : null;
+      const delta = peerAverage && row.receita !== null ? (row.receita / peerAverage) - 1 : null;
+      const detail = [
+        `${fmtNum(row.pedidos)} pedidos`,
+        `${fmtNum(row.pares)} pares`,
+        investment === null ? 'sem investimento' : `invest. ${fmtBRL(investment, true)}`,
+        row.roas === null ? 'sem retorno' : `retorno ${fmtNum(row.roas, 2)}x`,
+        delta === null ? '' : `${delta >= 0 ? '+' : ''}${fmtPct(delta, 1)} vs média`
+      ].filter(Boolean).join(' · ');
+      return `
+        <div class="launch-insight-rank-row ${active ? 'is-active' : ''}">
+          <div>
+            <strong>${fmtNum(index + 1)}º ${escapeHtml(row.launch?.modelo || '—')}</strong>
+            <span>${escapeHtml(`${row.sales?.statusLabel || selectedPeriodLabel()} · ${detail}`)}</span>
+          </div>
+          <b>${fmtBRL(row.receita, true)}</b>
+          <div class="launch-insight-bar"><span style="width:${width.toFixed(1)}%"></span></div>
+        </div>
+      `;
+    }).join('') : '<p class="launch-muted">Menos de duas janelas fechadas; ainda não há ranking conclusivo.</p>';
+    const partialHtml = partialRows.length ? `
+      <div class="launch-insight-partial-group">
+        <div class="launch-insight-subtitle">Em acompanhamento, fora do ranking</div>
+        ${partialRows.map((row) => `
+          <div class="launch-insight-partial-row ${row.launch?.modelo_id === activeRow.launch?.modelo_id ? 'is-active' : ''}">
+            <span><strong>${escapeHtml(row.launch?.modelo || '—')}</strong><small>${escapeHtml(row.sales?.statusLabel || 'janela parcial')}</small></span>
+            <b>${fmtBRL(row.receita, true)}</b>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
+    return `
+      <div class="launch-insight-subtitle">Ranking por faturamento · janelas fechadas</div>
+      ${rankedHtml}
+      ${partialHtml}
+    `;
+  }
+
+  function launchInsightProductHtml(row) {
+    const group = launchInsightProductGroup(row.launch);
+    if (!group || !group.rows.length) {
+      return '<p class="launch-muted">Sem recorte interno confiável para esta linha na janela atual.</p>';
+    }
+    const max = Math.max(...group.rows.map((item) => Number(item.metricValue || 0)), 1);
+    return `
+      <div class="launch-insight-subtitle">${escapeHtml(group.label)} que mais puxaram a janela</div>
+      ${group.rows.map((item, index) => {
+        const share = group.total > 0 ? item.metricValue / group.total : null;
+        const width = Math.max(4, Math.min(100, (Number(item.metricValue || 0) / max) * 100));
+        const value = launchInsightMetricText(item);
+        const detail = item.receita !== null && item.metricType !== 'brl'
+          ? `${fmtBRL(item.receita, true)} em receita`
+          : item.pares !== null
+            ? `${fmtNum(item.pares)} pares`
+            : '';
+        return `
+          <div class="launch-insight-rank-row">
+            <div>
+              <strong>${fmtNum(index + 1)}º ${escapeHtml(item.label)}</strong>
+              <span>${share === null ? 'sem participação' : `${fmtPct(share, 1)} do recorte`}${detail ? ` · ${escapeHtml(detail)}` : ''}</span>
+            </div>
+            <b>${escapeHtml(value)}</b>
+            <div class="launch-insight-bar"><span style="width:${width.toFixed(1)}%"></span></div>
+          </div>
+        `;
+      }).join('')}
+    `;
+  }
+
+  function launchInsightChannelsHtml(row) {
+    const channels = launchInsightChannelRows(row.sales?.data, row.acquisition);
+    if (!channels.length) {
+      return `
+        <div class="launch-insight-empty">
+          <strong>Atribuição por pedido ainda não chegou</strong>
+          <span>Investimento e orgânico só aparecem quando a mirror casar cada pedido com o canal real. Até lá, o dashboard não usa canal agregado da empresa como substituto.</span>
+        </div>
+      `;
+    }
+    return `
+      ${channels.map((channel) => `
+        <div class="launch-insight-channel-row">
+          <strong>${escapeHtml(channel.label)}</strong>
+          <span>${fmtBRL(channel.receitaValue)} · ${fmtNum(channel.pedidosValue)} pedidos</span>
+          <b>${channel.share === null ? '—' : fmtPct(channel.share, 1)}</b>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  function launchInsightCommercialRows(launch) {
+    const mediaRowsRaw = mediaRowsForInvestmentWindow(launch, selectedPeriodKey())
+      .map((item) => normalizeMediaRow(item, launch));
+    const mediaRows = enrichMediaEstimates(mediaRowsRaw, launch)
+      .sort((a, b) => commercialWindowRank(commercialWindowKey(a)) - commercialWindowRank(commercialWindowKey(b)));
+    const crmRows = optionalRows('crm_disparos')
+      .filter((item) => item.modelo_id === launch?.modelo_id)
+      .filter((item) => crmRowMatchesSelectedPeriod(item, launch))
+      .map((item) => ({ ...normalizeCrmRow(item), modelo_id: launch.modelo_id, modelo: launch.modelo }))
+      .sort((a, b) => String(a.data_disparo || a.data || '').localeCompare(String(b.data_disparo || b.data || '')));
+    return { mediaRows, crmRows };
+  }
+
+  function launchInsightCommercialLine(type, title, value, detail = '', badgeText = '') {
+    return `
+      <div class="launch-insight-commercial-row">
+        <span>${escapeHtml(type)}</span>
+        <strong>${escapeHtml(title)}</strong>
+        <b>${escapeHtml(value)}</b>
+        ${badgeText ? `<em>${escapeHtml(badgeText)}</em>` : ''}
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+      </div>
+    `;
+  }
+
+  function launchCampaignComparisonHtml(rows, activeRow) {
+    const campaignRows = rows.map((row) => {
+      const { mediaRows, crmRows } = launchInsightCommercialRows(row.launch);
+      const mediaCampaigns = new Set(mediaRows
+        .map((item) => `${normalizeText(item.campanha)}|${normalizeText(item.canal)}`)
+        .filter((key) => key !== '|'));
+      return {
+        row,
+        mediaCount: mediaCampaigns.size || mediaRows.length,
+        crmCount: crmRows.length,
+        mediaValue: numberOrNull(row.investment?.mediaValue),
+        crmValue: numberOrNull(row.investment?.crmValue),
+        totalValue: numberOrNull(row.investment?.value)
+      };
+    }).filter((item) => item.totalValue !== null || item.mediaCount || item.crmCount);
+    if (!campaignRows.length) {
+      return '<p class="launch-muted">Nenhum lançamento do grupo possui campanha ou investimento cadastrado nesta janela.</p>';
+    }
+    const maxInvestment = Math.max(...campaignRows.map((item) => Number(item.totalValue || 0)), 1);
+    return `
+      <div class="launch-campaign-comparison">
+        <div class="launch-campaign-comparison-head">
+          <strong>Composição das campanhas no grupo</strong>
+          <span>A verba é somada na mesma janela D+ de cada lançamento. Linhas parciais usam somente o período disponível. Receita e ROAS permanecem consolidados no lançamento, não em cada campanha individual.</span>
+        </div>
+        <div class="launch-campaign-comparison-list">
+          ${campaignRows.map((item) => {
+            const active = item.row.launch?.modelo_id === activeRow.launch?.modelo_id;
+            const width = item.totalValue === null ? 0 : Math.max(4, Math.min(100, (item.totalValue / maxInvestment) * 100));
+            const countDetail = [
+              item.mediaCount ? `${fmtNum(item.mediaCount)} linha${item.mediaCount === 1 ? '' : 's'} de mídia` : '',
+              item.crmCount ? `${fmtNum(item.crmCount)} disparo${item.crmCount === 1 ? '' : 's'} CRM` : '',
+              item.row.sales?.isPartial ? item.row.sales.statusLabel : ''
+            ].filter(Boolean).join(' · ') || 'sem ações detalhadas';
+            return `
+              <div class="launch-campaign-comparison-row ${active ? 'is-active' : ''}">
+                <div class="launch-campaign-model">
+                  <strong>${escapeHtml(item.row.launch?.modelo || '—')}</strong>
+                  <small>${escapeHtml(countDetail)}</small>
+                </div>
+                <div class="launch-campaign-mix">
+                  <span>Mídia <b>${fmtBRL(item.mediaValue, true)}</b></span>
+                  <span>CRM <b>${fmtBRL(item.crmValue, true)}</b></span>
+                  <i><b style="width:${width.toFixed(1)}%"></b></i>
+                </div>
+                <div class="launch-campaign-result">
+                  <strong>${fmtBRL(item.totalValue, true)}</strong>
+                  <small>${item.row.roas === null ? (item.row.sales?.isPartial ? 'ROAS aguarda fechamento' : 'ROAS sem base') : `${fmtNum(item.row.roas, 2)}x ROAS`}</small>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function launchInsightCommercialHtml(row, rows = []) {
+    const { mediaRows, crmRows } = launchInsightCommercialRows(row.launch);
+    const comparisonHtml = launchCampaignComparisonHtml(rows.length ? rows : [row], row);
+    const mediaHtml = mediaRows.slice(0, 5).map((item) => {
+      const trusted = hasTrustedMediaPerformance(item);
+      const revenue = trusted ? numberOrNull(item.receita_atribuida) : null;
+      const roas = trusted ? rowRoas(item) : null;
+      const detail = [
+        `janela ${commercialWindowLabel(commercialWindowKey(item))}`,
+        `canal ${item.canal || 'sem canal'}`,
+        revenue !== null ? `receita ${fmtBRL(revenue)}` : 'sem receita atribuída',
+        roas !== null ? `retorno ${fmtNum(roas, 2)}x` : ''
+      ].filter(Boolean).join(' · ');
+      return launchInsightCommercialLine('Investimento', item.campanha || 'Campanha sem nome', fmtBRL(item.investimento), detail, trusted ? 'com atribuição' : 'declarado');
+    }).join('');
+    const crmHtml = crmRows.slice(0, 5).map((item) => {
+      const trusted = hasTrustedCrmPerformance(item);
+      const revenue = trusted ? numberOrNull(item.receita_base) : null;
+      const roas = trusted ? rowRoas(item) : null;
+      const date = fmtDate(item.data_disparo || item.data || item.date);
+      const detail = [
+        date !== '—' ? date : '',
+        item.canal || 'CRM',
+        revenue !== null ? `receita ${fmtBRL(revenue)}` : 'sem atribuição real',
+        roas !== null ? `retorno ${fmtNum(roas, 2)}x` : ''
+      ].filter(Boolean).join(' · ');
+      return launchInsightCommercialLine('CRM', item.campanha || item.disparo || 'Disparo sem nome', fmtBRL(item.investimento), detail, trusted ? 'com atribuição' : 'contexto');
+    }).join('');
+    const declaredInvestment = numberOrNull(row.investment?.value);
+    const investmentHtml = declaredInvestment !== null ? `
+      <div class="launch-insight-acquisition-summary">
+        <span>Investimento total declarado</span>
+        <strong>${fmtBRL(declaredInvestment)}</strong>
+        <small>${escapeHtml(`${selectedPeriodLabel()} · midia_paga.json + crm_disparos.json`)}</small>
+      </div>
+    ` : '';
+
+    if (!mediaRows.length && !crmRows.length && !investmentHtml) {
+      return `${comparisonHtml}<p class="launch-muted">Sem investimento declarado para a linha selecionada nesta janela.</p>`;
+    }
+    return `
+      ${comparisonHtml}
+      <div class="launch-selected-campaign-detail">
+        <div class="launch-insight-subtitle">Detalhe de ${escapeHtml(row.launch?.modelo || 'linha selecionada')}</div>
+        ${investmentHtml}
+        ${mediaHtml || '<p class="launch-muted">Sem investimento de campanha declarado para esta linha.</p>'}
+        ${crmHtml || '<p class="launch-muted">Sem disparo declarado para esta linha.</p>'}
+      </div>
+    `;
+  }
+
+  function launchRowInsightDrawerHtml(row, rows) {
+    const revenueRank = launchInsightRank(rows, row, 'receita');
+    const ordersRank = launchInsightRank(rows, row, 'pedidos');
+    const pairsRank = launchInsightRank(rows, row, 'pares');
+    const roasRank = launchInsightRank(rows, row, 'roas');
+    const avgRevenue = launchInsightAverage(rows, row, 'receita');
+    const avgOrders = launchInsightAverage(rows, row, 'pedidos');
+    const origin = compactOrderOriginMetrics(row);
+    const farol = compactCommercialFarol(row);
+    const shareRows = row.sales?.isPartial ? rows : closedComparisonRows(rows);
+    const shareTotal = ratioOrNull(row.receita, shareRows.reduce((acc, item) => acc + Number(item.receita || 0), 0));
+    const statusCopy = row.sales?.isPartial
+      ? `Janela ainda parcial: leitura disponível até ${escapeHtml(row.sales.statusLabel)}.`
+      : `Janela fechada em ${escapeHtml(row.sales.statusLabel)}.`;
+
+    return `
+      <div class="launch-row-drawer-head">
+        <div>
+          <div class="launch-row-drawer-eyebrow">
+            <span class="launch-card-kicker">Leitura da linha selecionada</span>
+            ${compactFarolBadge(farol)}
+          </div>
+          <h4>${escapeHtml(row.launch?.modelo || 'Linha selecionada')}</h4>
+          <p>${escapeHtml(statusCopy)} Faturamento ${launchInsightRankLabel(revenueRank)} e pedidos ${launchInsightRankLabel(ordersRank)} no grupo comparado.</p>
+        </div>
+        <button type="button" class="launch-row-drawer-close" data-launch-insight-close aria-label="Fechar leitura da linha">&times;</button>
+      </div>
+
+      <div class="launch-row-kpis">
+        ${launchInsightKpi('Faturamento', fmtBRL(row.receita), `${launchInsightDeltaCopy(row.receita, avgRevenue, fmtBRL)}`)}
+        ${launchInsightKpi('Pedidos', fmtNum(row.pedidos), `${launchInsightDeltaCopy(row.pedidos, avgOrders, fmtNum)}`)}
+        ${launchInsightKpi('Pedidos pagos', fmtNum(origin.paid), origin.paidShare === null ? 'origem não disponível' : `${fmtPct(origin.paidShare, 1)} do total`)}
+        ${launchInsightKpi('Pedidos orgânicos', fmtNum(origin.organic), origin.organicShare === null ? 'origem não disponível' : `${fmtPct(origin.organicShare, 1)} do total`)}
+        ${launchInsightKpi('Pares', fmtNum(row.pares), `posição ${launchInsightRankLabel(pairsRank)}`)}
+        ${launchInsightKpi('Investimento', fmtBRL(row.investment?.value), row.investment?.source || 'sem investimento')}
+        ${launchInsightKpi('ROAS', row.roas === null ? '—' : `${fmtNum(row.roas, 2)}x`, launchInsightRankLabel(roasRank))}
+        ${launchInsightKpi('Peso no grupo', shareTotal === null ? '—' : fmtPct(shareTotal, 1), row.sales?.isPartial ? 'parcial; fora do ranking' : 'janelas fechadas')}
+      </div>
+
+      <div class="launch-row-insight-grid">
+        <div class="launch-row-insight-section launch-row-insight-section--method">
+          <h5>Como o comparativo foi feito</h5>
+          ${launchComparisonScopeHtml(rows, row)}
+        </div>
+        <div class="launch-row-insight-section launch-row-insight-section--evidence">
+          <h5>Fatos e hipóteses</h5>
+          ${launchInsightEvidenceHtml(row, rows)}
+        </div>
+        <div class="launch-row-insight-section launch-row-insight-section--comparison">
+          <h5>Comparação entre lançamentos</h5>
+          ${launchInsightLineRankingHtml(rows, row)}
+        </div>
+        <div class="launch-row-insight-section launch-row-insight-section--product">
+          <h5>Produtos dentro da linha</h5>
+          ${launchInsightProductHtml(row)}
+        </div>
+        <div class="launch-row-insight-section launch-row-insight-section--channel">
+          <h5>Vendas por canal</h5>
+          ${launchInsightChannelsHtml(row)}
+        </div>
+        <div class="launch-row-insight-section launch-row-insight-section--wide">
+          <h5>Comparativo de campanhas, investimento e CRM</h5>
+          ${launchInsightCommercialHtml(row, rows)}
+        </div>
+      </div>
+    `;
+  }
+
+  function closeLaunchRowInsightDrawer() {
+    document.querySelectorAll('.launch-row-drawer-row').forEach((row) => {
+      row.hidden = true;
+      row.querySelector('.launch-row-drawer')?.replaceChildren();
+    });
+    document.querySelectorAll('.launch-main-table tbody tr[data-launch-insight]').forEach((row) => {
+      row.classList.remove('is-selected');
+      row.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function openLaunchRowInsightDrawer(modelId) {
+    if (!modelId) return;
+    const selected = state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
+    const rows = compactHistoricalRows(selected);
+    const row = rows.find((item) => item.launch?.modelo_id === modelId);
+    if (!row) return;
+    const drawerRow = [...document.querySelectorAll('.launch-row-drawer-row')]
+      .find((item) => item.dataset.launchInsightPanel === modelId);
+    const drawer = drawerRow?.querySelector('.launch-row-drawer');
+    if (!drawerRow || !drawer) return;
+
+    if (!drawerRow.hidden) {
+      closeLaunchRowInsightDrawer();
+      return;
+    }
+
+    closeLaunchRowInsightDrawer();
+    drawer.innerHTML = launchRowInsightDrawerHtml(row, rows);
+    drawerRow.hidden = false;
+    document.querySelectorAll('.launch-main-table tbody tr[data-launch-insight]').forEach((tableRow) => {
+      const active = tableRow.dataset.launchInsight === modelId;
+      tableRow.classList.toggle('is-selected', active);
+      tableRow.setAttribute('aria-expanded', String(active));
+    });
+    drawerRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function compactHistoricalTable(rows) {
+    if (!rows.length) {
+      return `<div class="empty-state"><div><strong>Nenhum lançamento selecionado.</strong>Marque ao menos uma linha no grupo de comparação.</div></div>`;
+    }
+    const periodCell = (row) => {
+      const label = selectedPeriodLabel();
+      const detail = row.sales?.isPartial && row.sales?.observedDay !== null && row.sales?.observedDay !== undefined
+        ? `parcial até D+${fmtNum(row.sales.observedDay)}`
+        : row.sales?.status === 'em_maturacao'
+          ? 'em maturação'
+          : 'janela analisada';
+      const range = row.sales?.range ? ` data real: ${row.sales.range}` : '';
+      return `
+        <td class="period-cell" data-tooltip="${tooltipAttr(`${label}; ${detail}.${range}`)}">
+          <strong>${escapeHtml(label)}</strong>
+          <small>${escapeHtml(detail)}</small>
+        </td>
+      `;
+    };
+    return `
+      <div class="launch-table-wrap">
+        <table class="launch-main-table">
+          <thead>
+            <tr>
+              ${thTip('Lançamento', 'Linha comparada. O destaque visual só aparece se ela estiver dentro do filtro comparativo.')}
+              ${thTip('Farol', 'Leitura comercial da janela: favorável, otimizar, rever, acompanhar janela parcial, validar valor fora da curva ou sem base.')}
+              ${thTip('Linha ou recorte', 'Nome da linha/produto usada no cadastro do lançamento.')}
+              ${thTip('Período', 'Janela usada para este lançamento. Cada linha usa seu próprio D0; se estiver em maturação, aparece parcial.')}
+              ${thTip('Pedidos', 'Pedidos aprovados do produto na janela selecionada. Fonte: pipeline de vendas; a base de investimento não altera pedidos.', 'num')}
+              ${thTip('Pares', 'Pares vendidos do produto na mesma janela desde o D0.', 'num')}
+              ${thTip('Faturamento', 'Receita do produto na janela selecionada. Linhas em maturacao mostram o parcial disponivel.', 'num')}
+              ${thTip('Ticket medio', 'Faturamento dividido por pedidos na janela filtrada.', 'num')}
+              ${thTip('Investimento', 'Investimento vem da planilha principal: midia_paga + crm_disparos. A planilha diaria nao preenche mais este numero.', 'num')}
+              ${thTip('Mídia paga', 'Receita e pedidos classificados como pagos pelo SSOT: origem/UTM granular quando disponível e alocação binária nas lacunas históricas.')}
+              ${thTip('Orgânico', 'Receita e pedidos classificados como orgânicos pelo SSOT. Inclui CRM, direto, busca orgânica, referral e a parcela orgânica alocada nas lacunas históricas.')}
+              ${thTip('ROAS', 'Receita dos pedidos de midia paga dividida pelo investimento declarado na janela. So calcula quando existe midia paga cadastrada na mesma janela; CRM sozinho nao vira denominador de ROAS.', 'num')}
+              ${thTip('Fat. vs média', 'Quanto o faturamento ficou acima ou abaixo da média dos outros lançamentos no grupo filtrado. A célula mostra a média usada na comparação.', 'num')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr class="${row.isFocus ? 'is-focus' : ''} ${row.sales.isPartial ? 'is-partial' : ''}" data-launch-insight="${escapeHtml(row.launch.modelo_id)}" tabindex="0" role="button" aria-controls="launch-row-drawer-${escapeHtml(row.launch.modelo_id)}" aria-expanded="false">
+                <td class="model-name">
+                  ${escapeHtml(row.launch.modelo)}
+                  <small>${escapeHtml(row.sales.statusLabel)}</small>
+                </td>
+                <td class="launch-farol-cell">${compactFarolBadge(compactCommercialFarol(row))}</td>
+                <td>${escapeHtml(compactLineProductLabel() || row.launch.linha || row.launch.modelo || '-')}</td>
+                ${periodCell(row)}
+                <td class="num">${comparativeMetricHtml(rows, row, (item) => item.pedidos, fmtNum)}</td>
+                <td class="num">${comparativeMetricHtml(rows, row, (item) => item.pares, fmtNum)}</td>
+                <td class="num">${comparativeMetricHtml(rows, row, (item) => item.receita, fmtBRL)}</td>
+                <td class="num">${comparativeMetricHtml(rows, row, (item) => item.ticket, fmtBRL)}</td>
+                <td class="num">
+                  ${comparativeMetricHtml(rows, row, (item) => item.investment?.value, fmtBRL)}
+                  <small>${escapeHtml(row.investment.source)}</small>
+                </td>
+                <td>${comparativeChannelMetricHtml(rows, row, 'investment')}</td>
+                <td>${comparativeChannelMetricHtml(rows, row, 'organic')}</td>
+                <td class="num">${compactRoasCellHtml(rows, row)}</td>
+                <td class="num">${revenueVsAverageHtml(rows, row)}</td>
+              </tr>
+              <tr class="launch-row-drawer-row" data-launch-insight-panel="${escapeHtml(row.launch.modelo_id)}" hidden>
+                <td colspan="13">
+                  <div class="launch-row-drawer" id="launch-row-drawer-${escapeHtml(row.launch.modelo_id)}"></div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function compactKpi(label, value, detail = '') {
+    return `
+      <div class="launch-kpi">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+      </div>
+    `;
+  }
+
+  function compactOrderOriginSummary(rows) {
+    const sumKnown = (values) => {
+      const known = values.filter((value) => value !== null && value !== undefined);
+      return known.length ? known.reduce((acc, value) => acc + Number(value || 0), 0) : null;
+    };
+    const metrics = rows.map(compactOrderOriginMetrics);
+    const total = sumKnown(metrics.map((item) => item.total));
+    const paid = sumKnown(metrics.map((item) => item.paid));
+    const organic = sumKnown(metrics.map((item) => item.organic));
+    const classified = paid !== null || organic !== null ? Number(paid || 0) + Number(organic || 0) : null;
+    const coverage = ratioOrNull(classified, total);
+    const granularOrders = sumKnown(metrics.map((item) => item.quality?.granularOrders));
+    const allocatedOrders = sumKnown(metrics.map((item) => item.quality?.allocatedOrders));
+    const granularPct = ratioOrNull(granularOrders, total);
+    const allocatedPct = ratioOrNull(allocatedOrders, total);
+    const qualityFarol = attributionQualityMeta(granularPct, allocatedPct);
+    const reconciled = coverage !== null && Math.abs(coverage - 1) <= 0.01;
+    const farol = coverage === null
+      ? { tone: 'neutral', label: 'Sem origem' }
+      : reconciled
+        ? { tone: 'positive', label: 'Conciliado' }
+        : coverage >= .9 && coverage <= 1.1
+          ? { tone: 'warning', label: 'Revisar saldo' }
+          : { tone: 'negative', label: 'Origem divergente' };
+    const reason = coverage === null
+      ? 'A janela selecionada não trouxe pedidos classificados por origem.'
+      : `Pedidos pagos mais orgânicos representam ${fmtPct(coverage, 1)} dos ${fmtNum(total)} pedidos exibidos. O farol fica verde quando a diferença é de até 1%; isso valida a soma binária, não a cobertura de origem granular.`;
+    return `
+      <div class="launch-origin-summary">
+        <div class="launch-origin-summary-intro">
+          <span>Origem dos pedidos</span>
+          <strong>Pago versus orgânico</strong>
+          <small>Origem/UTM granular quando existe; fallback binário alocado pelo SSOT nas lacunas.</small>
+        </div>
+        <div class="launch-origin-metric launch-origin-metric--paid">
+          <span>Pedidos pagos</span>
+          <strong>${fmtNum(paid)}</strong>
+          <small>${ratioOrNull(paid, total) === null ? 'sem participação' : `${fmtPct(ratioOrNull(paid, total), 1)} do total`}</small>
+        </div>
+        <div class="launch-origin-metric launch-origin-metric--organic">
+          <span>Pedidos orgânicos</span>
+          <strong>${fmtNum(organic)}</strong>
+          <small>${ratioOrNull(organic, total) === null ? 'sem participação' : `${fmtPct(ratioOrNull(organic, total), 1)} do total`}</small>
+        </div>
+        <div class="launch-origin-check">
+          <span>Conciliação binária</span>
+          ${compactFarolBadge(farol, reason)}
+          <small>${coverage === null ? 'sem cobertura calculável' : `${fmtNum(classified)} de ${fmtNum(total)} pedidos classificados`}</small>
+        </div>
+        <div class="launch-origin-check">
+          <span>Qualidade da origem</span>
+          ${compactFarolBadge(qualityFarol, qualityFarol.reason)}
+          <small>${granularPct === null ? 'sem leitura granular' : `${fmtPct(granularPct, 1)} granular / ${fmtPct(allocatedPct, 1)} alocado`}</small>
+        </div>
+      </div>
+    `;
+  }
+
+  function pickMetricRow(rows, getter, direction = 'desc') {
+    const candidates = rows
+      .map((row) => ({ row, value: numberOrNull(getter(row)) }))
+      .filter((item) => item.value !== null);
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => direction === 'asc' ? a.value - b.value : b.value - a.value);
+    return candidates[0];
+  }
+
+  function productPerformanceCandidates(rows) {
+    const candidates = [];
+    rows.forEach(({ launch }) => {
+      const grouped = new Map();
+      storySalesRowsForWindow(launch)
+        .filter((row) => rowMatchesProductFilter(row, launch))
+        .forEach((row) => {
+          const subId = rowSubModelId(row, launch.modelo_id);
+          const product = subId ? subModelLabel(subId) : (row.sub_modelo || row.nome_produto || launch.modelo);
+          const color = extractColor(row, launch);
+          const label = isProductOnlyFilterActive() || isProductColorFilterActive()
+            ? [product, validComparativeCutKey(color, 'Cor') ? color : null].filter(Boolean).join(' / ')
+            : product;
+          const key = `${launch.modelo_id}|${normalizeText(label)}`;
+          const current = grouped.get(key) || {
+            launch,
+            label,
+            receita: 0,
+            pares: 0,
+            pedidos: 0,
+            orders: new Set()
+          };
+          current.receita += dashboardRevenueNumber(row);
+          current.pares += Number(row.pares || row.quantidade || 0);
+          const orderId = row.order_sk || row.order_id || row.pedido_id || row.name || null;
+          if (orderId) current.orders.add(orderId);
+          else current.pedidos += Number(row.pedidos_validos ?? row.pedidos ?? 0);
+          grouped.set(key, current);
+        });
+      grouped.forEach((item) => {
+        candidates.push({
+          ...item,
+          pedidos: item.orders.size || item.pedidos,
+          ticket: ratioOrNull(item.receita, item.orders.size || item.pedidos)
+        });
+      });
+    });
+    return candidates
+      .filter((item) => numberOrNull(item.receita) !== null && item.receita > 0)
+      .sort((a, b) => b.receita - a.receita || b.pares - a.pares);
+  }
+
+  function compactPresentationSummary(rows) {
+    const comparableRows = closedComparisonRows(rows).filter((row) => row.receita !== null);
+    const partialRows = rows.filter((row) => row.sales?.isPartial && row.receita !== null);
+    const validationRows = comparableRows.filter((row) => compactRoasRequiresValidation(row));
+    const validRoasRows = comparableRows.filter((row) => numberOrNull(row.roas) !== null && !compactRoasRequiresValidation(row));
+    const hasRanking = comparableRows.length >= 2;
+    const revenueLeader = hasRanking ? pickMetricRow(comparableRows, (row) => row.receita, 'desc') : null;
+    const roasLeader = hasRanking ? pickMetricRow(validRoasRows, (row) => row.roas, 'desc') : null;
+    const roasAttention = hasRanking ? pickMetricRow(validRoasRows, (row) => row.roas, 'asc') : null;
+    const qualityIssues = partialRows.length + validationRows.length;
+    const qualityParts = [
+      partialRows.length ? `${fmtNum(partialRows.length)} parcial${partialRows.length === 1 ? '' : 'is'}` : '',
+      validationRows.length ? `${fmtNum(validationRows.length)} a validar` : ''
+    ].filter(Boolean);
+    const qualityTitle = qualityParts.length ? qualityParts.join(' · ') : 'Base comparável';
+    const cell = (label, title, detail, { tone = '', farol = null, reason = '' } = {}) => `
+      <div class="presentation-signal ${tone ? `presentation-signal--${tone}` : ''}">
+        <div class="presentation-signal-head">
+          <span>${escapeHtml(label)}</span>
+          ${reason ? tip(reason) : ''}
+        </div>
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(detail)}</small>
+        ${farol ? compactFarolBadge(farol, reason || farol.reason) : ''}
+      </div>
+    `;
+    return `
+      <div class="presentation-summary-head">
+        <div>
+          <span>Fatos do grupo</span>
+          <strong>Comparação em janela equivalente</strong>
+        </div>
+        <p>${hasRanking ? `${fmtNum(comparableRows.length)} lançamentos com ${selectedPeriodLabel()} fechado entram no ranking de escala.` : 'Ainda não há duas janelas fechadas para formar um ranking conclusivo.'} ${partialRows.length ? `${fmtNum(partialRows.length)} linha${partialRows.length === 1 ? '' : 's'} parcial${partialRows.length === 1 ? '' : 'is'} fica${partialRows.length === 1 ? '' : 'm'} fora dos vencedores.` : ''} ${validationRows.length ? `${fmtNum(validationRows.length)} ROAS fora da curva permanece visível, mas fora do ranking de eficiência.` : ''}</p>
+      </div>
+      <div class="presentation-summary-grid">
+        ${cell(
+          'Maior escala',
+          revenueLeader ? revenueLeader.row.launch.modelo : 'Sem ranking',
+          revenueLeader ? `${fmtBRL(revenueLeader.value)} de faturamento` : 'aguardando duas janelas fechadas',
+          {
+            tone: 'pos',
+            farol: revenueLeader ? { tone: 'positive', label: 'Escala validada' } : { tone: 'neutral', label: 'Sem base' },
+            reason: revenueLeader
+              ? `${revenueLeader.row.launch.modelo} foi escolhido porque tem o maior faturamento entre as janelas fechadas: ${fmtBRL(revenueLeader.value)}. Linhas parciais não entram nessa escolha.`
+              : `Ainda não existem duas janelas fechadas em ${selectedPeriodLabel()} para eleger um líder de escala.`
+          }
+        )}
+        ${cell(
+          'Melhor eficiência',
+          roasLeader ? roasLeader.row.launch.modelo : 'Sem ROAS',
+          roasLeader ? `${fmtNum(roasLeader.value, 2)}x com base comparável` : 'janela parcial ou sem mídia paga',
+          {
+            tone: roasLeader ? 'pos' : 'warn',
+            farol: roasLeader ? compactCommercialFarol(roasLeader.row) : { tone: 'neutral', label: 'Sem base' },
+            reason: roasLeader
+              ? `${roasLeader.row.launch.modelo} foi escolhido porque possui o maior ROAS entre as janelas fechadas com base de mídia paga comparável: ${fmtNum(roasLeader.value, 2)}x. Valores acima de ${fmtNum(COMPACT_ROAS_VALIDATION_LIMIT)}x ficam fora até validação.`
+              : 'Nenhuma linha possui, ao mesmo tempo, janela fechada e base de mídia paga comparável.'
+          }
+        )}
+        ${cell(
+          'Ponto de atenção',
+          roasAttention ? roasAttention.row.launch.modelo : 'Sem sinal fechado',
+          roasAttention ? `${fmtNum(roasAttention.value, 2)}x · menor retorno comparável` : 'sem base para priorizar revisão',
+          {
+            tone: roasAttention && roasAttention.value < 1 ? 'neg' : 'warn',
+            farol: roasAttention ? compactCommercialFarol(roasAttention.row) : { tone: 'neutral', label: 'Sem base' },
+            reason: roasAttention
+              ? `${roasAttention.row.launch.modelo} foi escolhido porque tem o menor ROAS entre as bases fechadas e comparáveis: ${fmtNum(roasAttention.value, 2)}x. Isso prioriza a revisão de oferta, canal e campanha; não representa margem líquida.`
+              : 'A base atual não permite escolher um ponto de atenção sem misturar janela parcial ou valor a validar.'
+          }
+        )}
+        ${cell(
+          'Qualidade da leitura',
+          qualityTitle,
+          qualityIssues ? 'acompanhar antes da decisão final' : 'todas as janelas e bases aptas',
+          {
+            tone: qualityIssues ? 'warn' : 'pos',
+            farol: qualityIssues ? { tone: 'warning', label: 'Com ressalvas' } : { tone: 'positive', label: 'Base fechada' },
+            reason: qualityIssues
+              ? `${partialRows.length ? `${partialRows.map((row) => row.launch.modelo).join(', ')} ainda não fechou a janela. ` : ''}${validationRows.length ? `${validationRows.map((row) => row.launch.modelo).join(', ')} possui ROAS fora da curva e exige conferência da verba.` : ''}`
+              : `Todas as linhas comparadas completaram ${selectedPeriodLabel()} e nenhuma possui ROAS acima do limite de controle.`
+          }
+        )}
+      </div>
+    `;
+  }
+
+  function compactFocusDetail(selected, rows) {
+    const focusRow = rows.find((row) => row.launch?.modelo_id === selected?.modelo_id);
+    const focusInComparison = Boolean(focusRow);
+    const focusCopy = focusInComparison
+      ? `${selected.modelo} esta destacado dentro do grupo comparado.`
+      : `${selected.modelo} esta destacado, mas nao entra no grupo comparado. Ajuste o grupo se quiser inclui-lo nos calculos.`;
+    const row = focusRow || (() => {
+      const sales = compactSalesWindowForLaunch(selected);
+      const data = sales.data || {};
+      const investment = compactInvestmentForLaunch(selected);
+      const attribution = investmentAttributionForWindow(selected, selectedPeriodKey());
+      const receita = numberOrNull(data.receita);
+      const pedidos = numberOrNull(data.pedidos);
+      const pares = numberOrNull(data.pares);
+      const canComputeRoas = investment.hasMediaInvestment && !sales.isPartial;
+      return {
+        launch: selected,
+        sales,
+        investment,
+        receita,
+        pedidos,
+        pares,
+        roas: canComputeRoas ? ratioOrNull(attribution.receitaInvestimento, investment.value) : null
+      };
+    })();
+    return `
+      <div class="launch-focus-card ${focusInComparison ? '' : 'is-outside-filter'}">
+        <div>
+          <span class="launch-card-kicker">Destaque visual</span>
+          <h3>${escapeHtml(selected.modelo)}</h3>
+          <p>${escapeHtml(focusCopy)}</p>
+        </div>
+        <div class="launch-focus-facts">
+          ${compactKpi('Faturamento', fmtBRL(row?.receita), row?.sales?.statusLabel || selectedPeriodLabel())}
+          ${compactKpi('Pedidos', fmtNum(row?.pedidos), 'vendas do produto')}
+          ${compactKpi('Investimento', fmtBRL(row?.investment?.value), row?.investment?.source || 'sem investimento')}
+          ${compactKpi('ROAS', row?.roas === null || row?.roas === undefined ? '—' : `${fmtNum(row.roas, 2)}x`, 'período selecionado')}
+        </div>
+      </div>
+    `;
+  }
+
+  function storyProductDetailDrawerHtml(selected) {
+    const productHtml = storySubModelHtml(selected);
+    return `
+      <details class="story-step-details story-product-detail-details">
+        <summary><span>Detalhe do produto</span><small>${productHtml ? 'submodelos, cores e tamanhos' : 'sem recorte interno'}</small>${tip('Abre a leitura interna da linha destacada sem repetir a tabela principal.')}</summary>
+        ${productHtml || '<p class="launch-muted">Esta linha nao tem submodelo, cor ou tamanho suficiente para abrir uma leitura interna confiavel.</p>'}
+      </details>
+    `;
+  }
+
+  function storyCommercialDetailDrawerHtml(selected) {
+    const launches = filteredComparisonLaunches().filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
+    const mediaRows = launches.flatMap((launch) => mediaRowsForInvestmentWindow(launch, selectedPeriodKey())
+      .map((row) => normalizeMediaRow(row, launch)));
+    const crmRows = launches.flatMap((launch) => (state.data.crm_disparos || [])
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .filter((row) => crmRowMatchesSelectedPeriod(row, launch))
+      .map((row) => ({ ...normalizeCrmRow(row), modelo_id: launch.modelo_id, modelo: launch.modelo })));
+    const visibleMedia = mediaRows.slice(0, 6);
+    const visibleCrm = crmRows.slice(0, 6);
+    const lineRows = (state.data.midia_paga || [])
+      .filter(isLineInvestmentMediaRow)
+      .map(normalizeLineInvestmentMediaRow)
+      .slice(0, 6);
+    const rowHtml = (label, model, title, value, detail = '') => `
+      <div class="launch-commercial-row">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(model)}</strong>
+        <em>${escapeHtml(title)}</em>
+        <b>${escapeHtml(value)}</b>
+        ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+      </div>
+    `;
+    const mediaHtml = visibleMedia.length
+      ? visibleMedia.map((row) => rowHtml('Investimento', row.modelo, `${row.campanha} - ${row.janela}`, mediaValue(row.investimento, fmtBRL), 'investimento declarado; venda fica na tabela principal')).join('')
+      : '<p class="launch-muted">Sem investimento de campanha declarado para o grupo filtrado.</p>';
+    const crmHtml = visibleCrm.length
+      ? visibleCrm.map((row) => rowHtml('Disparo', row.modelo, `${fmtDate(row.data_disparo)} - ${row.campanha || 'Disparo sem nome'}`, mediaValue(row.investimento, fmtBRL), hasTrustedCrmPerformance(row) ? `receita ${fmtBRL(row.receita_base)}` : 'contexto, sem atribuicao real')).join('')
+      : '<p class="launch-muted">Sem disparos declarados para o grupo filtrado.</p>';
+    const lineHtml = lineRows.length
+      ? lineRows.map((row) => rowHtml('Linha', row.linha || 'linha', row.campanha, mediaValue(row.investimento, fmtBRL), 'investimento sem rateio entre lançamentos')).join('')
+      : '<p class="launch-muted">Sem investimento de linha cadastrado.</p>';
+    const totalRows = mediaRows.length + crmRows.length + lineRows.length;
+    return `
+      <details class="story-step-details story-commercial-detail-details">
+        <summary><span>Ações declaradas</span><small>${fmtNum(totalRows)} linhas operacionais</small>${tip('Mostra apenas as linhas manuais declaradas. Os resultados reais continuam consolidados na tabela principal para evitar dupla leitura.')}</summary>
+        <div class="launch-commercial-detail">
+          <div>
+            <strong>Campanhas declaradas</strong>
+            ${mediaHtml}
+          </div>
+          <div>
+            <strong>Disparos declarados</strong>
+            ${crmHtml}
+          </div>
+          <div class="is-wide">
+            <strong>Investimento de linha</strong>
+            ${lineHtml}
+          </div>
+        </div>
+      </details>
+    `;
+  }
+
+  function renderCompactLaunchAnalysis(wrap, selected) {
+    const rows = compactHistoricalRows(selected);
+    const sumOrNull = (values) => {
+      const known = values.filter((value) => value !== null && value !== undefined);
+      return known.length ? known.reduce((acc, value) => acc + value, 0) : null;
+    };
+    const totals = {
+      totalReceita: sumOrNull(rows.map((row) => row.receita)),
+      totalPedidos: sumOrNull(rows.map((row) => row.pedidos)),
+      totalPares: sumOrNull(rows.map((row) => row.pares)),
+      totalInvestimento: sumOrNull(rows.map((row) => numberOrNull(row.investment.value))),
+      totalReceitaInvestimento: sumOrNull(rows.map((row) => row.receitaInvestimento))
+    };
+    const rowsWithRevenue = rows.filter((row) => row.receita !== null);
+    const rowsWithInvestment = rows.filter((row) => numberOrNull(row.investment.value) !== null);
+    const rowsWithRoasBase = rows.filter((row) => row.roas !== null && row.roas !== undefined && !compactRoasRequiresValidation(row));
+    const rowsWithRoasToValidate = rows.filter((row) => compactRoasRequiresValidation(row));
+    const roasTotal = ratioOrNull(
+      sumOrNull(rowsWithRoasBase.map((row) => row.receitaInvestimento)),
+      sumOrNull(rowsWithRoasBase.map((row) => numberOrNull(row.investment.value)))
+    );
+    const selectedCount = selectedCompareLaunches().length;
+    const selectedInFilter = rows.some((row) => row.launch?.modelo_id === selected?.modelo_id);
+    wrap.innerHTML = `
+      <section class="launch-analysis-panel">
+        <div class="launch-analysis-head">
+          <div>
+            <div class="section-kicker story-kicker">Resumo executivo</div>
+            <h2>Comparativo executivo de lançamentos</h2>
+            <p>Cada lançamento é comparado na mesma janela D+ a partir do próprio D0. Vendas vêm do pipeline de pedidos; investimento soma mídia paga e CRM cadastrados na janela.</p>
+          </div>
+          <div class="launch-analysis-status">
+            <span>${escapeHtml(selectedPeriodLabel())}</span>
+            <strong>${fmtNum(selectedCount)} lançamento${selectedCount === 1 ? '' : 's'}</strong>
+            <small>${selectedInFilter ? 'destaque dentro do grupo' : 'destaque fora do grupo'}</small>
+          </div>
+        </div>
+
+        <div class="launch-kpi-grid">
+          ${compactKpi('Faturamento total', fmtBRL(totals.totalReceita), `${fmtNum(rowsWithRevenue.length)} linhas com venda`)}
+          ${compactKpi('Pedidos', fmtNum(totals.totalPedidos), 'pedidos aprovados')}
+          ${compactKpi('Pares', fmtNum(totals.totalPares), 'volume fisico')}
+          ${compactKpi('Investimento', fmtBRL(totals.totalInvestimento), `${fmtNum(rowsWithInvestment.length)} linhas · mídia paga + CRM`)}
+          ${compactKpi('ROAS', roasTotal === null ? '—' : `${fmtNum(roasTotal, 2)}x`, rowsWithRoasBase.length ? `${fmtNum(rowsWithRoasBase.length)} bases comparáveis${rowsWithRoasToValidate.length ? ` · ${fmtNum(rowsWithRoasToValidate.length)} a validar` : ''}` : rowsWithRoasToValidate.length ? `${fmtNum(rowsWithRoasToValidate.length)} valor a validar` : 'sem base comparável')}
+        </div>
+
+        ${compactOrderOriginSummary(rows)}
+
+        ${compactPresentationSummary(rows)}
+
+        <div class="launch-main-block">
+          <div class="launch-block-head">
+            <div>
+              <span class="launch-card-kicker">Base comparativa</span>
+              <h3>Desempenho por lançamento</h3>
+            </div>
+            ${tip('Cada linha usa a própria data de lançamento. D+30 de Avant compara com D+30 de Phantom, mesmo que tenham acontecido em meses diferentes.')}
+          </div>
+          ${compactHistoricalTable(rows)}
+        </div>
+
+        <div class="story-drawer-grid launch-support-drawers">
+          ${storyProductDetailDrawerHtml(selected)}
+          ${storyCutDrawerHtml(selected)}
+          ${storyCommercialDetailDrawerHtml(selected)}
+          ${storySeasonalDrawerHtml(selected)}
+          ${storyProjectionDrawerHtml(selected)}
+          <details class="story-step-details">
+            <summary><span>Origem dos dados</span><small>De onde vem cada número</small>${tip('Mostra as fontes usadas na leitura principal sem misturar vendas com a base de investimento.')}</summary>
+            <div class="launch-source-grid">
+              <div><strong>Vendas e faturamento</strong><span>lancamentos_produtos_dia.json, gerado pelo pipeline de pedidos.</span></div>
+              <div><strong>Investimento</strong><span>midia_paga.json e crm_disparos.json somados como base unica de investimento. A planilha diaria nao entra no calculo de investimento.</span></div>
+              <div><strong>Canais</strong><span>O SSOT usa origem/UTM granular quando disponível e preserva uma alocação binária pago versus orgânico nas lacunas históricas.</span></div>
+              <div><strong>Rentabilidade</strong><span>Leitura de retorno comercial: ROAS quando ha base valida de midia paga. Margem liquida/CMV nao estao no JSON.</span></div>
+              <div><strong>Projeção</strong><span>Único bloco estimado; todo o restante preserva dado real ou vazio.</span></div>
+            </div>
+          </details>
+          <div id="story-drawer-panel" class="story-drawer-panel" hidden></div>
+        </div>
+      </section>
+    `;
   }
 
   function sortShareContexts(rows) {
@@ -3485,17 +5768,58 @@
 
   function attributionForSelectedPeriod(launch) {
     const data = selectedAnalysisWindow(launch).data || {};
+    return attributionFromWindowData(data);
+  }
+
+  function attributionFromWindowData(data = {}) {
+    const hasOrderAttribution = hasExplicitOrderAttribution(data);
+    const receitaPaga = numberOrNull(data.receita_paga);
+    const receitaCrm = numberOrNull(data.receita_crm);
+    const pedidosPagos = numberOrNull(data.pedidos_pagos);
+    const pedidosCrm = numberOrNull(data.pedidos_crm);
+    const receitaInvestimento = receitaPaga;
+    const pedidosInvestimento = pedidosPagos;
+    const receitaOrganicaBase = sumValues(
+      explicitOrganicOrLegacyCrm(data.receita_organica, receitaCrm),
+      data.receita_sem_match_atribuicao,
+      data.receita_outros_canais
+    );
+    const pedidosOrganicosBase = sumValues(
+      explicitOrganicOrLegacyCrm(data.pedidos_organicos, pedidosCrm),
+      data.pedidos_sem_match_atribuicao,
+      data.pedidos_outros_canais
+    );
     return {
-      receita_organica: numberOrNull(data.receita_organica),
-      receita_paga: numberOrNull(data.receita_paga),
-      receita_crm: numberOrNull(data.receita_crm),
-      receita_outros_canais: numberOrNull(data.receita_outros_canais),
-      receita_sem_match_atribuicao: numberOrNull(data.receita_sem_match_atribuicao),
-      pedidos_organicos: numberOrNull(data.pedidos_organicos),
-      pedidos_pagos: numberOrNull(data.pedidos_pagos),
-      pedidos_crm: numberOrNull(data.pedidos_crm),
-      pedidos_outros_canais: numberOrNull(data.pedidos_outros_canais),
-      pedidos_sem_match_atribuicao: numberOrNull(data.pedidos_sem_match_atribuicao)
+      receita: numberOrNull(data.receita),
+      receita_total_original: numberOrNull(data.receita_total_original),
+      pedidos: numberOrNull(data.pedidos) ?? numberOrNull(data.pedidos_validos),
+      receita_organica: hasOrderAttribution ? nonInvestmentRevenueForData({ ...data, receita_organica: receitaOrganicaBase }, receitaInvestimento) : null,
+      receita_paga: hasOrderAttribution ? receitaPaga : null,
+      receita_crm: null,
+      receita_outros_canais: null,
+      receita_sem_match_atribuicao: null,
+      pedidos_organicos: hasOrderAttribution ? nonInvestmentOrdersForData({ ...data, pedidos_organicos: pedidosOrganicosBase }, pedidosInvestimento) : null,
+      pedidos_pagos: hasOrderAttribution ? pedidosPagos : null,
+      pedidos_crm: null,
+      pedidos_outros_canais: null,
+      pedidos_sem_match_atribuicao: null
+    };
+  }
+
+  function attributionForWindowKey(launch, key) {
+    return attributionFromWindowData(getWindow(launch, key) || {});
+  }
+
+  function investmentAttributionForWindow(launch, key = selectedPeriodKey()) {
+    const attribution = attributionForWindowKey(launch, key);
+    const receitaInvestimento = numberOrNull(attribution.receita_paga);
+    const pedidosInvestimento = numberOrNull(attribution.pedidos_pagos);
+    return {
+      ...attribution,
+      receitaInvestimento,
+      pedidosInvestimento,
+      receitaOrganica: attribution.receita_organica,
+      pedidosOrganicos: attribution.pedidos_organicos
     };
   }
 
@@ -3511,6 +5835,8 @@
   function renderStoryBrief(selected) {
     const wrap = $('story-brief');
     if (!wrap || !selected) return;
+    renderCompactLaunchAnalysis(wrap, selected);
+    return;
 
     const model = shareModelForLine(selected.modelo_id);
     const selectedWindow = selectedAnalysisWindow(selected);
@@ -3529,7 +5855,7 @@
     const firstGoal = companyGoal || goalRows[0];
     const firstGoalPct = firstGoal ? numberOrNull(goalDisplayPctMeta(firstGoal, selected)) : null;
     const firstGoalMonthText = firstGoal ? goalMonthBreakdownText(firstGoal, selected) : '';
-    const shareLabel = selectedShare === null && partialShare !== null ? 'Share até o momento' : 'Share na janela';
+    const shareLabel = selectedShare === null && partialShare !== null ? 'Participação até o momento' : 'Participação na janela';
     const representationValue = firstGoalPct !== null
       ? fmtPct(firstGoalPct, 1)
       : firstGoalMonthText
@@ -3553,12 +5879,12 @@
     const rankableRows = comparisonRows.filter((row) => row.share !== null);
     const rank = rankableRows.findIndex((row) => row.launch.modelo_id === selected.modelo_id) + 1;
     const rankCopy = rank > 0
-      ? `${fmtNum(rank)}º de ${fmtNum(rankableRows.length)} com share calculável no grupo comparativo (${rankWindowLabel})`
-      : 'A linha aparece no grupo comparativo, mas ainda não tem share calculável nessa janela.';
+      ? `${fmtNum(rank)}º de ${fmtNum(rankableRows.length)} com participação calculável no grupo comparativo (${rankWindowLabel})`
+      : 'A linha aparece no grupo comparativo, mas ainda não tem participação calculável nessa janela.';
     let visibleRank = 0;
     const allShareHtml = comparisonRows.length
       ? `
-        <div class="story-top-caption">Todas as linhas · share por janela própria · ${escapeHtml(rankWindowLabel)}</div>
+        <div class="story-top-caption">Todas as linhas · participação por janela própria · ${escapeHtml(rankWindowLabel)}</div>
         <ol class="story-top-list" aria-label="Todas as linhas comparadas por representatividade isolada">
           ${comparisonRows.map((row) => {
             const hasShare = row.share !== null;
@@ -3576,14 +5902,14 @@
       : '<div class="story-empty-note">Ranking comparativo depende de receita do produto e faturamento da empresa na janela própria de cada lançamento.</div>';
     const thesis = share !== null
       ? `${selected.modelo}: ${fmtPct(share, 1)} da receita da Reise em ${selectedPeriodLabel()} e ${rank > 0 ? `${fmtNum(rank)}º de ${fmtNum(rankableRows.length)}` : 'sem posição'} no comparativo.`
-      : `${selected.modelo}: ainda sem share confiável em ${selectedPeriodLabel()}.`;
+      : `${selected.modelo}: ainda sem participação confiável em ${selectedPeriodLabel()}.`;
     const storyIntroTooltip = 'Resumo para decisão: peso do lançamento, meta, momento da empresa e próximo recorte de análise.';
     const centralQuestionTooltip = 'Pergunta principal para orientar a decisão executiva.';
     const activityTooltip = 'Mostra dias, faturamento, pedidos e pares da linha na janela escolhida.';
     const representationGoalHtml = storyGoalContributionHtml(goalRows, selected);
     const evidence = [
       storyMetricHtml({
-        label: 'Representatividade vs meta',
+        label: 'Participação vs meta',
         value: representationValue,
         detail: representationDetail,
         width: firstGoalPct !== null ? firstGoalPct * 100 : shareWidth,
@@ -3592,7 +5918,7 @@
         extraHtml: representationGoalHtml
       }),
       storyMetricHtml({
-        label: 'Momento da empresa vs meta',
+        label: 'Contexto da empresa vs meta',
         value: company.value,
         detail: `${company.label}: ${company.copy}`,
         width: companyWidth,
@@ -3631,7 +5957,7 @@
     const cards = [
       {
         step: '01',
-        title: 'Momento da empresa vs meta',
+        title: 'Contexto da empresa vs meta',
         value: company.value,
         label: company.label,
         copy: `${storyEvidenceCopy(company.copy)}${executiveEvidenceSourceLine('momento', { company })}`,
@@ -3640,16 +5966,16 @@
       },
       {
         step: '02',
-        title: 'Representatividade vs meta',
+        title: 'Participação vs meta',
         value: representationValue,
         label: representationGoalSummary(goalRows, selected),
         copy: `${storyEvidenceCopy(representationGoalSummary(goalRows, selected))}${representationGoalExecutiveEvidence(goalRows, selected)}${executiveEvidenceSourceLine('representatividade', { goalRow: firstGoal })}`,
         state: 'focus',
-        tooltip: 'Evidência do peso do lançamento: produto contra meta mensal por janelas de 30 dias, share da janela e posição no universo comparado.'
+        tooltip: 'Evidência do peso do lançamento: produto contra meta mensal por janelas de 30 dias, participação da janela e posição no universo comparado.'
       },
       {
         step: '03',
-        title: 'Atividade comparativa',
+        title: 'Volume comparativo',
         value: activity.value,
         label: activity.label,
         copy: `${storyEvidenceCopy(activity.copy)}${executiveEvidenceSourceLine('atividade', { activityRow: activity.row || selected.acumulado_lancamento || selected.acumulado_atual || selectedWindow.data })}`,
@@ -3662,7 +5988,7 @@
       <div class="story-brief-panel story-brief-panel--${escapeHtml(signal.state)}">
         <div class="story-brief-head">
           <div>
-            <div class="section-kicker story-kicker">${labelTip('Leitura executiva', storyIntroTooltip)}</div>
+            <div class="section-kicker story-kicker">${labelTip('Resumo executivo', storyIntroTooltip)}</div>
             <h2>História comparativa</h2>
             <p>${escapeHtml(thesis)} Compare receita, meta e ritmo frente ao grupo.</p>
           </div>
@@ -3674,7 +6000,7 @@
         <div class="story-visual-grid">
           <div class="story-left-column">
             <div class="story-hero-signal story-hero-signal--activity">
-              ${labelTip('Atividade comparativa', activityTooltip)}
+                ${labelTip('Volume comparativo', activityTooltip)}
               <strong>${escapeHtml(activity.value)}</strong>
               <p>${escapeHtml(activity.copy)}</p>
               ${storyFactChips(activity.facts)}
@@ -3687,7 +6013,7 @@
             </div>
             <div class="story-visual-metric story-visual-metric--wide">
               <div class="story-visual-metric-head">
-                ${labelTip('Ranking por share comparativo', 'Cada lançamento usa sua própria linha temporal: receita do produto na janela selecionada dividida pelo faturamento da empresa no mesmo intervalo daquele lançamento. Phantom usa datas de Phantom; Avant usa datas de Avant; as datas de calendário não se cruzam.')}
+                ${labelTip('Ranking por participação', 'Cada lançamento usa sua própria linha temporal: receita do produto na janela selecionada dividida pelo faturamento da empresa no mesmo intervalo daquele lançamento. Phantom usa datas de Phantom; Avant usa datas de Avant; as datas de calendário não se cruzam.')}
               </div>
               ${allShareHtml}
             </div>
@@ -3734,7 +6060,7 @@
     const withoutWindow = Math.max(0, cohort.length - withWindow);
 
     const items = [
-      { label: 'Linha destacada', value: selected?.modelo || '—' },
+      { label: 'Destaque visual', value: selected?.modelo || '—' },
       { label: 'Janela comparativa', value: selectedPeriodLabel() },
       { label: 'Linhas comparadas', value: fmtNum(cohort.length) },
       { label: 'Com dado na janela', value: fmtNum(withWindow) },
@@ -3785,12 +6111,12 @@
     return `
       <div class="share-drawer-head">
         <div>
-          <div class="share-drawer-kicker">Share de representatividade</div>
+          <div class="share-drawer-kicker">Participação na receita</div>
           <h3>${escapeHtml(line)}</h3>
         </div>
       </div>
       <div class="share-error">
-        <strong>Share indisponivel</strong>
+        <strong>Participação indisponível</strong>
         <p>${escapeHtml(message)}</p>
       </div>
     `;
@@ -3798,12 +6124,12 @@
 
   function shareChartAria(points) {
     const values = points.map((point) => Number(point.share_do_dia)).filter((value) => Number.isFinite(value));
-    if (!values.length) return 'Share diário do lançamento sem pontos válidos.';
+    if (!values.length) return 'Participação diária do lançamento sem pontos válidos.';
     const min = Math.min(...values);
     const max = Math.max(...values);
     const companyValues = points.map((point) => numberOrNull(point.receita_empresa)).filter((value) => value !== null);
     const companyLayer = companyValues.length ? ' com camada de faturamento total da Reise.' : '.';
-    return `Share diário do lançamento entre ${fmtPct(min, 1)} e ${fmtPct(max, 1)} ao longo de ${fmtNum(points.length)} dias${companyLayer}`;
+    return `Participação diária do lançamento entre ${fmtPct(min, 1)} e ${fmtPct(max, 1)} ao longo de ${fmtNum(points.length)} dias${companyLayer}`;
   }
 
   function commercialEventTypeLabel(type) {
@@ -3811,7 +6137,7 @@
     const labels = {
       promocao: 'Promocao',
       ruptura_estoque: 'Ruptura operacional',
-      midia_paga: 'Mídia paga',
+      midia_paga: 'Investimento',
       concorrente: 'Concorrente',
       outro: 'Outro'
     };
@@ -3946,7 +6272,7 @@
   }
 
   function drillWindowBadge(model) {
-    if (!model) return badge('parcial', 'Share indisponivel');
+    if (!model) return badge('parcial', 'Participação indisponível');
     if (model.janela_completa === true) return badge('pipeline', 'Janela completa');
     if (model.janela_completa === false) {
       const done = numberOrNull(model.dias_disponiveis);
@@ -4432,7 +6758,7 @@
         : { label: 'Dias', value: fmtNum(selected.diasCount) };
     return [
       { label: selected.metricLabel, value: storyFormatMetric(selected.metricValue, selected.metricType) },
-      { label: 'Share', value: fmtPct(summary.share, 1) },
+      { label: 'Participação', value: fmtPct(summary.share, 1) },
       { label: 'Vs média', value: deltaAvgText },
       extra
     ];
@@ -4580,7 +6906,7 @@
     }).join('');
 
     return `
-      <div class="drill-chart" role="img" aria-label="Curva de share diario da linha">
+      <div class="drill-chart" role="img" aria-label="Curva de participação diária da linha">
         <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">
           <line class="drill-grid-line" x1="28" y1="${height - 18}" x2="${width - 20}" y2="${height - 18}" />
           <path class="drill-line" d="${svgPath(real)}" />
@@ -4613,7 +6939,7 @@
         </svg>
         <div class="drill-chart-foot">
           <span>Receita e pares absolutos desde o D0 da linha.</span>
-          <span>Sem share por sub-modelo.</span>
+          <span>Sem participação por sub-modelo.</span>
         </div>
       </div>
     `;
@@ -4629,7 +6955,7 @@
     if (pre === null || pos === null || !days) {
       return `
         <section class="drill-section">
-          <div class="drill-section-title">Momento da empresa</div>
+          <div class="drill-section-title">Contexto da empresa</div>
           <p class="drill-empty">comparativo indisponível</p>
         </section>
       `;
@@ -4638,7 +6964,7 @@
     if (!d0) {
       return `
         <section class="drill-section">
-          <div class="drill-section-title">Momento da empresa</div>
+          <div class="drill-section-title">Contexto da empresa</div>
           <p class="drill-empty">D0 analitico indisponivel</p>
         </section>
       `;
@@ -4650,7 +6976,7 @@
     const arrow = baselineInsuficiente ? '' : (variation > 0 ? '+' : (variation < 0 ? '-' : ''));
     return `
       <section class="drill-section">
-        <div class="drill-section-title">Momento da empresa</div>
+        <div class="drill-section-title">Contexto da empresa</div>
         <div class="drill-company">
           <div><span>Antes</span><strong>${fmtBRL(pre)}</strong><small>${fmtDateSlash(preStart)} a ${fmtDateSlash(preEnd)}</small></div>
           <div><span>Depois</span><strong>${fmtBRL(pos)}</strong><small>${fmtDateSlash(d0)} a ${fmtDateSlash(posEnd)}</small></div>
@@ -4670,11 +6996,11 @@
     const aggregate = aggregateMediaRows(mediaRows, launch)[0] || null;
     const paidRevenue = numberOrNull(launch?.receita_paga);
     const organicRevenue = numberOrNull(launch?.receita_organica);
-    const crmRevenue = numberOrNull(launch?.receita_crm);
     const otherRevenue = numberOrNull(launch?.receita_outros_canais);
+    const investmentRevenue = paidRevenue;
 
-    if (paidRevenue !== null || organicRevenue !== null || crmRevenue !== null || otherRevenue !== null) {
-      const total = Number(paidRevenue || 0) + Number(organicRevenue || 0) + Number(crmRevenue || 0) + Number(otherRevenue || 0);
+    if (paidRevenue !== null || organicRevenue !== null || otherRevenue !== null) {
+      const total = Number(investmentRevenue || 0) + Number(organicRevenue || 0) + Number(otherRevenue || 0);
       const channelMeta = (revenue) => {
         const parts = [];
         parts.push(total && revenue !== null ? `${fmtPct(revenue / total, 1)} do total atribuido` : 'venda aguardando');
@@ -4684,9 +7010,8 @@
         <section class="drill-section">
           <div class="drill-section-title">Vendas por canal</div>
           <div class="drill-impact-grid">
-            <div><span>Venda paga</span><strong>${paidRevenue !== null ? fmtBRL(paidRevenue) : 'Aguardando'}</strong><small>${channelMeta(paidRevenue)}</small></div>
+            <div><span>Venda midia paga</span><strong>${investmentRevenue !== null ? fmtBRL(investmentRevenue) : 'Aguardando'}</strong><small>${channelMeta(investmentRevenue)}</small></div>
             <div><span>Venda organica</span><strong>${organicRevenue !== null ? fmtBRL(organicRevenue) : 'Aguardando'}</strong><small>${channelMeta(organicRevenue)}</small></div>
-            <div><span>CRM / owned</span><strong>${crmRevenue !== null ? fmtBRL(crmRevenue) : 'Aguardando'}</strong><small>${channelMeta(crmRevenue)}</small></div>
             <div><span>Outros canais</span><strong>${otherRevenue !== null ? fmtBRL(otherRevenue) : 'Aguardando'}</strong><small>${channelMeta(otherRevenue)}</small></div>
           </div>
         </section>
@@ -4702,7 +7027,7 @@
         </div>
         <div class="drill-visible-warning">
           <strong>Atribuição real pendente</strong>
-          <span>O dashboard não usa mais correlação dias-com-investimento vs dias-sem como impacto. Até a view por pedido entrar no payload, mídia fica agregada por janela e ROAS por canal fica bloqueado quando a receita for repetida.</span>
+          <span>O dashboard não usa mais correlação dias-com-investimento vs dias-sem como impacto. Até a view por pedido entrar no payload, investimento fica agregado por janela e ROAS permanece vazio quando não houver atribuição real.</span>
         </div>
       </section>
     `;
@@ -4717,7 +7042,7 @@
     const max = Math.max(...rows.map((row) => row.share).filter((value) => value !== null), 0.01);
     return `
       <section class="drill-section">
-        <div class="drill-section-title">Ranking por share comparativo - todas as linhas</div>
+        <div class="drill-section-title">Ranking por participação - todas as linhas</div>
         <div class="drill-ranking">
           ${rows.map((row) => {
             const hasShare = row.share !== null;
@@ -4735,12 +7060,10 @@
   }
 
   function comparisonLaunchesWithFocus(selected) {
-    const byId = new Map();
-    selectedCompareLaunches().forEach((launch) => {
-      if (launch?.modelo_id) byId.set(launch.modelo_id, launch);
-    });
-    if (selected?.modelo_id) byId.set(selected.modelo_id, selected);
-    return [...byId.values()].filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
+    const launches = selectedCompareLaunches()
+      .filter((launch) => launch && !launch.isFuture && !isPlannedStatus(launch.status));
+    if (launches.length) return launches;
+    return selected && !selected.isFuture && !isPlannedStatus(selected.status) ? [selected] : [];
   }
 
   function cohortMetricSummary(selected, launches, getter, { higherIsBetter = true } = {}) {
@@ -4915,14 +7238,14 @@
         selectedId: selected.modelo_id
       }),
       cohortMetricCard({
-        label: 'Pares vendidos',
+        label: 'Pares',
         tooltip: 'Ranking de volume físico vendido na janela selecionada de cada lançamento.',
         rows: cohortMetricRows(cohort, (launch) => windowFor(launch)?.pares),
         formatter: fmtNum,
         selectedId: selected.modelo_id
       }),
       cohortMetricCard({
-        label: 'Velocidade diária',
+        label: 'Ritmo diário',
         tooltip: 'Ranking de receita média por dia na janela selecionada.',
         rows: cohortMetricRows(cohort, (launch) => {
           const data = windowFor(launch);
@@ -4932,7 +7255,7 @@
         selectedId: selected.modelo_id
       }),
       cohortMetricCard({
-        label: 'Contexto de nascimento',
+        label: 'Contexto comercial',
         tooltip: 'Ranking do saldo sazonal dentro da janela selecionada de cada lançamento. Valores positivos indicam vento a favor; negativos indicam pressão de calendário.',
         rows: cohortMetricRows(cohort, (launch) => seasonalScoreForLaunchWindow(launch, selectedPeriodEndDay(launch))),
         formatter: (value) => seasonalScoreLabel(value, value === 0 ? [] : [{ score: value }]),
@@ -4956,6 +7279,15 @@
     return state.launches.filter(isEligibleLaunch);
   }
 
+  function launchMatchesLineFilter(launch) {
+    if (!state.lineFilter || state.lineFilter === 'all') return true;
+    return normalizeText(launch?.linha || launch?.modelo || '') === state.lineFilter;
+  }
+
+  function availableComparisonLaunches() {
+    return comparableLaunches().filter(launchMatchesLineFilter);
+  }
+
   function defaultComparableLaunch(launches = comparableLaunches()) {
     return [...launches].sort((a, b) => {
       if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
@@ -4964,7 +7296,7 @@
   }
 
   function selectedCompareLaunches() {
-    const allowed = comparableLaunches();
+    const allowed = availableComparisonLaunches();
     const selectedIds = new Set(state.compareModelIds || []);
     const selected = allowed.filter((launch) => selectedIds.has(launch.modelo_id));
     if (selected.length) return selected;
@@ -5094,7 +7426,8 @@
           labels: normalizedLabels,
           datasets: normalizedLaunches.map((launch, index) => {
             const data = Array(maxDay + 1).fill(null);
-            const hasDaily = Boolean(launch.daily?.length);
+            const filteredSeries = isProductFilterActive() || isChannelFilterActive();
+            const hasDaily = !filteredSeries && Boolean(launch.daily?.length);
             const isBackfilled = launch.daily_source === 'historico_backfill';
             if (hasDaily) {
               const byDay = new Map();
@@ -5113,7 +7446,7 @@
               data[0] = 0;
               const points = selectedPeriodWindowKeys(selected).map((key) => ({
                 day: WINDOW_DAYS[key],
-                value: getWindow(launch, key)?.receita
+                value: filteredWindowDataForLaunch(launch, key)?.receita
               }));
               points.forEach((point) => {
                 if (point.value !== null && point.value !== undefined) data[point.day] = point.value;
@@ -5227,8 +7560,10 @@
     const comparable = comparableLaunches();
     if (!comparable.length) return;
 
-    if (!comparable.some((launch) => launch.modelo_id === state.primaryModelId)) {
-      state.primaryModelId = defaultComparableLaunch(comparable)?.modelo_id || comparable[0].modelo_id;
+    const available = availableComparisonLaunches();
+    const primaryPool = available.length ? available : comparable;
+    if (!primaryPool.some((launch) => launch.modelo_id === state.primaryModelId)) {
+      state.primaryModelId = defaultComparableLaunch(primaryPool)?.modelo_id || primaryPool[0].modelo_id;
     }
 
     const allowedIds = new Set(comparable.map((launch) => launch.modelo_id));
@@ -5368,7 +7703,7 @@
 
     $('historical-average').innerHTML = `
       <div class="card">
-        <div class="metric-label">${labelTip('Linha destacada', `Receita da linha destacada na janela fechada ${label}. Cada modelo usa sua própria data de lançamento como início da contagem.`)}</div>
+        <div class="metric-label">${labelTip('Destaque visual', `Receita do lançamento destacado na janela fechada ${label}. Cada modelo usa sua própria data de lançamento como início da contagem.`)}</div>
         <div class="metric-value">${fmtBRL(selectedValue)}</div>
         <div class="metric-sub">${escapeHtml(selected.modelo)} · ${escapeHtml(label)}</div>
       </div>
@@ -5447,7 +7782,7 @@
   function comparisonAttributionCell(revenue, orders) {
     const revenueValue = numberOrNull(revenue);
     if (revenueValue === null) {
-      return '<span class="cell-muted">Aguardando vendas</span><div class="metric-sub">sem receita no JSON</div>';
+      return '<span class="cell-muted">Aguardando vendas</span><div class="metric-sub">canal ainda não exportado</div>';
     }
     const orderValue = numberOrNull(orders);
     return `${organicPaidValue(revenueValue)}<div class="metric-sub">${orderValue === null ? 'pedidos aguardando' : `${fmtNum(orderValue)} pedidos atribuídos`}</div>`;
@@ -5464,11 +7799,11 @@
 
   function commercialMetricConfig(key = state.commercialChartMetric) {
     const configs = {
-      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Prioriza investimento real de aquisição vindo de metas_mensais.daily/aquisicao_por_canal na janela do lançamento. Se não houver SSOT, usa cadastro manual de mídia/CRM.' },
-      receita: { key: 'receita', label: 'Receita no contexto de aquisição', short: 'Receita', type: 'bar', unit: 'currency', help: 'Quando há Aquisição SSOT, mostra receita realizada da empresa na mesma janela de calendário do lançamento. Não é receita atribuída à campanha.' },
-      roas: { key: 'roas', label: 'ROAS de aquisição', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita realizada da empresa / investimento de aquisição na janela do lançamento. É contexto de eficiência da empresa, não atribuição por campanha.' },
-      cpa: { key: 'cpa', label: 'CPA de aquisição', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento de aquisição / pedidos realizados na mesma janela de calendário do lançamento.' },
-      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento / pares informados na linha de mídia. Mantém a leitura separada de custo por sessão, que só existe se a planilha de mídia ganhar uma coluna de sessões por campanha.' },
+      investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Investimento vem da planilha principal, somando midia_paga.json e crm_disparos.json na janela do lancamento. A planilha diaria nao entra neste calculo.' },
+      receita: { key: 'receita', label: 'Receita midia paga', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita classificada como paga pelo SSOT, usando origem granular ou alocacao binaria conforme a cobertura historica.' },
+      roas: { key: 'roas', label: 'ROAS midia paga', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita dos pedidos de midia paga dividida pelo investimento declarado na janela. So calcula quando existe midia paga cadastrada na mesma janela.' },
+      cpa: { key: 'cpa', label: 'CPA midia paga', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento total dividido pelos pedidos classificados como pagos pelo SSOT.' },
+      cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento total dividido pelos pares vendidos do lançamento na janela.' },
       cpc: { key: 'cpc', label: 'CPC', short: 'CPC', type: 'line', unit: 'currency', help: 'Investimento / cliques. Só aparece quando o JSON trouxer cliques ou CPC.' }
     };
     return configs[key] || configs.investimento;
@@ -5519,6 +7854,40 @@
     return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
   }
 
+  function acquisitionChannelsFromDailyRows(rows) {
+    const groups = new Map();
+    const hasSalesChannels = rows.some((day) => Array.isArray(day.canais_venda) && day.canais_venda.length);
+    rows.forEach((day) => {
+      const channels = hasSalesChannels
+        ? (Array.isArray(day.canais_venda) ? day.canais_venda : [])
+        : (Array.isArray(day.canais_aquisicao) ? day.canais_aquisicao : []);
+      channels.forEach((channel) => {
+        const label = String(channel?.canal || 'Canal').trim() || 'Canal';
+        const key = normalizeText(label);
+        const current = groups.get(key) || {
+          canal: label,
+          tipo: channel?.tipo || null,
+          investimento: null,
+          sessoes: null,
+          pedidos: null,
+          receita: null,
+          novos_clientes: null,
+          source: hasSalesChannels ? 'vendas_atribuidas_bigquery' : 'aquisicao_bigquery'
+        };
+        ['investimento', 'sessoes', 'pedidos', 'receita', 'novos_clientes'].forEach((field) => {
+          const value = numberOrNull(channel?.[field]);
+          if (value !== null) current[field] = (current[field] || 0) + value;
+        });
+        groups.set(key, current);
+      });
+    });
+    return [...groups.values()].map((channel) => ({
+      ...channel,
+      cps: channel.investimento !== null && channel.sessoes ? channel.investimento / channel.sessoes : null,
+      roas: channel.investimento !== null && channel.investimento > 0 && channel.receita !== null ? channel.receita / channel.investimento : null
+    })).sort((a, b) => Number(b.receita || b.investimento || 0) - Number(a.receita || a.investimento || 0));
+  }
+
   function acquisitionWindowForLaunch(launch, key = selectedPeriodKey(), { requireClosed = false } = {}) {
     const d0 = analysisDayZero(launch);
     const targetDay = windowEndDay(key);
@@ -5531,12 +7900,13 @@
     const endIso = toIsoDate(addDays(d0, observedDay));
     const rows = acquisitionDailyRows()
       .filter((row) => row.data && row.data >= startIso && row.data <= endIso);
-    const investimento = sumKnownField(rows, 'investimento_realizado');
-    const receita = sumKnownField(rows, 'realizado_receita');
-    const pedidos = sumKnownField(rows, 'realizado_pedidos');
+    const investimento = sumKnownField(rows, 'investimento_aquisicao') ?? sumKnownField(rows, 'investimento_realizado');
+    const receita = sumKnownField(rows, 'receita_aquisicao') ?? sumKnownField(rows, 'realizado_receita');
+    const pedidos = sumKnownField(rows, 'pedidos_aquisicao') ?? sumKnownField(rows, 'realizado_pedidos');
     const metaInvestimento = sumKnownField(rows, 'meta_investimento');
     const sessoes = sumKnownField(rows, 'sessoes') ?? sumKnownField(rows, 'sessoes_aquisicao');
     const novosClientes = sumKnownField(rows, 'clientes_novos') ?? sumKnownField(rows, 'novos_clientes') ?? sumKnownField(rows, 'novos_clientes_aquisicao');
+    const canais = acquisitionChannelsFromDailyRows(rows);
     if (investimento === null && receita === null && pedidos === null) return null;
 
     const complete = observedDay >= targetDay;
@@ -5553,6 +7923,7 @@
       pedidos,
       sessoes,
       novosClientes,
+      canais,
       roas: investimento && receita !== null ? receita / investimento : null,
       cpa: investimento !== null && pedidos ? investimento / pedidos : null,
       cps: investimento !== null && sessoes ? investimento / sessoes : null,
@@ -5587,7 +7958,55 @@
 
   function mediaRowMatchesSelectedPeriod(row, launch) {
     if (!isSpecificAnalysisPeriod()) return true;
-    const selectedEnd = selectedPeriodEndDay(launch);
+    return mediaRowMatchesExactWindow(row, launch, selectedPeriodKey());
+  }
+
+  function periodEndDayForKey(launch, key = selectedPeriodKey(), { capToAvailable = false } = {}) {
+    const day = WINDOW_DAYS[key] ?? janelaEmDias(key);
+    if (day === null || day === undefined) return null;
+    if (!capToAvailable) return Math.max(0, Math.min(90, day));
+    const available = [
+      latestLaunchDataDay(launch),
+      numberOrNull(launch?.dPlus)
+    ].filter((value) => value !== null);
+    const maxAvailable = available.length ? Math.max(...available) : day;
+    return Math.max(0, Math.min(90, day, maxAvailable));
+  }
+
+  function parseManualLaunchDateCandidates(text) {
+    const match = String(text || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (!match) return [];
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const rawYear = match[3];
+    const baseYear = rawYear.length === 2 ? 2000 + Number(rawYear) : Number(rawYear);
+    const years = rawYear.length === 2 ? [baseYear, baseYear + 1] : [baseYear];
+    return [...new Set(years)].map((year) => {
+      const date = new Date(year, month - 1, day, 12, 0, 0);
+      if (Number.isNaN(date.getTime()) || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+      return toIsoDate(date);
+    }).filter(Boolean);
+  }
+
+  function manualCommercialReferenceDate(launch) {
+    const rows = optionalRows('midia_paga').filter((row) => row.modelo_id === launch?.modelo_id);
+    const candidates = rows.flatMap((row) => parseManualLaunchDateCandidates(row.observacao));
+    if (!candidates.length) return analysisDayZero(launch);
+
+    const crmRows = optionalRows('crm_disparos').filter((row) => row.modelo_id === launch?.modelo_id);
+    const score = (candidate) => crmRows.reduce((acc, row) => {
+      const idx = dayIndex(candidate, row.data_disparo || row.data || row.date);
+      if (idx === null || idx < 0 || idx > 90) return acc;
+      return acc + 1 + (numberOrNull(row.receita_linha) || 0) / 100000 + (numberOrNull(row.investimento) || 0) / 1000000;
+    }, 0);
+
+    return candidates
+      .map((candidate, index) => ({ candidate, index, score: score(candidate) }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.candidate
+      || analysisDayZero(launch);
+  }
+
+  function mediaRowMatchesPeriodEnd(row, launch, selectedEnd) {
     if (selectedEnd === null) return true;
     const key = commercialWindowKey(row);
     if (key === 'pre-d0') return true;
@@ -5603,19 +8022,107 @@
     return true;
   }
 
+  function mediaRowMatchesExactWindow(row, launch, key = selectedPeriodKey()) {
+    if (!key || !WINDOW_KEYS.includes(key)) return true;
+    const rowKey = commercialWindowKey(row);
+    if (WINDOW_KEYS.includes(rowKey)) return rowKey === key;
+    const inferredKey = commercialWindowKey({ janela: inferMediaWindow(row, launch) });
+    return inferredKey === key;
+  }
+
+  function isTotalMediaInvestmentRow(row) {
+    return String(row?.canal || row?.channel || '').trim().toLowerCase() === 'total';
+  }
+
+  function mediaRowsForInvestmentWindow(launch, key = selectedPeriodKey()) {
+    const rows = optionalRows('midia_paga')
+      .filter((row) => row.modelo_id === launch?.modelo_id)
+      .filter((row) => mediaRowMatchesExactWindow(row, launch, key))
+      .filter((row) => midiaValidaParaGraficoComercial(row));
+    const channelRows = rows.filter((row) => !isTotalMediaInvestmentRow(row));
+    return channelRows.length ? channelRows : rows;
+  }
+
+  function legacyMediaRowsForLaunch(launch, key = selectedPeriodKey(), { capToAvailable = false } = {}) {
+    return mediaRowsForInvestmentWindow(launch, key, { capToAvailable });
+  }
+
   function crmRowMatchesSelectedPeriod(row, launch) {
     if (!isSpecificAnalysisPeriod()) return true;
     const endDay = selectedPeriodEndDay(launch);
-    if (endDay === null) return true;
+    return crmRowMatchesPeriodEnd(row, launch, endDay);
+  }
+
+  function crmRowMatchesPeriodEnd(row, launch, selectedEnd, referenceDate = analysisDayZero(launch)) {
+    if (selectedEnd === null) return true;
+    if (row.janela) {
+      const key = commercialWindowKey({ janela: row.janela });
+      const days = janelaEmDias(key) ?? WINDOW_DAYS[key] ?? null;
+      if (days !== null) return days <= selectedEnd;
+    }
     const data = row.data_disparo || row.data || row.date;
-    const idx = dayIndex(analysisDayZero(launch), data);
-    return idx !== null && idx >= 0 && idx <= endDay;
+    const idx = dayIndex(referenceDate, data);
+    return idx !== null && idx >= 0 && idx <= selectedEnd;
+  }
+
+  function manualInvestmentRowsForLaunch(launch, key = selectedPeriodKey(), { capToAvailable = false } = {}) {
+    const endDay = periodEndDayForKey(launch, key, { capToAvailable });
+    const mediaRows = mediaRowsForInvestmentWindow(launch, key)
+      .map((row) => ({ ...row, investment_source: 'midia_paga' }))
+    const crmReferenceDate = manualCommercialReferenceDate(launch);
+    const crmRows = optionalRows('crm_disparos')
+      .filter((row) => row.modelo_id === launch?.modelo_id)
+      .filter((row) => crmRowMatchesPeriodEnd(row, launch, endDay, crmReferenceDate))
+      .map((row) => ({ ...normalizeCrmRow(row), investment_source: 'crm_disparos' }))
+      .filter((row) => numberOrNull(row.investimento) !== null);
+    return [...mediaRows, ...crmRows];
+  }
+
+  function manualPerformanceRowsForLaunch(launch, key = selectedPeriodKey(), { capToAvailable = false } = {}) {
+    const endDay = periodEndDayForKey(launch, key, { capToAvailable });
+    const crmReferenceDate = manualCommercialReferenceDate(launch);
+    const mediaRows = mediaRowsForInvestmentWindow(launch, key)
+      .map((row) => ({
+        source: 'midia_paga',
+        receita: numberOrNull(row.receita_atribuida),
+        pedidos: numberOrNull(row.pedidos),
+        investimento: numberOrNull(row.investimento)
+      }));
+    const crmRows = optionalRows('crm_disparos')
+      .filter((row) => row.modelo_id === launch?.modelo_id)
+      .filter((row) => crmRowMatchesPeriodEnd(row, launch, endDay, crmReferenceDate))
+      .map((row) => ({
+        source: 'crm_disparos',
+        receita: numberOrNull(row.receita_linha),
+        pedidos: numberOrNull(row.pedidos),
+        investimento: numberOrNull(row.investimento)
+      }));
+    return [...mediaRows, ...crmRows].filter((row) => row.receita !== null || row.pedidos !== null);
+  }
+
+  function manualAttributionFallbackForLaunch(launch, key = selectedPeriodKey(), data = {}) {
+    const rows = manualPerformanceRowsForLaunch(launch, key, { capToAvailable: true })
+      .filter((row) => row.source === 'midia_paga');
+    const receitaInvestimento = sumValues(...rows.map((row) => row.receita));
+    const pedidosInvestimento = sumValues(...rows.map((row) => row.pedidos));
+    const totalReceita = numberOrNull(data?.receita_total_original)
+      ?? numberOrNull(data?.receita_bruta)
+      ?? numberOrNull(data?.receita);
+    const totalPedidos = numberOrNull(data?.pedidos) ?? numberOrNull(data?.pedidos_validos);
+    return {
+      receitaInvestimento,
+      pedidosInvestimento,
+      receitaOrganica: nonInvestmentRevenueForData(data, receitaInvestimento),
+      pedidosOrganicos: pedidosInvestimento !== null
+        ? nonNegativeRoundedRemainder(totalPedidos, pedidosInvestimento, 0)
+        : null,
+      totalReceita,
+      totalPedidos
+    };
   }
 
   function manualCommercialMetricRowsForLaunch(launch) {
-    const mediaRowsRaw = (state.data?.midia_paga || [])
-      .filter((row) => row.modelo_id === launch.modelo_id)
-      .filter((row) => mediaRowMatchesSelectedPeriod(row, launch))
+    const mediaRowsRaw = mediaRowsForInvestmentWindow(launch, selectedPeriodKey())
       .map((row) => normalizeMediaRow(row, launch));
     const mediaRows = enrichMediaEstimates(mediaRowsRaw, launch)
       .filter((row) => midiaValidaParaGraficoComercial(row));
@@ -5674,16 +8181,34 @@
   }
 
   function commercialMetricRowsForLaunch(launch) {
-    const acquisitionRows = acquisitionMetricRowsForLaunch(launch);
-    const manualRows = manualCommercialMetricRowsForLaunch(launch);
-    if (!acquisitionRows.length) return manualRows;
-    if (!manualRows.length) return aggregateCommercialChartRows(acquisitionRows);
-
-    const acquisitionKeys = new Set(acquisitionRows.map((row) => row.key));
-    return aggregateCommercialChartRows([
-      ...acquisitionRows,
-      ...manualRows.filter((row) => !acquisitionKeys.has(row.key))
-    ]);
+    return WINDOW_KEYS.map((key) => {
+      const data = filteredWindowDataForLaunch(launch, key) || {};
+      const investmentRows = manualInvestmentRowsForLaunch(launch, key, { capToAvailable: false });
+      const attribution = investmentAttributionForWindow(launch, key);
+      const investimento = sumKnown(investmentRows, 'investimento');
+      const receita = attribution.receitaInvestimento;
+      const pedidos = attribution.pedidosInvestimento;
+      const pares = numberOrNull(data.pares);
+      const cliques = sumKnown(investmentRows, 'cliques');
+      if ([investimento, receita, pedidos, pares, cliques].every((value) => value === null || value === undefined)) return null;
+      return {
+        launch,
+        key,
+        label: commercialWindowLabel(key),
+        investimento,
+        receita,
+        pedidos,
+        pares,
+        cliques,
+        roas: ratioOrNull(receita, investimento),
+        cpa: ratioOrNull(investimento, pedidos),
+        cpp: ratioOrNull(investimento, pares),
+        cpc: ratioOrNull(investimento, cliques),
+        receita_organica: attribution.receitaOrganica,
+        pedidos_organicos: attribution.pedidosOrganicos,
+        source: investimento !== null ? 'planilha investimento + atribuicao pedido' : 'atribuicao pedido'
+      };
+    }).filter(Boolean);
   }
 
   function commercialMetricValue(row, metricKey) {
@@ -5866,7 +8391,7 @@
       .sort((a, b) => commercialWindowRank(a) - commercialWindowRank(b));
 
     if (!allRows.length || !windowKeys.length) {
-      if (subText) subText.textContent = 'Sem base diária confiável de aquisição para as linhas nesta janela. A tela não usa mídia/CRM manual como estimativa.';
+      if (subText) subText.textContent = 'Sem investimento cadastrado na planilha principal para as linhas nesta janela. Ausencia fica vazia, nao vira zero.';
       return;
     }
 
@@ -5878,82 +8403,80 @@
         : `${metric.label}: ainda sem base suficiente no JSON. ${metric.key === 'cpc' ? 'Inclua cliques ou CPC na exportação para habilitar esta leitura.' : 'Ausência fica vazia, não vira zero.'}`;
     }
 
-    const chartLaunches = launches;
+    const selectedCommercialKey = selectedPeriodKey();
+    const chartRows = launches
+      .map((launch, index) => {
+        const rows = rowsByLaunch.get(launch.modelo_id) || [];
+        const fallback = rows.find((row) => row.key === selectedCommercialKey)
+          || rows.filter((row) => commercialWindowRank(row.key) <= commercialWindowRank(selectedCommercialKey)).at(-1)
+          || null;
+        const row = fallback;
+        return {
+          launch,
+          index,
+          row,
+          value: commercialMetricValue(row, metric.key)
+        };
+      })
+      .filter((row) => row.value !== null)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    if (subText) {
+      subText.textContent = chartRows.length
+        ? `${metric.label} na janela ${selectedPeriodLabel()}, comparando cada lançamento desde o próprio D0.`
+        : `${metric.label}: sem dado real para a janela ${selectedPeriodLabel()}.`;
+    }
+
     createChart(canvasId, {
-      type: metric.type,
+      type: 'bar',
       data: {
-        labels: windowKeys.map(commercialWindowLabel),
-        datasets: chartLaunches.map((launch, index) => {
-          const rows = rowsByLaunch.get(launch.modelo_id) || [];
-          const rowByWindow = new Map(rows.map((row) => [row.key, row]));
-          const rawData = windowKeys.map((key) => commercialMetricValue(rowByWindow.get(key), metric.key));
-          const missingDataIndexes = rawData
-            .map((value, dataIndex) => value === null ? dataIndex : null)
-            .filter((dataIndex) => dataIndex !== null);
-          const data = metric.type === 'bar' ? rawData.map((value) => value === null ? 0 : value) : rawData;
-          const isSelected = launch.modelo_id === selected?.modelo_id;
-          return {
-            label: launch.modelo,
-            data,
-            missingDataIndexes,
-            metricRows: rowByWindow,
-            backgroundColor: metric.type === 'bar'
-              ? data.map((value, dataIndex) => missingDataIndexes.includes(dataIndex) ? fillFor(launch.modelo_id, index) : colorFor(launch.modelo_id, index))
-              : fillFor(launch.modelo_id, index),
-            borderColor: colorFor(launch.modelo_id, index),
-            borderWidth: isSelected ? 3 : 2,
-            borderRadius: metric.type === 'bar' ? 4 : 0,
-            minBarLength: metric.type === 'bar' ? 7 : undefined,
-            fill: false,
-            tension: metric.type === 'line' ? 0.18 : 0,
-            pointRadius: metric.type === 'line' ? (isSelected ? 3.5 : 3) : 0,
-            pointHoverRadius: 6,
-            pointHitRadius: 12,
-            spanGaps: true
-          };
-        })
+        labels: chartRows.map((row) => row.launch.modelo),
+        datasets: [{
+          label: metric.label,
+          data: chartRows.map((row) => row.value),
+          rankRows: chartRows,
+          backgroundColor: chartRows.map((row) => colorFor(row.launch.modelo_id, row.index)),
+          borderColor: chartRows.map((row) => colorFor(row.launch.modelo_id, row.index)),
+          borderWidth: 1,
+          borderRadius: 7,
+          barThickness: 20,
+          maxBarThickness: 22
+        }]
       },
       options: chartOptions({
-        interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
-        layout: { padding: { top: 10, right: 16, bottom: 6, left: 4 } },
+        indexAxis: 'y',
+        interaction: { mode: 'nearest', intersect: false, axis: 'y' },
+        layout: { padding: { top: 8, right: 76, bottom: 0, left: 4 } },
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              padding: 16,
-              pointStyle: metric.type === 'line' ? 'circle' : 'rectRounded'
-            }
+          legend: { display: false },
+          rankingValueLabels: {
+            enabled: true,
+            formatter: (value) => formatCommercialMetric(value, metric)
           },
           tooltip: {
             callbacks: {
-              title: (items) => {
-                const item = items[0];
-                return item ? `${item.dataset.label} · ${item.label}` : '';
-              },
-              label: (ctx) => ctx.dataset.missingDataIndexes?.includes(ctx.dataIndex)
-                ? `${metric.short}: sem dado`
-                : `${metric.short}: ${formatCommercialMetric(ctx.parsed.y, metric)}`,
+              title: (items) => items[0]?.label || '',
+              label: (ctx) => `${metric.short}: ${formatCommercialMetric(ctx.parsed.x, metric)}`,
               afterLabel: (ctx) => {
-                const key = windowKeys[ctx.dataIndex];
-                const row = ctx.dataset.metricRows?.get(key);
+                const row = ctx.dataset.rankRows?.[ctx.dataIndex]?.row;
                 if (!row) return 'Sem dado real para esta janela.';
                 return commercialTooltipLines(row);
               }
             }
-          },
-          commercialMissingBars: {
-            enabled: metric.type === 'bar'
           }
         },
         scales: {
-          x: { grid: { display: false } },
-          y: {
-            grace: metric.unit === 'ratio' ? '14%' : '10%',
+          x: {
+            beginAtZero: true,
+            grace: metric.unit === 'ratio' ? '18%' : '14%',
             ticks: {
-              maxTicksLimit: 5,
+              maxTicksLimit: 4,
               callback: (value) => metric.unit === 'ratio' ? `${fmtNum(Number(value), 1)}x` : fmtBRL(Number(value), true)
             },
-            grid: { color: 'rgba(255,255,255,0.045)' }
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          },
+          y: {
+            grid: { display: false },
+            ticks: { color: 'rgba(255,255,255,0.76)', font: { weight: 700 } }
           }
         }
       })
@@ -5966,104 +8489,143 @@
 
     const chartLaunches = selectedCompareLaunches();
     const labels = WINDOW_KEYS;
-    const windowChartLaunches = chartLaunches.filter((launch) => labels.some((key) => Boolean(getWindow(launch, key))));
+    const windowData = (launch, key) => filteredWindowDataForLaunch(launch, key);
+    const windowChartLaunches = chartLaunches.filter((launch) => labels.some((key) => Boolean(windowData(launch, key))));
 
-    createChart('chart-revenue', {
-      type: 'bar',
-      data: {
-        labels: labels.map(windowLabel),
-        datasets: windowChartLaunches.map((launch, index) => ({
-          label: launch.modelo,
-          data: labels.map((key) => getWindow(launch, key)?.receita ?? null),
-          windowKeys: labels,
-          windowRanges: labels.map((key) => launchWindowRangeLabel(launch, key)),
-          backgroundColor: colorFor(launch.modelo_id, index),
-          borderColor: colorFor(launch.modelo_id, index),
-          borderWidth: 1,
-          borderRadius: 4
-        }))
-      },
-      options: chartOptions({
-        plugins: {
-          legend: { position: 'bottom' },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
-              afterLabel: (ctx) => {
-                const range = ctx.dataset.windowRanges?.[ctx.dataIndex] || 'janela sem data';
-                return `Janela fixa ${ctx.label}: ${range}. Cada modelo usa o próprio D0; fonte: JSON de vendas ou histórico versionado.`;
+    const compactChartRows = chartLaunches.map((launch, index) => ({
+      launch,
+      index,
+      sales: compactSalesWindowForLaunch(launch)
+    }));
+    const rankingRowsFor = (field) => compactChartRows
+      .map((row) => ({
+        ...row,
+        value: numberOrNull(row.sales?.data?.[field])
+      }))
+      .filter((row) => row.value !== null)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    const createRankingChart = (canvasId, rows, config) => {
+      createChart(canvasId, {
+        type: 'bar',
+        data: {
+          labels: rows.map((row) => row.launch.modelo),
+          datasets: [{
+            label: config.label,
+            data: rows.map((row) => row.value),
+            rankRows: rows,
+            backgroundColor: rows.map((row) => colorFor(row.launch.modelo_id, row.index)),
+            borderColor: rows.map((row) => colorFor(row.launch.modelo_id, row.index)),
+            borderWidth: 1,
+            borderRadius: 7,
+            barThickness: 20,
+            maxBarThickness: 22
+          }]
+        },
+        options: chartOptions({
+          indexAxis: 'y',
+          interaction: { mode: 'nearest', intersect: false, axis: 'y' },
+          layout: { padding: { top: 8, right: 72, bottom: 0, left: 4 } },
+          plugins: {
+            legend: { display: false },
+            rankingValueLabels: {
+              enabled: true,
+              formatter: (value) => config.format(value)
+            },
+            tooltip: {
+              callbacks: {
+                title: (items) => items[0]?.label || '',
+                label: (ctx) => `${config.label}: ${config.format(ctx.parsed.x)}`,
+                afterLabel: (ctx) => {
+                  const row = ctx.dataset.rankRows?.[ctx.dataIndex];
+                  if (!row) return '';
+                  return [
+                    `Janela: ${row.sales?.statusLabel || selectedPeriodLabel()}`,
+                    `Período: ${row.sales?.range || 'sem data'}`,
+                    `Fonte: ${row.sales?.source || 'pipeline'}`
+                  ];
+                }
               }
             }
-          }
-        },
-        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtBRL(v, true) } } }
-      })
-    });
-
-    createChart('chart-pairs', {
-      type: 'bar',
-      data: {
-        labels: labels.map(windowLabel),
-        datasets: windowChartLaunches.map((launch, index) => ({
-          label: launch.modelo,
-          data: labels.map((key) => getWindow(launch, key)?.pares ?? null),
-          windowKeys: labels,
-          windowRanges: labels.map((key) => launchWindowRangeLabel(launch, key)),
-          backgroundColor: fillFor(launch.modelo_id, index),
-          borderColor: colorFor(launch.modelo_id, index),
-          borderWidth: 1,
-          borderRadius: 4
-        }))
-      },
-      options: chartOptions({
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)} pares`,
-              afterLabel: (ctx) => {
-                const range = ctx.dataset.windowRanges?.[ctx.dataIndex] || 'janela sem data';
-                return `Janela fixa ${ctx.label}: ${range}. Nulo significa janela ausente, não zero.`;
-              }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              grace: '18%',
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: { maxTicksLimit: 4, callback: (value) => config.axis(value) }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: 'rgba(255,255,255,0.76)', font: { weight: 700 } }
             }
           }
-        },
-        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => fmtNum(v) } } }
-      })
+        })
+      });
+    };
+
+    createRankingChart('chart-revenue', rankingRowsFor('receita'), {
+      label: 'Faturamento',
+      format: (value) => fmtBRL(value, true),
+      axis: (value) => fmtBRL(Number(value), true)
     });
 
-    createChart('chart-multipliers', {
-      type: 'bar',
-      data: {
-        labels: ['15÷7', '30÷15', '60÷30', '90÷30'],
-        datasets: windowChartLaunches.map((launch, index) => ({
-          label: launch.modelo,
-          data: [
-            launch.multiplicadores?.m15_7 ?? null,
-            launch.multiplicadores?.m30_15 ?? null,
-            launch.multiplicadores?.m60_30 ?? null,
-            launch.multiplicadores?.m90_30 ?? null
-          ],
-          backgroundColor: colorFor(launch.modelo_id, index),
-          borderRadius: 4
-        }))
-      },
-      options: chartOptions({
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y, 2)}x`
-            }
-          }
-        },
-        scales: { x: { grid: { display: false } }, y: { ticks: { callback: (v) => `${fmtNum(v, 1)}×` } } }
+    createRankingChart('chart-pairs', rankingRowsFor('pares'), {
+      label: 'Pares vendidos',
+      format: (value) => `${fmtNum(value)} pares`,
+      axis: (value) => fmtNum(Number(value))
+    });
+
+    const growthPairs = {
+      '15d': ['15d', '7d'],
+      '30d': ['30d', '15d'],
+      '60d': ['60d', '30d'],
+      '90d': ['90d', '30d']
+    };
+    const currentGrowthKey = selectedPeriodKey();
+    const growthPair = growthPairs[currentGrowthKey] || null;
+    const growthPanel = document.querySelector('[data-chart-panel="multipliers"]');
+    const growthTitle = growthPanel?.querySelector('.chart-title span');
+    const growthSub = growthPanel?.querySelector('.chart-sub');
+    if (growthTitle) growthTitle.textContent = growthPair ? 'Crescimento da janela' : 'Ritmo inicial';
+    if (growthSub) {
+      growthSub.textContent = growthPair
+        ? `${windowLabel(growthPair[0])} dividido por ${windowLabel(growthPair[1])}, cada lançamento no próprio D0`
+        : `Faturamento médio por dia em ${selectedPeriodLabel()}`;
+    }
+    const growthRows = compactChartRows
+      .map((row) => {
+        if (growthPair) {
+          const currentValue = numberOrNull(row.sales?.data?.receita);
+          const previousValue = numberOrNull(windowData(row.launch, growthPair[1])?.receita);
+          return {
+            ...row,
+            value: ratioOrNull(currentValue, previousValue),
+            detail: `${windowLabel(growthPair[0])} / ${windowLabel(growthPair[1])}`,
+            unit: 'ratio'
+          };
+        }
+        const currentValue = numberOrNull(row.sales?.data?.receita);
+        const days = numberOrNull(row.sales?.observedDay) !== null ? Number(row.sales.observedDay) + 1 : windowSpanDays(currentGrowthKey);
+        return {
+          ...row,
+          value: days ? ratioOrNull(currentValue, days) : null,
+          detail: `média diária em ${row.sales?.statusLabel || selectedPeriodLabel()}`,
+          unit: 'currency'
+        };
       })
+      .filter((row) => row.value !== null)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    createRankingChart('chart-multipliers', growthRows, {
+      label: growthPair ? 'Crescimento' : 'Ritmo diário',
+      format: (value) => growthPair ? `${fmtNum(value, 2)}x` : `${fmtBRL(value, true)}/dia`,
+      axis: (value) => growthPair ? `${fmtNum(Number(value), 1)}x` : fmtBRL(Number(value), true)
     });
 
     const mixWindowFor = (launch) => {
       const key = selectedPeriodKey();
       return {
         key,
-        data: getWindow(launch, key)
+        data: windowData(launch, key)
       };
     };
     const clientMixRows = chartLaunches.map((launch) => {
@@ -6087,27 +8649,33 @@
             label: 'Novos',
             data: clientMixRows.map((row) => row.pct == null ? null : row.pct * 100),
             backgroundColor: '#F07800',
-            borderRadius: 4
+            borderRadius: 6,
+            barThickness: 20,
+            maxBarThickness: 22
           },
           {
             label: 'Recorrentes',
             data: clientMixRows.map((row) => row.pct == null ? null : (1 - row.pct) * 100),
             backgroundColor: '#4C9F6A',
-            borderRadius: 4
+            borderRadius: 6,
+            barThickness: 20,
+            maxBarThickness: 22
           }
         ].concat(clientMixRows.some((row) => row.pct == null) ? [{
           label: 'Sem classificação',
           data: clientMixRows.map((row) => row.pct == null ? 100 : null),
           backgroundColor: 'rgba(255,255,255,0.12)',
-          borderRadius: 4
+          borderRadius: 6,
+          barThickness: 20,
+          maxBarThickness: 22
         }] : [])
       },
       options: chartOptions({
         indexAxis: 'y',
-        layout: { padding: { top: 8, right: 12, bottom: 0, left: 2 } },
+        layout: { padding: { top: 8, right: 18, bottom: 0, left: 2 } },
         scales: {
           x: { stacked: true, display: false, max: 100, grid: { display: false } },
-          y: { stacked: true, grid: { display: false } }
+          y: { stacked: true, grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.76)', font: { weight: 700 } } }
         },
         plugins: {
           clientMixLabels: { rows: clientMixRows },
@@ -6135,31 +8703,43 @@
 
     const weeklyLaunches = chartLaunches.filter((launch) => launch.semanas?.length);
     const weeklyLabels = [...new Set(weeklyLaunches.flatMap((launch) => launch.semanas.map((week) => week.label)))];
-    $('weekly-title').textContent = weeklyLaunches.length ? 'Rampa semanal comparada' : 'Semana a semana';
+    $('weekly-title').textContent = weeklyLaunches.length ? 'Receita por semana' : 'Semana a semana';
     createChart('chart-weekly', {
-      type: 'line',
+      type: 'bar',
       data: {
         labels: weeklyLabels,
         datasets: weeklyLaunches.map((launch, index) => ({
           label: launch.modelo,
           data: weeklyLabels.map((label) => launch.semanas.find((week) => week.label === label)?.receita ?? null),
           borderColor: colorFor(launch.modelo_id, index),
-          backgroundColor: fillFor(launch.modelo_id, index),
-          tension: 0.35,
-          pointRadius: launch.modelo_id === selected.modelo_id ? 4 : 3,
-          borderWidth: launch.modelo_id === selected.modelo_id ? 3 : 2
+          backgroundColor: colorFor(launch.modelo_id, index),
+          borderWidth: launch.modelo_id === selected.modelo_id ? 2 : 1,
+          borderRadius: 5,
+          maxBarThickness: 18,
+          categoryPercentage: 0.72,
+          barPercentage: 0.78
         }))
       },
       options: chartOptions({
+        interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
+        layout: { padding: { top: 8, right: 14, bottom: 0, left: 2 } },
         scales: {
-          x: { grid: { display: false } },
-          y: { position: 'left', ticks: { callback: (v) => fmtBRL(v, true) } }
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+          y: {
+            position: 'left',
+            ticks: { maxTicksLimit: 4, callback: (v) => fmtBRL(v, true) },
+            grid: { color: 'rgba(255,255,255,0.04)' }
+          }
         },
         plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { padding: 12 }
+          },
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
-              afterLabel: () => 'Semana relativa ao D0 de cada lançamento; compara a rampa semanal entre modelos.'
+              afterLabel: () => 'Semana relativa ao D0 de cada lançamento; compara o ritmo semanal entre modelos.'
             }
           }
         }
@@ -6168,6 +8748,7 @@
 
     renderNormalizedChart(selected);
     renderCommercialEfficiencyChart(selected);
+    applyLaunchChartView();
   }
 
   function colorRowsForLaunchPeriod(launch) {
@@ -6524,7 +9105,7 @@
         <div class="cut-group-title">Pontos de atenção</div>
         ${detractors.length ? detractors.map(barRow).join('') : '<div class="cut-empty">Sem corte abaixo da média do grupo.</div>'}
       </div>
-      <p class="cut-note">Comparação por ${escapeHtml(selectedPeriodLabel())}: cada modelo usa a própria data de lançamento; desvio = share do corte no lançamento menos a média do mesmo corte no grupo comparativo.</p>
+      <p class="cut-note">Comparação por ${escapeHtml(selectedPeriodLabel())}: cada modelo usa a própria data de lançamento; desvio = participação do corte no lançamento menos a média do mesmo corte no grupo comparativo.</p>
     `;
   }
 
@@ -6689,7 +9270,7 @@
     const cohortCalendarHtml = cohortCalendarRows.length
       ? `<div class="calendar-cohort-row">
           ${cohortCalendarRows.map((row) => `<div class="calendar-card calendar-card--${row.cls}">
-            <div class="calendar-title"><span>${escapeHtml(row.launch.modelo)}<small>${escapeHtml(selectedAnalysis.label)}</small></span>${row.launch.modelo_id === selected.modelo_id ? badge('focus', 'Foco') : ''}</div>
+            <div class="calendar-title"><span>${escapeHtml(row.launch.modelo)}<small>${escapeHtml(selectedAnalysis.label)}</small></span>${row.launch.modelo_id === selected.modelo_id ? badge('focus', 'Destaque') : ''}</div>
             <div class="seasonal-score seasonal-score--${row.cls}">${escapeHtml(row.scoreLabel)}</div>
             <div class="metric-sub">${fmtNum(row.counts.promotores)} promotores · ${fmtNum(row.counts.ofensores)} ofensores · ${fmtNum(row.counts.neutros)} neutros</div>
           </div>`).join('')}
@@ -6827,13 +9408,11 @@
   }
 
   function midiaValidaParaGraficoComercial(row) {
-    if (!row || row.valor_suspeito) return false;
-    if (!row.data_suspeita) return true;
     const hasDeclaredWindow = janelaEmDias(row.janela) !== null;
     const hasInvestment = numberOrNull(row.investimento) !== null;
-    return hasDeclaredWindow
-      && hasInvestment
-      && String(row.data_suspeita_motivo || '') === 'data_inicio_ou_fim_ausente';
+    if (!row || !hasInvestment) return false;
+    if (hasDeclaredWindow) return true;
+    return !row.data_suspeita && !row.valor_suspeito;
   }
 
   function inferMediaWindow(row, launch) {
@@ -6994,7 +9573,7 @@
         out[index].pedidos_source = 'bloqueada_por_duplicidade';
         out[index].atribuicao_bloqueada = true;
         out[index].metodologia = 'receita_janela_agregada';
-        out[index].aviso = 'Receita repetida em canais diferentes da mesma janela. ROAS por canal foi bloqueado; use a linha agregada até existir atribuição real por pedido.';
+        out[index].aviso = 'Receita repetida em canais diferentes da mesma janela. ROAS de investimento foi bloqueado; use a linha agregada até existir atribuição real por pedido.';
       });
     });
 
@@ -7196,14 +9775,13 @@
       const attribution = attributionForSelectedPeriod(row.launch);
       add(totals.paid, attribution.receita_paga, attribution.pedidos_pagos);
       add(totals.organic, attribution.receita_organica, attribution.pedidos_organicos);
-      add(totals.crm, attribution.receita_crm, attribution.pedidos_crm);
-      add(totals.other, attribution.receita_outros_canais, attribution.pedidos_outros_canais);
-      add(totals.unmatched, attribution.receita_sem_match_atribuicao, attribution.pedidos_sem_match_atribuicao);
+      add(totals.organic, attribution.receita_outros_canais, attribution.pedidos_outros_canais);
+      add(totals.organic, attribution.receita_sem_match_atribuicao, attribution.pedidos_sem_match_atribuicao);
     });
-    totals.hasAnyAttributed = ['paid', 'organic', 'crm', 'other'].some((key) => totals[key].hasReceita || totals[key].hasPedidos);
-    totals.receitaClassificada = ['paid', 'organic', 'crm', 'other']
+    totals.hasAnyAttributed = ['paid', 'organic'].some((key) => totals[key].hasReceita || totals[key].hasPedidos);
+    totals.receitaClassificada = ['paid', 'organic']
       .reduce((acc, key) => acc + (totals[key].hasReceita ? totals[key].receita : 0), 0);
-    totals.pedidosClassificados = ['paid', 'organic', 'crm', 'other']
+    totals.pedidosClassificados = ['paid', 'organic']
       .reduce((acc, key) => acc + (totals[key].hasPedidos ? totals[key].pedidos : 0), 0);
     return totals;
   }
@@ -7223,6 +9801,15 @@
     `;
   }
 
+  function combinedAttributionBucket(...buckets) {
+    return buckets.reduce((acc, bucket) => ({
+      receita: acc.receita + (bucket?.hasReceita ? Number(bucket.receita || 0) : 0),
+      pedidos: acc.pedidos + (bucket?.hasPedidos ? Number(bucket.pedidos || 0) : 0),
+      hasReceita: acc.hasReceita || Boolean(bucket?.hasReceita),
+      hasPedidos: acc.hasPedidos || Boolean(bucket?.hasPedidos)
+    }), { receita: 0, pedidos: 0, hasReceita: false, hasPedidos: false });
+  }
+
   function renderChannelAttributionSummary(summaries) {
     const wrap = $('channel-attribution-summary');
     if (!wrap) return;
@@ -7240,15 +9827,13 @@
     const statusCopy = totals.hasAnyAttributed
       ? `Vendas classificadas por canal real dentro da janela ${escapeHtml(period)} dos ${fmtNum(modelCount)} lan&ccedil;amentos comparados.${coverageCopy}`
       : status === 'sem_atribuicao_real'
-        ? 'Aguardando a tabela mirror casar os pedidos. Enquanto isso, a tela n&atilde;o transforma aus&ecirc;ncia de atribui&ccedil;&atilde;o em zero.'
-        : 'Ainda sem receita_paga, receita_organica ou receita_crm no JSON para a janela selecionada.';
+        ? 'Aguardando a exporta&ccedil;&atilde;o por pedido casar os canais com os produtos. A tabela principal fica sem pago/org&acirc;nico enquanto essa atribui&ccedil;&atilde;o n&atilde;o existir.'
+        : 'Ainda sem receita_paga ou receita_organica no payload do produto para a janela selecionada.';
     wrap.innerHTML = `
-      ${channelAttributionCard('Pago total', totals.paid, 'channel-attribution-card--paid', totals.receitaClassificada)}
-      ${channelAttributionCard('Orgânico total', totals.organic, 'channel-attribution-card--organic', totals.receitaClassificada)}
-      ${channelAttributionCard('CRM / owned total', totals.crm, 'channel-attribution-card--crm', totals.receitaClassificada)}
-      ${channelAttributionCard('Outros canais', totals.other, 'channel-attribution-card--other', totals.receitaClassificada)}
+      ${channelAttributionCard('Pedidos de midia paga', totals.paid, 'channel-attribution-card--paid', totals.receitaClassificada)}
+      ${channelAttributionCard('Pedidos organicos', totals.organic, 'channel-attribution-card--organic', totals.receitaClassificada)}
       <div class="channel-attribution-note">
-        Resultado por canal do lan&ccedil;amento, n&atilde;o por campanha individual. As tabelas de m&iacute;dia paga e CRM abaixo continuam mostrando apenas investimento e linhas manuais declaradas; vendas de outras campanhas entram no total do canal, sem criar novas campanhas no dashboard. ${statusCopy}
+        Resultado por canal do lan&ccedil;amento, n&atilde;o por campanha individual. Pedido com sinal de midia paga entra em pago; todo o restante entra em organico. ${statusCopy}
       </div>
     `;
   }
@@ -7286,7 +9871,7 @@
     const wrap = $('daily-source-summary');
     if (!wrap) return;
     if (!summaries.length) {
-      wrap.innerHTML = `<div class="empty-state"><div><strong>Selecione ao menos um modelo.</strong>A base diária acompanha os modelos comparados.</div></div>`;
+      wrap.innerHTML = `<div class="empty-state"><div><strong>Selecione ao menos um modelo.</strong>O contexto agregado da empresa acompanha os modelos comparados apenas como leitura auxiliar.</div></div>`;
       return;
     }
 
@@ -7294,17 +9879,17 @@
     const hasPrimaryDaily = [primary.aquisicaoInvestimento, primary.aquisicaoReceita, primary.aquisicaoPedidos].some((value) => value !== null && value !== undefined);
     const dailyMonths = new Set(acquisitionDailyRows().map((row) => row.mes).filter(Boolean)).size;
     const sourceCopy = hasPrimaryDaily
-      ? `Fonte: Planilha diária/metas_mensais.daily. Soma os dias da janela ${escapeHtml(primary.aquisicaoLabel || selectedPeriodLabel())} de cada lançamento. É contexto da empresa, não receita atribuída a campanha.`
-      : `Sem detalhe diário para ${escapeHtml(primary.launch.modelo)} na janela ${escapeHtml(selectedPeriodLabel())}. O mês pode existir no resumo mensal, mas ainda precisa vir detalhado por dia da Planilha diária para preencher investimento, faturamento e pedidos aqui.`;
+      ? `Fonte: metas_mensais.daily quando existir. Soma os dias da janela ${escapeHtml(primary.aquisicaoLabel || selectedPeriodLabel())} de cada lançamento como contexto legado; não entra no cálculo de investimento.`
+      : `Sem contexto diário para ${escapeHtml(primary.launch.modelo)} na janela ${escapeHtml(selectedPeriodLabel())}. O mês pode existir no resumo mensal, mas esse bloco não alimenta investimento, ROAS ou CPA.`;
 
     wrap.innerHTML = `
-      ${dailySourceCard('Investimento', primary.aquisicaoInvestimento, fmtBRL, 'Planilha diária na janela', 'daily-source-card--main')}
+      ${dailySourceCard('Invest. empresa', primary.aquisicaoInvestimento, fmtBRL, 'Contexto de aquisição', 'daily-source-card--main')}
       ${dailySourceCard('Faturamento empresa', primary.aquisicaoReceita, fmtBRL, 'Mesmo período do lançamento', 'daily-source-card--revenue')}
       ${dailySourceCard('Pedidos empresa', primary.aquisicaoPedidos, fmtNum, 'Pedidos aprovados no período', 'daily-source-card--orders')}
       ${dailySourceCard('ROAS empresa', primary.aquisicaoRoas, (value) => `${fmtNum(value, 2)}x`, 'Faturamento / investimento', 'daily-source-card--efficiency')}
       ${dailySourceCard('CPA empresa', primary.aquisicaoCpa, fmtBRL, 'Investimento / pedidos', 'daily-source-card--efficiency')}
       <div class="daily-source-note">
-        ${sourceCopy} Campanhas manuais de mídia e CRM continuam abaixo, separadas, para não atribuir a uma campanha vendas que podem ter vindo de outras ações. Meses com diário carregado: ${fmtNum(dailyMonths)}.
+        ${sourceCopy} A planilha principal de investimento alimenta o total declarado; vendas por canal vêm do payload de pedidos. Meses com contexto diário carregado: ${fmtNum(dailyMonths)}.
       </div>
       <div class="daily-source-lines">
         ${summaries.map(dailySourceLine).join('')}
@@ -7333,41 +9918,47 @@
     const wrap = $('paid-media-kpis');
     if (!wrap) return;
     if (!summaries.length) {
-      wrap.innerHTML = `<div class="empty-state empty-state--compact"><div><strong>Sem modelos comparados.</strong> Selecione ao menos uma linha para ver mídia paga.</div></div>`;
+      wrap.innerHTML = `<div class="empty-state empty-state--compact"><div><strong>Sem modelos comparados.</strong> Selecione ao menos uma linha para ver investimento.</div></div>`;
       return;
     }
 
     const primary = summaries.find((row) => row.launch?.modelo_id === state.primaryModelId) || summaries[0];
-    const comparable = summaries.filter((row) => [row.aquisicaoInvestimento, row.aquisicaoReceita, row.aquisicaoPedidos].some((value) => value !== null && value !== undefined));
-    const hasPrimaryDaily = [primary.aquisicaoInvestimento, primary.aquisicaoReceita, primary.aquisicaoPedidos].some((value) => value !== null && value !== undefined);
-    const avgRoas = meanKnown(comparable, 'aquisicaoRoas');
-    const avgCpa = meanKnown(comparable, 'aquisicaoCpa');
-    const avgCps = meanKnown(comparable, 'aquisicaoCps');
-    const roasDelta = primary.aquisicaoRoas !== null && avgRoas !== null ? primary.aquisicaoRoas - avgRoas : null;
-    const cpaDelta = primary.aquisicaoCpa !== null && avgCpa !== null ? primary.aquisicaoCpa - avgCpa : null;
-    const hasSessions = primary.aquisicaoSessoes !== null && primary.aquisicaoSessoes !== undefined;
-    const comparisonText = hasPrimaryDaily
-      ? `Linha destacada: ${primary.launch.modelo} · ${primary.aquisicaoLabel || selectedPeriodLabel()}. Média do grupo com diário: ROAS ${avgRoas === null ? 'sem dado' : `${fmtNum(avgRoas, 2)}x`}${avgCpa === null ? '' : ` · CPA ${fmtBRL(avgCpa)}`}${avgCps === null ? '' : ` · CPS ${fmtBRL(avgCps)}`}.`
-      : `${primary.launch.modelo} ainda não tem detalhe diário na janela ${selectedPeriodLabel()}; os KPIs aparecem quando metas_mensais.daily trouxer os dias desse período.`;
-    const sessionText = hasPrimaryDaily && !hasSessions
-      ? ' Sessões, CPS e conversão não aparecem porque a base diária da janela ainda não trouxe sessões.'
-      : '';
+    const comparable = summaries.filter((row) => row.investimentoTotal !== null && row.investimentoTotal !== undefined);
+    const hasPrimaryInvestment = primary.investimentoTotal !== null && primary.investimentoTotal !== undefined;
+    const hasPrimaryMediaInvestment = primary.hasMediaInvestment === true;
+    const hasPrimaryCompleteWindow = primary.isPartialCommercialWindow !== true;
+    const primaryRoas = primary.roasComercial;
+    const primaryCpa = primary.cpaComercial;
+    const comparableWithEstimates = comparable.map((row) => ({
+      ...row,
+      estimatedRoas: row.roasComercial,
+      estimatedCpa: row.cpaComercial
+    }));
+    const avgRoas = meanKnown(comparableWithEstimates, 'estimatedRoas');
+    const avgCpa = meanKnown(comparableWithEstimates, 'estimatedCpa');
+    const roasDelta = primaryRoas !== null && avgRoas !== null ? primaryRoas - avgRoas : null;
+    const cpaDelta = primaryCpa !== null && avgCpa !== null ? primaryCpa - avgCpa : null;
+    const comparisonText = hasPrimaryInvestment
+      ? `Destaque visual: ${primary.launch.modelo} · ${selectedPeriodLabel()}. Investimento vem da planilha principal; ROAS e CPA usam a parcela paga preservada pelo SSOT. Media do grupo: ROAS ${avgRoas === null ? 'sem dado' : `${fmtNum(avgRoas, 2)}x`}${avgCpa === null ? '' : ` · CPA ${fmtBRL(avgCpa)}`}.`
+      : `${primary.launch.modelo} ainda nao tem investimento cadastrado na planilha principal para ${selectedPeriodLabel()}. O dashboard deixa vazio ate a base ser atualizada.`;
+    const kpiNoteText = hasPrimaryInvestment && !hasPrimaryMediaInvestment
+      ? `Destaque visual: ${primary.launch.modelo} - ${selectedPeriodLabel()}. Existe investimento declarado, mas nao existe linha de midia paga para esta janela; ROAS e CPA ficam sem base para nao dividir venda paga por CRM.`
+      : hasPrimaryInvestment && !hasPrimaryCompleteWindow
+        ? `Destaque visual: ${primary.launch.modelo} - ${selectedPeriodLabel()}. A janela ainda esta parcial; vendas aparecem ate o D+ disponivel, mas ROAS e CPA ficam sem base comparavel.`
+        : comparisonText;
     const kpis = [
-      { label: 'Investimento', value: primary.aquisicaoInvestimento, formatter: fmtBRL, detail: 'gasto na janela', className: 'paid-media-kpi--main' },
-      { label: 'Receita', value: primary.aquisicaoReceita, formatter: fmtBRL, detail: 'faturamento do período' },
-      { label: 'Pedidos', value: primary.aquisicaoPedidos, formatter: fmtNum, detail: 'pedidos aprovados' },
-      { label: 'Sessões', value: primary.aquisicaoSessoes, formatter: fmtNum, detail: 'tráfego registrado', optional: true },
-      { label: 'ROAS', value: primary.aquisicaoRoas, formatter: (value) => `${fmtNum(value, 2)}x`, detail: roasDelta === null ? 'receita / investimento' : `${roasDelta >= 0 ? '+' : ''}${fmtNum(roasDelta, 2)}x vs média`, className: 'paid-media-kpi--ratio' },
-      { label: 'CPA', value: primary.aquisicaoCpa, formatter: fmtBRL, detail: cpaDelta === null ? 'invest. / pedidos' : `${cpaDelta >= 0 ? '+' : ''}${fmtBRL(cpaDelta)} vs média` },
-      { label: 'CPS', value: primary.aquisicaoCps, formatter: fmtBRL, detail: 'invest. / sessões', optional: true },
-      { label: 'Conversão', value: primary.aquisicaoConversao, formatter: (value) => fmtPct(value, 2), detail: 'pedidos / sessões', optional: true }
+      { label: 'Investimento', value: primary.investimentoTotal, formatter: fmtBRL, detail: 'planilha principal', className: 'paid-media-kpi--main' },
+      { label: 'Receita midia paga', value: primary.receitaComercial, formatter: fmtBRL, detail: 'classificacao SSOT' },
+      { label: 'Pedidos midia paga', value: primary.pedidosComercial, formatter: fmtNum, detail: 'classificacao SSOT' },
+      { label: 'ROAS midia paga', value: primaryRoas, formatter: (value) => `${fmtNum(value, 2)}x`, detail: !hasPrimaryMediaInvestment ? 'sem midia paga na janela' : !hasPrimaryCompleteWindow ? 'janela parcial' : (roasDelta === null ? 'receita midia paga / investimento' : `${roasDelta >= 0 ? '+' : ''}${fmtNum(roasDelta, 2)}x vs media`), className: 'paid-media-kpi--ratio' },
+      { label: 'Pedidos organicos', value: primary.pedidosOrganicos, formatter: fmtNum, detail: 'atribuicao real' }
     ].filter((item) => !item.optional || (item.value !== null && item.value !== undefined));
 
     wrap.innerHTML = `
       <div class="paid-media-kpi-grid">
         ${kpis.map((item) => paidMediaKpiCard(item.label, item.value, item.formatter, item.detail, item.className || '')).join('')}
       </div>
-      <p class="paid-media-kpi-note">${escapeHtml(comparisonText)} Fonte: planilha diária/metas_mensais.daily; não é rateio por campanha manual.${escapeHtml(sessionText)}</p>
+      <p class="paid-media-kpi-note">${escapeHtml(kpiNoteText)} A planilha diaria foi retirada da analise de investimento.</p>
     `;
   }
 
@@ -7377,7 +9968,7 @@
     if (row?.janela_isolada_confiavel && numberOrNull(row?.receita_janela_isolada) !== null) {
       return `${fmtBRL(row.receita_janela_isolada)} ${badge('parcial', 'isolada', row.janela_isolada_motivo || 'Estimativa isolada por janela unica de campanha.')}`;
     }
-    return `<span class="cell-muted">Não atribuída à campanha</span><div class="metric-sub">base diária fica acima</div>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
+    return `<span class="cell-muted">Não atribuída à campanha</span><div class="metric-sub">venda fica no consolidado</div>${row?.janela_isolada_motivo ? ` ${badge('neg', 'revisar', row.janela_isolada_motivo)}` : ''}`;
   }
 
   function mediaManualReadingCell(row) {
@@ -7477,22 +10068,32 @@
     return known.length ? known.reduce((acc, value) => acc + Number(value || 0), 0) : null;
   }
 
+  function explicitOrganicOrLegacyCrm(organicValue, crmValue) {
+    const organic = numberOrNull(organicValue);
+    return organic !== null ? organic : numberOrNull(crmValue);
+  }
+
   function ratioOrNull(numerator, denominator) {
-    return denominator ? Number(numerator || 0) / denominator : null;
+    const n = numberOrNull(numerator);
+    const d = numberOrNull(denominator);
+    if (n === null || d === null || d === 0) return null;
+    return n / d;
   }
 
   function commercialSummaryFor(launch, mediaRows, crmRows) {
     const selectedWindow = selectedAnalysisWindow(launch);
     const receitaModelo = selectedWindow.data?.receita ?? null;
     const janelaModelo = selectedWindow.label || '&mdash;';
-    const aquisicao = acquisitionWindowForLaunch(launch, selectedPeriodKey(), { requireClosed: false });
+    const aquisicao = null;
+    const attribution = investmentAttributionForWindow(launch, selectedPeriodKey());
 
     const mediaRowsImpacto = mediaRows.filter((row) => midiaValidaParaImpacto(row));
+    const mediaRowsInvestimento = mediaRows.filter((row) => midiaValidaParaGraficoComercial(row));
     const mediaAggregateRows = aggregateMediaRows(mediaRowsImpacto, launch);
     const mediaMetricRows = mediaAggregateRows.length ? mediaAggregateRows : mediaRowsImpacto;
     const trustedMediaMetricRows = mediaMetricRows.filter((row) => hasTrustedMediaPerformance(row));
     const trustedCrmRows = crmRows.filter((row) => hasTrustedCrmPerformance(row));
-    const mediaInvestimento = sumKnown(mediaRowsImpacto, 'investimento');
+    const mediaInvestimento = sumKnown(mediaRowsInvestimento, 'investimento');
     const mediaInvestimentoAtribuido = sumKnown(trustedMediaMetricRows, 'investimento');
     const mediaReceita = sumKnown(trustedMediaMetricRows, 'receita_atribuida');
     const mediaPedidos = sumKnown(trustedMediaMetricRows, 'pedidos');
@@ -7502,7 +10103,14 @@
     const crmPedidos = sumKnown(trustedCrmRows, 'pedidos');
     const crmDisparos = crmRows.length;
     const investimentoTotal = sumValues(mediaInvestimento, crmInvestimento);
-    const receitaComercial = sumValues(mediaReceita, crmReceita);
+    const receitaComercial = attribution.receitaInvestimento;
+    const pedidosComercial = attribution.pedidosInvestimento;
+    const receitaOrganica = attribution.receitaOrganica;
+    const pedidosOrganicos = attribution.pedidosOrganicos;
+    const isPartialCommercialWindow = selectedSalesWindowIsPartial(launch);
+    const canComputeRoas = mediaInvestimento !== null && !isPartialCommercialWindow;
+    const roasInvestimento = canComputeRoas ? ratioOrNull(receitaComercial, investimentoTotal) : null;
+    const cpaInvestimento = canComputeRoas ? ratioOrNull(investimentoTotal, pedidosComercial) : null;
     const metodologiaRow = [...mediaRows, ...crmRows].find((row) => row.metodologia || row.aviso) || {};
 
     return {
@@ -7521,10 +10129,10 @@
       aquisicaoConversao: aquisicao?.conversao ?? null,
       aquisicaoLabel: aquisicao ? `${aquisicao.label} · ${aquisicao.range}${aquisicao.complete ? '' : ` · até D+${fmtNum(aquisicao.observedDay)}`}` : '',
       mediaInvestimento,
-      mediaReceita,
-      mediaPedidos,
-      mediaRoas: weightedRoas(trustedMediaMetricRows),
-      mediaCpa: ratioOrNull(mediaInvestimentoAtribuido, mediaPedidos),
+      mediaReceita: receitaComercial,
+      mediaPedidos: pedidosComercial,
+      mediaRoas: roasInvestimento,
+      mediaCpa: cpaInvestimento,
       crmInvestimento,
       crmReceita,
       crmPedidos,
@@ -7532,8 +10140,15 @@
       crmRoas: weightedRoas(trustedCrmRows),
       crmCpa: ratioOrNull(crmInvestimentoAtribuido, crmPedidos),
       investimentoTotal,
+      hasMediaInvestment: mediaInvestimento !== null,
+      hasCrmInvestment: crmInvestimento !== null,
+      isPartialCommercialWindow,
       receitaComercial,
-      roasComercial: weightedRoas([...trustedMediaMetricRows, ...trustedCrmRows]),
+      pedidosComercial,
+      roasComercial: roasInvestimento,
+      cpaComercial: cpaInvestimento,
+      receitaOrganica,
+      pedidosOrganicos,
       metodologia: metodologiaRow.metodologia || '',
       aviso: metodologiaRow.aviso || ''
     };
@@ -7548,18 +10163,13 @@
               ${thTip('Modelo', 'Modelo comparado na frente comercial.')}
               ${thTip('Janela base', 'Janela fixa usada para contextualizar a receita do modelo, sempre a partir do D0 do lançamento.')}
               ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou histórico versionado.', 'num')}
-              ${thTip('Invest. aquisição', 'Soma de investimento_realizado em metas_mensais.daily dentro da janela do lançamento. Origem: BigQuery targets/aquisicao_por_canal. É contexto de empresa, não atribuição de campanha ao produto.', 'num')}
-              ${thTip('ROAS aquisição', 'Receita realizada da empresa / investimento de aquisição na mesma janela de calendário do lançamento. Ajuda a ler se a empresa estava eficiente naquele período.', 'num')}
-              ${thTip('Invest. campanha', 'Soma do investimento informado nas campanhas de mídia paga cadastradas manualmente na planilha midia_paga.', 'num')}
-              ${thTip('ROAS campanha', 'ROAS informado na planilha ou calculado apenas quando existe receita atribuída real para a linha. Não usa faturamento total da janela do modelo.', 'num')}
-              ${thTip('CPA campanha', 'Fórmula: investimento de campanha / pedidos informados ou atribuídos na própria linha. Sem rateio pela janela do modelo.', 'num')}
-              ${thTip('Invest. CRM', 'Soma do investimento/custo informado nos disparos de CRM.', 'num')}
-              ${thTip('Disparos', 'Quantidade de linhas de CRM cadastradas para o modelo no JSON.', 'num')}
-              ${thTip('ROAS CRM', 'Só aparece quando o disparo tem atribuição real ou ROAS informado de forma confiável. Correlação e estimativa ficam fora.', 'num')}
-              ${thTip('CPA CRM', 'Só aparece quando existem pedidos atribuídos de forma confiável ao disparo de CRM.', 'num')}
-              ${thTip('Invest. manual', 'Soma de investimento manual de campanha e CRM. Não inclui Aquisição SSOT para evitar dupla contagem.', 'num')}
-              ${thTip('Receita atribuída', 'Soma apenas receitas com atribuição real/confiável em mídia ou CRM. Contexto, correlação e estimativa não entram.', 'num')}
-              ${thTip('ROAS atribuído', 'ROAS agregado apenas das linhas com atribuição real/confiável. Ausência de atribuição fica vazia, não vira zero.', 'num')}
+              ${thTip('Invest. total', 'Soma do investimento declarado na planilha principal: midia_paga + crm_disparos. A planilha diaria foi retirada desta leitura.', 'num')}
+              ${thTip('Receita midia paga', 'Receita classificada como paga pelo SSOT, com origem granular ou alocacao binaria.', 'num')}
+              ${thTip('Pedidos midia paga', 'Pedidos classificados como pagos pelo SSOT, com origem granular ou alocacao binaria.', 'num')}
+              ${thTip('ROAS midia paga', 'Receita dos pedidos de midia paga / investimento total declarado.', 'num')}
+              ${thTip('CPA midia paga', 'Investimento total declarado / pedidos de midia paga.', 'num')}
+              ${thTip('Receita organica', 'Receita classificada como organica por atribuicao real de pedido.', 'num')}
+              ${thTip('Pedidos organicos', 'Pedidos classificados como organicos por atribuicao real de pedido.', 'num')}
             </tr>
           </thead>
           <tbody>
@@ -7569,18 +10179,13 @@
                 <td class="model-name">${escapeHtml(row.launch.modelo)}</td>
                 <td>${escapeHtml(row.janelaModelo)}</td>
                 <td class="num">${mediaValue(row.receitaModelo, fmtBRL)}</td>
-                <td class="num">${mediaValue(row.aquisicaoInvestimento, fmtBRL)}${row.aquisicaoLabel ? `<div class="metric-sub">${escapeHtml(row.aquisicaoLabel)}</div>` : ''}</td>
-                <td class="num">${roasValue(row.aquisicaoRoas)}</td>
-                <td class="num">${mediaValue(row.mediaInvestimento, fmtBRL)}</td>
-                <td class="num">${roasValue(row.mediaRoas)}</td>
-                <td class="num">${mediaValue(row.mediaCpa, fmtBRL)}</td>
-                <td class="num">${mediaValue(row.crmInvestimento, fmtBRL)}</td>
-                <td class="num">${fmtNum(row.crmDisparos)}</td>
-                <td class="num">${roasValue(row.crmRoas)}</td>
-                <td class="num">${mediaValue(row.crmCpa, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.investimentoTotal, fmtBRL)}</td>
                 <td class="num">${mediaValue(row.receitaComercial, fmtBRL)}</td>
+                <td class="num">${fmtNum(row.pedidosComercial)}</td>
                 <td class="num">${roasValue(row.roasComercial)}</td>
+                <td class="num">${mediaValue(row.cpaComercial, fmtBRL)}</td>
+                <td class="num">${mediaValue(row.receitaOrganica, fmtBRL)}</td>
+                <td class="num">${fmtNum(row.pedidosOrganicos)}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -7593,18 +10198,15 @@
     const launches = selectedCompareLaunches().filter((launch) => !launch.isFuture && !isPlannedStatus(launch.status));
     if (!launches.length) {
       renderActionsComparison([]);
-      renderDailySourceSummary([]);
       renderPaidMediaKpis([]);
-      $('media-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar mídia paga.</td></tr>`;
-      $('crm-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar CRM.</td></tr>`;
+      $('media-table').innerHTML = `<tr><td colspan="6" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para comparar investimento.</td></tr>`;
+      $('crm-table').innerHTML = `<tr><td colspan="8" class="cell-muted">Selecione ao menos um modelo com D0 e dados reais para ver disparos declarados.</td></tr>`;
       return;
     }
     const mediaByModel = new Map();
     const crmByModel = new Map();
     const detailedRows = launches.flatMap((launch) => {
-      const rowsRaw = (state.data.midia_paga || [])
-        .filter((row) => row.modelo_id === launch.modelo_id)
-        .filter((row) => mediaRowMatchesSelectedPeriod(row, launch))
+      const rowsRaw = mediaRowsForInvestmentWindow(launch, selectedPeriodKey())
         .map((row) => normalizeMediaRow(row, launch));
       const rows = enrichMediaEstimates(rowsRaw, launch);
       mediaByModel.set(launch.modelo_id, rows);
@@ -7625,7 +10227,6 @@
       crmByModel.get(launch.modelo_id) || []
     ));
     renderActionsComparison(commercialSummaries);
-    renderDailySourceSummary(commercialSummaries);
     renderPaidMediaKpis(commercialSummaries);
 
     const displayRows = [...aggregateMediaRows(detailedRows), ...detailedRows]
@@ -7641,7 +10242,7 @@
         <td class="num">${mediaValue(row.investimento, fmtBRL)}</td>
         <td>${mediaManualReadingCell(row)}</td>
       </tr>`;
-    }).join('') : `<tr><td colspan="6" class="cell-muted">Sem mídia paga cadastrada para os modelos selecionados.</td></tr>`;
+    }).join('') : `<tr><td colspan="6" class="cell-muted">Sem investimento de campanha cadastrado para os modelos selecionados.</td></tr>`;
 
     const crmRows = crmRowsAll
       .sort((a, b) => a.modelo.localeCompare(b.modelo) || String(a.data_disparo || '').localeCompare(String(b.data_disparo || '')));
@@ -7655,7 +10256,7 @@
         <td class="num">${crmRevenueCell(row)}</td>
         <td class="num">${hasTrustedCrmPerformance(row) ? roasValue(row.roas) : '&mdash;'}${metodologiaComercialBadge(row)}</td>
         <td>${crmStatusCell(row)}</td>
-      </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem disparos de CRM cadastrados para os modelos selecionados.</td></tr>`;
+      </tr>`).join('') : `<tr><td colspan="8" class="cell-muted">Sem disparos declarados para os modelos selecionados.</td></tr>`;
   }
 
   function projectionBaseKeyForLaunch(launch, preferredKey = selectedPeriodKey()) {
@@ -7934,7 +10535,7 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     const summary = projectionSummaryLabel(projectionBase);
     return `
       <details class="story-projection-details story-step-details">
-        <summary><span>Projeção D+90</span><small>${escapeHtml(summary)}</small></summary>
+        <summary><span>Cenário D+90</span><small>${escapeHtml(summary)}</small></summary>
         <div class="story-projection-body">
           ${projectionContentHtml(selected)}
         </div>
@@ -7987,13 +10588,13 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
       } : null,
       mediaBlocked.length ? {
         type: 'warn',
-        title: 'Mídia sem atribuição por canal',
-        copy: `${mediaBlocked.length} linha(s) de mídia tiveram ROAS por canal bloqueado ou agregado porque a receita não representa last-click por pedido.`
+        title: 'Investimento sem atribuição por pedido',
+        copy: `${mediaBlocked.length} linha(s) de investimento ficaram sem ROAS porque a receita ainda não representa last-click por pedido.`
       } : null,
       attributionStatus && attributionStatus !== 'ok' ? {
         type: 'warn',
-        title: 'Pago/orgânico aguardando atribuição',
-        copy: 'O painel não mostra vendas pagas/orgânicas como reais enquanto a tabela mirror de atribuição por pedido não estiver preenchida.'
+        title: 'Investimento/orgânico aguardando atribuição',
+        copy: 'O painel não mostra vendas de investimento/orgânicas como reais enquanto a tabela mirror de atribuição por pedido não estiver preenchida.'
       } : null,
       mediaWithoutAttribution.length ? {
         type: 'warn',
@@ -8028,27 +10629,21 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
   function renderAll() {
     syncSelectionState();
     const selected = state.launches.find((l) => l.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
-    $('selected-title').textContent = 'Placar comparativo';
+    $('selected-title').textContent = 'Desempenho comparativo';
     const selectedStatus = $('selected-status');
     if (selectedStatus) selectedStatus.innerHTML = badge('pipeline', `${fmtNum(comparisonLaunchesWithFocus(selected).length)} linhas`);
     renderSelectedHeader(selected);
     renderModelSelector();
     renderPeriodSelector();
+    renderLineSelector();
     renderCompareSelector();
+    renderProductSelector();
+    renderChannelSelector();
     renderTopMeta();
     renderAnalysisContext(selected);
     renderReadingSupport(selected);
     renderStoryBrief(selected);
-    renderState(selected);
-    renderComparison();
     renderCharts(selected);
-    renderColorMix();
-    renderSizeRanking();
-    renderCalendar(selected);
-    renderActionsComparative();
-    renderProjection(selected);
-    const insightsSection = $('insights');
-    if (insightsSection && !insightsSection.hidden) renderInsights(selected);
     applyCollapsibleLists(document);
   }
 
@@ -8057,6 +10652,11 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
       data: state.data,
       launches: state.launches,
       primaryModelId: state.primaryModelId,
+      compareModelIds: [...(state.compareModelIds || [])],
+      lineFilter: state.lineFilter || 'all',
+      productFilter: state.productFilter || 'all',
+      productColorFilter: state.productColorFilter || 'all',
+      channelFilter: state.channelFilter || 'all',
       analysisPeriodKey: selectedPeriodKey(),
       analysisPeriodLabel: selectedPeriodLabel(),
       snapshotClock: state.snapshotClock
@@ -8084,9 +10684,12 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     configureDrawer();
     configureNormalizedChartModeToggle();
     configureCommercialChartMetricToggle();
+    configureLaunchChartViewToggle();
+    configureLaunchChartZoom();
     configureTopicTabs();
     configureStorySubModelControls();
     configureStoryDrawerAccordion();
+    configureLaunchTableInsights();
     configureTooltips();
     configureChartDefaults();
     state.data = await loadData();

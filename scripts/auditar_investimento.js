@@ -27,6 +27,13 @@ function sumKnown(rows, field) {
   return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
 }
 
+function sumKnownFields(rows, fields) {
+  const values = rows
+    .flatMap((row) => fields.map((field) => numberOrNull(row[field])))
+    .filter((value) => value !== null);
+  return values.length ? values.reduce((acc, value) => acc + value, 0) : null;
+}
+
 function round(value, digits = 2) {
   if (value === null || value === undefined || Number.isNaN(value)) return null;
   const factor = 10 ** digits;
@@ -48,6 +55,7 @@ const midiaRows = readJson('midia_paga.json', []);
 const crmRows = readJson('crm_disparos.json', []);
 const manifest = readJson('manifest.json', {});
 const modelos = readJson('lancamentos_modelos.json', []);
+const lancamentoRows = readJson('lancamentos_produtos_dia.json', []);
 
 const metasRows = Array.isArray(metasPayload.rows) ? metasPayload.rows : [];
 const dailyRows = metasRows.flatMap((month) => (
@@ -126,6 +134,13 @@ const crmByModel = [...groupBy(crmRows, (row) => row.modelo_id || 'sem_modelo').
     metodologia_correlacao: rows.filter((row) => row.metodologia === 'correlacao_por_janela_calendario').length
   }));
 
+const attributedInvestment = {
+  receita: round(sumKnownFields(lancamentoRows, ['receita_paga'])),
+  pedidos: round(sumKnownFields(lancamentoRows, ['pedidos_pagos'])),
+  receita_organica: round(sumKnown(lancamentoRows, 'receita_organica')),
+  pedidos_organicos: round(sumKnown(lancamentoRows, 'pedidos_organicos'))
+};
+
 const ssotByLaunch = modelos
   .filter((model) => ['historico', 'ativo'].includes(String(model.status || '').toLowerCase()) && model.day_zero_base)
   .map((model) => {
@@ -142,12 +157,15 @@ const ssotByLaunch = modelos
 const issues = [];
 const warnings = [];
 if (!metasRows.length) issues.push('metas_mensais.json sem rows.');
-if (!dailyWithInvestment.length) issues.push('metas_mensais.daily sem investimento_realizado.');
+if (!dailyWithInvestment.length) warnings.push('metas_mensais.daily sem investimento_realizado; planilha diaria descontinuada para a analise de investimento.');
 if (!monthlyInvestment.some((row) => row.investimento_aquisicao !== null)) {
   issues.push('Sem investimento_aquisicao mensal vindo de aquisicao_por_canal.');
 }
 if (midiaRows.length && !midiaRows.some((row) => numberOrNull(row.receita_atribuida) !== null)) {
-  issues.push('midia_paga.json tem investimento, mas nenhuma receita_atribuida real.');
+  warnings.push('midia_paga.json tem investimento sem receita_atribuida manual; ROAS agora usa receita_paga do payload de vendas, classificada por UTM/origem de midia paga.');
+}
+if (attributedInvestment.receita === null && attributedInvestment.pedidos === null) {
+  warnings.push('Payload de vendas ainda sem receita_paga ou pedidos_pagos; ROAS/CPA de midia paga ficam vazios ate o proximo export com atribuicao real.');
 }
 ssotByLaunch
   .filter((row) => !row.janelas_com_investimento)
@@ -178,6 +196,19 @@ const output = {
     linhas: crmRows.length,
     investimento_total: round(sumKnown(crmRows, 'investimento')),
     por_modelo: crmByModel
+  },
+  investimento_manual_total: {
+    linhas: midiaRows.length + crmRows.length,
+    investimento_total: round(sumKnown([...midiaRows, ...crmRows], 'investimento')),
+    metodologia: 'midia_paga + crm_disparos formam o investimento total; ROAS usa apenas pedidos classificados como midia paga por UTM/origem'
+  },
+  atribuicao_pedidos_lancamento: {
+    linhas: lancamentoRows.length,
+    receita_investimento: attributedInvestment.receita,
+    pedidos_investimento: attributedInvestment.pedidos,
+    receita_organica: attributedInvestment.receita_organica,
+    pedidos_organicos: attributedInvestment.pedidos_organicos,
+    metodologia: 'midia paga = receita_paga/pedidos_pagos por UTM/origem; organico = todo pedido que nao for midia paga'
   },
   warnings,
   issues

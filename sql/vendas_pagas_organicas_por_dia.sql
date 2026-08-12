@@ -14,6 +14,15 @@ WITH base AS (
       r'\p{M}',
       ''
     ))) AS utm_medium_match,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(CONCAT(
+        COALESCE(CAST(referring_channel AS STRING), ''), ' ',
+        COALESCE(CAST(utm_source AS STRING), ''), ' ',
+        COALESCE(CAST(utm_medium AS STRING), '')
+      ), NFD),
+      r'\p{M}',
+      ''
+    ), r'[^a-z0-9]+', ' ')) AS origem_match,
     SAFE_CAST(orders__last_click AS NUMERIC) AS pedidos,
     SAFE_CAST(net_sales__last_click AS NUMERIC) AS vendas
   FROM `reise-ssot.mart_growth_us.sales_attributed_to_marketing_v`
@@ -22,36 +31,11 @@ classificado AS (
   SELECT
     report_date,
     CASE
-      WHEN REGEXP_CONTAINS(utm_medium_match, r'(cpcp|cpc|pmax|paidsocial|paid|demand[-_ ]gen)')
-        THEN 'Paid Media'
+      WHEN REGEXP_CONTAINS(utm_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paidsocial|paid|display|demand[-_ ]gen|ads?|adwords|gads)')
+        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
+        THEN 'Midia paga'
 
-      WHEN utm_medium_norm = ''
-        AND referring_channel_norm IN ('google', 'bing', 'yahoo!', 'duckduckgo', 'brave')
-        THEN 'Organic Search'
-
-      WHEN utm_medium_norm = ''
-        AND referring_channel_norm IN ('instagram', 'facebook', 'youtube')
-        THEN 'Organic Social'
-
-      WHEN referring_channel_norm = 'direct'
-        OR (referring_channel_norm = '' AND utm_source_norm = '')
-        OR referring_channel_norm = 'unattributed'
-        THEN 'Direct / Unknown'
-
-      WHEN REGEXP_CONTAINS(
-        utm_medium_match,
-        r'(email|whatsapp|sms|disparo|grupos|canal-de-transmissao|canal de transmissao)'
-      )
-        THEN 'CRM / Owned'
-
-      WHEN utm_medium_norm = 'referral'
-        OR REGEXP_CONTAINS(
-          CONCAT(referring_channel_norm, ' ', utm_source_norm),
-          r'(linktree|linktr\.ee|nextags|awin|cupomonline|br-desconto|chatgpt\.com|chatgpt|perplexity)'
-        )
-        THEN 'Referral / Partners'
-
-      ELSE 'Other / Unclassified'
+      ELSE 'Organico'
     END AS channel_group,
     pedidos,
     vendas

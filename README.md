@@ -4,7 +4,7 @@ Dashboard estático para análise de lançamentos da Reise.
 
 Produção: https://launch-analysis-v2.vercel.app
 
-O app roda na Vercel, lê JSONs versionados em `/data` via `fetch` e não depende de backend em runtime. A atualização operacional vem do BigQuery/SSOT pelo Apps Script, que grava os JSONs no GitHub. A planilha é opcional e serve apenas para mídia paga e CRM manual.
+O app roda na Vercel, lê JSONs versionados em `/data` via `fetch` e não depende de backend em runtime. A atualização operacional vem do BigQuery/SSOT pelo Apps Script, que grava os JSONs no GitHub. A planilha principal de investimento é opcional e alimenta `midia_paga` + `crm_disparos` como base única de investimento.
 
 ## Estado Atual
 
@@ -152,8 +152,8 @@ DATA_PATH = data
 Script Property opcional:
 
 ```txt
-MIDIA_SPREADSHEET_ID
-METAS_DIARIAS_SPREADSHEET_IDS = id_planilha_2025,id_planilha_2026
+INVESTMENT_SPREADSHEET_ID = 1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68
+MIDIA_SPREADSHEET_ID = compatibilidade_legada
 ATRIBUICAO_REAL_CANAL_ENABLED = true|false
 ```
 
@@ -173,7 +173,7 @@ Funções principais:
 | `diagnosticarMonochrome()` | Lista linhas filtradas por termos RS8/Avant/Mono desde o D0. |
 | `diagnosticarMonochromeAmplo()` | Lista produtos mais vendidos sem filtro para investigar cadastro real. |
 
-`exportarTudo()` não depende de planilha ativa. Sem `MIDIA_SPREADSHEET_ID`, ele mantém `midia_paga.json` e `crm_disparos.json` atuais e continua exportando vendas/estoque/manifest.
+`exportarTudo()` não depende de planilha ativa. Sem `INVESTMENT_SPREADSHEET_ID`/`MIDIA_SPREADSHEET_ID`, ele usa a planilha principal padrão de investimento e continua exportando vendas/estoque/manifest.
 
 ## Regras de Dados
 
@@ -193,7 +193,7 @@ Funções principais:
 - Quando existe `lancamentos_produtos_dia.json` para um modelo, o front prioriza o pipeline diário. `lancamentos_historico.json` fica como fallback/benchmark estático e passa pela mesma normalização de contrato das janelas do pipeline.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries do dashboard em `southamerica-east1`.
-- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region. O join do dashboard usa email normalizado + data paga BRT + valor total arredondado. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica`/`receita_crm` como `null`.
+- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region ou pela sincronizacao automatica de `exportarTudo()`. O join do dashboard prioriza `source_order_id` quando a mirror tiver essa coluna e usa email normalizado + data paga BRT + valor total arredondado como fallback. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica`/`receita_crm` como `null`.
 
 ## Pipeline de Vendas por Modelo
 
@@ -215,7 +215,7 @@ flags_qualidade | fonte
 
 A camada nova de vendas por lançamento usa `reise-ssot.mart_shared.fct_order_item` como fonte preferencial. O filtro de pedido válido é `i.is_valid_order = TRUE` e a contagem de pedidos é sempre `COUNT(DISTINCT order_sk)`.
 
-O pacote público não deve carregar identificadores brutos de pedido. `source_order_id`, `order_name` e `atribuicao_match_key` podem existir apenas como campos operacionais temporários durante a query/exportação e são removidos antes de gravar `lancamentos_produtos_dia.json`. A atribuição real de canal não usa esses identificadores; ela vem da mirror `mart_shared.canal_atribuicao_pedido_mirror` por email normalizado + data paga BRT + valor total arredondado.
+O pacote público não deve carregar identificadores brutos de pedido. `source_order_id`, `order_name` e `atribuicao_match_key` podem existir apenas como campos operacionais temporários durante a query/exportação e são removidos antes de gravar `lancamentos_produtos_dia.json`. A atribuição real de canal vem da mirror `mart_shared.canal_atribuicao_pedido_mirror`, que pode usar `source_order_id` internamente sem expor esse identificador no JSON público.
 
 O campo `receita` permanece no JSON por compatibilidade com o frontend, mas representa `receita_bruta`. No dashboard, ranking, curvas, composição por cor/tamanho e comparativos executivos devem usar `receita_bruta`/`receita`. `receita_liquida` é campo auxiliar para auditoria e análise financeira, não a base visual principal.
 
@@ -286,18 +286,22 @@ Cadastro atual:
 
 O dashboard deve puxar vendas desde `2026-06-25`. Se aparecer sem dados, revisar BigQuery, termos, prefixos de SKU e exportação do Apps Script antes de culpar o front.
 
-## Mídia Paga e CRM
+## Investimento e Canais
 
-A mídia paga por campanha é preenchida manualmente na aba `midia_paga` de uma planilha opcional. CRM manual usa a aba `crm_disparos`.
+A planilha diaria foi descontinuada da analise de investimento. A fonte manual volta a ser a planilha `Reise Launch Analysis v2` (`1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68`), com as abas `midia_paga` e `crm_disparos`.
 
-O investimento agregado de aquisição da empresa vem de `metas_mensais.json`. Quando o export encontra `mart_growth_us.dashboard_targets_header_raw`, `dashboard_targets_daily_raw`, `dashboard_targets_actual_daily_v` e `mart_growth_us.aquisicao_por_canal`, esse caminho tem prioridade. Para meses antigos sem detalhe diário no SSOT, o Apps Script complementa `daily` lendo as Planilhas diárias configuradas em `METAS_DIARIAS_SPREADSHEET_IDS`. Esse dado alimenta o resumo/gráfico comercial como **Base diária da empresa** por janela do lançamento. Ele não é rateado por produto nem usado como atribuição de campanha.
+O investimento usado no dashboard é a soma de `midia_paga.json` + `crm_disparos.json`. A analise executiva não separa mídia paga e CRM; as abas seguem apenas como rastreio operacional da planilha.
 
-Os campos de `investimento` em `midia_paga.json` e `crm_disparos.json` continuam sendo cadastros manuais de campanha/disparo. O dashboard mantém esses valores no detalhe operacional e não soma com Aquisição SSOT para evitar dupla contagem.
+`metas_mensais.json` ainda pode carregar metas e faturamento da empresa como contexto, mas esse dado não substitui a planilha principal de investimento e não é rateado por produto.
+
+No export BigQuery, `metas_mensais.json` gera um calendário de apoio cobrindo os D0 exportáveis até D+90. Isso mantém Avant e GT dentro do recorte diário de canais mesmo sem meta diária cadastrada em dez/2025-jan/2026; a atribuição executiva do produto continua vindo dos pedidos classificados em `lancamentos_produtos_dia.json`.
+
+ROAS de investimento = `receita_paga / investimento total`. CPA de investimento = `investimento total / pedidos_pagos`. Receita e pedidos organicos representam todo pedido sem sinal de midia paga, incluindo CRM/owned, direto, busca organica, referral e pedidos sem UTM pago. Se a atribuicao real por pedido nao vier no payload, ROAS/CPA ficam vazios.
 
 Para exportar essas abas, configure:
 
 ```txt
-MIDIA_SPREADSHEET_ID
+INVESTMENT_SPREADSHEET_ID
 ```
 
 Colunas aceitas para `midia_paga`:
@@ -317,13 +321,13 @@ receita_linha | receita_dia | pedidos | roas | cpa | observacao | status
 Regras:
 
 - `campanha` é obrigatório.
-- `investimento` deve ser o valor real informado por campanha. Para gasto agregado da empresa, use o caminho BigQuery/`metas_mensais.json`, não a aba manual.
+- `investimento` deve ser o valor real declarado na planilha principal por campanha/janela.
 - `roas` deve vir informado na planilha em escala de multiplicador (`6,48` = `6,48x`) sempre que houver atribuição real.
 - Se `roas` vier como percentual/texto (`647,8%`) ou como número acima de `100`, o exportador/front normalizam por `/100` para evitar confusão de escala percentual vs. multiplicador.
-- `receita_atribuida`, `receita_linha` e `receita_dia` são contexto/atribuição cadastrada e não substituem o campo `roas`.
+- `receita_atribuida`, `receita_linha` e `receita_dia` são contexto operacional e não substituem a atribuição real por pedido.
 - Quando `midia_paga` repetir a mesma `receita_atribuida` em canais diferentes do mesmo modelo/janela, o dashboard bloqueia ROAS/CPA por canal e mostra apenas uma leitura agregada da janela.
-- Quando houver investimento sem atribuição real por pedido, a campanha permanece sem ROAS/CPA de atribuição. O gráfico pode mostrar Aquisição SSOT da empresa na mesma janela, mas isso é contexto de eficiência, não receita da campanha.
-- Para CRM, correlação, `receita_dia` e `receita_linha` ficam como contexto operacional. O dashboard só mostra ROAS/CPA como performance quando houver atribuição real ou métrica informada de forma confiável; fora de Projeção, estimativa não vira KPI.
+- Quando houver investimento sem atribuição real por pedido, ROAS/CPA de investimento permanecem vazios. O comparativo não usa faturamento total do pipeline como substituto.
+- Para CRM, correlação, `receita_dia` e `receita_linha` ficam como contexto operacional. No resumo executivo, CRM entra apenas no investimento total; performance vem de `receita_crm`/`pedidos_crm` quando houver atribuição real por pedido.
 - `janela` pode ser preenchida manualmente.
 - Se `janela` vier vazia, o Apps Script calcula pela relação entre `data_inicio`/`data_fim` e o D0 do modelo.
 - Se a planilha não estiver configurada, o exportador não apaga os arquivos atuais.
@@ -336,16 +340,20 @@ node scripts/auditar_investimento.js
 
 Esse script resume cobertura de `metas_mensais`, investimento de aquisição, planilhas manuais e pendências como campanhas sem receita atribuída.
 
-### Atribuição por pedido
+### Atribuição paga versus orgânica
 
-`sql/canal_atribuicao_pedido_mirror.sql` documenta a rotina cross-region: ler a classificacao last-click em `mart_growth_us`, exportar por GCS e carregar a tabela `mart_shared.canal_atribuicao_pedido_mirror` em `southamerica-east1`. O dashboard cruza essa mirror por `email_norm + paid_date_brt + total_amount`; `order_id`, `order_name` e `customer_sk` não são chave de junção entre regiões.
+O fluxo operacional atual publica uma divisão binária: **mídia paga** e **orgânico**. `exportarTudo()` sincroniza a origem/UTM existente no BigQuery (`mart_growth_us.shopify__orders_journey_latest_v`) para `mart_shared.canal_atribuicao_pedido_mirror` e preserva essa classificação no payload de vendas.
 
 Essa camada separa **venda atribuida por pedido** de **investimento**:
 
-- `receita_paga`, `receita_organica`, `receita_crm`, `receita_outros_canais` e seus pedidos vêm do pedido real classificado por last-click/UTM e depois limitado aos itens da linha lancamento.
+O export nao exige backfill manual. Ele consulta a origem ja existente no job `US`, grava a mirror em `southamerica-east1` e usa `source_order_id`/`order_name`/email+data+valor apenas como chave operacional interna. Quando existe origem granular, pedido com sinal pago entra em midia paga e os demais entram em organico.
+
+- Quando a origem granular historica nao cobre todos os pedidos, o SSOT preenche `receita_paga`, `receita_organica`, `pedidos_pagos` e `pedidos_organicos` com uma alocacao binaria diaria/de janela (`shopify_*_allocated`). O frontend preserva esses campos e nao reclassifica a linha novamente.
+- A conciliacao exibida no dashboard valida se `pago + organico = total`; ela nao significa 100% de cobertura granular de last-click. A auditoria `scripts/auditar_atribuicao_exportado.js` mostra separadamente o metodo usado e a cobertura de origem granular.
+- Na origem granular, a prioridade e a coluna equivalente a `utm_medium` / "Midia da campanha UTM": `cpc`, `ppc`, `paid`, `ads`, `adwords`, `gads`, `pmax` e similares entram em midia paga, mesmo quando o canal de indicacao aparece como instagram/facebook/google. Todo pedido sem sinal pago entra em organico.
 - Investimento continua vindo de `metas_mensais.json` ou dos cadastros manuais de mídia/CRM. Ele nao e deduzido a partir dos pedidos.
-- ROAS de campanha so deve ser tratado como atribuicao quando existir custo e receita na mesma granularidade. Caso contrario, investimento e contexto, nao prova de causalidade.
-- As tabelas manuais de midia paga e CRM nao recebem campanhas extras. Vendas de campanhas nao declaradas aparecem apenas no resumo agregado por canal do lancamento.
+- ROAS de investimento so deve ser tratado como atribuicao quando existir custo declarado e pedidos/receita classificados como vindos de investimento no payload de vendas. Caso contrario, investimento e contexto, nao prova de causalidade.
+- As abas manuais de midia paga e CRM nao recebem campanhas extras. Elas alimentam investimento total; vendas nao declaradas aparecem apenas no resumo agregado por canal do lancamento.
 
 Rollback operacional:
 
@@ -353,13 +361,29 @@ Rollback operacional:
 ATRIBUICAO_REAL_CANAL_ENABLED=false
 ```
 
-Com essa Script Property, `exportarTudo()` ignora `mart_shared.canal_atribuicao_pedido_mirror` mesmo que ela exista e volta ao comportamento anterior, mantendo `receita_paga`/`receita_organica`/`receita_crm` como `null`.
+Com essa Script Property, `exportarTudo()` volta ao comportamento sem atribuicao real, mantendo `receita_paga`/`receita_organica`/`receita_crm` como `null`.
 
 Auditoria local depois de exportar:
 
 ```bash
 node scripts/auditar_atribuicao_canal.js
 ```
+
+Auditoria BigQuery para investigar origem dos pedidos antes/depois da exportacao:
+
+```sql
+sql/diagnostico_origem_pedidos_bigquery.sql
+```
+
+### Backfill historico do last click
+
+O backfill de `CustomerJourneySummary.gs` e opcional e nao e necessario para a leitura simples de pedidos pagos vs organicos com a base ja disponivel. Use apenas se a decisao futura for reconstruir historico antigo de jornada Shopify que ainda nao esteja carregado no BigQuery.
+
+```txt
+CJ_startLaunchHistoryBackfill
+```
+
+O helper percorre `2025-12-14` a `2026-03-17` em blocos de sete dias, agenda a continuacao a cada dez minutos e remove o proprio trigger ao concluir. Consulte o andamento com `CJ_launchHistoryBackfillStatus`. Depois da conclusao, execute `exportarTudo()` novamente no projeto do dashboard.
 
 Para comparar contra um arquivo anterior:
 
@@ -469,7 +493,7 @@ O painel recolhivel **Apoio de leitura** mostra metodologia executiva, alertas d
 - `novos_pct` de GT/Avant está `null` nos benchmarks recalculados.
 - Mix por cor de GT/Avant ainda precisa de auditoria SSOT própria antes de uso decisório.
 - `estoque.json` é classificado pela CTE canônica de SKU/produto; se voltar vazio, investigar primeiro a ingestão de `mart_shared.inventory_sku_current` e o mapa `stg.shopify_inventory_item_map_latest`.
-- `midia_paga.json` e `crm_disparos.json` só são atualizados quando `MIDIA_SPREADSHEET_ID` estiver configurado.
+- `midia_paga.json` e `crm_disparos.json` são atualizados pela planilha principal quando `INVESTMENT_SPREADSHEET_ID` ou o fallback `MIDIA_SPREADSHEET_ID` estiver disponível.
 
 ## Regras Preservadas
 
