@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-18T16:57:41-03:00",
-  "script_version": "20260818-launch-ramp-current-v31",
+  "generated_at": "2026-08-18T17:22:57-03:00",
+  "script_version": "20260818-launch-ramp-current-v32",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
   "sales_source": "bigquery_ssot_fct_order_item_valid_orders",
@@ -164,27 +164,27 @@
         }
       ],
       "mirror_sync": {
-        "status": "synced",
+        "status": "cached_streaming_buffer",
         "rows": 30603,
         "paid_rows": 7111,
         "organic_rows": 23492,
         "source_counts": {
-          "shopify_customer_journey_last_click": 23221,
-          "sem_utm_organico": 7382
+          "sem_utm_organico": 7382,
+          "shopify_customer_journey_last_click": 16110
         },
-        "sheet_rows": 0,
-        "sheet_status": "loaded",
-        "bq_rows": 30603,
-        "bq_status": "synced",
+        "sheet_rows": "skipped",
+        "sheet_status": "skipped_streaming_buffer",
+        "bq_rows": "skipped",
+        "bq_status": "skipped_streaming_buffer",
         "bq_error": null,
         "daily_share": {
-          "status": "synced",
+          "status": "cached_streaming_buffer",
           "rows": 207,
           "paid_orders": 15625,
           "organic_orders": 19660,
           "source_counts": {
-            "shopify_channels_daily_proxy_allocated": 97,
-            "shopify_last_click_daily_allocated": 110
+            "shopify_channels_daily_proxy_allocated": 1,
+            "shopify_last_click_daily_allocated": 1
           }
         },
         "range": "2025-12-14..2026-08-18"
@@ -200,7 +200,7 @@
       "status": "synced",
       "fonte": "lancamentos_clientes_janelas.json",
       "rows": 30,
-      "base_atual_clientes": 118003,
+      "base_atual_clientes": 118011,
       "observacao": "Clientes unicos, novos/recorrentes e base ativada exportados de forma agregada pelo SSOT, sem PII."
     }
   },
@@ -208,7 +208,7 @@
     "cadastro_bigquery": "synced",
     "datas_sazonais": "synced",
     "eventos_comerciais_produto": "ready",
-    "canal_atribuicao_pedido_mirror": "synced",
+    "canal_atribuicao_pedido_mirror": "cached_streaming_buffer",
     "lancamentos_clientes_janelas": "synced",
     "investigacao_linhas_suspeitas": "skipped",
     "sub_modelos_dia": "exported",
