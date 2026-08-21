@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-21T11:34:03-03:00",
+  "generated_at": "2026-08-21T11:45:40-03:00",
   "script_version": "20260821-acquisition-paid-organic-controls-v40",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
@@ -164,18 +164,18 @@
         }
       ],
       "mirror_sync": {
-        "status": "synced",
+        "status": "cached_streaming_buffer",
         "rows": 30882,
         "paid_rows": 6594,
         "organic_rows": 5320,
         "source_counts": {
-          "shopify_journey_latest_v": 23500,
-          "sem_journey_regra_usuario": 7382
+          "sem_journey_regra_usuario": 7382,
+          "shopify_journey_latest_v": 4561
         },
-        "sheet_rows": 0,
-        "sheet_status": "loaded",
-        "bq_rows": 30882,
-        "bq_status": "synced",
+        "sheet_rows": "skipped",
+        "sheet_status": "skipped_streaming_buffer",
+        "bq_rows": "skipped",
+        "bq_status": "skipped_streaming_buffer",
         "bq_error": null,
         "daily_share": {
           "status": "not_used",
@@ -203,7 +203,7 @@
     "cadastro_bigquery": "synced",
     "datas_sazonais": "synced",
     "eventos_comerciais_produto": "ready",
-    "canal_atribuicao_pedido_mirror": "synced",
+    "canal_atribuicao_pedido_mirror": "cached_streaming_buffer",
     "lancamentos_clientes_janelas": "synced",
     "investigacao_linhas_suspeitas": "skipped",
     "sub_modelos_dia": "exported",
