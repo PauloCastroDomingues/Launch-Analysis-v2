@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-21T08:43:27-03:00",
-  "script_version": "20260820-ssot-9-channel-v37",
+  "generated_at": "2026-08-21T08:59:59-03:00",
+  "script_version": "20260821-organic-whitelist-rest-paid-v38",
   "source": "bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal,sales_attributed_to_marketing_v",
   "rows": [
     {
@@ -3459,7 +3459,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 151,
               "receita": 115774.93
             },
@@ -3471,7 +3471,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 17,
               "receita": 12116.31
             },
@@ -3489,13 +3489,13 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 5663.4
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3939.6
             },
@@ -3507,7 +3507,7 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -3567,7 +3567,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 148,
               "receita": 88954.09
             },
@@ -3585,7 +3585,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 6566.18
             },
@@ -3597,19 +3597,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3986.75
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1408.2
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 775.86
             },
@@ -3675,7 +3675,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 148,
               "receita": 89515.6
             },
@@ -3699,7 +3699,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 7184.3
             },
@@ -3711,19 +3711,19 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 349.2
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": -890
             }
@@ -3783,7 +3783,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 109,
               "receita": 69931.64
             },
@@ -3807,7 +3807,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 8401.99
             },
@@ -3819,19 +3819,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2531.07
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 491.67
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -3891,7 +3891,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 124,
               "receita": 71075.32
             },
@@ -3915,7 +3915,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4782.53
             },
@@ -3927,19 +3927,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1914.75
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -647.1
             }
@@ -4062,7 +4062,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 116,
               "receita": 74062.55
             },
@@ -4080,7 +4080,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 6222.1
             },
@@ -4098,19 +4098,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 699.3
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 480.76
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -4170,7 +4170,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 155,
               "receita": 108254.41
             },
@@ -4194,13 +4194,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 7163.15
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 4605.98
             },
@@ -4212,13 +4212,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1714.05
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -4278,7 +4278,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 129,
               "receita": 89488.33
             },
@@ -4296,7 +4296,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 8239.9
             },
@@ -4308,13 +4308,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 5509.47
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2205.3
             },
@@ -4326,7 +4326,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 611.98
             }
@@ -4386,7 +4386,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 178,
               "receita": 95935.96
             },
@@ -4404,7 +4404,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 9297.57
             },
@@ -4416,7 +4416,7 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3128.84
             },
@@ -4428,13 +4428,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 494.1
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -647.1
             }
@@ -4494,7 +4494,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 179,
               "receita": 106728.62
             },
@@ -4507,8 +4507,8 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 28,
-              "receita": 16042.77
+              "pedidos": 29,
+              "receita": 17773.77
             },
             {
               "canal": "WhatsApp Oficial",
@@ -4519,30 +4519,30 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 16,
-              "receita": 7633.41
+              "pedidos": 15,
+              "receita": 5902.41
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4468.93
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2343.42
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1164.4
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 349.2
             }
@@ -4602,7 +4602,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 163,
               "receita": 98919.87
             },
@@ -4615,20 +4615,20 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 13934.39
+              "pedidos": 28,
+              "receita": 15828.69
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 15,
               "receita": 9863.3
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 20,
-              "receita": 6076.1
+              "pedidos": 17,
+              "receita": 4181.8
             },
             {
               "canal": "WhatsApp Oficial",
@@ -4638,19 +4638,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 2196.6
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 419
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -4710,15 +4710,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 110,
               "receita": 71795.6
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 12965.69
+              "pedidos": 26,
+              "receita": 15600.18
             },
             {
               "canal": "Meta ADS",
@@ -4729,24 +4729,24 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 14,
-              "receita": 9363.62
+              "pedidos": 11,
+              "receita": 6729.13
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 5391.7
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 3299.4
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2669.4
             },
@@ -4758,7 +4758,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1496
             }
@@ -4818,9 +4818,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 126,
               "receita": 70759.77
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 26,
+              "receita": 14475.4
             },
             {
               "canal": "Meta ADS",
@@ -4829,32 +4835,26 @@
               "receita": 13604.05
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 22,
-              "receita": 13059.5
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 14,
-              "receita": 5236.86
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4774.77
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 10,
+              "receita": 3820.96
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 3279.88
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1805.1
             },
@@ -4866,7 +4866,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -4926,7 +4926,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 165,
               "receita": 98663.28
             },
@@ -4939,30 +4939,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 31,
-              "receita": 17910.2
+              "pedidos": 32,
+              "receita": 18459.2
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 19,
               "receita": 8978.99
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4906.1
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 9,
-              "receita": 4447.7
+              "pedidos": 8,
+              "receita": 3898.7
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3463.16
             },
@@ -4974,7 +4974,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 397
             }
@@ -5034,7 +5034,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 150,
               "receita": 98669.03
             },
@@ -5047,36 +5047,36 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 35,
-              "receita": 20053.78
+              "pedidos": 36,
+              "receita": 20752.18
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 11786.45
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 5,
-              "receita": 2617.2
-            },
-            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2355.97
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 4,
+              "receita": 1918.8
+            },
+            {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1438
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1069.5
             },
@@ -5142,15 +5142,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 154,
               "receita": 80797.75
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 33,
-              "receita": 20187.27
+              "pedidos": 34,
+              "receita": 20634.57
             },
             {
               "canal": "Meta ADS",
@@ -5159,32 +5159,32 @@
               "receita": 15401.14
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 13,
-              "receita": 4780.8
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4602.7
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 12,
+              "receita": 4333.5
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2817.34
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 2234
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 719
             },
@@ -5250,15 +5250,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 148,
               "receita": 86960.08
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 42,
-              "receita": 27428.96
+              "pedidos": 44,
+              "receita": 26698.96
             },
             {
               "canal": "Meta ADS",
@@ -5268,15 +5268,15 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 7766.13
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 8,
-              "receita": 1725.13
+              "pedidos": 6,
+              "receita": 2455.13
             },
             {
               "canal": "WhatsApp Oficial",
@@ -5286,19 +5286,19 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1084.21
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1057
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -5358,7 +5358,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 242,
               "receita": 127547.86
             },
@@ -5376,7 +5376,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 9230.6
             },
@@ -5388,19 +5388,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 6258.61
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 3384.6
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 2238.89
             },
@@ -5466,15 +5466,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 126,
               "receita": 82396.14
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 16632.59
+              "pedidos": 27,
+              "receita": 18467.59
             },
             {
               "canal": "Meta ADS",
@@ -5484,15 +5484,15 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 4934.58
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 7,
-              "receita": 4324.1
+              "pedidos": 5,
+              "receita": 2489.1
             },
             {
               "canal": "WhatsApp Oficial",
@@ -5502,19 +5502,19 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1154
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 666
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 550.04
             }
@@ -5574,15 +5574,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 125,
               "receita": 68650.34
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 27,
-              "receita": 15329.7
+              "pedidos": 29,
+              "receita": 17011.9
             },
             {
               "canal": "Meta ADS",
@@ -5591,26 +5591,26 @@
               "receita": 11443.8
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 8,
-              "receita": 4122.9
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 3892.7
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 6,
+              "receita": 2440.7
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1848.94
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1824.3
             },
@@ -5622,7 +5622,7 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 505.18
             }
@@ -5682,7 +5682,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 122,
               "receita": 83898.54
             },
@@ -5695,36 +5695,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 22,
-              "receita": 16098.35
+              "pedidos": 30,
+              "receita": 21337.95
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6326.23
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 10,
-              "receita": 6187.6
-            },
-            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6053.8
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 3647.2
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 2281.45
             },
@@ -5733,6 +5727,12 @@
               "tipo": "paid",
               "pedidos": 1,
               "receita": 1294.2
+            },
+            {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 2,
+              "receita": 948
             }
           ]
         },
@@ -5790,7 +5790,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 187,
               "receita": 137220.47
             },
@@ -5803,30 +5803,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 29,
-              "receita": 20905.74
+              "pedidos": 35,
+              "receita": 25415.94
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 10850.27
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 13,
-              "receita": 9161.5
+              "pedidos": 7,
+              "receita": 4651.3
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4494.3
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2097.9
             },
@@ -5838,7 +5838,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 504
             }
@@ -5898,15 +5898,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 182,
               "receita": 102077.04
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 36,
-              "receita": 22749.65
+              "pedidos": 37,
+              "receita": 23387.84
             },
             {
               "canal": "Meta ADS",
@@ -5916,31 +5916,31 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 12,
               "receita": 6845.61
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 5403.84
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4752.95
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 8,
-              "receita": 4166.44
+              "pedidos": 7,
+              "receita": 3528.25
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1294.2
             },
@@ -6006,7 +6006,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 189,
               "receita": 110812.46
             },
@@ -6019,24 +6019,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 35,
-              "receita": 20461.73
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 13,
-              "receita": 7130.4
+              "pedidos": 38,
+              "receita": 21919.93
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 5727.1
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 10,
+              "receita": 5672.2
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4396.62
             },
@@ -6048,13 +6048,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1603.1
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 994
             }
@@ -6114,7 +6114,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 176,
               "receita": 110018.91
             },
@@ -6127,26 +6127,20 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 24,
-              "receita": 15836.43
+              "pedidos": 27,
+              "receita": 18105.65
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 20,
               "receita": 13543.2
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 3960.3
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 5,
-              "receita": 2791.32
             },
             {
               "canal": "WhatsApp Oficial",
@@ -6156,13 +6150,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 877.21
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 2,
+              "receita": 522.1
+            },
+            {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 349.2
             }
@@ -6222,15 +6222,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 171,
               "receita": 103584.21
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 31,
-              "receita": 21716.88
+              "pedidos": 39,
+              "receita": 25753.58
             },
             {
               "canal": "Meta ADS",
@@ -6239,26 +6239,26 @@
               "receita": 18805.2
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 18,
-              "receita": 8543.81
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 7877.9
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 10,
+              "receita": 4507.11
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2837.15
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 1696.3
             },
@@ -6270,7 +6270,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -6330,7 +6330,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 134,
               "receita": 92357.88
             },
@@ -6343,32 +6343,32 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 15326.86
+              "pedidos": 24,
+              "receita": 15575.26
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 7823.45
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 3876
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2074.66
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 2,
-              "receita": 1647
+              "pedidos": 1,
+              "receita": 1398.6
             },
             {
               "canal": "WhatsApp Oficial",
@@ -6378,7 +6378,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -6438,15 +6438,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 140,
               "receita": 107323.48
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 23471.01
+              "pedidos": 28,
+              "receita": 26186.01
             },
             {
               "canal": "Meta ADS",
@@ -6456,37 +6456,37 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 7411.48
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 8,
-              "receita": 5969.3
+              "pedidos": 5,
+              "receita": 3254.3
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2052.57
             },
             {
-              "canal": "WhatsApp Oficial",
+              "canal": "WhatsApp Nao Oficial",
               "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "canal": "Outros",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Outros",
-              "tipo": "organic",
+              "canal": "WhatsApp Oficial",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -6546,7 +6546,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 175,
               "receita": 136569.57
             },
@@ -6559,30 +6559,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 36,
-              "receita": 25946.54
+              "pedidos": 38,
+              "receita": 26672.84
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 17,
               "receita": 11687.99
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 11,
-              "receita": 6395.2
+              "pedidos": 9,
+              "receita": 5668.9
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4768.48
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1551.6
             },
@@ -6594,7 +6594,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -6654,9 +6654,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 172,
               "receita": 108942.84
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 39,
+              "receita": 21141.26
             },
             {
               "canal": "Meta ADS",
@@ -6665,20 +6671,14 @@
               "receita": 20976.19
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 37,
-              "receita": 19354.06
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 8114.2
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2856.29
             },
@@ -6690,15 +6690,15 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1398.4
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 6,
-              "receita": 288.25
+              "pedidos": 4,
+              "receita": -1498.95
             }
           ]
         },
@@ -6756,9 +6756,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 130,
               "receita": 87169.55
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 31,
+              "receita": 19340.95
             },
             {
               "canal": "Meta ADS",
@@ -6767,32 +6773,26 @@
               "receita": 18408.38
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 27,
-              "receita": 15891.35
-            },
-            {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 13,
-              "receita": 8582.3
+              "pedidos": 9,
+              "receita": 5132.7
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4378.22
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 2774
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 628.99
             },
@@ -6858,7 +6858,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 174,
               "receita": 116628.57
             },
@@ -6871,20 +6871,20 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 31,
-              "receita": 18555.89
+              "pedidos": 32,
+              "receita": 19390.89
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 7652.9
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 5,
-              "receita": 3632.3
+              "pedidos": 4,
+              "receita": 2797.3
             },
             {
               "canal": "WhatsApp Oficial",
@@ -6894,19 +6894,19 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 2018.65
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1908.98
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1496.77
             }
@@ -6966,9 +6966,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 157,
               "receita": 101003.24
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 31,
+              "receita": 21955.36
             },
             {
               "canal": "Meta ADS",
@@ -6977,38 +6983,32 @@
               "receita": 18273.02
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 26,
-              "receita": 17194.36
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 9552.43
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 13,
-              "receita": 7721.49
-            },
-            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3944.61
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 8,
+              "receita": 2960.49
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2286.74
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1106.19
             },
@@ -7074,7 +7074,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 178,
               "receita": 120951.78
             },
@@ -7087,24 +7087,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 30,
-              "receita": 17586.54
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 9,
-              "receita": 7976.63
+              "pedidos": 34,
+              "receita": 19704.74
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6865.87
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 5,
+              "receita": 5858.43
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 3692.3
             },
@@ -7116,13 +7116,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1731.2
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -7182,7 +7182,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 162,
               "receita": 121035.78
             },
@@ -7195,30 +7195,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 16113.17
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 12,
-              "receita": 6732.7
+              "pedidos": 30,
+              "receita": 18781.87
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 5713.8
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4269.5
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 7,
+              "receita": 4064
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2210.72
             },
@@ -7230,7 +7230,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -7290,7 +7290,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 192,
               "receita": 156410.36
             },
@@ -7303,32 +7303,32 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 32,
-              "receita": 25116.46
+              "pedidos": 36,
+              "receita": 27784.46
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 15,
               "receita": 12699.1
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 7065.8
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 11,
-              "receita": 5590.4
-            },
-            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3887.58
+            },
+            {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 7,
+              "receita": 2922.4
             },
             {
               "canal": "WhatsApp Oficial",
@@ -7338,7 +7338,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -7461,15 +7461,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 195,
               "receita": 127679.27
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 37,
-              "receita": 25372.12
+              "pedidos": 42,
+              "receita": 28303.97
             },
             {
               "canal": "Meta ADS",
@@ -7484,32 +7484,32 @@
               "receita": 6179.54
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 14,
-              "receita": 6024.5
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4872.04
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4679.2
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 9,
+              "receita": 3092.65
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 3019.59
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -7569,15 +7569,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 225,
               "receita": 143056.34
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 32,
-              "receita": 20523.05
+              "pedidos": 35,
+              "receita": 21781.45
             },
             {
               "canal": "Meta ADS",
@@ -7587,19 +7587,19 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 19,
               "receita": 11146.22
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 17,
-              "receita": 9693.6
+              "pedidos": 14,
+              "receita": 8435.2
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 5061.21
             },
@@ -7611,13 +7611,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 297
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -349.2
             }
@@ -7677,7 +7677,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 183,
               "receita": 139520.62
             },
@@ -7690,26 +7690,26 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 31,
-              "receita": 21384.42
+              "pedidos": 34,
+              "receita": 22625.17
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 12692.4
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 11,
-              "receita": 5970.75
-            },
-            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 5091.5
+            },
+            {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 8,
+              "receita": 4730
             },
             {
               "canal": "WhatsApp Oficial",
@@ -7719,13 +7719,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1170
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -7785,15 +7785,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 190,
               "receita": 138718.02
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 33,
-              "receita": 24927.01
+              "pedidos": 37,
+              "receita": 27086.46
             },
             {
               "canal": "Meta ADS",
@@ -7803,19 +7803,19 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 24,
               "receita": 17143.42
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 21,
-              "receita": 14140.49
+              "pedidos": 17,
+              "receita": 11981.04
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 5920.75
             },
@@ -7827,13 +7827,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2314.67
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -7893,9 +7893,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 248,
               "receita": 167103.13
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 43,
+              "receita": 31965.43
             },
             {
               "canal": "Meta ADS",
@@ -7904,22 +7910,16 @@
               "receita": 29573.41
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 37,
-              "receita": 28067.31
+              "canal": "Social",
+              "tipo": "paid",
+              "pedidos": 18,
+              "receita": 11490.13
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 22,
-              "receita": 11982.6
-            },
-            {
-              "canal": "Social",
-              "tipo": "organic",
-              "pedidos": 18,
-              "receita": 11490.13
+              "pedidos": 16,
+              "receita": 8084.48
             },
             {
               "canal": "WhatsApp Oficial",
@@ -7929,19 +7929,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 6538.5
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 6151.65
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -8001,15 +8001,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 198,
               "receita": 133620.5
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 38,
-              "receita": 28068.35
+              "pedidos": 44,
+              "receita": 31709.75
             },
             {
               "canal": "Meta ADS",
@@ -8020,12 +8020,12 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 26,
-              "receita": 18740.38
+              "pedidos": 20,
+              "receita": 15098.98
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 9417.32
             },
@@ -8037,19 +8037,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4890.3
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1796.28
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 569.45
             }
@@ -8109,7 +8109,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 280,
               "receita": 184356.34
             },
@@ -8122,18 +8122,18 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 48,
-              "receita": 27234.76
+              "pedidos": 59,
+              "receita": 33881.66
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 33,
-              "receita": 17858
+              "pedidos": 22,
+              "receita": 11211.1
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 10071.42
             },
@@ -8145,19 +8145,19 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4972.03
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4623.1
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -8217,15 +8217,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 260,
               "receita": 140517.47
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 47,
-              "receita": 24889.8
+              "pedidos": 53,
+              "receita": 27916.84
             },
             {
               "canal": "Meta ADS",
@@ -8236,12 +8236,12 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 29,
-              "receita": 15273.14
+              "pedidos": 23,
+              "receita": 12246.1
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 19,
               "receita": 11618.71
             },
@@ -8253,19 +8253,19 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 2919.74
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 2874.7
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 845.82
             }
@@ -8325,7 +8325,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 254,
               "receita": 171494.16
             },
@@ -8338,30 +8338,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 38,
-              "receita": 22682.68
+              "pedidos": 44,
+              "receita": 25350.13
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 19,
               "receita": 14926.04
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 24,
-              "receita": 11664.92
+              "pedidos": 18,
+              "receita": 8997.47
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 6334.4
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 5988.37
             },
@@ -8373,7 +8373,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 610
             }
@@ -8433,7 +8433,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 189,
               "receita": 114626.09
             },
@@ -8446,20 +8446,14 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 30,
-              "receita": 17671.36
+              "pedidos": 36,
+              "receita": 19916.54
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 9058.12
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 15,
-              "receita": 6824.53
             },
             {
               "canal": "WhatsApp Oficial",
@@ -8468,20 +8462,26 @@
               "receita": 4850.09
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 9,
+              "receita": 4579.35
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 2464.47
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2287.9
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 437.36
             }
@@ -8541,7 +8541,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 209,
               "receita": 135612.21
             },
@@ -8554,24 +8554,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 15361.35
+              "pedidos": 28,
+              "receita": 17304.87
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 12673.52
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 21,
-              "receita": 10843.97
+              "pedidos": 18,
+              "receita": 8900.45
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 2812.25
             },
@@ -8583,13 +8583,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1731.49
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 594.41
             }
@@ -8649,7 +8649,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 176,
               "receita": 114901.06
             },
@@ -8662,20 +8662,20 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 11524.78
+              "pedidos": 27,
+              "receita": 14654.32
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 9172.97
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 18,
-              "receita": 8816.67
+              "pedidos": 14,
+              "receita": 5687.13
             },
             {
               "canal": "WhatsApp Oficial",
@@ -8685,19 +8685,19 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 2789.66
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": -408.5
             }
@@ -8757,7 +8757,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 141,
               "receita": 96122.21
             },
@@ -8770,24 +8770,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 24,
-              "receita": 15653.4
+              "pedidos": 25,
+              "receita": 16002.6
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 8944.21
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 9,
-              "receita": 4073.45
+              "pedidos": 8,
+              "receita": 3724.25
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 3237.02
             },
@@ -8799,7 +8799,7 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1496
             }
@@ -8859,7 +8859,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 197,
               "receita": 139158.7
             },
@@ -8872,20 +8872,20 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 38,
-              "receita": 30561.32
+              "pedidos": 41,
+              "receita": 31874.12
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 12365
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 19,
-              "receita": 9459.01
+              "pedidos": 16,
+              "receita": 8146.21
             },
             {
               "canal": "WhatsApp Oficial",
@@ -8895,13 +8895,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 4703.58
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3645.23
             }
@@ -8961,9 +8961,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 164,
               "receita": 95283.15
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 29,
+              "receita": 16622.71
             },
             {
               "canal": "Meta ADS",
@@ -8972,32 +8978,26 @@
               "receita": 16470.73
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 27,
-              "receita": 16383.11
-            },
-            {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 15,
-              "receita": 7837.94
+              "pedidos": 13,
+              "receita": 7598.34
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 7459.3
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 3979.6
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3321.3
             },
@@ -9009,7 +9009,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -9069,7 +9069,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 181,
               "receita": 114247.09
             },
@@ -9082,24 +9082,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 27,
-              "receita": 15507.04
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 19,
-              "receita": 10075.75
+              "pedidos": 30,
+              "receita": 16922.57
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 9412.78
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 16,
+              "receita": 8660.22
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 8400.53
             },
@@ -9111,13 +9111,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1114.3
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -9177,9 +9177,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 140,
               "receita": 85214.32
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 37,
+              "receita": 21000.67
             },
             {
               "canal": "Meta ADS",
@@ -9188,26 +9194,20 @@
               "receita": 14115
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 28,
-              "receita": 13687.2
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 18,
-              "receita": 13246.47
-            },
-            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 6354.86
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 9,
+              "receita": 5933
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4794.21
             },
@@ -9219,7 +9219,7 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 2639.92
             }
@@ -9279,7 +9279,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 177,
               "receita": 110120.75
             },
@@ -9292,30 +9292,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 22,
-              "receita": 10340.99
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 14,
-              "receita": 9309.43
+              "pedidos": 26,
+              "receita": 12144.29
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 8591.13
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 8452.53
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 10,
+              "receita": 7506.13
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 4543.98
             },
@@ -9381,7 +9381,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 150,
               "receita": 74712.95
             },
@@ -9394,18 +9394,18 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 19,
-              "receita": 10332.74
+              "pedidos": 20,
+              "receita": 10881.74
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4650
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3214.36
             },
@@ -9418,12 +9418,12 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 8,
-              "receita": 2091.45
+              "pedidos": 7,
+              "receita": 1542.45
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 920
             }
@@ -9483,7 +9483,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 123,
               "receita": 78081.91
             },
@@ -9496,30 +9496,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 24,
-              "receita": 12728.58
+              "pedidos": 27,
+              "receita": 14571.28
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 14,
-              "receita": 9008.13
+              "pedidos": 11,
+              "receita": 7165.43
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4227.77
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4189.6
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1881.1
             },
@@ -9585,7 +9585,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 200,
               "receita": 142630.24
             },
@@ -9596,26 +9596,26 @@
               "receita": 38063.9
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 24,
-              "receita": 17498.14
-            },
-            {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 15351.75
+              "pedidos": 35,
+              "receita": 22591.05
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 15,
               "receita": 12002.99
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 14,
+              "receita": 10258.84
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 7019.42
             },
@@ -9627,13 +9627,13 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1434.3
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1195.3
             }
@@ -9693,7 +9693,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 159,
               "receita": 100654.02
             },
@@ -9706,24 +9706,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 16320.76
+              "pedidos": 26,
+              "receita": 18590.06
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 19,
-              "receita": 11518.04
+              "pedidos": 16,
+              "receita": 9248.74
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 6538.38
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3993.45
             },
@@ -9735,7 +9735,7 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1670.91
             }
@@ -9795,7 +9795,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 144,
               "receita": 82125.15
             },
@@ -9808,30 +9808,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 17,
-              "receita": 10223.98
+              "pedidos": 20,
+              "receita": 11368.58
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 20,
-              "receita": 8879.21
+              "pedidos": 17,
+              "receita": 7734.61
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 12,
               "receita": 7667.22
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 3922.49
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2539.3
             },
@@ -9843,7 +9843,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -9903,7 +9903,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 146,
               "receita": 79679.68
             },
@@ -9914,32 +9914,32 @@
               "receita": 15428.98
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 18,
-              "receita": 7612.13
-            },
-            {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 22,
-              "receita": 7557.56
+              "pedidos": 25,
+              "receita": 9249.61
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 7266.9
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 15,
+              "receita": 5920.08
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4853.64
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1223.82
             },
@@ -9951,7 +9951,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -10011,15 +10011,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 175,
               "receita": 114864.32
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 23,
-              "receita": 15415.53
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 24,
+              "receita": 16505.78
             },
             {
               "canal": "Meta ADS",
@@ -10028,32 +10028,32 @@
               "receita": 14261.49
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 21,
-              "receita": 13711.28
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 20,
+              "receita": 12621.03
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 12,
               "receita": 9762.63
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 12,
               "receita": 7739.69
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 5730.7
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 5266.9
             },
@@ -10119,7 +10119,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 155,
               "receita": 113150.18
             },
@@ -10132,36 +10132,36 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 22,
-              "receita": 13971.55
+              "pedidos": 23,
+              "receita": 13370.14
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 17,
-              "receita": 7762.03
+              "pedidos": 16,
+              "receita": 8363.44
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 6473.84
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 6343.65
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 4807.6
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2552.45
             },
@@ -10227,7 +10227,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 163,
               "receita": 112567.23
             },
@@ -10238,26 +10238,26 @@
               "receita": 26977.77
             },
             {
-              "canal": "Social",
+              "canal": "Organico",
               "tipo": "organic",
+              "pedidos": 19,
+              "receita": 13232.34
+            },
+            {
+              "canal": "Social",
+              "tipo": "paid",
               "pedidos": 16,
               "receita": 12834.7
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 16,
-              "receita": 11467.71
-            },
-            {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 19,
-              "receita": 10644.7
+              "pedidos": 16,
+              "receita": 8880.07
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4913.13
             },
@@ -10269,13 +10269,13 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 2294.63
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1554
             }
@@ -10335,7 +10335,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 185,
               "receita": 132902.82
             },
@@ -10346,32 +10346,32 @@
               "receita": 26580.49
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 28,
-              "receita": 16982.51
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 27,
+              "receita": 17336.39
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 21,
               "receita": 15661.04
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 24,
-              "receita": 15623.24
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 25,
+              "receita": 15269.36
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 8041.79
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1438
             },
@@ -10382,8 +10382,14 @@
               "receita": 1369.81
             },
             {
+              "canal": "Organico",
+              "tipo": "paid",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -10443,7 +10449,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 132,
               "receita": 89540.95
             },
@@ -10456,24 +10462,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 26,
-              "receita": 15279.74
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 16,
-              "receita": 6966.77
+              "pedidos": 30,
+              "receita": 17316.52
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 6616.72
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 12,
+              "receita": 4929.99
+            },
+            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 1740.37
             },
@@ -10485,13 +10491,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 646.85
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -10551,7 +10557,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 148,
               "receita": 100749.57
             },
@@ -10564,30 +10570,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 25,
-              "receita": 15349.5
+              "pedidos": 26,
+              "receita": 15796.8
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 17,
-              "receita": 10264.52
+              "pedidos": 16,
+              "receita": 9817.22
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6162.68
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2938.33
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1647
             },
@@ -10599,7 +10605,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -10722,7 +10728,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 101,
               "receita": 51301
             },
@@ -10735,24 +10741,24 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 11,
-              "receita": 6277.95
+              "pedidos": 12,
+              "receita": 6513.65
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 15,
-              "receita": 5861.18
+              "pedidos": 14,
+              "receita": 5625.48
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3885.47
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3878
             },
@@ -10764,13 +10770,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 362.92
             },
             {
+              "canal": "Organico",
+              "tipo": "paid",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -353.05
             }
@@ -10830,7 +10842,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 207,
               "receita": 132694.7
             },
@@ -10843,14 +10855,14 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 13925.33
+              "pedidos": 28,
+              "receita": 16433.66
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 26,
-              "receita": 13154.27
+              "pedidos": 21,
+              "receita": 10645.94
             },
             {
               "canal": "WhatsApp Oficial",
@@ -10860,25 +10872,25 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4685.28
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 4455.67
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1745.1
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 647.1
             }
@@ -10938,7 +10950,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 164,
               "receita": 113579.29
             },
@@ -10951,30 +10963,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 16824.88
+              "pedidos": 25,
+              "receita": 17873.38
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 8802.5
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6758.41
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 13,
-              "receita": 6011.14
+              "pedidos": 11,
+              "receita": 4962.64
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4176.04
             },
@@ -10986,7 +10998,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -11046,7 +11058,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 187,
               "receita": 128247.57
             },
@@ -11059,14 +11071,14 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 22,
-              "receita": 13534.87
+              "pedidos": 28,
+              "receita": 16606.17
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 19,
-              "receita": 11948.76
+              "pedidos": 13,
+              "receita": 8877.46
             },
             {
               "canal": "WhatsApp Oficial",
@@ -11076,25 +11088,25 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 6058.39
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 4658.48
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1554
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 354.6
             }
@@ -11154,7 +11166,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 149,
               "receita": 103061.02
             },
@@ -11165,32 +11177,32 @@
               "receita": 21958.89
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 24,
-              "receita": 14471.04
-            },
-            {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 16,
-              "receita": 12594.28
+              "pedidos": 18,
+              "receita": 14342.28
+            },
+            {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 22,
+              "receita": 12723.04
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6508.56
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 8,
               "receita": 4919.18
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 984.96
             },
@@ -11202,7 +11214,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 539.28
             }
@@ -11262,7 +11274,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 197,
               "receita": 130659.22
             },
@@ -11275,30 +11287,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 28,
-              "receita": 18867.62
+              "pedidos": 32,
+              "receita": 21005.92
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 24,
-              "receita": 13075.46
+              "pedidos": 20,
+              "receita": 10937.16
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 14,
               "receita": 7881.92
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 7208.72
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4643.3
             },
@@ -11310,7 +11322,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -11370,15 +11382,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 183,
               "receita": 121832.93
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 33,
-              "receita": 26734.12
+              "pedidos": 34,
+              "receita": 27688.52
             },
             {
               "canal": "Meta ADS",
@@ -11389,24 +11401,24 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 32,
-              "receita": 16524.12
+              "pedidos": 31,
+              "receita": 15569.72
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 6190.49
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 12,
               "receita": 5811.02
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4759.83
             },
@@ -11418,7 +11430,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -11478,9 +11490,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 199,
               "receita": 116453.74
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 31,
+              "receita": 20238.14
             },
             {
               "canal": "Meta ADS",
@@ -11489,44 +11507,38 @@
               "receita": 19526.55
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 30,
-              "receita": 19517.24
-            },
-            {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 18,
-              "receita": 8244.29
-            },
-            {
               "canal": "WhatsApp Oficial",
               "tipo": "paid",
               "pedidos": 12,
               "receita": 7859.36
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 17,
+              "receita": 7523.39
+            },
+            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 3973.2
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1963.34
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": -1346.4
             }
@@ -11586,7 +11598,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 186,
               "receita": 122907.01
             },
@@ -11599,36 +11611,36 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 28,
-              "receita": 20655.15
+              "pedidos": 31,
+              "receita": 22139.93
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 25,
-              "receita": 13780.56
+              "pedidos": 22,
+              "receita": 12295.78
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 5348.16
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4968.7
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 807
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 330
             },
@@ -11694,21 +11706,21 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 159,
               "receita": 91867.2
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 30,
-              "receita": 16492.26
-            },
-            {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 22,
-              "receita": 12140.02
+              "pedidos": 25,
+              "receita": 14600.41
+            },
+            {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 27,
+              "receita": 14031.87
             },
             {
               "canal": "Meta ADS",
@@ -11718,19 +11730,19 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 12,
               "receita": 8855.54
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 8289.17
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2927.4
             },
@@ -11742,7 +11754,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -11802,7 +11814,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 146,
               "receita": 104535.7
             },
@@ -11826,25 +11838,25 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 5874.06
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 5127.6
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1747.8
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1131.3
             },
@@ -11910,7 +11922,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 157,
               "receita": 127544.31
             },
@@ -11923,30 +11935,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 27,
-              "receita": 18604.7
+              "pedidos": 29,
+              "receita": 19855.9
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 10931.91
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 11,
-              "receita": 8806.8
+              "pedidos": 9,
+              "receita": 7555.6
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4989.15
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3681.36
             },
@@ -11958,7 +11970,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -12018,7 +12030,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 159,
               "receita": 99184.91
             },
@@ -12031,24 +12043,24 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 25,
-              "receita": 14522.7
+              "pedidos": 23,
+              "receita": 13856.88
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 10140.4
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 20,
-              "receita": 8955.06
+              "pedidos": 22,
+              "receita": 9620.88
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 3925.15
             },
@@ -12060,13 +12072,13 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 335.48
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -12126,7 +12138,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 148,
               "receita": 107838.38
             },
@@ -12137,32 +12149,32 @@
               "receita": 18970.53
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 19,
-              "receita": 11068.05
-            },
-            {
               "canal": "Organico",
               "tipo": "organic",
+              "pedidos": 19,
+              "receita": 10904.52
+            },
+            {
+              "canal": "Google ADS",
+              "tipo": "paid",
               "pedidos": 17,
-              "receita": 9300.52
+              "receita": 9464.05
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 9143.16
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4431.63
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 994
             },
@@ -12174,7 +12186,7 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 385
             }
@@ -12234,25 +12246,25 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 130,
               "receita": 57382.06
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 16,
-              "receita": 9480.06
+              "pedidos": 17,
+              "receita": 10029.06
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 16,
-              "receita": 8165.3
+              "pedidos": 15,
+              "receita": 7616.3
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 10,
               "receita": 5423.49
             },
@@ -12264,13 +12276,13 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 4619.84
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 3311.44
             },
@@ -12282,7 +12294,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -12342,15 +12354,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 144,
               "receita": 88101.07
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 28,
-              "receita": 16561.96
+              "pedidos": 30,
+              "receita": 17519.86
             },
             {
               "canal": "Meta ADS",
@@ -12361,30 +12373,30 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 12,
-              "receita": 6908.6
+              "pedidos": 10,
+              "receita": 5950.7
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 5899.26
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 5382.83
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 5132.4
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1714.6
             },
@@ -12450,15 +12462,15 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 166,
               "receita": 115682.23
             },
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 21,
-              "receita": 15839.47
+              "pedidos": 24,
+              "receita": 17635.87
             },
             {
               "canal": "Meta ADS",
@@ -12475,30 +12487,30 @@
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 14,
-              "receita": 8682.87
+              "pedidos": 11,
+              "receita": 6886.47
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4935.86
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 7,
               "receita": 4415.31
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4242.49
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 926.1
             }
@@ -12558,7 +12570,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 177,
               "receita": 132167.36
             },
@@ -12571,30 +12583,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 19,
-              "receita": 16451.71
+              "pedidos": 22,
+              "receita": 17818.46
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 19,
-              "receita": 11195.51
+              "pedidos": 16,
+              "receita": 9828.76
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 7771.7
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 9,
               "receita": 6443.95
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 3012.62
             },
@@ -12606,7 +12618,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 799.71
             }
@@ -12666,7 +12678,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 159,
               "receita": 122512.42
             },
@@ -12679,30 +12691,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 23,
-              "receita": 18690.2
+              "pedidos": 25,
+              "receita": 20532.3
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 15,
               "receita": 11347.24
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
-              "pedidos": 15,
-              "receita": 9680.17
+              "pedidos": 13,
+              "receita": 7838.07
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4713.34
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4098.6
             },
@@ -12714,7 +12726,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -12774,7 +12786,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 149,
               "receita": 105319.47
             },
@@ -12798,13 +12810,13 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 9080.83
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 6,
               "receita": 4877
             },
@@ -12815,14 +12827,14 @@
               "receita": 1387
             },
             {
-              "canal": "E-mail",
-              "tipo": "organic",
+              "canal": "WhatsApp Nao Oficial",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "canal": "E-mail",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -12882,7 +12894,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 167,
               "receita": 111278.65
             },
@@ -12895,30 +12907,30 @@
             {
               "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 24,
-              "receita": 14576.47
+              "pedidos": 26,
+              "receita": 15341.57
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 11,
               "receita": 10139.5
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
-              "pedidos": 16,
-              "receita": 8726.57
-            },
-            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 13,
               "receita": 8608.22
             },
             {
+              "canal": "Google ADS",
+              "tipo": "paid",
+              "pedidos": 14,
+              "receita": 7961.47
+            },
+            {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 2918.5
             },
@@ -12930,7 +12942,7 @@
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 719
             }
@@ -12990,7 +13002,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 41,
               "receita": 25097.83
             },
@@ -13008,19 +13020,19 @@
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1495
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 1478.97
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": 1194.15
             },
@@ -13092,13 +13104,13 @@
           "canais_venda": [
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -1027
             },
@@ -13106,13 +13118,13 @@
               "canal": "Organico",
               "tipo": "organic",
               "pedidos": 0,
-              "receita": -1251.2
+              "receita": -1833.59
             },
             {
               "canal": "Google ADS",
               "tipo": "paid",
               "pedidos": 0,
-              "receita": -3467.79
+              "receita": -2885.4
             },
             {
               "canal": "Meta ADS",
@@ -13122,7 +13134,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -15640.48
             }
@@ -13181,14 +13193,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Direto",
+              "canal": "Organico",
               "tipo": "organic",
               "pedidos": 0,
               "receita": -425
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Direto",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -425
             }
@@ -13353,32 +13365,32 @@
           ],
           "canais_venda": [
             {
-              "canal": "E-mail",
-              "tipo": "organic",
-              "pedidos": 0,
-              "receita": 0
-            },
-            {
               "canal": "WhatsApp Oficial",
               "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
+              "canal": "E-mail",
+              "tipo": "paid",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -402.57
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": -3181.65
             },
@@ -13444,13 +13456,13 @@
           "canais_venda": [
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 1098
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
@@ -13462,7 +13474,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": -5678.9
             }
@@ -13521,15 +13533,15 @@
           ],
           "canais_venda": [
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 0,
+              "canal": "Direto",
+              "tipo": "paid",
+              "pedidos": 2,
               "receita": -447.3
             },
             {
-              "canal": "Direto",
+              "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 2,
+              "pedidos": 0,
               "receita": -447.3
             }
           ]
@@ -13588,7 +13600,7 @@
           "canais_venda": [
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
@@ -13600,7 +13612,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -2886
             },
@@ -13612,7 +13624,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -15360.98
             }
@@ -13678,19 +13690,19 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 494.1
             },
             {
               "canal": "E-mail",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -349.2
             },
@@ -13708,7 +13720,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": -5565.68
             }
@@ -13723,12 +13735,12 @@
       "modelo_id": null,
       "linha": null,
       "meta_receita": 3500000.1,
-      "realizado_receita": 2167399.65,
+      "realizado_receita": 2168029.93,
       "meta_pedidos": 4888,
-      "realizado_pedidos": 3024,
+      "realizado_pedidos": 3025,
       "meta_pares": null,
       "realizado_pares": null,
-      "atingimento": 0.619257,
+      "atingimento": 0.619437,
       "goal_scope": "shopify_geral",
       "version_id": "2026-08_shopify_geral_published_20260805121624",
       "month_label": "Agosto 2026",
@@ -13736,43 +13748,43 @@
       "dias_realizado_receita": 21,
       "realizado_ate": "2026-08-21",
       "meta_investimento": 832037.5,
-      "investimento_realizado": 544545.93,
-      "investimento_aquisicao": 588453.665,
-      "sessoes_aquisicao": 244221,
-      "pedidos_aquisicao": 3023,
-      "receita_aquisicao": 2166952.35,
-      "novos_clientes_aquisicao": 2089,
-      "cps_aquisicao": 2.409512962,
-      "roas_aquisicao": 3.682451957,
+      "investimento_realizado": 544767.64,
+      "investimento_aquisicao": 588893.53125,
+      "sessoes_aquisicao": 244312,
+      "pedidos_aquisicao": 3024,
+      "receita_aquisicao": 2167399.65,
+      "novos_clientes_aquisicao": 2094,
+      "cps_aquisicao": 2.410415908,
+      "roas_aquisicao": 3.680460958,
       "canais_aquisicao": [
         {
           "canal": "Meta Ads",
-          "investimento": 395605.035,
+          "investimento": 395883.46125,
           "sessoes": 117893,
-          "pedidos": 664,
-          "receita": 546033.96,
-          "novos_clientes": 515,
-          "cps": 3.355627857,
-          "roas": 1.380250279
+          "pedidos": 665,
+          "receita": 546481.26,
+          "novos_clientes": 517,
+          "cps": 3.357989543,
+          "roas": 1.380409422
         },
         {
           "canal": "Google Ads",
-          "investimento": 175744.73,
+          "investimento": 175906.17,
           "sessoes": 51548,
           "pedidos": 677,
           "receita": 431366.36,
-          "novos_clientes": 465,
-          "cps": 3.409341391,
-          "roas": 2.454505236
+          "novos_clientes": 466,
+          "cps": 3.412473229,
+          "roas": 2.452252584
         },
         {
           "canal": "Outros",
           "investimento": 17103.9,
-          "sessoes": 74780,
+          "sessoes": 74871,
           "pedidos": 1682,
           "receita": 1189552.03,
-          "novos_clientes": 1109,
-          "cps": 0.228722921,
+          "novos_clientes": 1111,
+          "cps": 0.228444925,
           "roas": 69.548584241
         }
       ],
@@ -13883,20 +13895,20 @@
           ],
           "canais_venda": [
             {
-              "canal": "Direto",
-              "tipo": "organic",
-              "pedidos": 1,
-              "receita": 549
-            },
-            {
               "canal": "Meta ADS",
               "tipo": "paid",
               "pedidos": 1,
               "receita": 549
             },
             {
+              "canal": "Direto",
+              "tipo": "paid",
+              "pedidos": 1,
+              "receita": 549
+            },
+            {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -13956,19 +13968,19 @@
           "canais_venda": [
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -420.9
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -582.39
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -1098
             },
@@ -13992,7 +14004,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": -10861.33
             }
@@ -14052,13 +14064,13 @@
           "canais_venda": [
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 549
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 146.43
             },
@@ -14148,7 +14160,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": -1584.01
             }
@@ -14208,7 +14220,7 @@
           "canais_venda": [
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 594
             },
@@ -14238,7 +14250,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": -9396.22
             }
@@ -14303,15 +14315,15 @@
               "receita": 0
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
-              "pedidos": 1,
+              "canal": "Outros",
+              "tipo": "paid",
+              "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Social",
+              "canal": "Organico",
               "tipo": "organic",
-              "pedidos": 0,
+              "pedidos": 1,
               "receita": 0
             },
             {
@@ -14321,14 +14333,14 @@
               "receita": 0
             },
             {
-              "canal": "Outros",
-              "tipo": "organic",
+              "canal": "Social",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "WhatsApp Nao Oficial",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
@@ -14340,7 +14352,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": -2510.36
             }
@@ -14452,14 +14464,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Meta ADS",
+              "canal": "Direto",
               "tipo": "paid",
               "pedidos": 1,
               "receita": 2294.1
             },
             {
-              "canal": "Direto",
-              "tipo": "organic",
+              "canal": "Meta ADS",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 2294.1
             }
@@ -14519,7 +14531,7 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": 1965.1
             },
@@ -14530,22 +14542,22 @@
               "receita": 582.39
             },
             {
-              "canal": "Social",
-              "tipo": "organic",
-              "pedidos": 1,
-              "receita": -339.39
-            },
-            {
               "canal": "Google ADS",
               "tipo": "paid",
               "pedidos": 0,
-              "receita": -419
+              "receita": 0
+            },
+            {
+              "canal": "Social",
+              "tipo": "paid",
+              "pedidos": 1,
+              "receita": -339.39
             },
             {
               "canal": "Organico",
               "tipo": "organic",
               "pedidos": 0,
-              "receita": -447.3
+              "receita": -866.3
             }
           ]
         },
@@ -14602,6 +14614,12 @@
           ],
           "canais_venda": [
             {
+              "canal": "Organico",
+              "tipo": "organic",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
               "canal": "Google ADS",
               "tipo": "paid",
               "pedidos": 0,
@@ -14609,7 +14627,7 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": -123
             },
@@ -14621,7 +14639,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 4,
               "receita": -1209.3
             }
@@ -14681,7 +14699,7 @@
           "canais_venda": [
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 349.2
             },
@@ -14699,7 +14717,7 @@
             },
             {
               "canal": "Outros",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -380.21
             },
@@ -14711,7 +14729,7 @@
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": -1871.58
             }
@@ -14770,13 +14788,19 @@
           ],
           "canais_venda": [
             {
-              "canal": "Social",
-              "tipo": "organic",
+              "canal": "Meta ADS",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "E-mail",
+              "tipo": "paid",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
+              "canal": "Organico",
               "tipo": "organic",
               "pedidos": 0,
               "receita": 0
@@ -14788,14 +14812,14 @@
               "receita": 0
             },
             {
-              "canal": "Meta ADS",
+              "canal": "Social",
               "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -3952.2
             }
@@ -14854,13 +14878,13 @@
           ],
           "canais_venda": [
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Direto",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": -579.96
             },
             {
-              "canal": "Direto",
+              "canal": "Organico",
               "tipo": "organic",
               "pedidos": 0,
               "receita": -579.96
@@ -14920,14 +14944,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Meta ADS",
+              "canal": "Direto",
               "tipo": "paid",
               "pedidos": 1,
               "receita": 2045.7
             },
             {
-              "canal": "Direto",
-              "tipo": "organic",
+              "canal": "Meta ADS",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 2045.7
             }
@@ -14987,13 +15011,13 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 994
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 994
             },
@@ -15124,13 +15148,13 @@
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": -848.9
             },
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 2,
               "receita": -2689.7
             }
@@ -15190,25 +15214,25 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 3,
               "receita": 3204.39
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 582.39
             },
             {
-              "canal": "Meta ADS",
+              "canal": "Outros",
               "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Outros",
-              "tipo": "organic",
+              "canal": "Meta ADS",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
@@ -15227,28 +15251,28 @@
           "meta_pedidos": 141,
           "realizado_pedidos": 123,
           "meta_investimento": 23962.68,
-          "investimento_realizado": 25575.58,
-          "investimento_aquisicao": 27763.4125,
+          "investimento_realizado": 25576.21,
+          "investimento_aquisicao": 27763.615,
           "sessoes_aquisicao": 10530,
           "pedidos_aquisicao": 123,
           "receita_aquisicao": 78940.83,
           "novos_clientes_aquisicao": 85,
           "roas_meta": 4.21,
-          "roas_realizado": 3.086570471,
-          "cps_aquisicao": 2.636601377,
-          "roas_aquisicao": 2.843340313,
+          "roas_realizado": 3.086494442,
+          "cps_aquisicao": 2.636620608,
+          "roas_aquisicao": 2.843319575,
           "receita_venda_canal": 4577.8,
           "pedidos_venda_canal": 6,
           "canais_aquisicao": [
             {
               "canal": "Meta Ads",
-              "investimento": 19685.3625,
+              "investimento": 19685.565,
               "sessoes": 5122,
               "pedidos": 24,
               "receita": 17834.97,
               "novos_clientes": 20,
-              "cps": 3.843296076,
-              "roas": 0.906001604
+              "cps": 3.843335611,
+              "roas": 0.905992284
             },
             {
               "canal": "Google Ads",
@@ -15274,25 +15298,25 @@
           "canais_venda": [
             {
               "canal": "Direto",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 5,
               "receita": 4083.7
             },
             {
               "canal": "Social",
-              "tipo": "organic",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 494.1
             },
             {
-              "canal": "Google ADS",
-              "tipo": "paid",
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Google ADS",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
@@ -15307,51 +15331,51 @@
         {
           "data": "2026-08-21",
           "meta_receita": 100800,
-          "realizado_receita": 9954.22,
+          "realizado_receita": 10584.5,
           "meta_pedidos": 141,
-          "realizado_pedidos": 12,
+          "realizado_pedidos": 13,
           "meta_investimento": 23962.68,
-          "investimento_realizado": 3765.15,
-          "investimento_aquisicao": 4070.13625,
-          "sessoes_aquisicao": 1395,
-          "pedidos_aquisicao": 11,
-          "receita_aquisicao": 9506.92,
-          "novos_clientes_aquisicao": 4,
+          "investimento_realizado": 3986.23,
+          "investimento_aquisicao": 4509.8,
+          "sessoes_aquisicao": 1486,
+          "pedidos_aquisicao": 12,
+          "receita_aquisicao": 9954.22,
+          "novos_clientes_aquisicao": 9,
           "roas_meta": 4.21,
-          "roas_realizado": 2.643777804,
-          "cps_aquisicao": 2.917660394,
-          "roas_aquisicao": 2.335774386,
+          "roas_realizado": 2.655265752,
+          "cps_aquisicao": 3.034858681,
+          "roas_aquisicao": 2.207242006,
           "receita_venda_canal": null,
           "pedidos_venda_canal": null,
           "canais_aquisicao": [
             {
               "canal": "Meta Ads",
-              "investimento": 3185.42625,
+              "investimento": 3463.65,
               "sessoes": 685,
-              "pedidos": 4,
-              "receita": 3209.77,
-              "novos_clientes": 3,
-              "cps": 4.650257299,
-              "roas": 1.007642227
+              "pedidos": 5,
+              "receita": 3657.07,
+              "novos_clientes": 5,
+              "cps": 5.056423358,
+              "roas": 1.055842825
             },
             {
               "canal": "Google Ads",
-              "investimento": 737.32,
+              "investimento": 898.76,
               "sessoes": 233,
               "pedidos": 1,
               "receita": 396.32,
-              "novos_clientes": 0,
-              "cps": 3.164463519,
-              "roas": 0.537514241
+              "novos_clientes": 1,
+              "cps": 3.857339056,
+              "roas": 0.440963105
             },
             {
               "canal": "Outros",
               "investimento": 147.39,
-              "sessoes": 477,
+              "sessoes": 568,
               "pedidos": 6,
               "receita": 5900.83,
-              "novos_clientes": 1,
-              "cps": 0.308993711,
+              "novos_clientes": 3,
+              "cps": 0.259489437,
               "roas": 40.03548409
             }
           ],
