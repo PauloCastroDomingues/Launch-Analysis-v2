@@ -4,11 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260812-chart-zoom-v35" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260827-share-vendas-v57" />
 </head>
 <body>
   <div class="app-shell">
@@ -124,6 +123,7 @@
 
       <div class="topic-tabs" aria-label="Tópicos do dashboard">
         <button type="button" class="topic-tab" data-topic="curvas">Evolução</button>
+        <button type="button" class="topic-tab" data-topic="clientes">Clientes</button>
         <button type="button" class="topic-tab" data-topic="produto">Mix</button>
         <button type="button" class="topic-tab" data-topic="canal-midia">Investimento</button>
       </div>
@@ -164,7 +164,7 @@
                 <th><span class="th-label">Lançamento <button class="help-button help-button--mini" type="button" data-tooltip="Modelo comparado e D0 analítico usado para alinhar as janelas." aria-label="Ajuda sobre modelo">i</button></span></th>
                 <th><span class="th-label">Faturamento <button class="help-button help-button--mini" type="button" data-tooltip="Receita acumulada na janela selecionada, sempre a partir do lançamento de cada modelo. Janela ausente fica vazia." aria-label="Ajuda sobre receita da janela">i</button></span></th>
                 <th class="num"><span class="th-label">Venda orgânica <button class="help-button help-button--mini" type="button" data-tooltip="Vendas orgânicas atribuídas por last-click no período do lançamento. Fica pendente até receita_organica alimentar o JSON." aria-label="Ajuda sobre vendas orgânicas">i</button></span></th>
-                <th class="num"><span class="th-label">Venda midia paga <button class="help-button help-button--mini" type="button" data-tooltip="Vendas classificadas como pagas pelo SSOT. Usa origem/UTM granular quando disponivel e alocacao binaria nas lacunas historicas." aria-label="Ajuda sobre vendas de midia paga">i</button></span></th>
+                <th class="num"><span class="th-label">Venda midia paga <button class="help-button help-button--mini" type="button" data-tooltip="Vendas com sinais de anuncio, como cpc, pmax, paid, demand-gen, performance, ads, display ou source_type pago." aria-label="Ajuda sobre vendas de midia paga">i</button></span></th>
                 <th><span class="th-label">D+7 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+7. Nulo significa janela ausente ou ainda aberta." aria-label="Ajuda sobre D+7">i</button></span></th>
                 <th><span class="th-label">D+15 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+15. Para ativos depende do snapshot já ter chegado a D+15." aria-label="Ajuda sobre D+15">i</button></span></th>
                 <th><span class="th-label">D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+30. É a principal janela de comparação comercial." aria-label="Ajuda sobre D+30">i</button></span></th>
@@ -183,13 +183,28 @@
         </div>
       </section>
 
+      <div class="topic-divider" id="topic-clientes">Clientes e base</div>
+      <section id="clientes-base" data-topic="clientes">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">03 &middot; Clientes e base</div>
+            <div class="section-title-row">
+              <h2>Quem comprou e quanto da base foi ativado</h2>
+              <button class="help-button" type="button" data-tooltip="Clientes unicos, novos, recorrentes e base ativada dependem do export agregado do SSOT. Enquanto esse JSON nao existir, aparecem como pendentes, nunca como zero." aria-label="Ajuda sobre clientes e base">?</button>
+            </div>
+            <p class="section-desc">Leitura por janelas comparaveis e expectativa para proximos lancamentos.</p>
+          </div>
+        </div>
+        <div id="advanced-clients"></div>
+      </section>
+
       <div class="topic-divider" id="topic-curvas">Evolução das vendas</div>
       <section id="curvas" data-topic="curvas">
         <div class="section-head">
           <div>
-            <div class="section-kicker">03 · Evolução comparativa</div>
+            <div class="section-kicker">04 · Evolução comparativa</div>
             <div class="section-title-row">
-              <h2>Rampas, volume e perfil de clientes</h2>
+              <h2>Rampas, share e perfil de clientes</h2>
               <button class="help-button" type="button" data-tooltip="Compara lançamentos por janelas fixas desde o D0 de cada produto: D+7, D+15, D+30, D+60 e D+90. Exemplo: D+30 do Avant é comparado com D+30 do Phantom, mesmo que tenham ocorrido em meses diferentes." aria-label="Ajuda sobre curvas de aceleração">?</button>
             </div>
           </div>
@@ -197,7 +212,7 @@
         <div class="hero-chart-wrap">
           <p class="hero-chart-label">Evolução por idade do lançamento</p>
           <div class="chart-view-toggle" role="group" aria-label="Escolha do gráfico">
-            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized">Rampa</button>
+            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized">Ritmo</button>
             <button type="button" class="chart-view-btn" data-chart-view="revenue">Receita</button>
             <button type="button" class="chart-view-btn" data-chart-view="pairs">Pares</button>
             <button type="button" class="chart-view-btn" data-chart-view="multipliers">Crescimento</button>
@@ -207,19 +222,35 @@
           <div class="chart-card wide launch-chart-panel is-active" data-chart-panel="normalized">
             <div class="chart-head">
               <div>
-                <div class="chart-title chart-title--with-tip"><span>Rampa de faturamento</span><button class="help-button help-button--mini" type="button" data-tooltip="Alinha todos os modelos pelo D0 para comparar a rampa dentro do período escolhido. Ativos mostram somente dias já observados no snapshot; históricos usam os dados disponíveis sem preencher lacunas com zero." aria-label="Ajuda sobre curva normalizada">i</button></div>
-                <div class="chart-sub" id="chart-normalized-sub">Faturamento acumulado por dia desde o lançamento</div>
+                <div class="chart-title chart-title--with-tip"><span id="chart-normalized-title">Ritmo por share de vendas semanal</span><button id="chart-normalized-help" class="help-button help-button--mini" type="button" data-tooltip="Share de vendas por semana: vendas do lançamento divididas pelas vendas totais da empresa em cada semana desde o D0." aria-label="Ajuda sobre curva normalizada">i</button></div>
+                <div class="chart-sub" id="chart-normalized-sub">Share de vendas semanal desde o D0 até a data atual</div>
               </div>
-              <div class="chart-mode-controls normalized-chart-controls">
-                <div class="chart-mode-toggle" role="group" aria-label="Modo do gráfico de curva">
-                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 -> período</button>
+              <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
+                <div class="ramp-control-group">
+                  <span class="ramp-control-label">Métrica</span>
+                  <div class="chart-mode-toggle normalized-ramp-metric-controls" role="group" aria-label="Métrica da rampa">
+                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="share_semanal" data-tooltip="Share de vendas por semana: vendas do lançamento divididas pelas vendas totais da empresa em cada semana desde o D0.">Ritmo</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada" data-tooltip="Receita acumulada dia a dia desde o D0.">Faturamento</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal" data-tooltip="Receita somada em blocos de 30 dias desde o D0.">Fat. mês</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal" data-tooltip="Pedidos somados em blocos de 30 dias desde o D0.">Pedidos mês</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="share_mensal" data-tooltip="Vendas do lançamento divididas pelas vendas totais da empresa em cada bloco mensal de 30 dias desde o D0.">Share mês</button>
+                  </div>
+                </div>
+                <div class="ramp-control-group">
+                  <span class="ramp-control-label">Comparação</span>
+                  <div class="chart-mode-toggle" role="group" aria-label="Modo do gráfico de curva">
+                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 -> atual</button>
                   <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
                   <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
+                  </div>
                 </div>
                 <select id="cannibal-line-select" class="cannibal-line-select" hidden></select>
               </div>
             </div>
+            <div id="ramp-quick-controls" class="ramp-quick-controls" aria-label="Recorte rapido da curva"></div>
+            <div id="share-period-analysis" class="share-period-analysis" aria-live="polite"></div>
             <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
+            <div id="ramp-health-insight" class="ramp-health-insight" aria-live="polite"></div>
           </div>
         </div>
         <div class="grid grid-2 acceleration-grid launch-chart-stack">
@@ -249,11 +280,25 @@
         </div>
       </section>
 
+      <section id="vida-util" data-topic="curvas">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">05 &middot; Rampa estendida</div>
+            <div class="section-title-row">
+              <h2>Vida util comercial do produto</h2>
+              <button class="help-button" type="button" data-tooltip="Usa o ultimo dia disponivel no JSON de vendas. O export atual ainda limita historicos a D+90; esse limite aparece como alerta em vez de virar zero." aria-label="Ajuda sobre vida util">?</button>
+            </div>
+            <p class="section-desc">Pico de venda, marcos de receita acumulada e separacao entre hype inicial e sustentacao.</p>
+          </div>
+        </div>
+        <div id="advanced-lifecycle"></div>
+      </section>
+
       <div class="topic-divider" id="topic-produto">Mix do lançamento</div>
       <section id="cores" data-topic="produto">
         <div class="section-head">
           <div>
-            <div class="section-kicker">04 · Mix comercial</div>
+            <div class="section-kicker">06 · Mix comercial</div>
             <div class="section-title-row">
               <h2>Cores e tamanhos que puxam venda</h2>
               <button class="help-button" type="button" data-tooltip="Agrupa cores normalizadas por modelo, usando SKU, nome e campo de cor. Cada modelo mostra no máximo 3 cores; sem cor só aparece quando não houver cor válida." aria-label="Ajuda sobre mix de cores">?</button>
@@ -280,7 +325,7 @@
       <section id="acoes" data-topic="canal-midia">
         <div class="section-head">
           <div>
-            <div class="section-kicker">05 · Investimento e canais</div>
+            <div class="section-kicker">07 · Investimento e canais</div>
             <div class="section-title-row">
               <h2>Investimento e canais</h2>
               <button class="help-button" type="button" data-tooltip="Compara investimento total por janela de lançamento e a divisao paga versus organica preservada pelo SSOT. Cada modelo e lido a partir da propria data de lançamento." aria-label="Ajuda sobre ações comerciais">?</button>
@@ -302,6 +347,9 @@
           </div>
           <div class="chart-canvas tall"><canvas id="chart-normalized-media"></canvas></div>
         </div>
+
+        <div id="advanced-channels-roas" class="advanced-section-spacer"></div>
+        <div id="advanced-alerts" class="advanced-section-spacer"></div>
 
         <p class="actions-module-label" hidden>Resumo comercial</p>
         <div id="actions-comparison" class="actions-comparison" hidden></div>
@@ -451,9 +499,9 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+  <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260812-chart-zoom-v35"></script>
-  <script src="assets/presentation.js?v=20260812-chart-zoom-v35"></script>
+  <script src="assets/app.js?v=20260827-share-vendas-v57"></script>
+  <script src="assets/presentation.js?v=20260827-share-vendas-v57"></script>
 </body>
 </html>

@@ -767,6 +767,18 @@
       .sort((a, b) => (numberOrNull(b.metrics?.receita) || 0) - (numberOrNull(a.metrics?.receita) || 0) || a.label.localeCompare(b.label, 'pt-BR'));
   }
 
+  function colorMixForProduct(product, current) {
+    const productRevenue = numberOrNull(product?.metrics?.receita) || 0;
+    if (!product?.rows?.length || !productRevenue) return [];
+    return groupedProductPerformance(product.rows, colorKeyForRow, colorLabelForRow, current)
+      .filter((item) => (numberOrNull(item.metrics?.receita) || 0) > 0)
+      .slice(0, 3)
+      .map((item) => ({
+        ...item,
+        share: ratioOrNull(numberOrNull(item.metrics?.receita), productRevenue)
+      }));
+  }
+
   function productStory(data, focus, current, days) {
     if (!focus?.launch) return { selected: null, products: [], colors: [], colorContext: '' };
     const sourceRows = salesRowsForLaunchPeriod(data, focus.launch, days);
@@ -778,7 +790,11 @@
     const selectedRows = selectedColor === 'all'
       ? productRows
       : productRows.filter((row) => colorKeyForRow(row) === selectedColor);
-    const products = groupedProductPerformance(sourceRows, productKeyForRow, productLabelForRow, current);
+    const products = groupedProductPerformance(sourceRows, productKeyForRow, productLabelForRow, current)
+      .map((product) => ({
+        ...product,
+        colors: colorMixForProduct(product, current)
+      }));
     const colors = groupedProductPerformance(productRows, colorKeyForRow, colorLabelForRow, current);
     const selected = applyChannelToWindow(aggregateSalesRows(selectedRows), channelFilterKey(current));
     return {
@@ -1294,11 +1310,20 @@
     return `<div class="commercial-mix-list">${visible.map((item, index) => {
       const revenue = numberOrNull(item.metrics?.receita);
       const width = revenue === null || !max ? 0 : Math.max(2, round((revenue / max) * 100, 1));
+      const colorSummary = !color && item.colors?.length
+        ? `<div class="commercial-submodel-colors" aria-label="Cores de ${escapeHtml(item.label)}">${item.colors.map((colorItem) => `
+            <span class="commercial-submodel-color-chip" title="${escapeHtml(colorItem.label)}: ${fmtBRL(colorItem.metrics?.receita, true)}">
+              <i style="--product-color:${productColorCss(colorItem.label)}" aria-hidden="true"></i>
+              ${escapeHtml(colorItem.label)}
+              <small>${fmtPct(colorItem.share, 0)}</small>
+            </span>`).join('')}</div>`
+        : '';
       return `<div class="commercial-mix-row">
         <div class="commercial-mix-rank">${index + 1}º</div>
         <div class="commercial-mix-copy">
           <strong>${color ? `<i class="commercial-color-dot" style="--product-color:${productColorCss(item.label)}" aria-hidden="true"></i>` : ''}${escapeHtml(item.label)}</strong>
           <span>${fmtNum(item.metrics?.pedidos)} pedidos · ${fmtNum(item.metrics?.pares)} pares</span>
+          ${colorSummary}
           <div class="commercial-mix-track"><i style="width:${width}%"></i></div>
         </div>
         <b>${fmtBRL(revenue, true)}</b>
@@ -1355,7 +1380,7 @@
 
         <section class="commercial-section commercial-section--summary">
           <div class="commercial-section-head">
-            <div><span>01 · Mensagem executiva</span><h2>O que a diretoria precisa guardar</h2></div>
+            <div><span>01 · Mensagem executiva</span><h2>Leitura executiva</h2></div>
             <div class="commercial-farol-guide" aria-label="Legenda do farol comercial">
               <span><i class="is-positive"></i>Favorável</span>
               <span><i class="is-warning"></i>Acompanhar</span>
@@ -1402,8 +1427,8 @@
             ${kpiCard('Ticket médio', fmtBRL(view.products.selected?.ticket), 'Faturamento dividido pelos pedidos do recorte atual.')}
           </div>
           <div class="commercial-product-grid">
-            <div class="commercial-mix-block"><div class="commercial-block-head"><span>Submodelos</span><strong>Quem puxa a linha</strong></div>${mixRankingHtml(view.products.products, { empty: 'Sem submodelo classificado' })}</div>
-            <div class="commercial-mix-block"><div class="commercial-block-head"><span>Cores · ${escapeHtml(view.products.colorContext)}</span><strong>Onde está a preferência</strong></div>${mixRankingHtml(view.products.colors, { color: true, empty: 'Selecione um submodelo para detalhar suas cores' })}</div>
+            <div class="commercial-mix-block"><div class="commercial-block-head"><span>Submodelos</span><strong>Quem puxa a linha e suas cores</strong></div>${mixRankingHtml(view.products.products, { empty: 'Sem submodelo classificado' })}</div>
+            <div class="commercial-mix-block"><div class="commercial-block-head"><span>Cores · ${escapeHtml(view.products.colorContext)}</span><strong>Preferência por cor no recorte</strong></div>${mixRankingHtml(view.products.colors, { color: true, empty: 'Selecione um submodelo para detalhar suas cores' })}</div>
           </div>
         </section>
 

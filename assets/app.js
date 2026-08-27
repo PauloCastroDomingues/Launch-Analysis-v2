@@ -2,6 +2,8 @@
   const DATA_FILES = [
     'lancamentos_modelos',
     'lancamentos_historico',
+    'lancamentos_rampa_dia',
+    'lancamentos_clientes_janelas',
     'lancamentos_produtos_dia',
     'midia_paga',
     'metas_mensais',
@@ -11,9 +13,10 @@
     'estoque',
     'calendario_br',
     'share_trajetoria',
-    'auditoria_monochrome'
+    'auditoria_monochrome',
+    'lancamentos_analise_avancada'
   ];
-  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_produtos_dia', 'share_trajetoria', 'auditoria_monochrome']);
+  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_rampa_dia', 'lancamentos_clientes_janelas', 'lancamentos_produtos_dia', 'share_trajetoria', 'auditoria_monochrome']);
 
   const CORES_MODELO = {
     gt: { line: '#F07800', fill: 'rgba(240,120,0,0.12)' },
@@ -47,7 +50,35 @@
     { key: 'investment', label: 'Midia paga' },
     { key: 'organic', label: 'Organico' }
   ];
+  const RAMP_METRIC_KEYS = [
+    'receita_acumulada',
+    'receita_mensal',
+    'pedidos_mensal',
+    'share_semanal',
+    'share_mensal',
+    'saude_rampa'
+  ];
+  const RAMP_MONTH_DAYS = 30;
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
+  const RAMP_RHYTHM_WINDOW_DAYS = 7;
+  const RAMP_RHYTHM_TREND_LIMIT = 0.10;
+  const RAMP_STABILITY_STRONG_RATIO = 0.50;
+  const RAMP_STABILITY_MIN_RATIO = 0.35;
+  const RAMP_STABILITY_LOW_RATIO = 0.25;
+  const RAMP_TIME_LENSES = [
+    { key: 'all', label: 'Tudo', shortLabel: 'Tudo', start: 0, end: null },
+    { key: 'launch', label: 'D0-D30', shortLabel: 'Lancamento', start: 0, end: 30 },
+    { key: 'sustain', label: 'D31-D90', shortLabel: 'Sustentacao', start: 31, end: 90 },
+    { key: 'maturity', label: 'D91-D180', shortLabel: 'Maturidade', start: 91, end: 180 },
+    { key: 'tail', label: 'D181+', shortLabel: 'Cauda', start: 181, end: null }
+  ];
+  const RAMP_HEALTH_TOOLTIP = `Ritmo de venda:
+1. Agrupa as vendas em semanas fechadas desde o D0: S1 = D0 a D+6, S2 = D+7 a D+13 e assim por diante.
+2. O melhor ritmo semanal da propria linha vira 100%.
+3. Cada ponto mostra quanto do pico a linha ainda vende em uma semana completa.
+4. O lancamento estabiliza quando duas comparacoes semanais seguidas variam no maximo 10%, depois do pico.
+Acima de 50% = forte; 35% a 50% = sustentacao; 25% a 35% = baixo; abaixo de 25% = cauda.
+Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate a data atual; dado ausente fica pendente.`;
   const COLLAPSIBLE_LIST_LIMIT = 5;
   const COLLAPSIBLE_LIST_SELECTORS = [
     '.table-wrap tbody',
@@ -70,6 +101,8 @@
     channelFilter: 'all',
     snapshotClock: null,
     normalizedChartMode: 'linha',
+    normalizedRampMetric: 'share_semanal',
+    rampTimeLens: 'all',
     launchChartView: 'normalized',
     commercialChartMetric: 'investimento',
     canibalLineFilter: null,
@@ -100,6 +133,12 @@
   const fmtPct = (value, digits = 1) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
     return new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: digits }).format(value);
+  };
+
+  const fmtSignedPct = (value, digits = 0) => {
+    if (value === null || value === undefined || Number.isNaN(value)) return 'â€”';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${fmtPct(value, digits)}`;
   };
 
   const fmtDate = (iso) => {
@@ -165,6 +204,30 @@
 
   const snapshotDate = () => state.snapshotClock?.date || snapshotClockFallback().date;
   const snapshotIso = () => state.snapshotClock?.iso || toIsoDate(snapshotDate());
+
+  function rampExportCoverage() {
+    const ramp = state.data?.manifest?.data_quality?.rampa_produtos_dia || {};
+    const status = normalizeText(ramp.status);
+    const explicitEnd = String(ramp.data_fim_exportada || '').slice(0, 10);
+    const snapshotEnd = snapshotIso();
+    const endIso = toDate(explicitEnd) ? explicitEnd : snapshotEnd;
+    return {
+      coversCurrentDate: status === 'd0 ate data atual',
+      endIso
+    };
+  }
+
+  function rampExportEndDay(launch) {
+    if (!isEligibleStatus(launch?.status)) return null;
+    const coverage = rampExportCoverage();
+    if (!coverage.coversCurrentDate || !coverage.endIso) return null;
+    return dayIndex(analysisDayZero(launch), coverage.endIso);
+  }
+
+  function rampCanFillMissingDays(launch, maxDay) {
+    const endDay = rampExportEndDay(launch);
+    return endDay !== null && endDay >= maxDay;
+  }
 
   const daysBetween = (startIso, endDate) => {
     const start = toDate(startIso);
@@ -252,9 +315,10 @@
   function orderChannelType(row = {}) {
     const explicitType = normalizeText(row.tipo_real || row.tipo || row.tipo_canal || row.channel_type);
     if (/(^| )(paid|pago|midia paga|paid media)( |$)/.test(explicitType)) return 'paid';
-    if (/(^| )(unmatched|sem origem|sem utm|sem atribuicao|sem match|unattributed|unknown|an unknown source|not set)( |$)/.test(explicitType)) return 'organic';
-    if (isUnattributedChannelRow(row)) return 'organic';
-    if (/(^| )(owned|crm|email|newsletter|whatsapp|sms|organic|organico|seo|direct|referral|other|outros)( |$)/.test(explicitType)) return 'organic';
+    if (/(^| )(organic|organico)( |$)/.test(explicitType)) return 'organic';
+    if (/(^| )(crm|email|e mail|newsletter)( |$)/.test(explicitType)) return 'crm';
+    if (/(^| )(unmatched|nao atribuido|sem match|sem atribuicao)( |$)/.test(explicitType)) return 'unmatched';
+    if (/(^| )(other|outro|direto|direct|whatsapp)( |$)/.test(explicitType)) return 'other';
 
     const channelText = normalizeText([
       row.canal_real,
@@ -265,13 +329,13 @@
       row.raw_channel,
       row.raw_medium,
       row.raw_source,
+      row.raw_source_type,
       row.utm_medium,
-      row.utm_source
+      row.utm_source,
+      row.utm_campaign
     ].filter(Boolean).join(' '));
-    if (!channelText) return isDailyAllocatedAttribution(row) ? null : 'organic';
-    if (/(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen|cpc|ppc|cpm|paid|ads|anuncio|anuncios|patrocinad)( |$)/.test(channelText)) return 'paid';
-    if (isUnattributedChannelRow(row)) return 'organic';
-    return 'organic';
+    if (!channelText && isDailyAllocatedAttribution(row)) return null;
+    return detailedAttributionType(detailedAttributionChannel(row));
   }
 
   function attributionQualityMeta(granularPct, allocatedPct = null) {
@@ -295,13 +359,13 @@
       return {
         tone: 'warning',
         label: 'Mista',
-        reason: `${detail} Use como leitura comercial, explicando que parte vem de alocacao binaria do SSOT.`
+        reason: `${detail} Use como leitura comercial e valide as linhas sem origem granular.`
       };
     }
     return {
       tone: 'warning',
       label: 'Alocada',
-      reason: `${detail} A divisao pago/organico fecha o total, mas depende majoritariamente de alocacao do SSOT.`
+      reason: `${detail} A divisao pago/organico fecha o total, mas depende de fallback para linhas sem UTM granular.`
     };
   }
 
@@ -417,6 +481,91 @@
       .replace(/[-_]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  function attributionKey(value) {
+    return normalizeText(value).replace(/[^a-z0-9]+/g, '');
+  }
+
+  function firstAttributionValue(values) {
+    return values.find((value) => String(value ?? '').trim()) || '';
+  }
+
+  function detailedAttributionChannel(row = {}) {
+    const rawChannel = firstAttributionValue([
+      row.raw_channel,
+      row.referring_channel,
+      row.canal_indicacao,
+      row.last_source_description,
+      row.last_source,
+      row.canal_real,
+      row.canal,
+      row.channel,
+      row.chanel,
+      row.grupo_canal
+    ]);
+    const utmSource = firstAttributionValue([
+      row.utm_source,
+      row.raw_utm_source,
+      row.last_utm_source,
+      row.raw_source,
+      row.source
+    ]);
+    const utmMedium = firstAttributionValue([
+      row.utm_medium,
+      row.raw_medium,
+      row.last_utm_medium,
+      row.medium
+    ]);
+    const utmCampaign = firstAttributionValue([
+      row.utm_campaign,
+      row.raw_campaign,
+      row.last_utm_campaign,
+      row.campaign
+    ]);
+    const sourceType = firstAttributionValue([
+      row.source_type,
+      row.raw_source_type,
+      row.last_source_type,
+      row.channel_type
+    ]);
+    const channelText = normalizeText(rawChannel);
+    const sourceText = normalizeText(utmSource);
+    const mediumText = normalizeText(utmMedium);
+    const campaignText = normalizeText(utmCampaign);
+    const sourceTypeText = normalizeText(sourceType);
+    const sourceResolved = [channelText, sourceText].filter(Boolean).join(' ');
+    const signalText = [sourceResolved, mediumText, campaignText, sourceTypeText].filter(Boolean).join(' ');
+    const channelKey = attributionKey(rawChannel);
+    const sourceTypeKey = attributionKey(sourceType);
+
+    if (!signalText) return 'Nao atribuido';
+    if (
+      /(^| )(cpc|ppc|pmax|paid|paid social|paid search|paidsearch|paidsocial|display|cpm|cpv|shopping|performance|max performance|performance max|demand gen|demandgen|remarketing|retargeting|affiliate|affiliates|programmatic|sponsored|ad|ads)( |$)/.test(mediumText)
+      || ['paid', 'advertising', 'ad', 'ads', 'paidsearch', 'paidsocial', 'paidshopping', 'paidmedia', 'paidother', 'paidvideo', 'paidreferral'].includes(sourceTypeKey)
+      || /(^| )(cpc|ppc|pmax|paid|paid social|paid search|paidsearch|paidsocial|display|cpm|cpv|shopping|performance|max performance|performance max|demand gen|demandgen|remarketing|retargeting|affiliate|affiliates|programmatic|sponsored|google ads|facebook ads|meta ads|instagram ads|tiktok ads|bing ads|microsoft ads|adwords|gads|googleadservices|gclid|fbclid)( |$)/.test(signalText)
+    ) return 'Midia paga';
+    if (sourceTypeKey === 'direct' || channelKey === 'direct' || (['nenhum', 'none'].includes(channelKey) && !sourceText)) return 'Direto';
+    if (
+      sourceTypeKey === 'email'
+      || /(^| )(email|e mail|newsletter|crm)( |$)/.test(mediumText)
+      || /(^| )(klaviyo|rd station|rdstation|shopify email|mailchimp)( |$)/.test(signalText)
+    ) return 'E-mail/CRM';
+    if (/(^| )(whatsapp|whats app|whtasapp|whats|wpp|wa|wa me|api whatsapp|wl co)( |$)/.test(signalText)) return 'WhatsApp';
+    if (
+      /(^| )(organic|organic search|organic social|seo|bio)( |$)/.test(mediumText)
+      || ['seo', 'search', 'social', 'organic'].includes(sourceTypeKey)
+      || /(^| )(google|bing|yahoo|duckduckgo|ecosia|instagram|facebook|tiktok|youtube|pinterest|linkedin)( |$)/.test(signalText)
+    ) return 'Organico';
+    return 'Outro atribuido';
+  }
+
+  function detailedAttributionType(channel) {
+    if (channel === 'Midia paga') return 'paid';
+    if (channel === 'Organico') return 'organic';
+    if (channel === 'E-mail/CRM') return 'crm';
+    if (channel === 'Nao atribuido') return 'unmatched';
+    return 'other';
   }
 
   const COLOR_DEFS = [
@@ -662,7 +811,7 @@
     const dailyMap = new Map();
     modelRows.forEach((row) => {
       const idx = dayIndex(d0, row.data);
-      if (idx === null || idx < 0 || idx > 90) return;
+      if (idx === null || idx < 0) return;
       if (todayIdx !== null && idx > todayIdx) return;
       const current = dailyMap.get(row.data) || {
         data: row.data,
@@ -712,10 +861,17 @@
       const receitaOrganicaCampo = sumNullable(filtered, 'receita_organica');
       const receitaCrmCampo = sumNullable(filtered, 'receita_crm');
       const receitaOutrosCampo = sumNullable(filtered, 'receita_outros_canais');
+      const receitaSemMatchCampo = sumNullable(filtered, 'receita_sem_match_atribuicao');
       const pedidosPagosCampo = sumNullable(filtered, 'pedidos_pagos');
       const pedidosOrganicosCampo = sumNullable(filtered, 'pedidos_organicos');
       const pedidosCrmCampo = sumNullable(filtered, 'pedidos_crm');
       const pedidosOutrosCampo = sumNullable(filtered, 'pedidos_outros_canais');
+      const pedidosSemMatchCampo = sumNullable(filtered, 'pedidos_sem_match_atribuicao');
+      const paresPagosCampo = sumNullable(filtered, 'pares_pagos');
+      const paresOrganicosCampo = sumNullable(filtered, 'pares_organicos');
+      const paresCrmCampo = sumNullable(filtered, 'pares_crm');
+      const paresOutrosCampo = sumNullable(filtered, 'pares_outros_canais');
+      const paresSemMatchCampo = sumNullable(filtered, 'pares_sem_match_atribuicao');
       const dailyAllocatedAttribution = filtered.some((row) => isDailyAllocatedAttribution(row));
       const typedAttributionSignal = !dailyAllocatedAttribution && filtered.some((row) => orderChannelType(row));
       const attributionSignal = filtered.some((row) => (
@@ -725,19 +881,22 @@
         || row.receita_paga !== null && row.receita_paga !== undefined
         || row.receita_organica !== null && row.receita_organica !== undefined
         || row.receita_crm !== null && row.receita_crm !== undefined
+        || row.pedidos_crm !== null && row.pedidos_crm !== undefined
         || row.receita_outros_canais !== null && row.receita_outros_canais !== undefined
+        || row.pedidos_outros_canais !== null && row.pedidos_outros_canais !== undefined
         || row.receita_sem_match_atribuicao !== null && row.receita_sem_match_atribuicao !== undefined
         || row.pedidos_sem_match_atribuicao !== null && row.pedidos_sem_match_atribuicao !== undefined
       ));
       const channelBuckets = {
-        paid: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
-        organic: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
-        crm: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
-        other: { receita: 0, pedidos: new Set(), pedidosFallback: 0 },
-        unmatched: { receita: 0, pedidos: new Set(), pedidosFallback: 0 }
+        paid: { receita: 0, pares: 0, pedidos: new Set(), pedidosFallback: 0 },
+        organic: { receita: 0, pares: 0, pedidos: new Set(), pedidosFallback: 0 },
+        crm: { receita: 0, pares: 0, pedidos: new Set(), pedidosFallback: 0 },
+        other: { receita: 0, pares: 0, pedidos: new Set(), pedidosFallback: 0 },
+        unmatched: { receita: 0, pares: 0, pedidos: new Set(), pedidosFallback: 0 }
       };
       const addChannelRow = (bucket, row) => {
         bucket.receita += receitaBrutaRow(row);
+        bucket.pares += Number(row.pares || 0);
         const orderId = pedidoId(row);
         if (orderId) bucket.pedidos.add(orderId);
         else bucket.pedidosFallback += Number(row.pedidos_validos ?? row.pedidos ?? 0);
@@ -757,8 +916,16 @@
           addChannelRow(channelBuckets.paid, row);
           return;
         }
-        if (tipo === 'organic' || tipo === 'owned' || tipo === 'crm' || tipo === 'unmatched') {
+        if (tipo === 'organic') {
           addChannelRow(channelBuckets.organic, row);
+          return;
+        }
+        if (tipo === 'crm' || tipo === 'owned') {
+          addChannelRow(channelBuckets.crm, row);
+          return;
+        }
+        if (tipo === 'unmatched') {
+          addChannelRow(channelBuckets.unmatched, row);
           return;
         }
         if (tipo) {
@@ -766,21 +933,28 @@
           return;
         }
         if (!hasAttributionMatch) {
-          addChannelRow(channelBuckets.organic, row);
+          addChannelRow(channelBuckets.unmatched, row);
         }
       });
       const receitaPaga = typedAttributionSignal ? roundMoney(channelBuckets.paid.receita) : receitaPagaCampo;
-      const receitaCrm = attributionSignal ? 0 : null;
+      const receitaCrm = typedAttributionSignal ? roundMoney(channelBuckets.crm.receita) : receitaCrmCampo;
       const receitaOutrosCanais = typedAttributionSignal ? roundMoney(channelBuckets.other.receita) : receitaOutrosCampo;
+      const receitaSemMatch = typedAttributionSignal ? roundMoney(channelBuckets.unmatched.receita) : receitaSemMatchCampo;
       const pedidosPagos = typedAttributionSignal ? bucketOrderCount(channelBuckets.paid) : pedidosPagosCampo;
-      const pedidosCrm = attributionSignal ? 0 : null;
+      const pedidosCrm = typedAttributionSignal ? bucketOrderCount(channelBuckets.crm) : pedidosCrmCampo;
       const pedidosOutrosCanais = typedAttributionSignal ? bucketOrderCount(channelBuckets.other) : pedidosOutrosCampo;
+      const pedidosSemMatch = typedAttributionSignal ? bucketOrderCount(channelBuckets.unmatched) : pedidosSemMatchCampo;
+      const paresPagos = typedAttributionSignal ? channelBuckets.paid.pares : paresPagosCampo;
+      const paresCrm = typedAttributionSignal ? channelBuckets.crm.pares : paresCrmCampo;
+      const paresOutrosCanais = typedAttributionSignal ? channelBuckets.other.pares : paresOutrosCampo;
+      const paresSemMatch = typedAttributionSignal ? channelBuckets.unmatched.pares : paresSemMatchCampo;
       const receitaOrganicaBase = typedAttributionSignal
         ? roundMoney(channelBuckets.organic.receita)
-        : explicitOrganicOrLegacyCrm(receitaOrganicaCampo, receitaCrmCampo);
+        : receitaOrganicaCampo;
       const pedidosOrganicosBase = typedAttributionSignal
         ? bucketOrderCount(channelBuckets.organic)
-        : explicitOrganicOrLegacyCrm(pedidosOrganicosCampo, pedidosCrmCampo);
+        : pedidosOrganicosCampo;
+      const paresOrganicos = typedAttributionSignal ? channelBuckets.organic.pares : paresOrganicosCampo;
       const receitaOrganica = nonInvestmentRevenueForData(
         { receita, receita_bruta: receita, receita_organica: receitaOrganicaBase },
         receitaPaga
@@ -804,13 +978,18 @@
         receita_paga: receitaPaga,
         receita_organica: receitaOrganica,
         receita_crm: receitaCrm,
+        pares_pagos: paresPagos,
+        pares_organicos: paresOrganicos,
+        pares_crm: paresCrm,
+        pares_outros_canais: attributionSignal ? paresOutrosCanais : null,
+        pares_sem_match_atribuicao: attributionSignal ? paresSemMatch : null,
         pedidos_pagos: pedidosPagos,
         pedidos_organicos: pedidosOrganicos,
         pedidos_crm: pedidosCrm,
         receita_outros_canais: attributionSignal ? receitaOutrosCanais : null,
         pedidos_outros_canais: attributionSignal ? pedidosOutrosCanais : null,
-        receita_sem_match_atribuicao: attributionSignal ? 0 : null,
-        pedidos_sem_match_atribuicao: attributionSignal ? 0 : null,
+        receita_sem_match_atribuicao: attributionSignal ? receitaSemMatch : null,
+        pedidos_sem_match_atribuicao: attributionSignal ? pedidosSemMatch : null,
         origem,
         day
       };
@@ -1317,6 +1496,1047 @@
     return period?.label || '30 dias';
   }
 
+  function selectedRampMetricKey() {
+    return RAMP_METRIC_KEYS.includes(state.normalizedRampMetric || '')
+      ? state.normalizedRampMetric
+      : 'receita_acumulada';
+  }
+
+  function selectedRampTimeLensKey() {
+    return RAMP_TIME_LENSES.some((item) => item.key === state.rampTimeLens)
+      ? state.rampTimeLens
+      : 'all';
+  }
+
+  function rampTimeLensConfig(key = selectedRampTimeLensKey()) {
+    return RAMP_TIME_LENSES.find((item) => item.key === key) || RAMP_TIME_LENSES[0];
+  }
+
+  function rampTimeLensBounds(maxDay, metric = rampMetricConfig()) {
+    const allBounds = { key: 'all', start: 0, end: Math.max(0, Number(maxDay) || 0), label: 'Tudo' };
+    if (metric?.cadence === 'mes') return allBounds;
+    const lens = rampTimeLensConfig();
+    if (lens.key === 'all') return allBounds;
+    const endMax = Math.max(0, Number(maxDay) || 0);
+    if (lens.start > endMax) return { ...allBounds, unavailable: true };
+    return {
+      key: lens.key,
+      start: Math.max(0, lens.start),
+      end: Math.min(endMax, lens.end ?? endMax),
+      label: lens.label
+    };
+  }
+
+  function rampTimeLensLabel(bounds) {
+    if (!bounds || bounds.key === 'all') return 'toda a curva';
+    return `${bounds.start === 0 ? 'D0' : `D+${bounds.start}`} a D+${bounds.end}`;
+  }
+
+  function rampMetricConfig(key = selectedRampMetricKey()) {
+    const configs = {
+      receita_acumulada: {
+        key: 'receita_acumulada',
+        label: 'Rampa de faturamento',
+        shortLabel: 'Faturamento',
+        field: 'receita',
+        format: 'brl',
+        cadence: 'dia',
+        cumulative: true,
+        tooltip: 'Receita acumulada dia a dia desde o D0. Ausencia depois do ultimo dado fica vazia, nunca zero.'
+      },
+      receita_mensal: {
+        key: 'receita_mensal',
+        label: 'Faturamento por mes',
+        shortLabel: 'Fat. mes',
+        field: 'receita',
+        format: 'brl',
+        cadence: 'mes',
+        cumulative: false,
+        tooltip: 'Soma a receita em blocos comerciais de 30 dias desde o D0: M1, M2, M3 e seguintes.'
+      },
+      pedidos_mensal: {
+        key: 'pedidos_mensal',
+        label: 'Pedidos por mes',
+        shortLabel: 'Pedidos mes',
+        field: 'pedidos',
+        format: 'num',
+        cadence: 'mes',
+        cumulative: false,
+        tooltip: 'Soma pedidos em blocos comerciais de 30 dias desde o D0: M1, M2, M3 e seguintes.'
+      },
+      share_semanal: {
+        key: 'share_semanal',
+        label: 'Ritmo por share de vendas semanal',
+        shortLabel: 'Share de vendas',
+        field: 'receita',
+        format: 'pct',
+        cadence: 'semana',
+        cumulative: false,
+        share: true,
+        periodDays: RAMP_RHYTHM_WINDOW_DAYS,
+        tooltip: 'Share de vendas por semana: vendas do lancamento divididas pelas vendas totais da empresa em cada semana desde o D0. A ultima semana pode ser parcial ate o snapshot.'
+      },
+      share_mensal: {
+        key: 'share_mensal',
+        label: 'Share de vendas mensal',
+        shortLabel: 'Share mes',
+        field: 'receita',
+        format: 'pct',
+        cadence: 'mes',
+        cumulative: false,
+        share: true,
+        periodDays: RAMP_MONTH_DAYS,
+        tooltip: 'Vendas do lancamento divididas pelas vendas totais da empresa em cada bloco mensal de 30 dias desde o D0. O mes corrente pode ser parcial ate o snapshot.'
+      },
+      saude_rampa: {
+        key: 'saude_rampa',
+        label: 'Ritmo de venda',
+        shortLabel: 'Ritmo',
+        field: null,
+        format: 'pct',
+        cadence: 'semana',
+        cumulative: false,
+        health: true,
+        tooltip: RAMP_HEALTH_TOOLTIP
+      }
+    };
+    return configs[key] || configs.receita_acumulada;
+  }
+
+  function formatRampValue(value, metric, compact = false) {
+    if (metric?.format === 'pct_signed') return fmtSignedPct(value, compact ? 0 : 0);
+    if (metric?.format === 'pct') return fmtPct(value, compact ? 0 : 0);
+    if (metric?.format === 'num') return fmtNum(value);
+    return fmtBRL(value, compact);
+  }
+
+  function launchCurrentRampDay(launch) {
+    const values = [
+      numberOrNull(launch?.dPlus),
+      rampExportEndDay(launch),
+      latestLaunchDataDay(launch)
+    ].filter((value) => value !== null && value >= 0);
+    if (!values.length) return selectedPeriodEndDay(launch, { capToAvailable: true }) ?? 0;
+    return Math.max(0, ...values);
+  }
+
+  function normalizedRampMaxDay(launches) {
+    const days = (launches || [])
+      .map(launchCurrentRampDay)
+      .filter((value) => value !== null && value >= 0);
+    return days.length ? Math.max(0, ...days) : 90;
+  }
+
+  function rampMonthIndex(day) {
+    return Math.floor(Math.max(0, Number(day) || 0) / RAMP_MONTH_DAYS);
+  }
+
+  function rampMonthLabel(index) {
+    return `M${index + 1}`;
+  }
+
+  function rampMonthRangeLabel(index) {
+    const start = index * RAMP_MONTH_DAYS;
+    const end = ((index + 1) * RAMP_MONTH_DAYS) - 1;
+    return start === 0 ? `D0 a D+${end}` : `D+${start} a D+${end}`;
+  }
+
+  function rampPeriodIndex(day, periodDays) {
+    const size = Math.max(1, Number(periodDays) || 1);
+    return Math.floor(Math.max(0, Number(day) || 0) / size);
+  }
+
+  function rampPeriodLensBounds(lensBounds, maxDay, periodDays) {
+    const size = Math.max(1, Number(periodDays) || 1);
+    const startDay = Math.max(0, Number(lensBounds?.start) || 0);
+    const endDay = Math.min(
+      Math.max(0, Number(lensBounds?.end ?? maxDay) || 0),
+      Math.max(0, Number(maxDay) || 0)
+    );
+    const firstPeriod = Math.floor(startDay / size);
+    const lastPeriod = Math.floor(endDay / size);
+    return {
+      startWeek: Math.max(0, firstPeriod),
+      endWeek: Math.max(-1, lastPeriod),
+      unavailable: lastPeriod < firstPeriod
+    };
+  }
+
+  function rampPeriodRangeLabel(index, metric, observedEndDay = null) {
+    const periodDays = metric?.periodDays || (metric?.cadence === 'mes' ? RAMP_MONTH_DAYS : RAMP_RHYTHM_WINDOW_DAYS);
+    const start = index * periodDays;
+    const fullEnd = ((index + 1) * periodDays) - 1;
+    const end = observedEndDay === null || observedEndDay === undefined
+      ? fullEnd
+      : Math.min(fullEnd, Math.max(start, Number(observedEndDay) || start));
+    const startLabel = start === 0 ? 'D0' : `D+${start}`;
+    const suffix = end < fullEnd ? ' (parcial)' : '';
+    return `${startLabel} a D+${end}${suffix}`;
+  }
+
+  function rampDailyRowsForLaunch(launch, maxDay, metric = null) {
+    if (!launch?.modelo_id) return [];
+    const endDay = Math.max(0, Number(maxDay) || 0);
+    const useProductRows = Boolean(metric?.requiresProductRows) || isProductFilterActive() || isChannelFilterActive();
+    if (useProductRows) {
+      const rows = salesRowsForLaunchDayRange(launch, 0, endDay);
+      const d0 = analysisDayZero(launch);
+      const byDay = new Map();
+      rows.forEach((row) => {
+        const idx = dayIndex(d0, row.data);
+        if (idx === null || idx < 0 || idx > endDay) return;
+        const bucket = byDay.get(idx) || [];
+        bucket.push(row);
+        byDay.set(idx, bucket);
+      });
+      return [...byDay.entries()]
+        .map(([day, dayRows]) => {
+          const aggregate = applyChannelFilterToSalesData(aggregateLaunchSalesRows(dayRows, { day }));
+          return {
+            day,
+            data: toIsoDate(addDays(d0, day)),
+            receita: numberOrNull(aggregate?.receita),
+            pedidos: numberOrNull(aggregate?.pedidos),
+            pares: numberOrNull(aggregate?.pares),
+            receita_paga: numberOrNull(aggregate?.receita_paga),
+            receita_organica: numberOrNull(aggregate?.receita_organica),
+            receita_controles: numberOrNull(aggregate?.receita_controles),
+            pedidos_pagos: numberOrNull(aggregate?.pedidos_pagos),
+            pedidos_organicos: numberOrNull(aggregate?.pedidos_organicos),
+            pedidos_controles: numberOrNull(aggregate?.pedidos_controles)
+          };
+        })
+        .filter((row) => Object.entries(row).some(([key, value]) => key !== 'day' && key !== 'data' && value !== null))
+        .sort((a, b) => a.day - b.day);
+    }
+    const rampRows = rampSourceRows()
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .map((row) => ({
+        ...row,
+        day: numberOrNull(row.day) ?? numberOrNull(row.dia_desde_d0) ?? dayIndex(analysisDayZero(launch), row.data)
+      }));
+    const sourceRows = rampRows.length ? rampRows : (launch.daily || []);
+    return sourceRows
+      .map((row) => ({
+        ...row,
+        day: numberOrNull(row.day) ?? numberOrNull(row.dia_desde_d0),
+        receita: numberOrNull(row.receita),
+        pedidos: numberOrNull(row.pedidos),
+        pares: numberOrNull(row.pares)
+      }))
+      .filter((row) => row.day !== null && row.day >= 0 && row.day <= endDay)
+      .sort((a, b) => a.day - b.day);
+  }
+
+  function rampSeriesValue(row, metric) {
+    return numberOrNull(row?.[metric?.field || 'receita']);
+  }
+
+  function cumulativeRampDatasetData(launch, metric, maxDay) {
+    const data = Array(maxDay + 1).fill(null);
+    const rows = rampDailyRowsForLaunch(launch, maxDay, metric);
+    const byDay = new Map();
+    rows.forEach((row) => {
+      const value = rampSeriesValue(row, metric);
+      if (value === null) return;
+      byDay.set(row.day, (byDay.get(row.day) || 0) + value);
+    });
+    const validDays = rows
+      .map((row) => row.day)
+      .filter((day) => day !== null && day >= 0 && day <= maxDay);
+    const lastDataDay = validDays.length ? Math.min(maxDay, Math.max(...validDays)) : null;
+    const fillThroughDay = rampCanFillMissingDays(launch, maxDay) ? maxDay : lastDataDay;
+    let running = 0;
+    if (fillThroughDay !== null) {
+      for (let day = 0; day <= fillThroughDay; day += 1) {
+        running += byDay.get(day) || 0;
+        data[day] = running;
+      }
+    }
+    return { data, lastDataDay, sourceRows: rows };
+  }
+
+  function monthlyRampDatasetData(launch, metric, maxDay) {
+    const maxMonth = rampMonthIndex(maxDay);
+    const data = Array(maxMonth + 1).fill(null);
+    const rows = rampDailyRowsForLaunch(launch, maxDay, metric);
+    const totals = new Map();
+    rows.forEach((row) => {
+      const value = rampSeriesValue(row, metric);
+      if (value === null) return;
+      const monthIndex = rampMonthIndex(row.day);
+      if (monthIndex > maxMonth) return;
+      totals.set(monthIndex, (totals.get(monthIndex) || 0) + value);
+    });
+    const validMonths = rows
+      .map((row) => rampMonthIndex(row.day))
+      .filter((index) => index >= 0 && index <= maxMonth);
+    const lastDataMonth = validMonths.length ? Math.max(...validMonths) : null;
+    const fillThroughMonth = rampCanFillMissingDays(launch, maxDay) ? maxMonth : lastDataMonth;
+    if (fillThroughMonth !== null) {
+      for (let month = 0; month <= fillThroughMonth; month += 1) {
+        data[month] = totals.get(month) || 0;
+      }
+    }
+    return { data, lastDataDay: rows.length ? Math.max(...rows.map((row) => row.day)) : null, sourceRows: rows };
+  }
+
+  function shareTrajectoryPointsForLaunch(launch, maxDay) {
+    const model = state.data?.share_trajetoria?.modelos?.[launch?.modelo_id];
+    const points = Array.isArray(model?.pontos) ? model.pontos : [];
+    const endDay = Math.max(0, Number(maxDay) || 0);
+    return points
+      .map((point) => {
+        const day = numberOrNull(point.dias_desde_lancamento)
+          ?? dayIndex(analysisDayZero(launch), point.data_calendario);
+        return {
+          ...point,
+          day,
+          receita_produto: numberOrNull(point.receita_produto),
+          receita_empresa: numberOrNull(point.receita_empresa),
+          pedidos_empresa: numberOrNull(point.pedidos_empresa)
+        };
+      })
+      .filter((point) => point.day !== null && point.day >= 0 && point.day <= endDay)
+      .sort((a, b) => a.day - b.day);
+  }
+
+  function shareNumeratorByDayForLaunch(launch, maxDay) {
+    const rows = rampDailyRowsForLaunch(launch, maxDay, { requiresProductRows: true, field: 'receita' });
+    const byDay = new Map();
+    rows.forEach((row) => {
+      const day = numberOrNull(row.day);
+      const receita = numberOrNull(row.receita);
+      if (day === null || receita === null) return;
+      byDay.set(day, (byDay.get(day) || 0) + receita);
+    });
+    return byDay;
+  }
+
+  function shareRampDatasetData(launch, metric, maxDay) {
+    const periodDays = metric?.periodDays || (metric?.cadence === 'mes' ? RAMP_MONTH_DAYS : RAMP_RHYTHM_WINDOW_DAYS);
+    const maxPeriod = rampPeriodIndex(maxDay, periodDays);
+    const data = Array(maxPeriod + 1).fill(null);
+    const shareMeta = Array(maxPeriod + 1).fill(null);
+    const points = shareTrajectoryPointsForLaunch(launch, maxDay);
+    const filteredNumerator = isProductFilterActive() || isChannelFilterActive();
+    const numeratorByDay = filteredNumerator ? shareNumeratorByDayForLaunch(launch, maxDay) : null;
+    const buckets = Array.from({ length: maxPeriod + 1 }, (_, periodIndex) => ({
+      periodIndex,
+      startDay: periodIndex * periodDays,
+      endDay: ((periodIndex + 1) * periodDays) - 1,
+      productRevenue: 0,
+      companyRevenue: 0,
+      companyOrders: 0,
+      daysCovered: 0,
+      lastDay: null,
+      startIso: null,
+      endIso: null
+    }));
+
+    points.forEach((point) => {
+      const periodIndex = rampPeriodIndex(point.day, periodDays);
+      const bucket = buckets[periodIndex];
+      const companyRevenue = numberOrNull(point.receita_empresa);
+      if (!bucket || companyRevenue === null) return;
+      const productRevenue = filteredNumerator
+        ? (numeratorByDay.get(point.day) || 0)
+        : (numberOrNull(point.receita_produto) || 0);
+      bucket.productRevenue += productRevenue;
+      bucket.companyRevenue += companyRevenue;
+      bucket.companyOrders += numberOrNull(point.pedidos_empresa) || 0;
+      bucket.daysCovered += 1;
+      bucket.lastDay = bucket.lastDay === null ? point.day : Math.max(bucket.lastDay, point.day);
+      if (!bucket.startIso && point.data_calendario) bucket.startIso = point.data_calendario;
+      if (point.data_calendario) bucket.endIso = point.data_calendario;
+    });
+
+    buckets.forEach((bucket) => {
+      if (!bucket.daysCovered || !bucket.companyRevenue) return;
+      const share = bucket.productRevenue / bucket.companyRevenue;
+      data[bucket.periodIndex] = share;
+      shareMeta[bucket.periodIndex] = {
+        ...bucket,
+        share,
+        partial: bucket.lastDay !== null && bucket.lastDay < bucket.endDay,
+        filteredNumerator
+      };
+    });
+
+    const validIndexes = shareMeta
+      .map((meta, index) => meta ? index : null)
+      .filter((index) => index !== null);
+    return {
+      data,
+      shareMeta,
+      lastDataIndex: validIndexes.length ? Math.max(...validIndexes) : null,
+      sourceRows: points,
+      sourceLabel: filteredNumerator
+        ? 'share_trajetoria.json com numerador filtrado do SSOT'
+        : 'share_trajetoria.json'
+    };
+  }
+
+  function rampHealthSourceRowsForLaunch(launch, maxDay) {
+    if (!launch?.modelo_id) return [];
+    const d0 = analysisDayZero(launch);
+    const endDay = Math.max(0, Number(maxDay) || 0);
+    if (isProductFilterActive() || isChannelFilterActive()) {
+      return rampDailyRowsForLaunch(launch, endDay, { requiresProductRows: true, field: 'receita' })
+        .map((row) => ({
+          ...row,
+          day: numberOrNull(row.day),
+          receita: numberOrNull(row.receita),
+          pedidos: numberOrNull(row.pedidos)
+        }))
+        .filter((row) => row.day !== null && row.day >= 0 && row.day <= endDay)
+        .sort((a, b) => a.day - b.day);
+    }
+    const rampRows = rampSourceRows()
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .map((row) => ({
+        ...row,
+        day: numberOrNull(row.day) ?? numberOrNull(row.dia_desde_d0) ?? dayIndex(d0, row.data)
+      }));
+    const sourceRows = rampRows.length ? rampRows : (launch.daily || []);
+    return sourceRows
+      .map((row) => ({
+        ...row,
+        day: numberOrNull(row.day) ?? numberOrNull(row.dia_desde_d0),
+        receita: numberOrNull(row.receita),
+        pedidos: numberOrNull(row.pedidos)
+      }))
+      .filter((row) => row.day !== null && row.day >= 0 && row.day <= endDay)
+      .sort((a, b) => a.day - b.day);
+  }
+
+  function rampRhythmLevel({ currentRatio, endDay }) {
+    if (endDay < (RAMP_RHYTHM_WINDOW_DAYS * 2) - 1) {
+      return {
+        key: 'early',
+        label: 'Ainda cedo',
+        badge: 'parcial',
+        summary: 'Ja existe um ritmo semanal, mas a comparacao com a semana anterior ainda esta pendente.'
+      };
+    }
+    if (currentRatio >= RAMP_STABILITY_STRONG_RATIO) {
+      return {
+        key: 'strong',
+        label: 'Forte',
+        badge: 'pipeline',
+        summary: 'A linha ainda sustenta pelo menos metade do melhor ritmo semanal.'
+      };
+    }
+    if (currentRatio >= RAMP_STABILITY_MIN_RATIO) {
+      return {
+        key: 'sustain',
+        label: 'Sustentacao',
+        badge: 'pipeline',
+        summary: 'A linha ainda preserva uma parte relevante do melhor ritmo semanal.'
+      };
+    }
+    if (currentRatio >= RAMP_STABILITY_LOW_RATIO) {
+      return {
+        key: 'low',
+        label: 'Patamar baixo',
+        badge: 'orange',
+        summary: 'A linha ainda vende, mas ja opera perto da cauda do lancamento.'
+      };
+    }
+    return {
+      key: 'tail',
+      label: 'Cauda',
+      badge: 'orange',
+        summary: 'A linha esta abaixo de um quarto do melhor ritmo semanal.'
+    };
+  }
+
+  function rampRhythmDirection(changePct) {
+    if (changePct === null || changePct === undefined) return 'Pendente';
+    if (changePct >= RAMP_RHYTHM_TREND_LIMIT) return 'Crescendo';
+    if (changePct <= -RAMP_RHYTHM_TREND_LIMIT) return 'Caindo';
+    return 'Estavel';
+  }
+
+  function rampWeekStartDay(weekIndex) {
+    return weekIndex * RAMP_RHYTHM_WINDOW_DAYS;
+  }
+
+  function rampWeekEndDay(weekIndex) {
+    return rampWeekStartDay(weekIndex) + RAMP_RHYTHM_WINDOW_DAYS - 1;
+  }
+
+  function rampWeekLabel(weekIndex) {
+    return `S${weekIndex + 1}`;
+  }
+
+  function rampWeekRangeLabel(weekIndex) {
+    const startDay = rampWeekStartDay(weekIndex);
+    const endDay = rampWeekEndDay(weekIndex);
+    return `${startDay === 0 ? 'D0' : `D+${startDay}`} a D+${endDay}`;
+  }
+
+  function rampWeeklyLensBounds(lensBounds, maxDay) {
+    const firstWeek = Math.ceil(Math.max(0, Number(lensBounds?.start) || 0) / RAMP_RHYTHM_WINDOW_DAYS);
+    const lastDay = Math.min(Math.max(0, Number(lensBounds?.end ?? maxDay) || 0), Math.max(0, Number(maxDay) || 0));
+    const lastWeek = Math.floor((lastDay - (RAMP_RHYTHM_WINDOW_DAYS - 1)) / RAMP_RHYTHM_WINDOW_DAYS);
+    return {
+      startWeek: Math.max(0, firstWeek),
+      endWeek: Math.max(-1, lastWeek),
+      unavailable: lastWeek < firstWeek
+    };
+  }
+
+  function rampWeeklyPoint(weeklyRevenue, weeklyOrders, peak, weekIndex) {
+    if (!peak?.value || weekIndex === null || weekIndex === undefined || weekIndex < 0) return null;
+    const currentMm7 = weeklyRevenue?.[weekIndex] ?? null;
+    if (currentMm7 === null || currentMm7 === undefined || !Number.isFinite(currentMm7)) return null;
+    const ratio = currentMm7 / peak.value;
+    const previousWeekIndex = weekIndex - 1;
+    const previousMm7 = previousWeekIndex >= 0 ? weeklyRevenue?.[previousWeekIndex] ?? null : null;
+    const changePct = previousMm7 ? (currentMm7 / previousMm7) - 1 : null;
+    return {
+      weekIndex,
+      startDay: rampWeekStartDay(weekIndex),
+      endDay: rampWeekEndDay(weekIndex),
+      previousStartDay: previousMm7 !== null ? rampWeekStartDay(previousWeekIndex) : null,
+      previousEndDay: previousMm7 !== null ? rampWeekEndDay(previousWeekIndex) : null,
+      ratio,
+      currentMm7,
+      currentOrdersMm7: weeklyOrders?.[weekIndex] ?? null,
+      peakMm7: peak.value,
+      peakDay: rampWeekEndDay(peak.weekIndex),
+      peakWeekIndex: peak.weekIndex,
+      changePct,
+      direction: rampRhythmDirection(changePct)
+    };
+  }
+
+  function rampWeeklyStabilization(weeklyRevenue, weeklyOrders, peak) {
+    if (!peak?.value) return null;
+    const firstCandidateWeek = Math.max(2, peak.weekIndex + 2);
+    for (let weekIndex = firstCandidateWeek; weekIndex < weeklyRevenue.length; weekIndex += 1) {
+      const current = rampWeeklyPoint(weeklyRevenue, weeklyOrders, peak, weekIndex);
+      const prior = rampWeeklyPoint(weeklyRevenue, weeklyOrders, peak, weekIndex - 1);
+      if (!current || !prior || current.changePct === null || prior.changePct === null) continue;
+      if (Math.abs(current.changePct) > RAMP_RHYTHM_TREND_LIMIT || Math.abs(prior.changePct) > RAMP_RHYTHM_TREND_LIMIT) continue;
+      return {
+        ...current,
+        startDay: prior.startDay,
+        endDay: current.endDay,
+        confirmedDay: current.endDay,
+        confirmedWeekIndex: weekIndex,
+        level: rampRhythmLevel({ currentRatio: current.ratio, endDay: current.endDay }).label
+      };
+    }
+    return null;
+  }
+
+  function rampWeeklyRhythmSeries(rows, endDay) {
+    const weekCount = Math.floor((endDay + 1) / RAMP_RHYTHM_WINDOW_DAYS);
+    if (weekCount < 1) return { data: [], healthMeta: [], lastDataIndex: null, peak: null, stabilization: null };
+
+    const receitaByDay = new Map();
+    const pedidosByDay = new Map();
+    rows.forEach((row) => {
+      receitaByDay.set(row.day, (receitaByDay.get(row.day) || 0) + Number(row.receita || 0));
+      pedidosByDay.set(row.day, (pedidosByDay.get(row.day) || 0) + Number(row.pedidos || 0));
+    });
+    const weeklyRevenue = Array.from({ length: weekCount }, (_, weekIndex) => {
+      const startDay = rampWeekStartDay(weekIndex);
+      const endOfWeek = rampWeekEndDay(weekIndex);
+      let total = 0;
+      for (let day = startDay; day <= endOfWeek; day += 1) total += receitaByDay.get(day) || 0;
+      return total / RAMP_RHYTHM_WINDOW_DAYS;
+    });
+    const weeklyOrders = Array.from({ length: weekCount }, (_, weekIndex) => {
+      const startDay = rampWeekStartDay(weekIndex);
+      const endOfWeek = rampWeekEndDay(weekIndex);
+      let total = 0;
+      for (let day = startDay; day <= endOfWeek; day += 1) total += pedidosByDay.get(day) || 0;
+      return total / RAMP_RHYTHM_WINDOW_DAYS;
+    });
+    const peak = weeklyRevenue
+      .map((value, weekIndex) => ({ value, weekIndex }))
+      .filter((point) => numberOrNull(point.value) !== null)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0) || a.weekIndex - b.weekIndex)[0] || null;
+    if (!peak || !peak.value) return { data: [], healthMeta: [], lastDataIndex: weekCount - 1, peak: null, stabilization: null };
+
+    const stabilization = rampWeeklyStabilization(weeklyRevenue, weeklyOrders, peak);
+    const healthMeta = weeklyRevenue.map((_, weekIndex) => {
+      const point = rampWeeklyPoint(weeklyRevenue, weeklyOrders, peak, weekIndex);
+      return point
+        ? {
+          ...point,
+          isPeak: weekIndex === peak.weekIndex,
+          isStabilization: stabilization?.confirmedWeekIndex === weekIndex,
+          stabilization: stabilization?.confirmedWeekIndex === weekIndex ? stabilization : null
+        }
+        : null;
+    });
+    return {
+      data: healthMeta.map((point) => point?.ratio ?? null),
+      healthMeta,
+      lastDataIndex: weekCount - 1,
+      peak,
+      stabilization
+    };
+  }
+
+  function rampHealthInsightForLaunch(launch) {
+    if (!launch || launch.isFuture || !isEligibleStatus(launch.status)) {
+      return {
+        pending: true,
+        label: 'Sem rampa real',
+        summary: 'Lancamento planejado ou sem dados reais carregados.',
+        tooltip: 'O indicador de saude aparece apenas para lancamentos ativos ou historicos com serie diaria real.'
+      };
+    }
+    const maxDay = launchCurrentRampDay(launch);
+    const rows = rampHealthSourceRowsForLaunch(launch, maxDay);
+    const validDays = rows.map((row) => row.day).filter((day) => day !== null && day >= 0);
+    const lastDataDay = validDays.length ? Math.min(maxDay, Math.max(...validDays)) : null;
+    const endDay = rampCanFillMissingDays(launch, maxDay) ? maxDay : lastDataDay;
+    if (endDay === null || endDay < 6 || !rows.length) {
+      return {
+        pending: true,
+        label: 'Serie insuficiente',
+        summary: 'Ainda falta uma semana completa de vendas para calcular o ritmo.',
+        tooltip: 'A leitura exige uma semana completa, de sete dias, observada desde o D0. Dado ausente permanece pendente.'
+      };
+    }
+
+    const series = rampWeeklyRhythmSeries(rows, endDay);
+    const point = series.lastDataIndex === null ? null : series.healthMeta[series.lastDataIndex];
+    if (!series.peak || !point) {
+      return {
+        pending: true,
+        label: 'Sem ritmo',
+        summary: 'Nao ha faturamento suficiente para calcular pico e estabilizacao.',
+        tooltip: 'Sem faturamento positivo em uma semana completa, o indicador fica pendente.'
+      };
+    }
+
+    const status = rampRhythmLevel({ currentRatio: point.ratio, endDay: point.endDay });
+
+    return {
+      ...status,
+      pending: false,
+      ...point,
+      currentRatio: point.ratio,
+      endDay: point.endDay,
+      stabilization: series.stabilization,
+      completeLaunch: true,
+      tooltip: RAMP_HEALTH_TOOLTIP
+    };
+  }
+
+  function rampHealthChartDatasetData(launch, maxDay) {
+    if (!launch || launch.isFuture || !isEligibleStatus(launch.status)) {
+      return { data: [], healthMeta: [], lastDataIndex: null, sourceRows: [], sourceLabel: 'sem serie diaria real' };
+    }
+    const rows = rampHealthSourceRowsForLaunch(launch, maxDay);
+    const validDays = rows.map((row) => row.day).filter((day) => day !== null && day >= 0);
+    const lastObservedDay = validDays.length ? Math.min(maxDay, Math.max(...validDays)) : null;
+    const endDay = rampCanFillMissingDays(launch, maxDay) ? maxDay : lastObservedDay;
+    if (endDay === null || endDay < 6 || !rows.length) {
+      return { data: [], healthMeta: [], lastDataIndex: null, sourceRows: rows, sourceLabel: 'serie insuficiente para uma semana completa' };
+    }
+    const series = rampWeeklyRhythmSeries(rows, endDay);
+    if (!series.peak) {
+      return { data: [], healthMeta: [], lastDataIndex: series.lastDataIndex, sourceRows: rows, sourceLabel: 'sem melhor ritmo semanal positivo' };
+    }
+    return {
+      ...series,
+      sourceRows: rows,
+      sourceLabel: 'ritmo semanal fechado como percentual do melhor ritmo da linha'
+    };
+  }
+
+  function rampHealthReferenceDatasets(maxDay, lensBounds = null) {
+    const start = Math.max(0, Number(lensBounds?.start) || 0);
+    const end = Math.max(start, Number(lensBounds?.end ?? maxDay) || 0);
+    const days = end - start;
+    return [
+      { label: 'Forte 50%', value: RAMP_STABILITY_STRONG_RATIO, color: 'rgba(76,159,106,0.40)' },
+      { label: 'Sustenta 35%', value: RAMP_STABILITY_MIN_RATIO, color: 'rgba(255,255,255,0.36)' },
+      { label: 'Cauda 25%', value: RAMP_STABILITY_LOW_RATIO, color: 'rgba(224,82,82,0.34)' }
+    ].map((item) => ({
+      label: item.label,
+      data: Array(days + 1).fill(item.value),
+      borderColor: item.color,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderDash: [5, 5],
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      pointHitRadius: 0,
+      tension: 0,
+      fill: false,
+      isHealthReference: true,
+      sourceLabel: 'linha de referencia do ritmo de venda'
+    }));
+  }
+
+  function rampScopeLabel(selected) {
+    const parts = [];
+    const line = state.lineFilter && state.lineFilter !== 'all'
+      ? lineFilterOptions().find((item) => item.key === state.lineFilter)?.label || 'linha filtrada'
+      : 'todas as linhas';
+    parts.push(line);
+    if (selected?.modelo) parts.push(`destaque ${selected.modelo}`);
+    if (state.productFilter && state.productFilter !== 'all') {
+      parts.push(productFilterOptions().find((item) => item.key === state.productFilter)?.label || 'produto filtrado');
+    }
+    if (state.productColorFilter && state.productColorFilter !== 'all') {
+      parts.push(productColorFilterOptions().find((item) => item.key === state.productColorFilter)?.label || 'cor filtrada');
+    }
+    if (state.channelFilter && state.channelFilter !== 'all') {
+      parts.push(channelFieldMap()?.label || 'canal filtrado');
+    }
+    return `Recorte: ${parts.filter(Boolean).join(' · ')}`;
+  }
+
+  function renderRampHealthInsight(selected) {
+    const wrap = $('ramp-health-insight');
+    if (!wrap) return;
+    const mode = state.normalizedChartMode || 'linha';
+    const isStabilityView = rampMetricConfig().health === true;
+    wrap.hidden = mode !== 'linha' || !isStabilityView;
+    if (wrap.hidden) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const insight = rampHealthInsightForLaunch(selected);
+    if (insight.pending) {
+      wrap.innerHTML = `
+        <div class="ramp-health-head">
+          <div>
+            <div class="ramp-health-label">${labelTip('Ritmo de venda', insight.tooltip)}</div>
+            <strong>${escapeHtml(insight.label)}</strong>
+            <span class="ramp-health-summary">${escapeHtml(insight.summary)}</span>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    const scopeNote = `<small>${escapeHtml(rampScopeLabel(selected))}</small>`;
+    const stabilization = insight.stabilization;
+    const stabilizationValue = stabilization ? `D+${fmtNum(stabilization.confirmedDay)}` : 'Em observacao';
+    const stabilizationDetail = stabilization
+      ? `periodo D+${fmtNum(stabilization.startDay)} a D+${fmtNum(stabilization.endDay)} · ${escapeHtml(stabilization.level)}`
+      : 'ainda nao completou duas semanas estaveis apos o pico';
+    const stabilityWidth = Math.max(0, Math.min(100, Number(insight.currentRatio || 0) * 100));
+    wrap.innerHTML = `
+      <div class="ramp-health-head">
+        <div>
+          <div class="ramp-health-label">${labelTip('Leitura da linha', insight.tooltip)}</div>
+          <strong>${escapeHtml(insight.label)}</strong>
+          <span class="ramp-health-summary">${escapeHtml(insight.summary)}</span>
+          ${scopeNote}
+        </div>
+        <div class="ramp-health-score">
+          <span>Do pico</span>
+          <strong>${fmtPct(insight.currentRatio, 0)}</strong>
+          <small>pico em D+${fmtNum(insight.peakDay)} = 100%</small>
+        </div>
+      </div>
+      <div class="ramp-health-meter">
+        <div class="ramp-health-track" aria-hidden="true">
+          <span class="ramp-health-band ramp-health-band--tail"></span>
+          <span class="ramp-health-band ramp-health-band--low"></span>
+          <span class="ramp-health-band ramp-health-band--sustain"></span>
+          <span class="ramp-health-band ramp-health-band--strong"></span>
+          <i style="left:${stabilityWidth.toFixed(1)}%"></i>
+        </div>
+        <div class="ramp-health-guide" aria-label="Faixas de ritmo">
+          <span>Cauda <b>&lt;25%</b></span>
+          <span>Baixa <b>25-35%</b></span>
+          <span>Sustenta <b>35-50%</b></span>
+          <span>Forte <b>50%+</b></span>
+        </div>
+      </div>
+      <div class="ramp-health-kpis">
+        <div><span>Ritmo atual</span><strong>${fmtBRL(insight.currentMm7)}/dia</strong><small>ultima semana fechada</small></div>
+        <div><span>Vs. semana anterior</span><strong>${fmtSignedPct(insight.changePct, 0)}</strong><small>${escapeHtml(insight.direction)}</small></div>
+        <div><span>Estabilizou em</span><strong>${escapeHtml(stabilizationValue)}</strong><small>${stabilizationDetail}</small></div>
+      </div>
+    `;
+  }
+
+  function fmtSignedPp(value, digits = 1) {
+    if (value === null || value === undefined || Number.isNaN(value)) return '—';
+    const prefix = value > 0 ? '+' : '';
+    return `${prefix}${fmtNum(value * 100, digits)} p.p.`;
+  }
+
+  function sharePeriodSummaryForLaunch(launch, metricKey) {
+    if (!launch) return null;
+    const metric = rampMetricConfig(metricKey);
+    const series = shareRampDatasetData(launch, metric, launchCurrentRampDay(launch));
+    const metas = series.shareMeta || [];
+    const lastIndex = numberOrNull(series.lastDataIndex);
+    const current = lastIndex !== null ? metas[lastIndex] : null;
+    const previousIndex = lastIndex === null ? null : (() => {
+      for (let index = lastIndex - 1; index >= 0; index -= 1) {
+        if (metas[index]) return index;
+      }
+      return null;
+    })();
+    const previous = previousIndex !== null ? metas[previousIndex] : null;
+    const peak = metas
+      .map((meta, index) => meta ? { meta, index } : null)
+      .filter(Boolean)
+      .sort((a, b) => Number(b.meta.share || 0) - Number(a.meta.share || 0) || a.index - b.index)[0] || null;
+    return {
+      metric,
+      series,
+      current,
+      currentIndex: lastIndex,
+      previous,
+      previousIndex,
+      peak
+    };
+  }
+
+  function sharePeriodRankAt(chartLaunches, metricKey, periodIndex, selectedId) {
+    if (periodIndex === null || periodIndex === undefined || periodIndex < 0) return null;
+    const metric = rampMetricConfig(metricKey);
+    const rows = (chartLaunches || [])
+      .map((launch) => {
+        const series = shareRampDatasetData(launch, metric, launchCurrentRampDay(launch));
+        const meta = series.shareMeta?.[periodIndex] || null;
+        return meta ? { launch, meta, value: meta.share } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    const selectedRank = rows.findIndex((row) => row.launch.modelo_id === selectedId);
+    return {
+      rows,
+      rank: selectedRank >= 0 ? selectedRank + 1 : null,
+      total: rows.length,
+      leader: rows[0] || null
+    };
+  }
+
+  function shareTrendTone(delta) {
+    if (delta === null || delta === undefined) return 'neutral';
+    if (delta >= 0.005) return 'positive';
+    if (delta <= -0.005) return 'negative';
+    return 'neutral';
+  }
+
+  function shareTrendText(delta) {
+    const tone = shareTrendTone(delta);
+    if (tone === 'positive') return 'ganhando share';
+    if (tone === 'negative') return 'perdendo share';
+    if (delta === null || delta === undefined) return 'sem base anterior';
+    return 'estavel';
+  }
+
+  function sharePeriodKpiHtml({ label, summary, periodLabel, delta, detail }) {
+    const tone = shareTrendTone(delta);
+    const current = summary?.current || null;
+    return `
+      <div class="share-period-kpi share-period-kpi--${tone}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${current ? fmtPct(current.share, 1) : '—'}</strong>
+        <small>${escapeHtml(periodLabel || 'periodo pendente')}</small>
+        <em>${delta === null || delta === undefined ? 'sem comparativo' : fmtSignedPp(delta)}${detail ? ` · ${escapeHtml(detail)}` : ''}</em>
+      </div>
+    `;
+  }
+
+  function renderSharePeriodAnalysisVerbose(selected, chartLaunches = selectedCompareLaunches()) {
+    const wrap = $('share-period-analysis');
+    if (!wrap) return;
+    if (!selected) {
+      wrap.innerHTML = '';
+      return;
+    }
+
+    const weekly = sharePeriodSummaryForLaunch(selected, 'share_semanal');
+    const monthly = sharePeriodSummaryForLaunch(selected, 'share_mensal');
+    const weeklyDelta = weekly?.current && weekly.previous ? weekly.current.share - weekly.previous.share : null;
+    const monthlyDelta = monthly?.current && monthly.previous ? monthly.current.share - monthly.previous.share : null;
+    const weeklyRank = sharePeriodRankAt(chartLaunches, 'share_semanal', weekly?.currentIndex, selected.modelo_id);
+    const weeklyPeriod = weekly?.currentIndex !== null && weekly?.currentIndex !== undefined
+      ? `${rampWeekLabel(weekly.currentIndex)} · ${rampPeriodRangeLabel(weekly.currentIndex, weekly.metric, weekly.current?.lastDay)}`
+      : null;
+    const monthlyPeriod = monthly?.currentIndex !== null && monthly?.currentIndex !== undefined
+      ? `${rampMonthLabel(monthly.currentIndex)} · ${rampPeriodRangeLabel(monthly.currentIndex, monthly.metric, monthly.current?.lastDay)}`
+      : null;
+    const peakPeriod = weekly?.peak
+      ? `${rampWeekLabel(weekly.peak.index)} · ${rampPeriodRangeLabel(weekly.peak.index, weekly.metric, weekly.peak.meta.lastDay)}`
+      : null;
+
+    if (!weekly?.current && !monthly?.current) {
+      wrap.innerHTML = `
+        <div class="share-period-head">
+          <div>
+            <div class="share-period-kicker">${labelTip('Share de performance', 'Receita do lancamento dividida pela receita total da empresa no mesmo periodo desde o D0.')}</div>
+            <strong>${escapeHtml(selected.modelo || 'Lancamento')}</strong>
+          </div>
+        </div>
+        <div class="empty-state"><div><strong>Share indisponivel.</strong>Falta share_trajetoria para este lancamento no periodo atual.</div></div>
+      `;
+      return;
+    }
+
+    const rankText = weeklyRank?.rank
+      ? `${fmtNum(weeklyRank.rank)}º de ${fmtNum(weeklyRank.total)} no grupo em ${rampWeekLabel(weekly.currentIndex)}`
+      : 'sem ranking no grupo';
+    const leaderText = weeklyRank?.leader && weeklyRank.leader.launch.modelo_id !== selected.modelo_id
+      ? `lider: ${weeklyRank.leader.launch.modelo} (${fmtPct(weeklyRank.leader.value, 1)})`
+      : 'lider ou empatado no recorte';
+    const trendCopy = shareTrendText(weeklyDelta);
+    const narrative = `${selected.modelo}: ${trendCopy} no share semanal (${weeklyDelta === null ? 'sem comparativo anterior' : fmtSignedPp(weeklyDelta)}). No mensal, ${monthlyDelta === null ? 'a base anterior ainda esta pendente' : `variou ${fmtSignedPp(monthlyDelta)}`}. ${rankText}.`;
+
+    wrap.innerHTML = `
+      <div class="share-period-head">
+        <div>
+          <div class="share-period-kicker">${labelTip('Share de performance', 'Receita do lancamento dividida pela receita total da empresa no mesmo periodo desde o D0. O denominador atual e empresa, nao linha.')}</div>
+          <strong>${escapeHtml(selected.modelo || 'Lancamento')}</strong>
+          <span>${escapeHtml(narrative)}</span>
+        </div>
+        <div class="share-period-source">
+          <span>Fonte</span>
+          <strong>share_trajetoria</strong>
+          <small>${escapeHtml(shareDataUntil(state.data?.share_trajetoria?.modelos?.[selected.modelo_id], []) || snapshotIso())}</small>
+        </div>
+      </div>
+      <div class="share-period-grid">
+        ${sharePeriodKpiHtml({
+          label: 'Share semanal atual',
+          summary: weekly,
+          periodLabel: weeklyPeriod,
+          delta: weeklyDelta,
+          detail: weekly?.current ? `${fmtBRL(weekly.current.productRevenue)} / ${fmtBRL(weekly.current.companyRevenue)}` : ''
+        })}
+        ${sharePeriodKpiHtml({
+          label: 'Share mensal atual',
+          summary: monthly,
+          periodLabel: monthlyPeriod,
+          delta: monthlyDelta,
+          detail: monthly?.current ? `${fmtBRL(monthly.current.productRevenue)} / ${fmtBRL(monthly.current.companyRevenue)}` : ''
+        })}
+        <div class="share-period-kpi">
+          <span>Pico semanal</span>
+          <strong>${weekly?.peak ? fmtPct(weekly.peak.meta.share, 1) : '—'}</strong>
+          <small>${escapeHtml(peakPeriod || 'periodo pendente')}</small>
+          <em>${weekly?.peak ? `${fmtBRL(weekly.peak.meta.productRevenue)} / ${fmtBRL(weekly.peak.meta.companyRevenue)}` : 'sem pico calculado'}</em>
+        </div>
+        <div class="share-period-kpi">
+          <span>Vs grupo no mesmo D+</span>
+          <strong>${weeklyRank?.rank ? `${fmtNum(weeklyRank.rank)}º` : '—'}</strong>
+          <small>${escapeHtml(weeklyRank?.total ? `${fmtNum(weeklyRank.total)} lancamentos comparaveis` : 'ranking pendente')}</small>
+          <em>${escapeHtml(leaderText)}</em>
+        </div>
+      </div>
+    `;
+  }
+
+  function sharePeriodCompactMetricHtml({ label, value, helper, tone = 'neutral' }) {
+    return `
+      <div class="share-period-metric share-period-metric--${tone}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value || '-')}</strong>
+        <small>${escapeHtml(helper || '')}</small>
+      </div>
+    `;
+  }
+
+  function renderSharePeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
+    const wrap = $('share-period-analysis');
+    if (!wrap) return;
+    if (!selected) {
+      wrap.innerHTML = '';
+      return;
+    }
+
+    const weekly = sharePeriodSummaryForLaunch(selected, 'share_semanal');
+    const monthly = sharePeriodSummaryForLaunch(selected, 'share_mensal');
+    const weeklyDelta = weekly?.current && weekly.previous ? weekly.current.share - weekly.previous.share : null;
+    const monthlyDelta = monthly?.current && monthly.previous ? monthly.current.share - monthly.previous.share : null;
+    const weeklyRank = sharePeriodRankAt(chartLaunches, 'share_semanal', weekly?.currentIndex, selected.modelo_id);
+
+    if (!weekly?.current && !monthly?.current) {
+      wrap.innerHTML = `
+        <div class="share-period-copy">
+          <div class="share-period-kicker">${labelTip('Share de vendas', 'Vendas do lancamento divididas pelas vendas totais da empresa no mesmo periodo desde o D0.')}</div>
+          <strong>Share pendente</strong>
+          <span>Falta share_trajetoria para este lancamento no periodo atual.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const deltaLabel = (delta) => delta === null || delta === undefined ? 'sem anterior' : fmtSignedPp(delta);
+    const weeklyPeriod = weekly?.currentIndex !== null && weekly?.currentIndex !== undefined
+      ? `${rampWeekLabel(weekly.currentIndex)} - ${rampPeriodRangeLabel(weekly.currentIndex, weekly.metric, weekly.current?.lastDay)}`
+      : null;
+    const monthlyPeriod = monthly?.currentIndex !== null && monthly?.currentIndex !== undefined
+      ? `${rampMonthLabel(monthly.currentIndex)} - ${rampPeriodRangeLabel(monthly.currentIndex, monthly.metric, monthly.current?.lastDay)}`
+      : null;
+    const weeklyShort = weekly?.currentIndex !== null && weekly?.currentIndex !== undefined
+      ? `${rampWeekLabel(weekly.currentIndex)}${weekly.current?.partial ? ' parcial' : ''}`
+      : 'periodo pendente';
+    const monthlyShort = monthly?.currentIndex !== null && monthly?.currentIndex !== undefined
+      ? `${rampMonthLabel(monthly.currentIndex)}${monthly.current?.partial ? ' parcial' : ''}`
+      : 'periodo pendente';
+    const rankValue = weeklyRank?.rank ? `${fmtNum(weeklyRank.rank)}/${fmtNum(weeklyRank.total)}` : '-';
+    const leaderText = weeklyRank?.leader && weeklyRank.leader.launch.modelo_id !== selected.modelo_id
+      ? `lider: ${weeklyRank.leader.launch.modelo} (${fmtPct(weeklyRank.leader.value, 1)})`
+      : 'lider ou empatado';
+    const sourceUntil = shareDataUntil(state.data?.share_trajetoria?.modelos?.[selected.modelo_id], []) || snapshotIso();
+    const methodItems = [
+      `Fonte: share_trajetoria (${sourceUntil})`,
+      'Denominador: vendas totais da empresa',
+      weeklyPeriod ? `Sem.: ${weeklyPeriod}` : null,
+      monthlyPeriod ? `Mes: ${monthlyPeriod}` : null,
+      weekly?.peak ? `Pico: ${fmtPct(weekly.peak.meta.share, 1)} em ${rampWeekLabel(weekly.peak.index)}` : null
+    ].filter(Boolean);
+    const narrative = `${selected.modelo}: ${shareTrendText(weeklyDelta)}. Semana mostra tracao atual; Mes confirma sustentacao.`;
+
+    wrap.innerHTML = `
+      <div class="share-period-copy">
+        <div class="share-period-kicker">${labelTip('Share de vendas', 'Vendas do lancamento divididas pelas vendas totais da empresa no mesmo periodo desde o D0. O denominador atual e empresa, nao linha.')}</div>
+        <strong>Leitura rapida</strong>
+        <span>${escapeHtml(narrative)}</span>
+      </div>
+      <div class="share-period-metrics">
+        ${sharePeriodCompactMetricHtml({
+          label: 'Semana',
+          value: weekly?.current ? fmtPct(weekly.current.share, 1) : '-',
+          helper: `${weeklyShort} | ${deltaLabel(weeklyDelta)}`,
+          tone: shareTrendTone(weeklyDelta)
+        })}
+        ${sharePeriodCompactMetricHtml({
+          label: 'Mes',
+          value: monthly?.current ? fmtPct(monthly.current.share, 1) : '-',
+          helper: `${monthlyShort} | ${deltaLabel(monthlyDelta)}`,
+          tone: shareTrendTone(monthlyDelta)
+        })}
+        ${sharePeriodCompactMetricHtml({
+          label: 'Grupo',
+          value: rankValue,
+          helper: leaderText,
+          tone: weeklyRank?.rank === 1 ? 'positive' : 'neutral'
+        })}
+      </div>
+      <details class="share-period-method">
+        <summary>Base</summary>
+        <span>${escapeHtml(methodItems.join(' | '))}</span>
+      </details>
+    `;
+  }
+
+  function rampDailyTickLabel(index, maxDay) {
+    if (index === 0) return 'D0';
+    if (MILESTONE_DAYS.includes(index) || index % 30 === 0 || index === maxDay) return `D+${index}`;
+    return '';
+  }
+
   function validAnalysisPeriodKey(key) {
     return ANALYSIS_PERIODS.some((period) => period.key === key);
   }
@@ -1642,12 +2862,51 @@
     }
   };
 
+  const rampStabilizationPlugin = {
+    id: 'rampStabilizationMarkers',
+    afterDatasetsDraw(chart, args, opts) {
+      if (!opts?.enabled) return;
+      const markers = Array.isArray(opts.markers) ? opts.markers : [];
+      if (!markers.length) return;
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales?.x;
+      if (!xScale || !chartArea) return;
+      ctx.save();
+      markers.forEach((marker, index) => {
+        const day = numberOrNull(marker?.day);
+        if (day === null) return;
+        const plotDay = numberOrNull(marker?.plotDay) ?? day;
+        const x = xScale.getPixelForValue(plotDay);
+        if (!Number.isFinite(x) || x < chartArea.left || x > chartArea.right) return;
+        ctx.strokeStyle = marker.selected ? 'rgba(255,255,255,0.42)' : 'rgba(255,255,255,0.16)';
+        ctx.lineWidth = marker.selected ? 1.2 : 0.8;
+        ctx.setLineDash(marker.selected ? [4, 3] : [2, 5]);
+        ctx.beginPath();
+        ctx.moveTo(x, chartArea.top);
+        ctx.lineTo(x, chartArea.bottom);
+        ctx.stroke();
+        if (!marker.selected) return;
+        ctx.setLineDash([]);
+        ctx.fillStyle = marker.color || '#FFFFFF';
+        ctx.font = '800 10px Inter, "Segoe UI", Arial, sans-serif';
+        ctx.textBaseline = 'top';
+        const label = `Estabiliza D+${fmtNum(day)}`;
+        const textWidth = ctx.measureText(label).width;
+        const labelX = Math.min(Math.max(x + 6, chartArea.left + 2), chartArea.right - textWidth - 2);
+        const labelY = chartArea.top + 12 + ((index % 2) * 13);
+        ctx.fillText(label, labelX, labelY);
+      });
+      ctx.restore();
+    }
+  };
+
   function configureChartDefaults() {
     if (!window.Chart) return;
     Chart.register(launchCheckpointPlugin);
     Chart.register(clientMixLabelsPlugin);
     Chart.register(rankingValueLabelsPlugin);
     Chart.register(commercialMissingBarsPlugin);
+    Chart.register(rampStabilizationPlugin);
     Chart.defaults.font.family = 'Inter, "Segoe UI", Arial, sans-serif';
     Chart.defaults.font.size = 11;
     Chart.defaults.color = 'rgba(255,255,255,0.55)';
@@ -1982,6 +3241,120 @@
     }
   }
 
+  function configureNormalizedRampMetricToggle() {
+    const buttons = [...document.querySelectorAll('[data-ramp-metric]')];
+    if (!buttons.length) return;
+
+    const currentSelected = () => state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0];
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        buttons.forEach((button) => button.classList.toggle('is-active', button === btn));
+        state.normalizedRampMetric = RAMP_METRIC_KEYS.includes(btn.dataset.rampMetric || '')
+          ? btn.dataset.rampMetric
+          : 'receita_acumulada';
+        renderNormalizedChart(currentSelected());
+      });
+    });
+  }
+
+  function renderRampQuickControls(maxDay, metric, mode = state.normalizedChartMode || 'linha') {
+    const wrap = $('ramp-quick-controls');
+    if (!wrap) return;
+    if (mode !== 'linha') {
+      wrap.hidden = true;
+      wrap.innerHTML = '';
+      return;
+    }
+    wrap.hidden = false;
+    const isDaily = metric?.cadence !== 'mes';
+    const endMax = Math.max(0, Number(maxDay) || 0);
+    if (isDaily && rampTimeLensBounds(endMax, metric).unavailable) {
+      state.rampTimeLens = 'all';
+    }
+    const lensButtons = isDaily ? `
+      <div class="ramp-quick-row">
+        <span class="ramp-quick-label">Lupa temporal</span>
+        <div class="chart-mode-toggle ramp-lens-toggle" role="group" aria-label="Lupa temporal da curva">
+          ${RAMP_TIME_LENSES.map((lens) => {
+            const disabled = lens.start > endMax;
+            const active = selectedRampTimeLensKey() === lens.key && !disabled;
+            return `<button type="button" class="chart-mode-btn ${active ? 'is-active' : ''}" data-ramp-time-lens="${escapeHtml(lens.key)}" ${disabled ? 'disabled' : ''}>${escapeHtml(lens.label)}</button>`;
+          }).join('')}
+        </div>
+      </div>
+    ` : '';
+    const lineOptions = lineFilterOptions();
+    const modelOptions = availableComparisonLaunches();
+    const productOptions = productFilterOptions();
+    const colorOptions = productColorFilterOptions();
+    wrap.innerHTML = `
+      ${lensButtons}
+      <div class="ramp-quick-row ramp-filter-row">
+        <span class="ramp-quick-label">Recorte</span>
+        <label class="ramp-filter-field"><span>Linha</span>
+          <select class="ramp-quick-select" data-ramp-quick-filter="line" aria-label="Filtrar linha na curva">
+            <option value="all" ${state.lineFilter === 'all' ? 'selected' : ''}>Todas as linhas</option>
+            ${lineOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.lineFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="ramp-filter-field"><span>Destaque</span>
+          <select class="ramp-quick-select ramp-quick-select--model" data-ramp-quick-filter="model" aria-label="Destacar modelo na curva">
+            ${modelOptions.map((launch) => `<option value="${escapeHtml(launch.modelo_id)}" ${launch.modelo_id === state.primaryModelId ? 'selected' : ''}>${escapeHtml(launch.modelo)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="ramp-filter-field"><span>Produto</span>
+          <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
+            <option value="all" ${state.productFilter === 'all' ? 'selected' : ''}>Todos produtos</option>
+            ${productOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="ramp-filter-field"><span>Cor</span>
+          <select class="ramp-quick-select" data-ramp-quick-filter="color" aria-label="Filtrar cor na curva" ${colorOptions.length ? '' : 'disabled'}>
+            <option value="all" ${state.productColorFilter === 'all' ? 'selected' : ''}>Todas cores</option>
+            ${colorOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productColorFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+        <button type="button" class="ramp-quick-clear" data-ramp-quick-clear>Limpar</button>
+      </div>
+    `;
+
+    wrap.querySelectorAll('[data-ramp-time-lens]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.rampTimeLens = button.dataset.rampTimeLens || 'all';
+        renderNormalizedChart(state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0]);
+      });
+    });
+    wrap.querySelectorAll('[data-ramp-quick-filter]').forEach((select) => {
+      select.addEventListener('change', () => {
+        const key = select.dataset.rampQuickFilter;
+        if (key === 'line') {
+          state.lineFilter = select.value || 'all';
+          state.productFilter = 'all';
+          state.productColorFilter = 'all';
+        } else if (key === 'model') {
+          state.primaryModelId = select.value || state.primaryModelId;
+          if (state.primaryModelId && !(state.compareModelIds || []).includes(state.primaryModelId)) {
+            state.compareModelIds = [...(state.compareModelIds || []), state.primaryModelId];
+          }
+        } else if (key === 'product') {
+          state.productFilter = select.value || 'all';
+          state.productColorFilter = 'all';
+        } else if (key === 'color') {
+          state.productColorFilter = select.value || 'all';
+        }
+        renderAll();
+      });
+    });
+    wrap.querySelector('[data-ramp-quick-clear]')?.addEventListener('click', () => {
+      state.rampTimeLens = 'all';
+      state.lineFilter = 'all';
+      state.productFilter = 'all';
+      state.productColorFilter = 'all';
+      renderAll();
+    });
+  }
+
   function configureCommercialChartMetricToggle() {
     const buttons = [...document.querySelectorAll('[data-commercial-chart-metric]')];
     if (!buttons.length) return;
@@ -2107,23 +3480,44 @@
 
   function configureTooltips() {
     const tooltip = document.createElement('div');
+    tooltip.id = 'app-tooltip';
     tooltip.className = 'app-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
     tooltip.hidden = true;
     document.body.appendChild(tooltip);
     let activeTarget = null;
+    let activeMode = '';
+    let hoverTimer = null;
 
     const targetFrom = (node) => node?.closest?.('[data-tooltip]');
+    const isHelpButton = (target) => target?.matches?.('.help-button');
+    const isActionControl = (target) => target?.matches?.('button, a, input, select, textarea, [role="button"]');
+    const canHover = (target) => Boolean(target) && !isActionControl(target);
+    const clearHoverTimer = () => {
+      if (hoverTimer !== null) window.clearTimeout(hoverTimer);
+      hoverTimer = null;
+    };
+    const setExpanded = (target, expanded) => {
+      if (!target) return;
+      target.classList.toggle('is-tooltip-open', expanded);
+      if (isHelpButton(target)) target.setAttribute('aria-expanded', String(expanded));
+    };
     const positionTooltip = (target) => {
       if (!target || tooltip.hidden) return;
       const gap = 10;
       const margin = 12;
       const rect = target.getBoundingClientRect();
       const tip = tooltip.getBoundingClientRect();
-      let left = rect.left + (rect.width / 2) - (tip.width / 2);
-      let top = rect.bottom + gap;
+      const roomRight = window.innerWidth - rect.right - margin - gap;
+      const roomLeft = rect.left - margin - gap;
+      let left = roomRight >= tip.width || roomRight >= roomLeft
+        ? rect.right + gap
+        : rect.left - tip.width - gap;
+      let top = rect.top + (rect.height / 2) - (tip.height / 2);
 
-      if (top + tip.height > window.innerHeight - margin) {
-        top = rect.top - tip.height - gap;
+      if (top < margin || top + tip.height > window.innerHeight - margin) {
+        top = rect.bottom + gap;
+        if (top + tip.height > window.innerHeight - margin) top = rect.top - tip.height - gap;
       }
       left = Math.max(margin, Math.min(left, window.innerWidth - tip.width - margin));
       top = Math.max(margin, Math.min(top, window.innerHeight - tip.height - margin));
@@ -2131,35 +3525,38 @@
       tooltip.style.top = `${top}px`;
     };
 
-    const show = (target) => {
+    const show = (target, mode) => {
       const text = target?.dataset?.tooltip;
       if (!text) return;
+      if (activeTarget && activeTarget !== target) setExpanded(activeTarget, false);
       activeTarget = target;
+      activeMode = mode;
       tooltip.textContent = text;
       tooltip.hidden = false;
+      setExpanded(target, true);
       requestAnimationFrame(() => positionTooltip(target));
     };
 
     const hide = () => {
+      clearHoverTimer();
+      setExpanded(activeTarget, false);
       activeTarget = null;
+      activeMode = '';
       tooltip.hidden = true;
     };
 
     document.addEventListener('pointerover', (event) => {
       const target = targetFrom(event.target);
-      if (target) show(target);
+      if (activeMode === 'manual' || !canHover(target) || activeTarget === target) return;
+      clearHoverTimer();
+      hoverTimer = window.setTimeout(() => show(target, 'hover'), 500);
     });
     document.addEventListener('pointerout', (event) => {
       const target = targetFrom(event.target);
       const next = event.relatedTarget;
-      if (target && !(next instanceof Node && target.contains(next))) hide();
-    });
-    document.addEventListener('focusin', (event) => {
-      const target = targetFrom(event.target);
-      if (target) show(target);
-    });
-    document.addEventListener('focusout', (event) => {
-      if (targetFrom(event.target)) hide();
+      if (!target || (next instanceof Node && target.contains(next))) return;
+      clearHoverTimer();
+      if (activeTarget === target && activeMode === 'hover') hide();
     });
     document.addEventListener('click', (event) => {
       const target = targetFrom(event.target);
@@ -2167,11 +3564,33 @@
         hide();
         return;
       }
+      if (isActionControl(target) && !isHelpButton(target)) {
+        hide();
+        return;
+      }
+      if (activeTarget === target && activeMode === 'manual') {
+        hide();
+        return;
+      }
+      show(target, 'manual');
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        hide();
+        return;
+      }
+      const target = targetFrom(event.target);
+      if (!target || isActionControl(target) || !['Enter', ' '].includes(event.key)) return;
       event.preventDefault();
-      show(target);
+      if (activeTarget === target && activeMode === 'manual') hide();
+      else show(target, 'manual');
     });
     window.addEventListener('resize', () => positionTooltip(activeTarget));
     window.addEventListener('scroll', () => positionTooltip(activeTarget), true);
+    document.querySelectorAll('.help-button[data-tooltip]').forEach((button) => {
+      button.setAttribute('aria-controls', tooltip.id);
+      button.setAttribute('aria-expanded', 'false');
+    });
   }
 
   function renderModelSelector() {
@@ -2872,11 +4291,16 @@
   }
 
   function latestLaunchDataDay(launch) {
-    const days = optionalRows('lancamentos_produtos_dia')
+    const days = rampSourceRows()
       .filter((row) => row.modelo_id === launch?.modelo_id)
       .map((row) => dayIndex(analysisDayZero(launch), row.data))
       .filter((idx) => idx !== null && idx >= 0);
     return days.length ? Math.max(...days) : null;
+  }
+
+  function rampSourceRows() {
+    const rampRows = optionalRows('lancamentos_rampa_dia');
+    return rampRows.length ? rampRows : optionalRows('lancamentos_produtos_dia');
   }
 
   function aggregateLaunchSalesRows(rows, source = {}) {
@@ -2916,18 +4340,22 @@
     const receitaSemMatch = hasChannelSignal ? receitaForTypes(['unmatched']) : sumField('receita_sem_match_atribuicao');
     const receitaCrmCampo = sumField('receita_crm');
     const pedidosCrmCampo = sumField('pedidos_crm');
-    const receitaCrm = hasChannelSignal ? 0 : null;
+    const receitaCrm = hasChannelSignal ? receitaForTypes(['crm', 'owned']) : receitaCrmCampo;
+    const receitaOutros = hasChannelSignal ? receitaForTypes(['other']) : sumField('receita_outros_canais');
     const pedidosPagos = hasChannelSignal ? pedidosForTypes(['paid']) : sumField('pedidos_pagos');
     const pedidosSemMatch = hasChannelSignal ? pedidosForTypes(['unmatched']) : sumField('pedidos_sem_match_atribuicao');
-    const pedidosCrm = hasChannelSignal ? 0 : null;
+    const pedidosCrm = hasChannelSignal ? pedidosForTypes(['crm', 'owned']) : pedidosCrmCampo;
+    const pedidosOutros = hasChannelSignal ? pedidosForTypes(['other']) : sumField('pedidos_outros_canais');
+    const receitaControles = sumValues(receitaCrm, receitaOutros, receitaSemMatch);
+    const pedidosControles = sumValues(pedidosCrm, pedidosOutros, pedidosSemMatch);
     const receitaInvestimento = receitaPaga;
     const pedidosInvestimento = pedidosPagos;
     const receitaOrganicaBase = hasChannelSignal
       ? receitaForTypes(['organic'])
-      : explicitOrganicOrLegacyCrm(sumField('receita_organica'), receitaCrmCampo);
+      : sumField('receita_organica');
     const pedidosOrganicosBase = hasChannelSignal
       ? pedidosForTypes(['organic'])
-      : explicitOrganicOrLegacyCrm(sumField('pedidos_organicos'), pedidosCrmCampo);
+      : sumField('pedidos_organicos');
     return {
       receita,
       pedidos,
@@ -2937,16 +4365,18 @@
         { receita, receita_bruta: receita, receita_organica: receitaOrganicaBase },
         receitaInvestimento
       ),
+      receita_controles: receitaControles,
       receita_crm: receitaCrm,
-      receita_outros_canais: sumField('receita_outros_canais'),
+      receita_outros_canais: receitaOutros,
       receita_sem_match_atribuicao: receitaSemMatch,
       pedidos_pagos: pedidosPagos,
       pedidos_organicos: nonInvestmentOrdersForData(
         { pedidos, pedidos_validos: pedidos, pedidos_organicos: pedidosOrganicosBase },
         pedidosInvestimento
       ),
+      pedidos_controles: pedidosControles,
       pedidos_crm: pedidosCrm,
-      pedidos_outros_canais: sumField('pedidos_outros_canais'),
+      pedidos_outros_canais: pedidosOutros,
       pedidos_sem_match_atribuicao: pedidosSemMatch,
       row: { ...source, receita, pedidos, pares, linhas: rows.length }
     };
@@ -4182,8 +5612,8 @@
     const text = normalizeText(label);
     if (/(paid media|meta ads|google ads|facebook ads|instagram ads|ads|paid|pago)/.test(text)) return 'paid';
     if (/(organico|organic|seo)/.test(text)) return 'organic';
-    if (/(crm|email|whatsapp|sms|owned)/.test(text)) return 'organic';
-    return 'organic';
+    if (/(crm|email|whatsapp|sms|owned|direto|direct|outro|other|nao atribuido|sem match)/.test(text)) return 'other';
+    return 'other';
   }
 
   function acquisitionChannelRows(acquisition, { applyFilter = true } = {}) {
@@ -4310,6 +5740,8 @@
       data.pedidos_pagos,
       data.receita_organica,
       data.pedidos_organicos,
+      data.receita_crm,
+      data.pedidos_crm,
       data.receita_sem_match_atribuicao,
       data.pedidos_sem_match_atribuicao,
       data.receita_outros_canais,
@@ -4321,28 +5753,33 @@
     const hasOrderAttribution = hasExplicitOrderAttribution(data);
     const receitaInvestimento = numberOrNull(data?.receita_paga);
     const pedidosInvestimento = numberOrNull(data?.pedidos_pagos);
-    const receitaOrganicaBase = sumValues(
-      explicitOrganicOrLegacyCrm(data?.receita_organica, data?.receita_crm),
-      data?.receita_sem_match_atribuicao,
-      data?.receita_outros_canais
-    );
-    const pedidosOrganicosBase = sumValues(
-      explicitOrganicOrLegacyCrm(data?.pedidos_organicos, data?.pedidos_crm),
-      data?.pedidos_sem_match_atribuicao,
-      data?.pedidos_outros_canais
-    );
+    const paresInvestimento = numberOrNull(data?.pares_pagos);
+    const receitaOrganicaBase = hasOrderAttribution ? (numberOrNull(data?.receita_organica) ?? 0) : null;
+    const pedidosOrganicosBase = hasOrderAttribution ? (numberOrNull(data?.pedidos_organicos) ?? 0) : null;
+    const paresOrganicosBase = hasOrderAttribution ? (numberOrNull(data?.pares_organicos) ?? 0) : null;
+    const receitaControles = sumValues(data?.receita_crm, data?.receita_outros_canais, data?.receita_sem_match_atribuicao);
+    const pedidosControles = sumValues(data?.pedidos_crm, data?.pedidos_outros_canais, data?.pedidos_sem_match_atribuicao);
+    const paresControles = sumValues(data?.pares_crm, data?.pares_outros_canais, data?.pares_sem_match_atribuicao);
     const dataComCrmOrganico = { ...data, receita_organica: receitaOrganicaBase, pedidos_organicos: pedidosOrganicosBase };
     const hasDeclaredInvestment = numberOrNull(options.investmentValue) !== null;
     const assumeAllWhenNoInvestment = options.assumeAllWhenNoInvestment === true && !hasDeclaredInvestment;
     const allowAttributionFallbacks = options.allowAttributionFallbacks === true;
     const legacyRows = allowAttributionFallbacks ? legacyChannelSummariesForSales(acquisition, data) : new Map();
     const rows = [
-      { key: 'investment', label: 'Midia paga', receita: receitaInvestimento, pedidos: pedidosInvestimento },
+      { key: 'investment', label: 'Midia paga', receita: receitaInvestimento, pedidos: pedidosInvestimento, pares: paresInvestimento },
       {
         key: 'organic',
         label: 'Organico',
         receita: nonInvestmentRevenueForData(dataComCrmOrganico, receitaInvestimento, { assumeAllWhenNoInvestment }),
-        pedidos: nonInvestmentOrdersForData(dataComCrmOrganico, pedidosInvestimento, { assumeAllWhenNoInvestment })
+        pedidos: nonInvestmentOrdersForData(dataComCrmOrganico, pedidosInvestimento, { assumeAllWhenNoInvestment }),
+        pares: paresOrganicosBase
+      },
+      {
+        key: 'other',
+        label: 'Controles',
+        receita: receitaControles,
+        pedidos: pedidosControles,
+        pares: paresControles
       }
     ];
     const productRows = rows.map((row) => ({
@@ -4431,10 +5868,16 @@
         : 'Sem venda ou classificacao de canal para esta janela.';
       return `<span class="channel-empty" data-tooltip="${tooltipAttr(tooltip)}">${label}</span>`;
     }
+    const pedidos = numberOrNull(row.pedidos);
+    const pares = numberOrNull(row.pares);
+    const pedidosCopy = pedidos !== null ? `${fmtNum(pedidos)} ${pedidos === 1 ? 'pedido' : 'pedidos'}` : 'sem pedido real';
+    const paresCopy = pares !== null && pares !== pedidos
+      ? ` &middot; ${fmtNum(pares)} ${pares === 1 ? 'par' : 'pares'}`
+      : '';
     return `
       <div class="paid-organic-simple">
         <strong>${fmtBRL(row.receita, true)}</strong>
-        <span>${row.pedidos !== null ? `${fmtNum(row.pedidos)} pedidos` : 'sem pedido real'}</span>
+        <span>${pedidosCopy}${paresCopy}</span>
         ${row.sourceLabel ? `<small>${escapeHtml(row.sourceLabel)}</small>` : ''}
       </div>
     `;
@@ -4576,10 +6019,10 @@
       });
       const investmentChannel = channelRows.find((row) => row.key === 'investment' && row.hasData);
       const organicChannel = channelRows.find((row) => row.key === 'organic' && row.hasData);
-      const receitaInvestimento = attribution.receitaInvestimento ?? numberOrNull(investmentChannel?.receita);
-      const pedidosInvestimento = attribution.pedidosInvestimento ?? numberOrNull(investmentChannel?.pedidos);
-      const receitaOrganica = attribution.receitaOrganica ?? numberOrNull(organicChannel?.receita);
-      const pedidosOrganicos = attribution.pedidosOrganicos ?? numberOrNull(organicChannel?.pedidos);
+      const receitaInvestimento = numberOrNull(investmentChannel?.receita) ?? attribution.receitaInvestimento;
+      const pedidosInvestimento = numberOrNull(investmentChannel?.pedidos) ?? attribution.pedidosInvestimento;
+      const receitaOrganica = numberOrNull(organicChannel?.receita) ?? attribution.receitaOrganica;
+      const pedidosOrganicos = numberOrNull(organicChannel?.pedidos) ?? attribution.pedidosOrganicos;
       const receita = numberOrNull(data.receita);
       const pedidos = numberOrNull(data.pedidos);
       const pares = numberOrNull(data.pares);
@@ -5321,8 +6764,8 @@
               ${thTip('Faturamento', 'Receita do produto na janela selecionada. Linhas em maturacao mostram o parcial disponivel.', 'num')}
               ${thTip('Ticket medio', 'Faturamento dividido por pedidos na janela filtrada.', 'num')}
               ${thTip('Investimento', 'Investimento vem da planilha principal: midia_paga + crm_disparos. A planilha diaria nao preenche mais este numero.', 'num')}
-              ${thTip('Mídia paga', 'Receita e pedidos classificados como pagos pelo SSOT: origem/UTM granular quando disponível e alocação binária nas lacunas históricas.')}
-              ${thTip('Orgânico', 'Receita e pedidos classificados como orgânicos pelo SSOT. Inclui CRM, direto, busca orgânica, referral e a parcela orgânica alocada nas lacunas históricas.')}
+              ${thTip('Mídia paga', 'Receita e pedidos com sinais de anuncio, como cpc, pmax, paid, demand-gen, performance, ads, display ou source_type pago.')}
+              ${thTip('Orgânico', 'Receita e pedidos classificados como WhatsApp Organico, E-mail, Direto, Social, Organico ou Outros.')}
               ${thTip('ROAS', 'Receita dos pedidos de midia paga dividida pelo investimento declarado na janela. So calcula quando existe midia paga cadastrada na mesma janela; CRM sozinho nao vira denominador de ROAS.', 'num')}
               ${thTip('Fat. vs média', 'Quanto o faturamento ficou acima ou abaixo da média dos outros lançamentos no grupo filtrado. A célula mostra a média usada na comparação.', 'num')}
             </tr>
@@ -5404,7 +6847,7 @@
         <div class="launch-origin-summary-intro">
           <span>Origem dos pedidos</span>
           <strong>Pago versus orgânico</strong>
-          <small>Origem/UTM granular quando existe; fallback binário alocado pelo SSOT nas lacunas.</small>
+          <small>Midia paga = sinais de anuncio como cpc, pmax, paid, demand-gen e performance. Organico = busca/social/SEO organico; controles ficam separados.</small>
         </div>
         <div class="launch-origin-metric launch-origin-metric--paid">
           <span>Pedidos pagos</span>
@@ -5746,7 +7189,7 @@
             <div class="launch-source-grid">
               <div><strong>Vendas e faturamento</strong><span>lancamentos_produtos_dia.json, gerado pelo pipeline de pedidos.</span></div>
               <div><strong>Investimento</strong><span>midia_paga.json e crm_disparos.json somados como base unica de investimento. A planilha diaria nao entra no calculo de investimento.</span></div>
-              <div><strong>Canais</strong><span>O SSOT usa origem/UTM granular quando disponível e preserva uma alocação binária pago versus orgânico nas lacunas históricas.</span></div>
+              <div><strong>Canais</strong><span>O SSOT usa a classificação por pedido: midia paga e organico puro ficam separados de direto, e-mail/CRM, WhatsApp, outros e nao atribuidos.</span></div>
               <div><strong>Rentabilidade</strong><span>Leitura de retorno comercial: ROAS quando ha base valida de midia paga. Margem liquida/CMV nao estao no JSON.</span></div>
               <div><strong>Projeção</strong><span>Único bloco estimado; todo o restante preserva dado real ou vazio.</span></div>
             </div>
@@ -5777,32 +7220,32 @@
     const receitaCrm = numberOrNull(data.receita_crm);
     const pedidosPagos = numberOrNull(data.pedidos_pagos);
     const pedidosCrm = numberOrNull(data.pedidos_crm);
+    const paresPagos = numberOrNull(data.pares_pagos);
+    const paresOrganicos = numberOrNull(data.pares_organicos);
+    const paresCrm = numberOrNull(data.pares_crm);
     const receitaInvestimento = receitaPaga;
     const pedidosInvestimento = pedidosPagos;
-    const receitaOrganicaBase = sumValues(
-      explicitOrganicOrLegacyCrm(data.receita_organica, receitaCrm),
-      data.receita_sem_match_atribuicao,
-      data.receita_outros_canais
-    );
-    const pedidosOrganicosBase = sumValues(
-      explicitOrganicOrLegacyCrm(data.pedidos_organicos, pedidosCrm),
-      data.pedidos_sem_match_atribuicao,
-      data.pedidos_outros_canais
-    );
+    const receitaOrganicaBase = hasOrderAttribution ? (numberOrNull(data.receita_organica) ?? 0) : null;
+    const pedidosOrganicosBase = hasOrderAttribution ? (numberOrNull(data.pedidos_organicos) ?? 0) : null;
     return {
       receita: numberOrNull(data.receita),
       receita_total_original: numberOrNull(data.receita_total_original),
       pedidos: numberOrNull(data.pedidos) ?? numberOrNull(data.pedidos_validos),
       receita_organica: hasOrderAttribution ? nonInvestmentRevenueForData({ ...data, receita_organica: receitaOrganicaBase }, receitaInvestimento) : null,
       receita_paga: hasOrderAttribution ? receitaPaga : null,
-      receita_crm: null,
-      receita_outros_canais: null,
-      receita_sem_match_atribuicao: null,
+      receita_crm: hasOrderAttribution ? receitaCrm : null,
+      receita_outros_canais: hasOrderAttribution ? numberOrNull(data.receita_outros_canais) : null,
+      receita_sem_match_atribuicao: hasOrderAttribution ? numberOrNull(data.receita_sem_match_atribuicao) : null,
       pedidos_organicos: hasOrderAttribution ? nonInvestmentOrdersForData({ ...data, pedidos_organicos: pedidosOrganicosBase }, pedidosInvestimento) : null,
       pedidos_pagos: hasOrderAttribution ? pedidosPagos : null,
-      pedidos_crm: null,
-      pedidos_outros_canais: null,
-      pedidos_sem_match_atribuicao: null
+      pedidos_crm: hasOrderAttribution ? pedidosCrm : null,
+      pares_organicos: hasOrderAttribution ? paresOrganicos : null,
+      pares_pagos: hasOrderAttribution ? paresPagos : null,
+      pares_crm: hasOrderAttribution ? paresCrm : null,
+      pares_outros_canais: hasOrderAttribution ? numberOrNull(data.pares_outros_canais) : null,
+      pares_sem_match_atribuicao: hasOrderAttribution ? numberOrNull(data.pares_sem_match_atribuicao) : null,
+      pedidos_outros_canais: hasOrderAttribution ? numberOrNull(data.pedidos_outros_canais) : null,
+      pedidos_sem_match_atribuicao: hasOrderAttribution ? numberOrNull(data.pedidos_sem_match_atribuicao) : null
     };
   }
 
@@ -6341,10 +7784,10 @@
     return DRILL_SUBMODEL_LABELS[subId] || String(subId || 'Sub-modelo').replace(/_/g, ' ').toUpperCase();
   }
 
-  function subModelDailyRows(modelId) {
+  function subModelDailyRows(modelId, metric = null) {
     if (MODELS_WITHOUT_SUBMODELS.has(modelId)) return [];
     const exported = state.data?.sub_modelos_dia;
-    if (Array.isArray(exported) && exported.length) {
+    if (!metric?.requiresProductRows && Array.isArray(exported) && exported.length) {
       return exported
         .filter((row) => row.modelo_id === modelId && row.sub_modelo_id && !isSyntheticSubModelId(row.sub_modelo_id))
         .map((row) => ({
@@ -6352,7 +7795,13 @@
           sub_modelo_id: row.sub_modelo_id,
           data: row.data_venda || row.data,
           pares: Number(row.pares || 0),
-          receita: Number(row.receita || 0)
+          receita: Number(row.receita || 0),
+          receita_paga: numberOrNull(row.receita_paga),
+          receita_organica: numberOrNull(row.receita_organica),
+          receita_controles: numberOrNull(row.receita_controles),
+          pedidos_pagos: numberOrNull(row.pedidos_pagos),
+          pedidos_organicos: numberOrNull(row.pedidos_organicos),
+          pedidos_controles: numberOrNull(row.pedidos_controles)
         }))
         .sort((a, b) => String(a.data).localeCompare(String(b.data)));
     }
@@ -6370,10 +7819,28 @@
           sub_modelo_id: subId,
           data,
           pares: 0,
-          receita: 0
+          receita: 0,
+          receita_paga: 0,
+          receita_organica: 0,
+          receita_controles: 0,
+          pedidos_pagos: 0,
+          pedidos_organicos: 0,
+          pedidos_controles: 0
         };
         current.pares += Number(row.pares || row.quantidade || 0);
         current.receita += dashboardRevenueNumber(row);
+        const rowType = orderChannelType(row);
+        if (rowType === 'paid') {
+          current.receita_paga += dashboardRevenueNumber(row);
+          current.pedidos_pagos += Number(row.pedidos_pagos ?? row.pedidos_validos ?? row.pedidos ?? 0);
+        } else if (rowType === 'organic') {
+          current.receita_organica += dashboardRevenueNumber(row);
+          current.pedidos_organicos += Number(row.pedidos_organicos ?? row.pedidos_validos ?? row.pedidos ?? 0);
+        } else if (rowType) {
+          current.receita_controles += dashboardRevenueNumber(row);
+          const explicitControlsOrders = sumValues(row.pedidos_crm, row.pedidos_outros_canais, row.pedidos_sem_match_atribuicao);
+          current.pedidos_controles += Number(explicitControlsOrders ?? row.pedidos_validos ?? row.pedidos ?? 0);
+        }
         grouped.set(key, current);
       });
 
@@ -7311,11 +8778,12 @@
   }
 
   function buildCannibalTimelineData(launches) {
+    const metric = rampMetricConfig('receita_acumulada');
     const eligible = launches
       .map((launch) => {
-        const points = (launch.daily || [])
+        const points = rampDailyRowsForLaunch(launch, launchCurrentRampDay(launch))
           .map((row) => ({ ...row, data_calendario: dailyCalendarDate(launch, row) }))
-          .filter((row) => row.data_calendario);
+          .filter((row) => row.data_calendario && rampSeriesValue(row, metric) !== null);
         return { launch, points };
       })
       .filter((item) => item.points.length);
@@ -7334,7 +8802,7 @@
       .filter((cp) => cp.dateLabel && dates.includes(cp.dateLabel));
 
     const datasets = eligible.map(({ launch, points }, index) => {
-      const byDate = new Map(points.map((row) => [row.data_calendario, numberOrNull(row.receita)]));
+      const byDate = new Map(points.map((row) => [row.data_calendario, rampSeriesValue(row, metric)]));
       return {
         label: launch.modelo,
         data: dates.map((date) => (byDate.has(date) ? byDate.get(date) : null)),
@@ -7355,7 +8823,9 @@
   }
 
   function buildCannibalSubmodelData(modelId) {
-    const rows = subModelDailyRows(modelId);
+    const metric = rampMetricConfig('receita_acumulada');
+    const rows = subModelDailyRows(modelId)
+      .filter((row) => rampSeriesValue(row, metric) !== null);
     const bySub = new Map();
     rows.forEach((row) => {
       if (!row.sub_modelo_id || !row.data) return;
@@ -7378,7 +8848,7 @@
       .filter((cp) => cp.dateLabel && dates.includes(cp.dateLabel));
 
     const datasets = entries.map(([subId, subRows], index) => {
-      const byDate = new Map(subRows.map((row) => [row.data, numberOrNull(row.receita)]));
+      const byDate = new Map(subRows.map((row) => [row.data, rampSeriesValue(row, metric)]));
       return {
         label: subModelLabel(subId),
         data: dates.map((date) => (byDate.has(date) ? byDate.get(date) : null)),
@@ -7402,94 +8872,262 @@
 
     const subText = $(subTextId);
     const mode = state.normalizedChartMode || 'linha';
+    let rampMetric = rampMetricConfig();
+    if (mode !== 'linha') {
+      state.normalizedRampMetric = 'receita_acumulada';
+      document.querySelectorAll('[data-ramp-metric]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.rampMetric === state.normalizedRampMetric);
+      });
+      rampMetric = rampMetricConfig();
+    }
     if (canvasId === 'chart-normalized') {
       const lineSelect = $('cannibal-line-select');
       if (lineSelect) {
         lineSelect.hidden = mode !== 'canibal-submodelos';
         if (mode === 'canibal-submodelos') populateCannibalLineSelect();
       }
+      const metricControls = document.querySelector('.normalized-ramp-metric-controls');
+      if (metricControls) metricControls.hidden = mode !== 'linha';
+      const healthButton = document.querySelector('[data-ramp-metric="saude_rampa"]');
+      if (healthButton) healthButton.hidden = mode !== 'linha';
+      const quickControls = $('ramp-quick-controls');
+      if (quickControls && mode !== 'linha') {
+        quickControls.hidden = true;
+        quickControls.innerHTML = '';
+      }
     }
 
     if (mode === 'linha') {
-      if (subText) subText.textContent = `Faturamento acumulado por dia desde o lançamento · ${selectedPeriodLabel()}`;
       const chartLaunches = selectedCompareLaunches();
-      const maxDay = selectedPeriodEndDay(selected) ?? 90;
-      const normalizedLabels = Array.from({ length: maxDay + 1 }, (_, day) => day === 0 ? 'D0' : `D+${day}`);
       const normalizedLaunches = [...chartLaunches].sort((a, b) => {
         if (a.modelo_id === selected.modelo_id) return -1;
         if (b.modelo_id === selected.modelo_id) return 1;
         return a.order - b.order;
       });
+      const isMonthly = rampMetric.cadence === 'mes';
+      const isHealth = Boolean(rampMetric.health);
+      const isShare = Boolean(rampMetric.share);
+      const isWeekly = isHealth || rampMetric.cadence === 'semana';
+      const maxDay = normalizedRampMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected]);
+      renderRampQuickControls(maxDay, rampMetric, mode);
+      let lensBounds = rampTimeLensBounds(maxDay, rampMetric);
+      let weeklyLens = isWeekly
+        ? (isHealth
+          ? rampWeeklyLensBounds(lensBounds, maxDay)
+          : rampPeriodLensBounds(lensBounds, maxDay, rampMetric.periodDays || RAMP_RHYTHM_WINDOW_DAYS))
+        : null;
+      if (isWeekly && weeklyLens.unavailable) {
+        state.rampTimeLens = 'all';
+        lensBounds = rampTimeLensBounds(maxDay, rampMetric);
+        weeklyLens = isHealth
+          ? rampWeeklyLensBounds(lensBounds, maxDay)
+          : rampPeriodLensBounds(lensBounds, maxDay, rampMetric.periodDays || RAMP_RHYTHM_WINDOW_DAYS);
+      }
+      const lensStart = isMonthly ? 0 : lensBounds.start;
+      const lensEnd = isMonthly ? maxDay : lensBounds.end;
+      const normalizedLabels = isMonthly
+        ? Array.from({ length: rampMonthIndex(maxDay) + 1 }, (_, month) => rampMonthLabel(month))
+        : isWeekly
+          ? Array.from({ length: (weeklyLens.endWeek - weeklyLens.startWeek) + 1 }, (_, offset) => rampWeekLabel(weeklyLens.startWeek + offset))
+        : Array.from({ length: (lensEnd - lensStart) + 1 }, (_, offset) => {
+          const day = lensStart + offset;
+          return day === 0 ? 'D0' : `D+${day}`;
+        });
+      const title = $('chart-normalized-title');
+      if (title) {
+        title.textContent = isHealth
+          ? 'Ritmo de venda'
+          : rampMetric.label;
+      }
+      const titleHelp = $('chart-normalized-help');
+      if (titleHelp) {
+        titleHelp.dataset.tooltip = rampMetric.tooltip || 'Alinha todos os modelos pelo D0 ate a data atual disponivel no snapshot. Fat. mes e Pedidos mes usam blocos comerciais de 30 dias desde o D0. Ausencia depois do ultimo dado fica vazia, nunca zero.';
+      }
+      if (subText) {
+        const weeklyEndDay = weeklyLens ? Math.min(maxDay, rampWeekEndDay(weeklyLens.endWeek)) : maxDay;
+        const coverage = isWeekly
+          ? `${rampWeekLabel(weeklyLens.startWeek)} a ${rampWeekLabel(weeklyLens.endWeek)} · ${rampWeekStartDay(weeklyLens.startWeek) === 0 ? 'D0' : `D+${fmtNum(rampWeekStartDay(weeklyLens.startWeek))}`} a D+${fmtNum(weeklyEndDay)}${weeklyEndDay < rampWeekEndDay(weeklyLens.endWeek) ? ' parcial' : ''}`
+          : isMonthly || lensBounds.key === 'all'
+          ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
+          : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
+        if (isShare) {
+          const periodWord = isMonthly ? 'mes' : 'semana';
+          subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
+        } else {
+        subText.textContent = isMonthly
+          ? isShare
+            ? `${rampMetric.shortLabel} da receita da empresa por mes de vida comercial · ${coverage}`
+            : `${rampMetric.shortLabel} por mes de vida comercial · ${coverage}`
+          : isShare
+            ? `${rampMetric.shortLabel} da receita da empresa por semana de vida comercial · ${coverage}`
+          : isHealth
+            ? `Semanas fechadas desde o D0; o losango marca a primeira estabilizacao confirmada · ${coverage}`
+            : `${rampMetric.shortLabel} acumulado por dia desde o lancamento · ${coverage}`;
+      }
+        }
       createChart(canvasId, {
         type: 'line',
         data: {
           labels: normalizedLabels,
-          datasets: normalizedLaunches.map((launch, index) => {
-            const data = Array(maxDay + 1).fill(null);
-            const filteredSeries = isProductFilterActive() || isChannelFilterActive();
-            const hasDaily = !filteredSeries && Boolean(launch.daily?.length);
-            const isBackfilled = launch.daily_source === 'historico_backfill';
-            if (hasDaily) {
-              const byDay = new Map();
-              launch.daily.forEach((row) => {
-                if (row.day < 0 || row.day > maxDay) return;
-                byDay.set(row.day, (byDay.get(row.day) || 0) + Number(row.receita || 0));
-              });
-              let running = 0;
-              const validDays = launch.daily.map((row) => row.day).filter((day) => day >= 0 && day <= maxDay);
-              const maxDailyDay = validDays.length ? Math.min(maxDay, Math.max(...validDays)) : 0;
-              for (let day = 0; day <= maxDailyDay; day += 1) {
-                running += byDay.get(day) || 0;
-                data[day] = running;
-              }
-            } else {
-              data[0] = 0;
-              const points = selectedPeriodWindowKeys(selected).map((key) => ({
-                day: WINDOW_DAYS[key],
-                value: filteredWindowDataForLaunch(launch, key)?.receita
-              }));
-              points.forEach((point) => {
-                if (point.value !== null && point.value !== undefined) data[point.day] = point.value;
-              });
-            }
-            const validDataDays = data
-              .map((value, day) => value !== null && value !== undefined ? day : null)
-              .filter((day) => day !== null);
-            const lastDataDay = validDataDays.length ? Math.max(...validDataDays) : null;
-            const isSelected = launch.modelo_id === selected.modelo_id;
-            return {
-              label: isBackfilled ? `${launch.modelo} · backfill` : hasDaily ? launch.modelo : `${launch.modelo} · agregado`,
-              data,
-              borderColor: colorFor(launch.modelo_id, index),
-              backgroundColor: fillFor(launch.modelo_id, index),
-              borderWidth: isSelected ? 3 : 2,
-              borderDash: isBackfilled ? [4, 4] : hasDaily ? [] : [6, 5],
-              fill: isSelected ? 'origin' : false,
-              pointRadius: (ctx) => {
-                const day = ctx.dataIndex;
-                if (data[day] === null || data[day] === undefined) return 0;
-                if (day === lastDataDay) return isSelected ? 4 : 3;
-                return MILESTONE_DAYS.includes(day) ? (isSelected ? 3 : 2) : 0;
-              },
-              pointHoverRadius: 6,
-              pointHitRadius: 10,
-              pointBackgroundColor: colorFor(launch.modelo_id, index),
-              pointBorderColor: '#1A1A1A',
-              pointBorderWidth: 1,
-              tension: hasDaily ? 0.32 : 0.12,
-              spanGaps: !hasDaily,
-              sourceLabel: isBackfilled ? 'backfill diário a partir das janelas acumuladas' : hasDaily ? 'diário real' : 'histórico agregado'
-            };
-          })
+          datasets: [
+            ...normalizedLaunches.map((launch, index) => {
+              const filteredSeries = isProductFilterActive() || isChannelFilterActive();
+              const series = isShare
+                ? shareRampDatasetData(launch, rampMetric, maxDay)
+                : isHealth
+                ? rampHealthChartDatasetData(launch, maxDay)
+                : rampMetric.cumulative
+                  ? cumulativeRampDatasetData(launch, rampMetric, maxDay)
+                  : monthlyRampDatasetData(launch, rampMetric, maxDay);
+              const sourceData = series.data;
+              const data = isMonthly
+                ? sourceData
+                : isWeekly
+                  ? Array.from(
+                    { length: (weeklyLens.endWeek - weeklyLens.startWeek) + 1 },
+                    (_, offset) => sourceData[weeklyLens.startWeek + offset] ?? null
+                  )
+                  : sourceData.slice(lensStart, lensEnd + 1);
+              const hasDaily = Boolean(series.sourceRows?.length);
+              const isBackfilled = launch.daily_source === 'historico_backfill';
+              const validDataDays = data
+                .map((value, day) => value !== null && value !== undefined ? day : null)
+                .filter((day) => day !== null);
+              const lastDataIndex = isWeekly
+                ? numberOrNull(series.lastDataIndex)
+                : numberOrNull(series.lastDataDay) ?? (validDataDays.length ? Math.max(...validDataDays) : null);
+              const isSelected = launch.modelo_id === selected.modelo_id;
+              const sourceLabel = isShare
+                ? series.sourceLabel
+                : isHealth
+                ? series.sourceLabel
+                : filteredSeries
+                  ? 'diario filtrado do export SSOT'
+                  : isBackfilled
+                    ? 'backfill diario a partir das janelas acumuladas'
+                    : hasDaily
+                      ? 'diario real'
+                      : 'sem serie diaria';
+              return {
+                label: isBackfilled && !filteredSeries ? `${launch.modelo} - backfill` : launch.modelo,
+                data,
+                borderColor: colorFor(launch.modelo_id, index),
+                backgroundColor: fillFor(launch.modelo_id, index),
+                borderWidth: isSelected ? 3 : 2,
+                borderDash: !isMonthly && !isHealth && !isShare && isBackfilled && !filteredSeries ? [4, 4] : [],
+                fill: !isMonthly && !isHealth && !isShare && isSelected ? 'origin' : false,
+                pointRadius: (ctx) => {
+                  const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
+                  if (data[ctx.dataIndex] === null || data[ctx.dataIndex] === undefined) return 0;
+                  if (isHealth) {
+                    const meta = series.healthMeta?.[periodIndex];
+                    if (!meta) return 0;
+                    if (meta.isStabilization) return isSelected ? 7 : 6;
+                    if (periodIndex === lastDataIndex) return isSelected ? 4 : 3;
+                    return (periodIndex === 0 || (periodIndex + 1) % 4 === 0) ? (isSelected ? 3 : 2) : 0;
+                  }
+                  if (isMonthly) return isSelected ? 4 : 3;
+                  if (periodIndex === lastDataIndex) return isSelected ? 4 : 3;
+                  return (MILESTONE_DAYS.includes(periodIndex) || periodIndex % 30 === 0) ? (isSelected ? 3 : 2) : 0;
+                },
+                pointStyle: (ctx) => {
+                  const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
+                  return isHealth && series.healthMeta?.[periodIndex]?.isStabilization ? 'rectRot' : 'circle';
+                },
+                pointHoverRadius: (ctx) => {
+                  const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
+                  return isHealth && series.healthMeta?.[periodIndex]?.isStabilization ? 8 : 6;
+                },
+                pointHitRadius: 10,
+                pointBackgroundColor: colorFor(launch.modelo_id, index),
+                pointBorderColor: (ctx) => {
+                  const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
+                  return isHealth && series.healthMeta?.[periodIndex]?.isStabilization ? '#FFFFFF' : '#1A1A1A';
+                },
+                pointBorderWidth: (ctx) => {
+                  const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
+                  return isHealth && series.healthMeta?.[periodIndex]?.isStabilization ? 2 : 1;
+                },
+                tension: isMonthly ? 0.26 : 0.32,
+                spanGaps: false,
+                sourceLabel,
+                healthMeta: series.healthMeta || null,
+                shareMeta: series.shareMeta || null,
+                metricKey: rampMetric.key
+              };
+            }),
+            ...(isHealth ? rampHealthReferenceDatasets(weeklyLens.endWeek, { start: weeklyLens.startWeek, end: weeklyLens.endWeek }) : [])
+          ]
         },
         options: chartOptions({
+          interaction: isHealth
+            ? { mode: 'nearest', intersect: false, axis: 'xy' }
+            : { mode: 'index', intersect: false },
           plugins: {
-            legend: { position: 'bottom' },
+            legend: isHealth
+              ? {
+                position: 'bottom',
+                labels: {
+                  filter: (item, data) => !data.datasets[item.datasetIndex]?.isHealthReference,
+                  usePointStyle: true,
+                  boxWidth: 8,
+                  boxHeight: 8,
+                  padding: 16
+                }
+              }
+              : { position: 'bottom' },
             tooltip: {
+              position: isHealth ? 'nearest' : 'average',
+              filter: (item) => !item.dataset.isHealthReference,
               callbacks: {
-                title: (items) => items[0]?.label || '',
-                label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
-                afterLabel: (ctx) => `Fonte: ${ctx.dataset.sourceLabel}. A curva e acumulada desde D0; linhas tracejadas indicam agregado/backfill.`
+                title: (items) => {
+                  const index = items[0]?.dataIndex ?? 0;
+                  const day = lensStart + index;
+                  const weekIndex = weeklyLens ? weeklyLens.startWeek + index : null;
+                  return isMonthly
+                    ? `${items[0]?.label || ''} · ${rampPeriodRangeLabel(index, rampMetric)}`
+                    : isWeekly
+                      ? `${rampWeekLabel(weekIndex)} · ${rampPeriodRangeLabel(weekIndex, rampMetric, isShare ? Math.min(maxDay, rampWeekEndDay(weekIndex)) : null)}`
+                      : (day === 0 ? 'D0' : `D+${day}`);
+                },
+                label: (ctx) => isHealth
+                  ? `${ctx.dataset.label}: ${formatRampValue(ctx.parsed.y, rampMetric)} do pico`
+                  : `${ctx.dataset.label}: ${formatRampValue(ctx.parsed.y, rampMetric)}`,
+                afterLabel: (ctx) => {
+                  if (isShare) {
+                    const periodIndex = isMonthly ? ctx.dataIndex : weeklyLens.startWeek + ctx.dataIndex;
+                    const meta = ctx.dataset.shareMeta?.[periodIndex];
+                    if (!meta) return 'Share pendente: sem denominador de vendas da empresa no periodo.';
+                    const period = rampPeriodRangeLabel(periodIndex, rampMetric, meta.lastDay);
+                    const filterNote = meta.filteredNumerator
+                      ? 'Numerador respeita produto/cor/canal filtrado; denominador permanece vendas totais da empresa.'
+                      : 'Numerador e denominador vindos do share_trajetoria.';
+                    return [
+                      `Periodo: ${period}`,
+                      `Vendas produto: ${fmtBRL(meta.productRevenue)} · Vendas empresa: ${fmtBRL(meta.companyRevenue)}`,
+                      `${filterNote} Fonte: ${ctx.dataset.sourceLabel}.`
+                    ];
+                  }
+                  if (isHealth) {
+                    const meta = ctx.dataset.healthMeta?.[weeklyLens.startWeek + ctx.dataIndex];
+                    if (!meta) return 'Ainda nao ha uma semana completa neste ponto.';
+                    const weeklyChange = meta.changePct === null
+                      ? 'Vs. semana anterior: pendente'
+                      : `Vs. semana anterior: ${fmtSignedPct(meta.changePct, 0)} (${meta.direction})`;
+                    const stabilization = meta.isStabilization && meta.stabilization
+                      ? `Estabilizou nesta semana (D+${fmtNum(meta.stabilization.confirmedDay)})`
+                      : null;
+                    return [
+                      weeklyChange,
+                      `Ritmo: ${fmtBRL(meta.currentMm7)}/dia · ${fmtNum(meta.currentOrdersMm7, 1)} pedidos/dia`,
+                      ...(stabilization ? [stabilization] : [])
+                    ];
+                  }
+                  const modeCopy = isMonthly
+                    ? 'Blocos mensais de 30 dias desde D0; vazio apos o ultimo dado carregado.'
+                    : 'Curva acumulada desde D0; vazio apos o ultimo dado carregado.';
+                  return `Fonte: ${ctx.dataset.sourceLabel}. ${modeCopy}`;
+                }
               }
             }
           },
@@ -7497,21 +9135,33 @@
             x: {
               grid: { display: false },
               ticks: {
-                autoSkip: false,
+                autoSkip: isMonthly,
                 maxRotation: 0,
-                callback: (_, index) => MILESTONE_DAYS.includes(index) ? (index === 0 ? 'D0' : `D+${index}`) : ''
+                callback: (_, index) => {
+                  if (isMonthly) return rampMonthLabel(index);
+                  if (isWeekly) return rampWeekLabel(weeklyLens.startWeek + index);
+                  const day = lensStart + index;
+                  if (index === 0 || day === lensEnd) return day === 0 ? 'D0' : `D+${day}`;
+                  return rampDailyTickLabel(day, lensEnd);
+                }
               }
             },
             y: {
-              ticks: { callback: (v) => fmtBRL(v, true) },
+              ...(isHealth ? { beginAtZero: true, min: 0, max: 1 } : {}),
+              ...(isShare ? { beginAtZero: true, min: 0, suggestedMax: 0.3 } : {}),
+              ticks: { callback: (v) => formatRampValue(v, rampMetric, true) },
               grid: { color: 'rgba(255,255,255,0.045)' }
             }
           }
         })
       });
+      if (canvasId === 'chart-normalized') renderRampHealthInsight(selected);
       return;
     }
 
+    if (canvasId === 'chart-normalized') renderRampHealthInsight(selected);
+
+    const comparisonMetric = rampMetricConfig('receita_acumulada');
     const sharedOptions = (dates, checkpoints) => chartOptions({
       layout: { padding: { top: 34, right: 18, bottom: 6, left: 4 } },
       plugins: {
@@ -7520,18 +9170,22 @@
         tooltip: {
           callbacks: {
             title: (items) => fmtDateSlash(items[0]?.label),
-            label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`
+            label: (ctx) => `${ctx.dataset.label}: ${formatRampValue(ctx.parsed.y, comparisonMetric)}`
           }
         }
       },
       scales: {
         x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, callback: (_, idx) => fmtDateSlash(dates[idx]) } },
-        y: { ticks: { callback: (v) => fmtBRL(v, true) }, grid: { color: 'rgba(255,255,255,0.045)' } }
+        y: { ticks: { callback: (v) => formatRampValue(v, comparisonMetric, true) }, grid: { color: 'rgba(255,255,255,0.045)' } }
       }
     });
 
     if (mode === 'canibal-linhas') {
-      if (subText) subText.textContent = 'Faturamento diário por linha, alinhado por data real (não pela idade do lançamento)';
+      const title = $('chart-normalized-title');
+      const titleHelp = $('chart-normalized-help');
+      if (title) title.textContent = 'Faturamento entre linhas';
+      if (titleHelp) titleHelp.dataset.tooltip = 'Compara faturamento diario por data real para enxergar sobreposicao entre lancamentos e linhas.';
+      if (subText) subText.textContent = 'Faturamento diario por linha, alinhado por data real';
       const { dates, datasets, checkpoints } = buildCannibalTimelineData(comparableLaunches());
       if (!dates.length || !datasets.length) return;
       createChart(canvasId, { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
@@ -7541,7 +9195,11 @@
     if (mode === 'canibal-submodelos') {
       const lineId = state.canibalLineFilter || selected.modelo_id;
       const lineLaunch = state.launches.find((launch) => launch.modelo_id === lineId);
-      if (subText) subText.textContent = `Sub-produtos dentro de ${lineLaunch?.linha || lineLaunch?.modelo || lineId} · faturamento diário real`;
+      const title = $('chart-normalized-title');
+      const titleHelp = $('chart-normalized-help');
+      if (title) title.textContent = 'Faturamento dentro da linha';
+      if (titleHelp) titleHelp.dataset.tooltip = 'Compara subprodutos da linha por data real para mostrar concentracao ou dispersao de venda.';
+      if (subText) subText.textContent = `Sub-produtos dentro de ${lineLaunch?.linha || lineLaunch?.modelo || lineId} · ${rampMetric.shortLabel} diario`;
       const { dates, datasets, checkpoints } = buildCannibalSubmodelData(lineId);
       if (!dates.length || !datasets.length) return;
       createChart(canvasId, { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
@@ -7761,8 +9419,8 @@
         <tr>
           <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
           <td>${fmtBRL(metricWindow?.receita)}<div class="metric-sub">${day !== null && day !== undefined ? `D+${day}` : 'sem janela'} · ${escapeHtml(metricRange)}</div></td>
-          <td class="num">${comparisonAttributionCell(attribution.receita_organica, attribution.pedidos_organicos)}</td>
-          <td class="num">${comparisonAttributionCell(attribution.receita_paga, attribution.pedidos_pagos)}</td>
+          <td class="num">${comparisonAttributionCell(attribution.receita_organica, attribution.pedidos_organicos, attribution.pares_organicos)}</td>
+          <td class="num">${comparisonAttributionCell(attribution.receita_paga, attribution.pedidos_pagos, attribution.pares_pagos)}</td>
           <td>${fmtBRL(j7?.receita)}<div>${coverageBadge(launch, '7d')}</div></td>
           <td>${fmtBRL(j15?.receita)}<div>${coverageBadge(launch, '15d')}</div></td>
           <td>${fmtBRL(j30?.receita)}<div>${coverageBadge(launch, '30d')}</div></td>
@@ -7779,13 +9437,20 @@
     tbody.innerHTML = rows || `<tr><td colspan="15" class="cell-muted">Sem lançamentos com dados reais para comparar.</td></tr>`;
   }
 
-  function comparisonAttributionCell(revenue, orders) {
+  function comparisonAttributionCell(revenue, orders, pairs = null) {
     const revenueValue = numberOrNull(revenue);
     if (revenueValue === null) {
       return '<span class="cell-muted">Aguardando vendas</span><div class="metric-sub">canal ainda não exportado</div>';
     }
     const orderValue = numberOrNull(orders);
-    return `${organicPaidValue(revenueValue)}<div class="metric-sub">${orderValue === null ? 'pedidos aguardando' : `${fmtNum(orderValue)} pedidos atribuídos`}</div>`;
+    const pairValue = numberOrNull(pairs);
+    const orderCopy = orderValue === null
+      ? 'pedidos aguardando'
+      : `${fmtNum(orderValue)} ${orderValue === 1 ? 'pedido' : 'pedidos'} atribuidos`;
+    const pairCopy = pairValue !== null && pairValue !== orderValue
+      ? ` &middot; ${fmtNum(pairValue)} ${pairValue === 1 ? 'par' : 'pares'}`
+      : '';
+    return `${organicPaidValue(revenueValue)}<div class="metric-sub">${orderCopy}${pairCopy}</div>`;
   }
 
   function firstKnownCommercialNumber(row, keys) {
@@ -7800,7 +9465,7 @@
   function commercialMetricConfig(key = state.commercialChartMetric) {
     const configs = {
       investimento: { key: 'investimento', label: 'Investimento acumulado', short: 'Invest.', type: 'bar', unit: 'currency', help: 'Investimento vem da planilha principal, somando midia_paga.json e crm_disparos.json na janela do lancamento. A planilha diaria nao entra neste calculo.' },
-      receita: { key: 'receita', label: 'Receita midia paga', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita classificada como paga pelo SSOT, usando origem granular ou alocacao binaria conforme a cobertura historica.' },
+      receita: { key: 'receita', label: 'Receita midia paga', short: 'Receita', type: 'bar', unit: 'currency', help: 'Receita com sinais de anuncio, como cpc, pmax, paid, demand-gen, performance, ads, display ou source_type pago.' },
       roas: { key: 'roas', label: 'ROAS midia paga', short: 'ROAS', type: 'line', unit: 'ratio', help: 'Receita dos pedidos de midia paga dividida pelo investimento declarado na janela. So calcula quando existe midia paga cadastrada na mesma janela.' },
       cpa: { key: 'cpa', label: 'CPA midia paga', short: 'CPA', type: 'line', unit: 'currency', help: 'Investimento total dividido pelos pedidos classificados como pagos pelo SSOT.' },
       cpp: { key: 'cpp', label: 'CPP', short: 'CPP', type: 'line', unit: 'currency', help: 'Investimento total dividido pelos pares vendidos do lançamento na janela.' },
@@ -7828,6 +9493,393 @@
     const days = janelaEmDias(key);
     if (key === 'pre-d0') return -1;
     return days === null ? 999 : days;
+  }
+
+  function medianNumber(values, digits = 4) {
+    const valid = values
+      .map((value) => numberOrNull(value))
+      .filter((value) => value !== null)
+      .sort((a, b) => a - b);
+    if (!valid.length) return null;
+    const mid = Math.floor(valid.length / 2);
+    const value = valid.length % 2 ? valid[mid] : (valid[mid - 1] + valid[mid]) / 2;
+    const factor = 10 ** digits;
+    return Math.round(value * factor) / factor;
+  }
+
+  function directClientPayload() {
+    const payload = state.data?.lancamentos_clientes_janelas;
+    if (Array.isArray(payload)) return { janelas: payload, base_atual: null };
+    return payload && Array.isArray(payload.janelas) ? payload : null;
+  }
+
+  function directClientRows() {
+    return directClientPayload()?.janelas || [];
+  }
+
+  function directClientWindow(modelId, key) {
+    return directClientRows().find((row) => row.modelo_id === modelId && row.janela === key) || null;
+  }
+
+  function directCurrentBase() {
+    const payload = directClientPayload();
+    return numberOrNull(payload?.base_atual?.base_atual_clientes)
+      ?? medianNumber(directClientRows().map((row) => row.base_atual_clientes), 0);
+  }
+
+  function mergeDirectClientSales(sales, clientRow) {
+    if (!clientRow) return sales;
+    const merged = sales ? { ...sales } : {};
+    ['receita', 'pedidos', 'pares'].forEach((field) => {
+      const value = numberOrNull(clientRow[field]);
+      if (merged[field] === null || merged[field] === undefined) merged[field] = value;
+    });
+    [
+      'clientes_unicos',
+      'novos_clientes',
+      'recorrentes_clientes',
+      'receita_por_cliente',
+      'pedidos_por_cliente',
+      'pares_por_cliente',
+      'unidades_por_cliente',
+      'pct_base_ativada',
+      'clientes_base_compraram',
+      'base_total_d0',
+      'base_atual_clientes',
+      'pedidos_com_customer_key',
+      'pedidos_sem_customer_key',
+      'customer_key_coverage_pct'
+    ].forEach((field) => {
+      merged[field] = numberOrNull(clientRow[field]);
+    });
+    if (merged.unidades_por_cliente === null) merged.unidades_por_cliente = merged.pares_por_cliente;
+    if (merged.pct_base_ativada === null) {
+      const baseD0 = numberOrNull(merged.base_total_d0);
+      const clientesBase = numberOrNull(merged.clientes_base_compraram);
+      merged.pct_base_ativada = baseD0 ? clientesBase / baseD0 : null;
+    }
+    merged.clientes_status = clientRow.status || null;
+    merged.clientes_qualidade = clientRow.qualidade || 'pendente';
+    merged.clientes_fonte = clientRow.fonte || 'lancamentos_clientes_janelas';
+    return merged;
+  }
+
+  function directClientForecast(key) {
+    const baseAtual = directCurrentBase();
+    if (baseAtual === null) return null;
+    const rows = directClientRows().filter((row) => (
+      row.janela === key
+      && normalizeText(row.status) === 'fechada'
+      && numberOrNull(row.clientes_unicos) !== null
+      && numberOrNull(row.base_total_d0) !== null
+      && numberOrNull(row.base_total_d0) > 0
+    ));
+    if (!rows.length) return null;
+
+    const taxaClientes = medianNumber(rows.map((row) => {
+      const baseD0 = numberOrNull(row.base_total_d0);
+      return baseD0 ? numberOrNull(row.clientes_unicos) / baseD0 : null;
+    }), 6);
+    const pedidosPorCliente = medianNumber(rows.map((row) => row.pedidos_por_cliente), 4);
+    const paresPorCliente = medianNumber(rows.map((row) => row.pares_por_cliente ?? row.unidades_por_cliente), 4);
+    const receitaPorCliente = medianNumber(rows.map((row) => row.receita_por_cliente), 2);
+    const clientesEsperados = taxaClientes === null ? null : Math.round(baseAtual * taxaClientes);
+    return {
+      clientes_esperados: clientesEsperados,
+      pedidos_esperados: clientesEsperados !== null && pedidosPorCliente !== null ? Math.round(clientesEsperados * pedidosPorCliente) : null,
+      pares_esperados: clientesEsperados !== null && paresPorCliente !== null ? Math.round(clientesEsperados * paresPorCliente) : null,
+      receita_esperada: clientesEsperados !== null && receitaPorCliente !== null ? Math.round(clientesEsperados * receitaPorCliente * 100) / 100 : null,
+      metodo: 'front_overlay_base_atual_x_mediana_historica',
+      observacao: 'Estimativa direta do JSON agregado de clientes; nao e forecast causal.'
+    };
+  }
+
+  function advancedPayload() {
+    const payload = state.data?.lancamentos_analise_avancada;
+    return payload && !Array.isArray(payload) ? payload : null;
+  }
+
+  function advancedModelFor(launch) {
+    return advancedPayload()?.modelos?.[launch?.modelo_id] || null;
+  }
+
+  function advancedWindowFor(launch, key) {
+    const base = advancedModelFor(launch)?.janelas?.[key] || null;
+    const clientRow = directClientWindow(launch?.modelo_id, key);
+    if (!clientRow) return base;
+    return {
+      ...(base || {}),
+      label: base?.label || windowLabel(key),
+      start_day: base?.start_day ?? 0,
+      end_day: base?.end_day ?? numberOrNull(clientRow.window_day),
+      start_date: base?.start_date || clientRow.start_date || null,
+      end_date: base?.end_date || clientRow.end_date || null,
+      status: clientRow.status || base?.status || null,
+      vendas: mergeDirectClientSales(base?.vendas || null, clientRow),
+      investimento: base?.investimento || null,
+      roas: base?.roas || null
+    };
+  }
+
+  function advancedCell(value, formatter = fmtNum, pending = 'Pendente') {
+    const numeric = numberOrNull(value);
+    if (numeric === null) return `<span class="cell-muted">${escapeHtml(pending)}</span>`;
+    return formatter(numeric);
+  }
+
+  function advancedRatioCell(value, digits = 1) {
+    const numeric = numberOrNull(value);
+    return numeric === null ? '<span class="cell-muted">Pendente</span>' : fmtPct(numeric, digits);
+  }
+
+  function advancedStatusBadge(status) {
+    const normalized = normalizeText(status);
+    if (normalized === 'fechada') return badge('pipeline', 'fechada', 'Janela comparavel fechada no JSON atual.');
+    if (normalized === 'janela aberta') return badge('parcial', 'aberta', 'Janela ainda nao completou todos os dias; ausencia nao vira zero.');
+    if (normalized === 'sem dados') return badge('parcial', 'sem dado', 'Ainda nao existe venda carregada para esta janela.');
+    return badge('parcial', status || 'pendente');
+  }
+
+  function advancedQualityBadge(quality) {
+    const normalized = normalizeText(quality);
+    if (normalized === 'real') return badge('pipeline', 'real', 'Classificacao por pedido/origem granular disponivel.');
+    if (normalized === 'alocado ssot') return badge('parcial', 'alocado', 'Valor alocado pelo SSOT; leitura de mix, nao causalidade absoluta.');
+    if (normalized === 'inferido') return badge('parcial', 'inferido', 'Classificacao por campos de origem do pedido.');
+    if (normalized === 'misto') return badge('parcial', 'misto', 'Combina origem real, inferida ou alocada.');
+    return badge('parcial', 'pendente', 'Canal ainda nao disponivel.');
+  }
+
+  function advancedRoasCell(roas) {
+    const value = numberOrNull(roas?.midia_paga);
+    if (value !== null) {
+      return `${fmtNum(value, 2)}x<div class="metric-sub">${escapeHtml(roas.status || '')}</div>`;
+    }
+    const status = normalizeText(roas?.status);
+    const label = status.includes('investimento declarado') ? 'ROAS pendente' : 'sem ROAS';
+    return `<span class="cell-muted">${escapeHtml(label)}</span><div class="metric-sub">${escapeHtml(roas?.observacao || 'sem base confiavel')}</div>`;
+  }
+
+  function advancedSelectedLaunches() {
+    return selectedCompareLaunches().filter((launch) => !launch.isFuture || advancedModelFor(launch));
+  }
+
+  function renderAdvancedClients() {
+    const wrap = $('advanced-clients');
+    if (!wrap) return;
+    const payload = advancedPayload();
+    const launches = advancedSelectedLaunches();
+    if (!payload || !launches.length) {
+      wrap.innerHTML = `<div class="empty-state"><div><strong>Sem dados avancados.</strong>Gere data/lancamentos_analise_avancada.json e selecione ao menos um lancamento comparavel.</div></div>`;
+      return;
+    }
+
+    const rows = launches.flatMap((launch) => WINDOW_KEYS.map((key) => {
+      const win = advancedWindowFor(launch, key);
+      return { launch, key, win, vendas: win?.vendas || null };
+    }));
+    const baseAtualClientes = directCurrentBase() ?? numberOrNull(payload.proximos_lancamentos?.base_atual_clientes);
+    const directPayload = directClientPayload();
+    const directForecast = directClientForecast(selectedPeriodKey());
+    const advancedForecast = payload.proximos_lancamentos?.janelas?.[selectedPeriodKey()] || null;
+    const forecast = directForecast?.receita_esperada !== null && directForecast?.receita_esperada !== undefined
+      ? directForecast
+      : advancedForecast || directForecast;
+    const missingClients = rows.filter((row) => row.vendas?.clientes_unicos === null || row.vendas?.clientes_unicos === undefined).length;
+
+    wrap.innerHTML = `
+      <div class="advanced-summary-grid">
+        <div class="advanced-summary-card">
+          <span>Base atual</span>
+          <strong>${advancedCell(baseAtualClientes, fmtNum)}</strong>
+          <small>${escapeHtml(directPayload?.base_atual?.fonte || payload.proximos_lancamentos?.base_atual_fonte || 'pendente no SSOT')}</small>
+        </div>
+        <div class="advanced-summary-card">
+          <span>Proximo lancamento</span>
+          <strong>${forecast?.receita_esperada === null || forecast?.receita_esperada === undefined ? '&mdash;' : fmtBRL(forecast.receita_esperada)}</strong>
+          <small>${forecast ? `${selectedPeriodLabel()} &middot; ${advancedCell(forecast.clientes_esperados, fmtNum, 'clientes pend.')} clientes &middot; ${advancedCell(forecast.pedidos_esperados, fmtNum, 'pedidos pend.')} pedidos &middot; ${advancedCell(forecast.pares_esperados, fmtNum, 'pares pend.')} pares` : 'sem referencia'}</small>
+        </div>
+        <div class="advanced-summary-card">
+          <span>Clientes unicos</span>
+          <strong>${missingClients ? 'Pendente' : 'Carregado'}</strong>
+          <small>Export agregado do SSOT; nao inferir por pedido</small>
+        </div>
+      </div>
+      <div class="table-wrap advanced-table-wrap">
+        <table style="min-width:1320px">
+          <thead>
+            <tr>
+              ${thTip('Lancamento', 'Modelo e D0 analitico.')}
+              ${thTip('Janela', 'D+7, D+15, D+30, D+60 e D+90, sempre desde D0.')}
+              ${thTip('Clientes unicos', 'Exige export agregado do SSOT sem PII.', 'num')}
+              ${thTip('Novos', 'Clientes cuja primeira compra valida ocorreu no periodo do lancamento.', 'num')}
+              ${thTip('Recorrentes', 'Clientes ja existentes antes do D0 que compraram no lancamento.', 'num')}
+              ${thTip('Receita/cliente', 'Receita da janela dividida por clientes unicos.', 'num')}
+              ${thTip('Pedidos/cliente', 'Pedidos distintos da janela divididos por clientes unicos.', 'num')}
+              ${thTip('Pares/cliente', 'Pares vendidos divididos por clientes unicos.', 'num')}
+              ${thTip('% base ativada', 'Clientes recorrentes compradores / base total antes do D0.', 'num')}
+              ${thTip('Proxy atual', 'Classificacao atual de novos/recorrentes por pedido; nao substitui cliente unico.', 'num')}
+              ${thTip('Status', 'Fechada, aberta, sem dados ou pendente.')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(({ launch, key, win, vendas }) => `
+              <tr class="${key === selectedPeriodKey() ? 'is-selected-window' : ''}">
+                <td class="model-name">${escapeHtml(launch.modelo)}<div class="metric-sub">D0: ${fmtDate(launch.d0)}</div></td>
+                <td>${escapeHtml(windowLabel(key))}<div class="metric-sub">${escapeHtml(win?.start_date || 'sem data')} a ${escapeHtml(win?.end_date || 'sem data')}</div></td>
+                <td class="num">${advancedCell(vendas?.clientes_unicos, fmtNum)}</td>
+                <td class="num">${advancedCell(vendas?.novos_clientes, fmtNum)}</td>
+                <td class="num">${advancedCell(vendas?.recorrentes_clientes, fmtNum)}</td>
+                <td class="num">${advancedCell(vendas?.receita_por_cliente, fmtBRL)}</td>
+                <td class="num">${advancedCell(vendas?.pedidos_por_cliente, (value) => fmtNum(value, 2))}</td>
+                <td class="num">${advancedCell(vendas?.pares_por_cliente, (value) => fmtNum(value, 2))}</td>
+                <td class="num">${advancedRatioCell(vendas?.pct_base_ativada, 2)}</td>
+                <td class="num">${advancedCell(vendas?.pedidos_classificados_novos, fmtNum)}<div class="metric-sub">${advancedCell(vendas?.pedidos_classificados_recorrentes, fmtNum)} recorr.</div></td>
+                <td>${advancedStatusBadge(win?.status)}${vendas?.clientes_unicos == null ? '<div class="metric-sub">aguarda data/lancamentos_clientes_janelas.json</div>' : ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function lifePeakLine(peak) {
+    if (!peak) return '<span class="cell-muted">Pendente</span>';
+    return `D+${fmtNum(peak.day)}<div class="metric-sub">${fmtDate(peak.data)} &middot; ${fmtBRL(peak.receita)}</div>`;
+  }
+
+  function renderAdvancedLifecycle() {
+    const wrap = $('advanced-lifecycle');
+    if (!wrap) return;
+    const launches = advancedSelectedLaunches().filter((launch) => advancedModelFor(launch));
+    if (!advancedPayload() || !launches.length) {
+      wrap.innerHTML = `<div class="empty-state"><div><strong>Sem rampa avancada.</strong>Gere o JSON avancado para ver vida util e marcos acumulados.</div></div>`;
+      return;
+    }
+
+    wrap.innerHTML = `
+      <div class="advanced-card-grid">
+        ${launches.map((launch) => {
+          const model = advancedModelFor(launch);
+          const ramp = model?.rampa_estendida || {};
+          const life = ramp.vida_util || {};
+          const isLimited = model?.disponibilidade?.export_atual_limitado_a_d90;
+          const soldDay = numberOrNull(model?.disponibilidade?.ultimo_dia_com_venda) ?? numberOrNull(model?.disponibilidade?.ultimo_dia_disponivel);
+          const exportedDay = numberOrNull(model?.disponibilidade?.ultimo_dia_exportado) ?? soldDay;
+          const coverageTip = soldDay !== null && exportedDay !== null && exportedDay > soldDay
+            ? `Export cobre ate D+${fmtNum(exportedDay)}; ultimo dia com venda registrada D+${fmtNum(soldDay)}.`
+            : 'Ultimo dia coberto ou observado no JSON.';
+          return `
+            <div class="card advanced-life-card">
+              <div class="advanced-card-head">
+                <div>
+                  <span class="launch-card-kicker">${escapeHtml(launch.linha || launch.modelo)}</span>
+                  <h3>${escapeHtml(launch.modelo)}</h3>
+                </div>
+                ${isLimited ? badge('parcial', 'ate D+90', 'O export atual ainda nao traz pos-D90 para historicos.') : badge('pipeline', `D+${fmtNum(exportedDay)}`, coverageTip)}
+              </div>
+              <div class="advanced-kpi-grid">
+                <div><span>Receita estendida</span><strong>${advancedCell(ramp.vendas?.receita, fmtBRL)}</strong><small>${escapeHtml(ramp.start_date || 'sem data')} a ${escapeHtml(ramp.end_date || 'sem data')}</small></div>
+                <div><span>Pico receita</span><strong>${lifePeakLine(life.peak_revenue_day)}</strong><small>maior dia de faturamento</small></div>
+                <div><span>50 / 80 / 90%</span><strong>${advancedCell(life.days_to_50pct_revenue, (v) => `D+${fmtNum(v)}`)} &middot; ${advancedCell(life.days_to_80pct_revenue, (v) => `D+${fmtNum(v)}`)} &middot; ${advancedCell(life.days_to_90pct_revenue, (v) => `D+${fmtNum(v)}`)}</strong><small>tempo ate receita acumulada</small></div>
+                <div><span>Queda pos-pico</span><strong>${advancedRatioCell(life.post_peak_decay_pct, 1)}</strong><small>7 dias depois do pico vs semana do pico</small></div>
+                <div><span>Vida comercial</span><strong>${advancedCell(life.commercial_life_days, (v) => `D+${fmtNum(v)}`)}</strong><small>${escapeHtml(life.leitura || 'pendente')}</small></div>
+                <div><span>Hype / sustentacao</span><strong>${advancedRatioCell(life.hype_initial_revenue_pct, 1)} &middot; ${advancedRatioCell(life.sustain_revenue_pct, 1)}</strong><small>D+7 da receita &middot; pos D+15</small></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function renderAdvancedChannelsRoas() {
+    const wrap = $('advanced-channels-roas');
+    if (!wrap) return;
+    const launches = advancedSelectedLaunches().filter((launch) => advancedModelFor(launch));
+    if (!advancedPayload() || !launches.length) {
+      wrap.innerHTML = '';
+      return;
+    }
+
+    const rows = launches.flatMap((launch) => WINDOW_KEYS.map((key) => ({
+      launch,
+      key,
+      win: advancedWindowFor(launch, key)
+    })));
+
+    wrap.innerHTML = `
+      <p class="actions-module-label">Canais e ROAS ajustado</p>
+      <div class="table-wrap advanced-table-wrap">
+        <table style="min-width:1500px">
+          <thead>
+            <tr>
+              ${thTip('Lancamento', 'Modelo comparado.')}
+              ${thTip('Janela', 'Janela relativa ao D0 do lancamento.')}
+              ${thTip('Midia paga', 'Receita e pedidos classificados como paid pelo SSOT.', 'num')}
+              ${thTip('Organico', 'Pedidos classificados como WhatsApp Organico, E-mail, Direto, Social, Organico ou Outros.', 'num')}
+              ${thTip('CRM', 'Investimento CRM separado; receita de CRM so aparece com atribuicao real.', 'num')}
+              ${thTip('Invest. midia', 'Somente midia_paga.json; CRM nao entra como midia paga.', 'num')}
+              ${thTip('Invest. CRM', 'crm_disparos.json na janela do lancamento.', 'num')}
+              ${thTip('Invest. total', 'Midia paga + CRM + outros, quando existirem.', 'num')}
+              ${thTip('ROAS midia', 'Receita de midia paga / investimento de midia paga, apenas com ressalva de qualidade.', 'num')}
+              ${thTip('Qualidade', 'Real, alocado, inferido ou pendente.')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(({ launch, key, win }) => {
+              const vendas = win?.vendas || {};
+              const paid = vendas.canais?.paid || {};
+              const organic = vendas.canais?.organic || {};
+              const crm = vendas.canais?.crm || {};
+              const investment = win?.investimento || {};
+              return `
+                <tr class="${key === selectedPeriodKey() ? 'is-selected-window' : ''}">
+                  <td class="model-name">${escapeHtml(launch.modelo)}</td>
+                  <td>${escapeHtml(windowLabel(key))}<div class="metric-sub">${advancedStatusBadge(win?.status)}</div></td>
+                  <td class="num">${advancedCell(paid.receita, fmtBRL)}<div class="metric-sub">${advancedCell(paid.pedidos, fmtNum)} pedidos &middot; ${advancedQualityBadge(paid.qualidade)}</div></td>
+                  <td class="num">${advancedCell(organic.receita, fmtBRL)}<div class="metric-sub">${advancedCell(organic.pedidos, fmtNum)} pedidos &middot; ${advancedQualityBadge(organic.qualidade)}</div></td>
+                  <td class="num">${advancedCell(crm.receita, fmtBRL)}<div class="metric-sub">receita real CRM; investimento separado</div></td>
+                  <td class="num">${advancedCell(investment.midia_paga, fmtBRL)}</td>
+                  <td class="num">${advancedCell(investment.crm, fmtBRL)}</td>
+                  <td class="num">${advancedCell(investment.total, fmtBRL)}<div class="metric-sub">${escapeHtml(investment.confiabilidade || 'pendente')}</div></td>
+                  <td class="num">${advancedRoasCell(win?.roas)}</td>
+                  <td>${advancedQualityBadge(vendas.canal_qualidade)}<div class="metric-sub">${escapeHtml(win?.roas?.observacao || '')}</div></td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderAdvancedAlerts() {
+    const wrap = $('advanced-alerts');
+    if (!wrap) return;
+    const payload = advancedPayload();
+    if (!payload) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const selected = advancedSelectedLaunches();
+    const alerts = [
+      ...(payload.data_quality?.alertas || []),
+      ...selected.flatMap((launch) => (advancedModelFor(launch)?.alertas || []).map((alerta) => `${launch.modelo}: ${alerta}`))
+    ].filter(Boolean);
+    const uniqueAlerts = [...new Set(alerts)].slice(0, 10);
+    wrap.innerHTML = uniqueAlerts.length ? `
+      <p class="actions-module-label">Alertas de dados</p>
+      <div class="advanced-alert-list">
+        ${uniqueAlerts.map((alerta, index) => `
+          <div class="insight warn">
+            <div class="insight-num">${String(index + 1).padStart(2, '0')}</div>
+            <div><div class="insight-title">Dado em acompanhamento</div><div class="insight-copy">${escapeHtml(alerta)}</div></div>
+            <div>${badge('parcial', 'Atencao')}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : '';
   }
 
   function metasMensaisRows() {
@@ -8485,9 +10537,10 @@
 
   function renderCharts(selected) {
     destroyCharts();
+    const chartLaunches = selectedCompareLaunches();
+    renderSharePeriodAnalysis(selected, chartLaunches);
     if (!window.Chart) return;
 
-    const chartLaunches = selectedCompareLaunches();
     const labels = WINDOW_KEYS;
     const windowData = (launch, key) => filteredWindowDataForLaunch(launch, key);
     const windowChartLaunches = chartLaunches.filter((launch) => labels.some((key) => Boolean(windowData(launch, key))));
@@ -9775,13 +11828,14 @@
       const attribution = attributionForSelectedPeriod(row.launch);
       add(totals.paid, attribution.receita_paga, attribution.pedidos_pagos);
       add(totals.organic, attribution.receita_organica, attribution.pedidos_organicos);
-      add(totals.organic, attribution.receita_outros_canais, attribution.pedidos_outros_canais);
-      add(totals.organic, attribution.receita_sem_match_atribuicao, attribution.pedidos_sem_match_atribuicao);
+      add(totals.crm, attribution.receita_crm, attribution.pedidos_crm);
+      add(totals.other, attribution.receita_outros_canais, attribution.pedidos_outros_canais);
+      add(totals.unmatched, attribution.receita_sem_match_atribuicao, attribution.pedidos_sem_match_atribuicao);
     });
-    totals.hasAnyAttributed = ['paid', 'organic'].some((key) => totals[key].hasReceita || totals[key].hasPedidos);
-    totals.receitaClassificada = ['paid', 'organic']
+    totals.hasAnyAttributed = ['paid', 'organic', 'crm', 'other', 'unmatched'].some((key) => totals[key].hasReceita || totals[key].hasPedidos);
+    totals.receitaClassificada = ['paid', 'organic', 'crm', 'other', 'unmatched']
       .reduce((acc, key) => acc + (totals[key].hasReceita ? totals[key].receita : 0), 0);
-    totals.pedidosClassificados = ['paid', 'organic']
+    totals.pedidosClassificados = ['paid', 'organic', 'crm', 'other', 'unmatched']
       .reduce((acc, key) => acc + (totals[key].hasPedidos ? totals[key].pedidos : 0), 0);
     return totals;
   }
@@ -9829,11 +11883,13 @@
       : status === 'sem_atribuicao_real'
         ? 'Aguardando a exporta&ccedil;&atilde;o por pedido casar os canais com os produtos. A tabela principal fica sem pago/org&acirc;nico enquanto essa atribui&ccedil;&atilde;o n&atilde;o existir.'
         : 'Ainda sem receita_paga ou receita_organica no payload do produto para a janela selecionada.';
+    const controls = combinedAttributionBucket(totals.crm, totals.other, totals.unmatched);
     wrap.innerHTML = `
       ${channelAttributionCard('Pedidos de midia paga', totals.paid, 'channel-attribution-card--paid', totals.receitaClassificada)}
       ${channelAttributionCard('Pedidos organicos', totals.organic, 'channel-attribution-card--organic', totals.receitaClassificada)}
+      ${channelAttributionCard('Controles', controls, 'channel-attribution-card--other', totals.receitaClassificada)}
       <div class="channel-attribution-note">
-        Resultado por canal do lan&ccedil;amento, n&atilde;o por campanha individual. Pedido com sinal de midia paga entra em pago; todo o restante entra em organico. ${statusCopy}
+        Resultado por canal do lan&ccedil;amento, n&atilde;o por campanha individual. Midia paga = sinais de anuncio como cpc, pmax, paid, demand-gen e performance; organico = busca/social/SEO organico; controles = direto, e-mail/CRM, WhatsApp, outros e nao atribuidos. ${statusCopy}
       </div>
     `;
   }
@@ -10164,8 +12220,8 @@
               ${thTip('Janela base', 'Janela fixa usada para contextualizar a receita do modelo, sempre a partir do D0 do lançamento.')}
               ${thTip('Receita modelo', 'Receita do modelo na janela base. Fonte: vendas do pipeline ou histórico versionado.', 'num')}
               ${thTip('Invest. total', 'Soma do investimento declarado na planilha principal: midia_paga + crm_disparos. A planilha diaria foi retirada desta leitura.', 'num')}
-              ${thTip('Receita midia paga', 'Receita classificada como paga pelo SSOT, com origem granular ou alocacao binaria.', 'num')}
-              ${thTip('Pedidos midia paga', 'Pedidos classificados como pagos pelo SSOT, com origem granular ou alocacao binaria.', 'num')}
+              ${thTip('Receita midia paga', 'Receita com sinais de anuncio, como cpc, pmax, paid, demand-gen, performance, ads, display ou source_type pago.', 'num')}
+              ${thTip('Pedidos midia paga', 'Pedidos com sinais de anuncio, como cpc, pmax, paid, demand-gen, performance, ads, display ou source_type pago.', 'num')}
               ${thTip('ROAS midia paga', 'Receita dos pedidos de midia paga / investimento total declarado.', 'num')}
               ${thTip('CPA midia paga', 'Investimento total declarado / pedidos de midia paga.', 'num')}
               ${thTip('Receita organica', 'Receita classificada como organica por atribuicao real de pedido.', 'num')}
@@ -10644,6 +12700,10 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     renderReadingSupport(selected);
     renderStoryBrief(selected);
     renderCharts(selected);
+    renderAdvancedClients();
+    renderAdvancedLifecycle();
+    renderAdvancedChannelsRoas();
+    renderAdvancedAlerts();
     applyCollapsibleLists(document);
   }
 
@@ -10683,6 +12743,7 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
   async function init() {
     configureDrawer();
     configureNormalizedChartModeToggle();
+    configureNormalizedRampMetricToggle();
     configureCommercialChartMetricToggle();
     configureLaunchChartViewToggle();
     configureLaunchChartZoom();
