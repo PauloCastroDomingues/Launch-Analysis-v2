@@ -253,6 +253,15 @@ sessoes = ultima versao diaria de shopify_sessions_daily por data, usando ingest
 
 Essa leitura não usa GA4, tabelas de marketing, campanhas ou atribuição. O JSON público esperado é `data/lancamentos_rps_dia.json`; ausência de sessões fica pendente e não vira zero. Quando há sessões e não há pedido válido no dia, a receita do dia pode ser 0.
 
+Para reduzir ruído, o gráfico principal não usa o RPS diário bruto como linha de decisão. A leitura visual usa **RPS MM7**:
+
+```txt
+RPS MM7 = receita_total dos ultimos 7 dias / sessoes dos ultimos 7 dias
+Indice RPS = RPS MM7 do produto / mediana do grupo no mesmo D+
+```
+
+O RPS diário continua disponível como detalhe de auditoria no tooltip. A saúde do produto é lida por RPS MM7, tendência contra os 7 dias anteriores, mediana do grupo e faixa P25-P75 dos lançamentos comparáveis.
+
 ### Regra canônica de classificação de SKU/produto
 
 A classificação usada por vendas, auditoria Monochrome e estoque fica centralizada na CTE `itens_classificados_v1` em `apps_script/ExportLaunchAnalysis.gs`.

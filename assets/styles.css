@@ -5547,6 +5547,9 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   grid-template-columns: repeat(3, minmax(78px, 1fr));
   gap: 0;
 }
+.share-period-metrics--rps {
+  grid-template-columns: repeat(4, minmax(70px, 1fr));
+}
 .share-period-metric {
   min-width: 0;
   display: grid;
@@ -5586,6 +5589,10 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 .share-period-metric--negative strong,
 .share-period-metric--negative small {
   color: var(--negative-text);
+}
+.share-period-metric--warning strong,
+.share-period-metric--warning small {
+  color: var(--warning);
 }
 .share-period-method {
   justify-self: end;
@@ -5627,6 +5634,9 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   }
   .share-period-metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .share-period-metrics--rps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .share-period-method {
     justify-self: start;

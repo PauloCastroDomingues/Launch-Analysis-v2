@@ -63,6 +63,7 @@
   const RAMP_MONTH_DAYS = 30;
   const MILESTONE_DAYS = [0, 7, 15, 30, 60, 90];
   const RAMP_RHYTHM_WINDOW_DAYS = 7;
+  const RPS_SMOOTHING_WINDOW_DAYS = 7;
   const RAMP_RHYTHM_TREND_LIMIT = 0.10;
   const RAMP_STABILITY_STRONG_RATIO = 0.50;
   const RAMP_STABILITY_MIN_RATIO = 0.35;
@@ -1538,14 +1539,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const configs = {
       rps_diario: {
         key: 'rps_diario',
-        label: 'RPS - Receita por sessão',
-        shortLabel: 'RPS',
+        label: 'RPS MM7 - Saúde do produto',
+        shortLabel: 'RPS MM7',
         field: 'rps',
         format: 'brl',
         cadence: 'dia',
         cumulative: false,
         rps: true,
-        tooltip: 'RPS = receita total / sessões. Receita vem de mart_growth_us.bridge_orders_customers; sessões vêm de mart_growth_us.shopify_sessions_daily. Não usa GA4, marketing, campanhas ou atribuição.'
+        tooltip: 'Leitura principal: RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. Receita vem de mart_growth_us.bridge_orders_customers; sessoes vêm de mart_growth_us.shopify_sessions_daily. Não usa GA4, marketing, campanhas ou atribuição.'
       },
       receita_acumulada: {
         key: 'receita_acumulada',
@@ -1828,18 +1829,102 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       .sort((a, b) => a.day - b.day);
   }
 
+  function rpsAggregatePointsByDay(points = []) {
+    const byDay = new Map();
+    points.forEach((point) => {
+      if (point?.day === null || point?.day === undefined) return;
+      const day = Number(point.day);
+      const current = byDay.get(day) || {
+        ...point,
+        day,
+        receita_total: 0,
+        sessoes: 0,
+        pedidos: null,
+        rps: null,
+        rows: []
+      };
+      current.receita_total += Number(point.receita_total || 0);
+      current.sessoes += Number(point.sessoes || 0);
+      current.pedidos = point.pedidos === null && current.pedidos === null
+        ? null
+        : Number(current.pedidos || 0) + Number(point.pedidos || 0);
+      current.data_calendario = current.data_calendario || point.data_calendario || null;
+      current.ingest_ts = current.ingest_ts || point.ingest_ts || null;
+      current.rows.push(point);
+      byDay.set(day, current);
+    });
+    byDay.forEach((point) => {
+      point.rps = ratioOrNull(point.receita_total, point.sessoes);
+    });
+    return byDay;
+  }
+
+  function rpsWindowSummaryFromMap(byDay, startDay, endDay) {
+    const points = [];
+    for (let day = Math.max(0, Number(startDay) || 0); day <= endDay; day += 1) {
+      const point = byDay.get(day);
+      if (point && point.sessoes !== null) points.push(point);
+    }
+    if (!points.length) return null;
+    const receita = points.reduce((acc, point) => acc + Number(point.receita_total || 0), 0);
+    const sessoes = points.reduce((acc, point) => acc + Number(point.sessoes || 0), 0);
+    const pedidos = points.some((point) => point.pedidos !== null)
+      ? points.reduce((acc, point) => acc + Number(point.pedidos || 0), 0)
+      : null;
+    return {
+      startDay,
+      endDay,
+      observedStartDay: points[0]?.day ?? startDay,
+      observedEndDay: points[points.length - 1]?.day ?? endDay,
+      startIso: points[0]?.data_calendario || null,
+      endIso: points[points.length - 1]?.data_calendario || null,
+      daysCovered: points.length,
+      receita,
+      sessoes,
+      pedidos,
+      rps: ratioOrNull(receita, sessoes)
+    };
+  }
+
+  function rpsQuantile(values, quantile, digits = 4) {
+    const valid = values
+      .map((value) => numberOrNull(value))
+      .filter((value) => value !== null)
+      .sort((a, b) => a - b);
+    if (!valid.length) return null;
+    const pos = (valid.length - 1) * Math.min(1, Math.max(0, Number(quantile) || 0));
+    const base = Math.floor(pos);
+    const rest = pos - base;
+    const next = valid[base + 1];
+    const value = next === undefined ? valid[base] : valid[base] + rest * (next - valid[base]);
+    const factor = 10 ** digits;
+    return Math.round(value * factor) / factor;
+  }
+
   function rpsRampDatasetData(launch, metric, maxDay) {
     const data = Array(maxDay + 1).fill(null);
     const rpsMeta = Array(maxDay + 1).fill(null);
     const points = rpsPointsForLaunch(launch, maxDay);
-    points.forEach((point) => {
-      if (point.day === null || point.rps === null) return;
-      data[point.day] = point.rps;
-      rpsMeta[point.day] = {
-        ...point,
-        formula: 'receita_total / sessoes'
+    const byDay = rpsAggregatePointsByDay(points);
+    for (let day = 0; day <= maxDay; day += 1) {
+      const daily = byDay.get(day);
+      if (!daily || daily.sessoes === null) continue;
+      const startDay = Math.max(0, day - RPS_SMOOTHING_WINDOW_DAYS + 1);
+      const summary = rpsWindowSummaryFromMap(byDay, startDay, day);
+      if (!summary || summary.rps === null) continue;
+      data[day] = summary.rps;
+      rpsMeta[day] = {
+        ...summary,
+        day,
+        windowDays: RPS_SMOOTHING_WINDOW_DAYS,
+        daily_rps: daily.rps,
+        daily_receita_total: daily.receita_total,
+        daily_sessoes: daily.sessoes,
+        daily_pedidos: daily.pedidos,
+        data_calendario: daily.data_calendario || summary.endIso || null,
+        formula: 'receita_7d / sessoes_7d'
       };
-    });
+    }
     const validDays = rpsMeta
       .map((meta, day) => meta ? day : null)
       .filter((day) => day !== null);
@@ -1848,8 +1933,92 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       rpsMeta,
       lastDataDay: validDays.length ? Math.max(...validDays) : null,
       sourceRows: points,
-      sourceLabel: 'lancamentos_rps_dia.json'
+      sourceLabel: 'RPS MM7 a partir de lancamentos_rps_dia.json'
     };
+  }
+
+  function rpsBenchmarkDatasetData(chartLaunches, maxDay) {
+    const launchSeries = (chartLaunches || []).map((launch) => ({
+      launch,
+      series: rpsRampDatasetData(launch, rampMetricConfig('rps_diario'), maxDay)
+    }));
+    const p25 = Array(maxDay + 1).fill(null);
+    const median = Array(maxDay + 1).fill(null);
+    const p75 = Array(maxDay + 1).fill(null);
+    const meta = Array(maxDay + 1).fill(null);
+    for (let day = 0; day <= maxDay; day += 1) {
+      const rows = launchSeries
+        .map(({ launch, series }) => ({
+          launch,
+          value: numberOrNull(series.data?.[day]),
+          rpsMeta: series.rpsMeta?.[day] || null
+        }))
+        .filter((row) => row.value !== null)
+        .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+      const values = rows.map((row) => row.value);
+      if (!values.length) continue;
+      p25[day] = rpsQuantile(values, 0.25, 4);
+      median[day] = rpsQuantile(values, 0.5, 4);
+      p75[day] = rpsQuantile(values, 0.75, 4);
+      meta[day] = {
+        count: rows.length,
+        p25: p25[day],
+        median: median[day],
+        p75: p75[day],
+        rows
+      };
+    }
+    return { p25, median, p75, meta };
+  }
+
+  function rpsBenchmarkChartDatasets(chartLaunches, maxDay, lensStart, lensEnd) {
+    const benchmark = rpsBenchmarkDatasetData(chartLaunches, maxDay);
+    const slice = (values) => values.slice(lensStart, lensEnd + 1);
+    return [
+      {
+        label: 'Faixa do grupo (P25-P75)',
+        data: slice(benchmark.p75),
+        borderColor: 'rgba(76, 175, 125, 0)',
+        backgroundColor: 'rgba(76, 175, 125, 0.12)',
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0.32,
+        spanGaps: true,
+        fill: false,
+        isRpsReferenceBand: true,
+        isRpsBandAnchor: true,
+        rpsBenchmarkMeta: benchmark.meta
+      },
+      {
+        label: 'Faixa do grupo (P25-P75)',
+        data: slice(benchmark.p25),
+        borderColor: 'rgba(76, 175, 125, 0)',
+        backgroundColor: 'rgba(76, 175, 125, 0.12)',
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0.32,
+        spanGaps: true,
+        fill: '-1',
+        isRpsReferenceBand: true,
+        rpsBenchmarkMeta: benchmark.meta
+      },
+      {
+        label: 'Mediana do grupo',
+        data: slice(benchmark.median),
+        borderColor: 'rgba(255, 255, 255, 0.62)',
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderDash: [6, 4],
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointHitRadius: 10,
+        tension: 0.32,
+        spanGaps: true,
+        fill: false,
+        isRpsBenchmarkMedian: true,
+        rpsBenchmarkMeta: benchmark.meta
+      }
+    ];
   }
 
   function rpsSummaryForRange(launch, startDay, endDay) {
@@ -1927,6 +2096,78 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return `${start} a D+${summary.endDay}${suffix}`;
   }
 
+  function rpsPhaseLabel(day) {
+    const value = numberOrNull(day);
+    if (value === null) return 'fase pendente';
+    if (value <= 30) return 'D0-D30';
+    if (value <= 90) return 'D31-D90';
+    if (value <= 180) return 'D91-D180';
+    return 'D181+';
+  }
+
+  function rpsBenchmarkForDay(chartLaunches, day, selectedId) {
+    const endDay = Math.max(0, Number(day) || 0);
+    const selectedMetric = rampMetricConfig('rps_diario');
+    const rows = (chartLaunches || [])
+      .map((launch) => {
+        const series = rpsRampDatasetData(launch, selectedMetric, endDay);
+        const value = numberOrNull(series.data?.[endDay]);
+        return value === null ? null : { launch, value, meta: series.rpsMeta?.[endDay] || null };
+      })
+      .filter(Boolean)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    const values = rows.map((row) => row.value);
+    const selectedRank = rows.findIndex((row) => row.launch.modelo_id === selectedId);
+    return {
+      rows,
+      count: rows.length,
+      rank: selectedRank >= 0 ? selectedRank + 1 : null,
+      leader: rows[0] || null,
+      p25: rpsQuantile(values, 0.25, 4),
+      median: rpsQuantile(values, 0.5, 4),
+      p75: rpsQuantile(values, 0.75, 4)
+    };
+  }
+
+  function rpsHealthStatus(index) {
+    if (index === null || index === undefined || Number.isNaN(index)) {
+      return { label: 'Pendente', tone: 'neutral', helper: 'benchmark indisponivel' };
+    }
+    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da mediana do grupo' };
+    if (index >= 0.90) return { label: 'Saudavel', tone: 'positive', helper: 'dentro da faixa saudavel' };
+    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da mediana do grupo' };
+    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da mediana do grupo' };
+  }
+
+  function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
+    if (!selected) return null;
+    const maxDay = launchCurrentRampDay(selected);
+    const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
+    const days = series.rpsMeta
+      .map((meta, day) => meta ? day : null)
+      .filter((day) => day !== null);
+    if (!days.length) return null;
+    const day = Math.max(...days);
+    const current = series.rpsMeta[day];
+    const previousEnd = current.startDay - 1;
+    const previousStart = Math.max(0, previousEnd - (current.windowDays || RPS_SMOOTHING_WINDOW_DAYS) + 1);
+    const previous = previousEnd >= 0 ? rpsSummaryForRange(selected, previousStart, previousEnd) : null;
+    const trend = current?.rps !== null && previous?.rps ? (current.rps / previous.rps) - 1 : null;
+    const comparison = [...(chartLaunches || [])];
+    if (!comparison.some((launch) => launch.modelo_id === selected.modelo_id)) comparison.push(selected);
+    const benchmark = rpsBenchmarkForDay(comparison, day, selected.modelo_id);
+    const index = current?.rps !== null && benchmark?.median ? current.rps / benchmark.median : null;
+    return {
+      day,
+      current,
+      previous,
+      trend,
+      benchmark,
+      index,
+      status: rpsHealthStatus(index)
+    };
+  }
+
   function renderRpsPeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
     const wrap = rampPeriodAnalysisWrap();
     if (!wrap) return;
@@ -1936,67 +2177,76 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     }
 
     const model = rpsModelForLaunch(selected);
-    const selectedWindow = rpsSelectedWindowSummaryForLaunch(selected);
-    const recent = rpsRecentWindowSummaryForLaunch(selected, 7);
+    const health = rpsHealthSnapshotForLaunch(selected, chartLaunches);
 
-    if (!model || !selectedWindow) {
+    if (!model || !health?.current) {
       wrap.innerHTML = `
         <div class="share-period-copy">
           <div class="share-period-kicker">${labelTip('RPS', 'RPS = receita total / sessões. Receita vem de bridge_orders_customers e sessões de shopify_sessions_daily.')}</div>
           <strong>RPS pendente</strong>
-          <span>Falta data/lancamentos_rps_dia.json para este lançamento. Rode exportarTudo para gerar o JSON oficial a partir do SSOT e do ShopifyQL.</span>
+          <span>Falta data/lancamentos_rps_dia.json ou sessoes validas para este lançamento. Rode exportarTudo para gerar o JSON oficial a partir do SSOT e do ShopifyQL.</span>
         </div>
       `;
       return;
     }
 
-    const rank = rpsRankForWindow(chartLaunches, selected.modelo_id);
-    const rankValue = rank?.rank ? `${fmtNum(rank.rank)}/${fmtNum(rank.total)}` : '-';
-    const leaderText = rank?.leader && rank.leader.launch.modelo_id !== selected.modelo_id
-      ? `lider: ${rank.leader.launch.modelo} (${fmtBRL(rank.leader.value)})`
-      : 'lider ou empatado';
-    const periodText = rpsPeriodLabel(selectedWindow);
-    const recentPeriodText = recent?.current ? rpsPeriodLabel(recent.current) : 'ultimos 7 dias pendentes';
-    const deltaText = recent?.delta === null || recent?.delta === undefined ? 'sem comparativo' : fmtSignedPct(recent.delta, 0);
-    const sourceUntil = model.dado_ate || selectedWindow.endIso || snapshotIso();
+    const periodText = rpsPeriodLabel(health.current);
+    const previousText = health.previous ? rpsPeriodLabel(health.previous) : 'janela anterior pendente';
+    const trendText = health.trend === null || health.trend === undefined ? 'sem comparativo' : fmtSignedPct(health.trend, 0);
+    const indexText = health.index === null || health.index === undefined ? '-' : `${fmtNum(health.index, 2)}x`;
+    const rankText = health.benchmark?.rank ? `${fmtNum(health.benchmark.rank)}/${fmtNum(health.benchmark.count)}` : 'sem ranking';
+    const medianText = health.benchmark?.median ? fmtBRL(health.benchmark.median) : 'mediana pendente';
+    const bandText = health.benchmark?.p25 !== null && health.benchmark?.p75 !== null
+      ? `${fmtBRL(health.benchmark.p25)} a ${fmtBRL(health.benchmark.p75)}`
+      : 'faixa pendente';
+    const phaseText = rpsPhaseLabel(health.day);
+    const sourceUntil = model.dado_ate || health.current.endIso || snapshotIso();
     const methodItems = [
       `Fonte receita: ${model.fonte_receita || 'bridge_orders_customers'}`,
       `Fonte sessões: ${model.fonte_sessoes || 'shopify_sessions_daily'}`,
-      'Fórmula: receita total / sessões',
+      'Base diaria: receita total / sessoes',
+      'Leitura principal: RPS MM7 = receita 7d / sessoes 7d',
+      'Benchmark: mediana e faixa P25-P75 dos lancamentos selecionados',
       'Sem GA4, marketing, campanhas ou atribuição',
       `Dado até: ${fmtDateSlash(sourceUntil)}`
     ];
-    const narrative = `${selected.modelo}: ${fmtBRL(selectedWindow.rps)} por sessão em ${periodText}. Receita e sessões são totais da loja no calendário alinhado ao D0.`;
+    const narrative = `${selected.modelo}: ${health.status.label} com RPS MM7 de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs mediana do grupo (${medianText}); tendencia ${trendText} vs ${previousText}.`;
 
     wrap.innerHTML = `
       <div class="share-period-copy">
-        <div class="share-period-kicker">${labelTip('Receita por sessão', 'RPS = receita total / sessões. Não usa GA4, marketing, campanhas ou atribuição.')}</div>
+        <div class="share-period-kicker">${labelTip('Saude por RPS MM7', 'RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. O status compara o produto com a mediana do grupo no mesmo D+.')}</div>
         <strong>Leitura rapida</strong>
         <span>${escapeHtml(narrative)}</span>
       </div>
-      <div class="share-period-metrics">
+      <div class="share-period-metrics share-period-metrics--rps">
         ${sharePeriodCompactMetricHtml({
-          label: 'Janela',
-          value: fmtBRL(selectedWindow.rps),
-          helper: `${periodText} | ${fmtNum(selectedWindow.sessoes)} sessões`,
+          label: 'RPS MM7',
+          value: fmtBRL(health.current.rps),
+          helper: `${periodText} | ${fmtNum(health.current.sessoes)} sessoes`,
           tone: 'neutral'
         })}
         ${sharePeriodCompactMetricHtml({
-          label: 'Ult. 7 dias',
-          value: recent?.current ? fmtBRL(recent.current.rps) : '-',
-          helper: `${recentPeriodText} | ${deltaText}`,
-          tone: shareTrendTone(recent?.delta)
+          label: 'Indice',
+          value: indexText,
+          helper: `mediana ${medianText}`,
+          tone: health.index !== null && health.index >= 1 ? 'positive' : health.status.tone
         })}
         ${sharePeriodCompactMetricHtml({
-          label: 'Grupo',
-          value: rankValue,
-          helper: leaderText,
-          tone: rank?.rank === 1 ? 'positive' : 'neutral'
+          label: 'Tendencia',
+          value: trendText,
+          helper: previousText,
+          tone: shareTrendTone(health.trend)
+        })}
+        ${sharePeriodCompactMetricHtml({
+          label: 'Status',
+          value: health.status.label,
+          helper: `${phaseText} | grupo ${rankText}`,
+          tone: health.status.tone
         })}
       </div>
       <details class="share-period-method">
         <summary>Base</summary>
-        <span>${escapeHtml(methodItems.join(' | '))}</span>
+        <span>${escapeHtml(`${methodItems.join(' | ')} | Faixa P25-P75 no D+${fmtNum(health.day)}: ${bandText}`)}</span>
       </details>
     `;
   }
@@ -3529,7 +3779,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">Loja total: receita SSOT / sessões ShopifyQL. Produto, cor e canal não entram.</span>'
+      ? '<span class="ramp-rps-scope">RPS MM7 da loja total: receita SSOT / sessoes ShopifyQL. Produto, cor e canal nao entram.</span>'
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -9197,7 +9447,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `Receita total / sessões por dia de vida comercial - ${coverage}`;
+          subText.textContent = `RPS MM7 com destaque do produto, mediana e faixa P25-P75 do grupo - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -9213,12 +9463,17 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             : `${rampMetric.shortLabel} acumulado por dia desde o lancamento · ${coverage}`;
       }
         }
+      const selectedLineLaunches = normalizedLaunches.filter((launch) => launch.modelo_id === selected.modelo_id);
+      const visibleLineLaunches = isRps
+        ? (selectedLineLaunches.length ? selectedLineLaunches : [selected])
+        : normalizedLaunches;
       createChart(canvasId, {
         type: 'line',
         data: {
           labels: normalizedLabels,
           datasets: [
-            ...normalizedLaunches.map((launch, index) => {
+            ...(isRps ? rpsBenchmarkChartDatasets(normalizedLaunches, maxDay, lensStart, lensEnd) : []),
+            ...visibleLineLaunches.map((launch, index) => {
               const filteredSeries = isProductFilterActive() || isChannelFilterActive();
               const series = isRps
                 ? rpsRampDatasetData(launch, rampMetric, maxDay)
@@ -9247,6 +9502,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                 ? numberOrNull(series.lastDataIndex)
                 : numberOrNull(series.lastDataDay) ?? (validDataDays.length ? Math.max(...validDataDays) : null);
               const isSelected = launch.modelo_id === selected.modelo_id;
+              const lineColor = colorFor(launch.modelo_id, index);
+              const fillColor = fillFor(launch.modelo_id, index);
               const sourceLabel = isRps
                 ? 'lancamentos_rps_dia.json'
                 : isShare
@@ -9261,13 +9518,18 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                       ? 'diario real'
                       : 'sem serie diaria';
               return {
-                label: isBackfilled && !filteredSeries ? `${launch.modelo} - backfill` : launch.modelo,
+                label: isRps && isSelected
+                  ? `${launch.modelo} (RPS MM7)`
+                  : isBackfilled && !filteredSeries ? `${launch.modelo} - backfill` : launch.modelo,
                 data,
-                borderColor: colorFor(launch.modelo_id, index),
-                backgroundColor: fillFor(launch.modelo_id, index),
-                borderWidth: isSelected ? 3 : 2,
-                borderDash: !isMonthly && !isHealth && !isShare && isBackfilled && !filteredSeries ? [4, 4] : [],
-                fill: !isMonthly && !isHealth && !isShare && isSelected ? 'origin' : false,
+                borderColor: lineColor,
+                backgroundColor: fillColor,
+                borderWidth: isRps ? (isSelected ? 3 : 1.5) : isSelected ? 3 : 2,
+                borderDash: isRps && !isSelected
+                  ? [2, 4]
+                  : !isMonthly && !isHealth && !isShare && isBackfilled && !filteredSeries ? [4, 4] : [],
+                fill: isRps ? false : !isMonthly && !isHealth && !isShare && isSelected ? 'origin' : false,
+                hidden: isRps && !isSelected,
                 pointRadius: (ctx) => {
                   const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
                   if (data[ctx.dataIndex] === null || data[ctx.dataIndex] === undefined) return 0;
@@ -9277,6 +9539,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                     if (meta.isStabilization) return isSelected ? 7 : 6;
                     if (periodIndex === lastDataIndex) return isSelected ? 4 : 3;
                     return (periodIndex === 0 || (periodIndex + 1) % 4 === 0) ? (isSelected ? 3 : 2) : 0;
+                  }
+                  if (isRps) {
+                    if (periodIndex === lastDataIndex) return isSelected ? 4 : 3;
+                    return (MILESTONE_DAYS.includes(periodIndex) || periodIndex % 30 === 0) ? (isSelected ? 2 : 0) : 0;
                   }
                   if (isMonthly) return isSelected ? 4 : 3;
                   if (periodIndex === lastDataIndex) return isSelected ? 4 : 3;
@@ -9300,8 +9566,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                   const periodIndex = isMonthly ? ctx.dataIndex : isWeekly ? weeklyLens.startWeek + ctx.dataIndex : lensStart + ctx.dataIndex;
                   return isHealth && series.healthMeta?.[periodIndex]?.isStabilization ? 2 : 1;
                 },
-                tension: isMonthly ? 0.26 : 0.32,
-                spanGaps: false,
+                tension: isRps ? 0.28 : isMonthly ? 0.26 : 0.32,
+                spanGaps: isRps,
                 sourceLabel,
                 healthMeta: series.healthMeta || null,
                 shareMeta: series.shareMeta || null,
@@ -9313,15 +9579,21 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ]
         },
         options: chartOptions({
-          interaction: isHealth
+          interaction: isHealth || isRps
             ? { mode: 'nearest', intersect: false, axis: 'xy' }
             : { mode: 'index', intersect: false },
           plugins: {
-            legend: isHealth
+            legend: isHealth || isRps
               ? {
                 position: 'bottom',
                 labels: {
-                  filter: (item, data) => !data.datasets[item.datasetIndex]?.isHealthReference,
+                  filter: (item, data) => {
+                    const dataset = data.datasets[item.datasetIndex];
+                    if (isHealth && dataset?.isHealthReference) return false;
+                    if (isRps && dataset?.isRpsBandAnchor) return false;
+                    if (isRps && dataset?.hidden) return false;
+                    return true;
+                  },
                   usePointStyle: true,
                   boxWidth: 8,
                   boxHeight: 8,
@@ -9330,8 +9602,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
               }
               : { position: 'bottom' },
             tooltip: {
-              position: isHealth ? 'nearest' : 'average',
-              filter: (item) => !item.dataset.isHealthReference,
+              position: isHealth || isRps ? 'nearest' : 'average',
+              filter: (item) => !item.dataset.isHealthReference && !item.dataset.isRpsReferenceBand,
               callbacks: {
                 title: (items) => {
                   const index = items[0]?.dataIndex ?? 0;
@@ -9363,11 +9635,20 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                   }
                   if (isRps) {
                     const day = lensStart + ctx.dataIndex;
+                    if (ctx.dataset.isRpsBenchmarkMedian) {
+                      const bench = ctx.dataset.rpsBenchmarkMeta?.[day];
+                      if (!bench) return 'Benchmark pendente para este D+.';
+                      return [
+                        `Faixa P25-P75: ${fmtBRL(bench.p25)} a ${fmtBRL(bench.p75)}`,
+                        `Base: ${fmtNum(bench.count)} lancamentos com RPS MM7 neste D+.`
+                      ];
+                    }
                     const meta = ctx.dataset.rpsMeta?.[day];
                     if (!meta) return 'RPS pendente: sem sessões ShopifyQL para esta data.';
                     return [
-                      `Receita total: ${fmtBRL(meta.receita_total)} | Sessões: ${fmtNum(meta.sessoes)}`,
-                      `Pedidos validos: ${meta.pedidos === null ? 'pendente' : fmtNum(meta.pedidos)}`,
+                      `Janela MM7: ${rpsPeriodLabel(meta)} | Receita ${fmtBRL(meta.receita)} | Sessoes ${fmtNum(meta.sessoes)}`,
+                      `Dia bruto: ${fmtBRL(meta.daily_rps)} | Receita ${fmtBRL(meta.daily_receita_total)} | Sessoes ${fmtNum(meta.daily_sessoes)}`,
+                      `Pedidos validos na janela: ${meta.pedidos === null ? 'pendente' : fmtNum(meta.pedidos)}`,
                       'Fonte: bridge_orders_customers + shopify_sessions_daily.'
                     ];
                   }
