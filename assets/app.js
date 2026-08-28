@@ -1539,14 +1539,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const configs = {
       rps_diario: {
         key: 'rps_diario',
-        label: 'RPS MM7 - Saude por linha',
-        shortLabel: 'RPS MM7',
+        label: 'RPS - Saude por linha',
+        shortLabel: 'RPS',
         field: 'rps',
         format: 'brl',
         cadence: 'dia',
         cumulative: false,
         rps: true,
-        tooltip: 'Leitura principal: RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. Status usa regua por linha/produto: mesma linha quando houver pares, ou mediana propria por fase. Receita vem de mart_growth_us.bridge_orders_customers; sessoes vem de mart_growth_us.shopify_sessions_daily. Nao usa GA4, marketing, campanhas ou atribuicao.'
+        tooltip: 'Diagnostico principal: RPS fixo da fase = soma(receita) / soma(sessoes). A curva MM7 suaviza a tendencia visual. Status usa regua fixa por linha/produto: mesma linha quando houver pares, ou fase anterior do proprio produto. Nao usa GA4, marketing, campanhas ou atribuicao.'
       },
       receita_acumulada: {
         key: 'receita_acumulada',
@@ -1984,109 +1984,150 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     ];
   }
 
-  function rpsSeriesValuesInRange(series, startDay, endDay) {
-    const values = [];
-    for (let day = Math.max(0, Number(startDay) || 0); day <= endDay; day += 1) {
-      const value = numberOrNull(series.data?.[day]);
-      if (value !== null) values.push(value);
+  function rpsPhaseForDay(day, maxDay) {
+    const phaseKey = rpsPhaseConfig(day).key;
+    const phase = rpsPhaseConfigs(maxDay).find((item) => item.key === phaseKey) || rpsPhaseConfig(day);
+    const phaseEnd = Math.min(phase.end ?? maxDay, Math.max(0, Number(maxDay) || 0));
+    return {
+      ...phase,
+      end: phaseEnd,
+      targetEnd: phase.end ?? phaseEnd,
+      partial: phaseEnd < (phase.end ?? phaseEnd)
+    };
+  }
+
+  function rpsPreviousPhase(phase, maxDay) {
+    const phases = rpsPhaseConfigs(maxDay);
+    const index = phases.findIndex((item) => item.key === phase?.key);
+    return index > 0 ? phases[index - 1] : null;
+  }
+
+  function rpsFixedPhaseSummaryForLaunch(launch, phase, maxDay) {
+    if (!launch || !phase) return null;
+    const latestDay = Math.min(rpsLatestDataDay(launch), Math.max(0, Number(maxDay) || 0));
+    const observedEnd = Math.min(phase.end ?? latestDay, latestDay);
+    if (phase.start > observedEnd) return null;
+    const summary = rpsSummaryForRange(launch, phase.start, observedEnd);
+    if (!summary || summary.rps === null || summary.daysCovered < (phase.minPoints || 1)) return null;
+    return {
+      ...summary,
+      phaseKey: phase.key,
+      phaseLabel: phase.label,
+      targetStartDay: phase.start,
+      targetEndDay: phase.end ?? observedEnd,
+      partial: observedEnd < (phase.end ?? observedEnd),
+      formula: 'receita_fase / sessoes_fase'
+    };
+  }
+
+  function rpsRulerMetaFromValue(value, extras = {}) {
+    const rulerValue = numberOrNull(value);
+    if (rulerValue === null) return null;
+    return {
+      value: rulerValue,
+      lower: rulerValue * 0.90,
+      upper: rulerValue * 1.10,
+      median: rulerValue,
+      p75: rulerValue * 1.10,
+      ...extras
+    };
+  }
+
+  function rpsSelfFixedRulerForPhase(selected, phase, maxDay) {
+    const previousPhase = rpsPreviousPhase(phase, maxDay);
+    const previousSummary = previousPhase ? rpsFixedPhaseSummaryForLaunch(selected, previousPhase, maxDay) : null;
+    const currentSummary = rpsFixedPhaseSummaryForLaunch(selected, phase, maxDay);
+    const basisSummary = previousSummary || currentSummary;
+    if (!basisSummary || basisSummary.rps === null) return null;
+    const isInitialBasis = !previousSummary;
+    return rpsRulerMetaFromValue(basisSummary.rps, {
+      count: basisSummary.daysCovered,
+      phaseLabel: phase.label,
+      basisLabel: isInitialBasis ? `base fixa ${basisSummary.phaseLabel}` : `regua propria ${basisSummary.phaseLabel}`,
+      mode: 'self',
+      lineLabel: rpsLineLabel(selected),
+      sourceLabel: isInitialBasis
+        ? `${selected.modelo}: RPS fixo da fase inicial`
+        : `${selected.modelo}: RPS fixo da fase anterior`,
+      basisSummary,
+      currentSummary,
+      isInitialBasis
+    });
+  }
+
+  function rpsFillFixedRulerArrays(target, phase, summary, maxDay) {
+    if (!summary || summary.value === null) return;
+    const start = Math.max(0, phase.start);
+    const end = Math.min(phase.end ?? maxDay, Math.max(0, Number(maxDay) || 0));
+    for (let day = start; day <= end; day += 1) {
+      target.median[day] = summary.value;
+      target.lower[day] = summary.lower;
+      target.p75[day] = summary.upper;
+      target.meta[day] = {
+        ...summary,
+        day,
+        lower: summary.lower,
+        median: summary.value,
+        p75: summary.upper
+      };
     }
-    return values;
   }
 
   function rpsSelfRulerDatasetData(selected, maxDay) {
-    const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
-    const validDays = series.data
-      .map((value, day) => numberOrNull(value) !== null ? day : null)
-      .filter((day) => day !== null);
-    const data = Array(maxDay + 1).fill(null);
     const lower = Array(maxDay + 1).fill(null);
-    const upper = Array(maxDay + 1).fill(null);
+    const median = Array(maxDay + 1).fill(null);
+    const p75 = Array(maxDay + 1).fill(null);
     const meta = Array(maxDay + 1).fill(null);
-    if (!validDays.length) {
-      return { lower, median: data, p75: upper, meta, mode: 'self', peerCount: 1, lineLabel: rpsLineLabel(selected) };
-    }
-    const lastDataDay = Math.min(maxDay, Math.max(...validDays));
-    const phaseSummaries = new Map();
-    let fallback = null;
+    const target = { lower, median, p75, meta };
     rpsPhaseConfigs(maxDay).forEach((phase) => {
-      const phaseEnd = Math.min(phase.end ?? maxDay, lastDataDay);
-      if (phase.start > phaseEnd) {
-        phaseSummaries.set(phase.key, fallback);
-        return;
-      }
-      const values = rpsSeriesValuesInRange(series, phase.start, phaseEnd);
-      const enoughData = values.length >= phase.minPoints;
-      const value = enoughData ? rpsQuantile(values, 0.5, 4) : null;
-      const summary = value === null ? fallback : {
-        value,
-        lower: value * 0.90,
-        upper: value * 1.10,
-        count: values.length,
-        phaseLabel: phase.label,
-        basisLabel: `regua propria ${phase.label}`,
-        mode: 'self'
-      };
-      if (summary && value !== null) fallback = summary;
-      phaseSummaries.set(phase.key, summary || fallback);
+      const summary = rpsSelfFixedRulerForPhase(selected, phase, maxDay);
+      rpsFillFixedRulerArrays(target, phase, summary, maxDay);
     });
-    for (let day = 0; day <= lastDataDay; day += 1) {
-      const phase = rpsPhaseConfig(day);
-      const summary = phaseSummaries.get(phase.key) || fallback;
-      if (!summary || summary.value === null) continue;
-      data[day] = summary.value;
-      lower[day] = summary.lower;
-      upper[day] = summary.upper;
-      meta[day] = {
-        ...summary,
-        day,
-        lineLabel: rpsLineLabel(selected),
-        count: summary.count,
-        lower: summary.lower,
-        median: summary.value,
-        p75: summary.upper,
-        sourceLabel: `${selected.modelo}: mediana propria do RPS MM7 por fase`
-      };
-    }
-    return { lower, median: data, p75: upper, meta, mode: 'self', peerCount: 1, lineLabel: rpsLineLabel(selected) };
+    return { lower, median, p75, meta, mode: 'self', peerCount: 1, lineLabel: rpsLineLabel(selected) };
+  }
+
+  function rpsPeerFixedRulerForPhase(selected, peerLaunches, phase, maxDay) {
+    const rows = (peerLaunches || [])
+      .map((launch) => {
+        const summary = rpsFixedPhaseSummaryForLaunch(launch, phase, maxDay);
+        const value = numberOrNull(summary?.rps);
+        return value === null ? null : { launch, value, summary };
+      })
+      .filter(Boolean)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    const values = rows.map((row) => row.value);
+    if (values.length < 2) return null;
+    const lower = rpsQuantile(values, 0.25, 4);
+    const median = rpsQuantile(values, 0.5, 4);
+    const upper = rpsQuantile(values, 0.75, 4);
+    return {
+      value: median,
+      lower,
+      upper,
+      median,
+      p75: upper,
+      count: rows.length,
+      rows,
+      lineLabel: rpsLineLabel(selected),
+      phaseLabel: phase.label,
+      basisLabel: `mesma linha (${rpsLineLabel(selected)})`,
+      mode: 'peer',
+      sourceLabel: `RPS fixo de ${rows.length} lancamentos da mesma linha`,
+      currentSummary: rows.find((row) => row.launch.modelo_id === selected?.modelo_id)?.summary || null
+    };
   }
 
   function rpsPeerRulerDatasetData(selected, peerLaunches, maxDay) {
-    const launchSeries = (peerLaunches || []).map((launch) => ({
-      launch,
-      series: rpsRampDatasetData(launch, rampMetricConfig('rps_diario'), maxDay)
-    }));
     const lower = Array(maxDay + 1).fill(null);
     const median = Array(maxDay + 1).fill(null);
-    const upper = Array(maxDay + 1).fill(null);
+    const p75 = Array(maxDay + 1).fill(null);
     const meta = Array(maxDay + 1).fill(null);
-    for (let day = 0; day <= maxDay; day += 1) {
-      const rows = launchSeries
-        .map(({ launch, series }) => ({
-          launch,
-          value: numberOrNull(series.data?.[day]),
-          rpsMeta: series.rpsMeta?.[day] || null
-        }))
-        .filter((row) => row.value !== null)
-        .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
-      const values = rows.map((row) => row.value);
-      if (values.length < 2) continue;
-      lower[day] = rpsQuantile(values, 0.25, 4);
-      median[day] = rpsQuantile(values, 0.5, 4);
-      upper[day] = rpsQuantile(values, 0.75, 4);
-      meta[day] = {
-        count: rows.length,
-        lower: lower[day],
-        median: median[day],
-        p75: upper[day],
-        rows,
-        lineLabel: rpsLineLabel(selected),
-        phaseLabel: rpsPhaseConfig(day).label,
-        basisLabel: `mesma linha (${rpsLineLabel(selected)})`,
-        mode: 'peer',
-        sourceLabel: `mediana de ${rows.length} lancamentos da mesma linha`
-      };
-    }
-    return { lower, median, p75: upper, meta, mode: 'peer', peerCount: peerLaunches.length, lineLabel: rpsLineLabel(selected) };
+    const target = { lower, median, p75, meta };
+    rpsPhaseConfigs(maxDay).forEach((phase) => {
+      const summary = rpsPeerFixedRulerForPhase(selected, peerLaunches, phase, maxDay);
+      rpsFillFixedRulerArrays(target, phase, summary, maxDay);
+    });
+    return { lower, median, p75, meta, mode: 'peer', peerCount: peerLaunches.length, lineLabel: rpsLineLabel(selected) };
   }
 
   function rpsRulerDatasetData(selected, chartLaunches, maxDay) {
@@ -2101,8 +2142,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   function rpsRulerChartDatasets(selected, chartLaunches, maxDay, lensStart, lensEnd) {
     const ruler = rpsRulerDatasetData(selected, chartLaunches, maxDay);
     const slice = (values) => values.slice(lensStart, lensEnd + 1);
-    const bandLabel = ruler.mode === 'peer' ? 'Faixa da linha (P25-P75)' : 'Faixa saudavel da regua';
-    const rulerLabel = ruler.mode === 'peer' ? `Regua da linha ${ruler.lineLabel}` : `Regua ${selected.modelo}`;
+    const bandLabel = ruler.mode === 'peer' ? 'Faixa fixa da linha' : 'Faixa da regua fixa';
+    const rulerLabel = ruler.mode === 'peer' ? `Regua fixa ${ruler.lineLabel}` : `Regua fixa ${selected.modelo}`;
     return [
       {
         label: bandLabel,
@@ -2253,14 +2294,17 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     };
   }
 
-  function rpsHealthStatus(index) {
+  function rpsHealthStatus(index, ruler = null) {
+    if (ruler?.isInitialBasis) {
+      return { label: 'Base inicial', tone: 'neutral', helper: 'sem fase anterior comparavel' };
+    }
     if (index === null || index === undefined || Number.isNaN(index)) {
       return { label: 'Pendente', tone: 'neutral', helper: 'regua indisponivel' };
     }
-    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da regua da linha' };
+    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da regua fixa' };
     if (index >= 0.90) return { label: 'Saudavel', tone: 'positive', helper: 'dentro da faixa saudavel' };
-    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da regua da linha' };
-    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da regua da linha' };
+    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da regua fixa' };
+    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da regua fixa' };
   }
 
   function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
@@ -2272,10 +2316,11 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       .filter((day) => day !== null);
     if (!days.length) return null;
     const day = Math.max(...days);
-    const current = series.rpsMeta[day];
-    const previousEnd = current.startDay - 1;
-    const previousStart = Math.max(0, previousEnd - (current.windowDays || RPS_SMOOTHING_WINDOW_DAYS) + 1);
-    const previous = previousEnd >= 0 ? rpsSummaryForRange(selected, previousStart, previousEnd) : null;
+    const mm7Current = series.rpsMeta[day];
+    const phase = rpsPhaseForDay(day, maxDay);
+    const current = rpsFixedPhaseSummaryForLaunch(selected, phase, maxDay);
+    const previousPhase = rpsPreviousPhase(phase, maxDay);
+    const previous = previousPhase ? rpsFixedPhaseSummaryForLaunch(selected, previousPhase, maxDay) : null;
     const trend = current?.rps !== null && previous?.rps ? (current.rps / previous.rps) - 1 : null;
     const comparison = [...(chartLaunches || [])];
     if (!comparison.some((launch) => launch.modelo_id === selected.modelo_id)) comparison.push(selected);
@@ -2284,11 +2329,12 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return {
       day,
       current,
+      mm7Current,
       previous,
       trend,
       ruler,
       index,
-      status: rpsHealthStatus(index)
+      status: rpsHealthStatus(index, ruler)
     };
   }
 
@@ -2318,6 +2364,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const previousText = health.previous ? rpsPeriodLabel(health.previous) : 'janela anterior pendente';
     const trendText = health.trend === null || health.trend === undefined ? 'sem comparativo' : fmtSignedPct(health.trend, 0);
     const indexText = health.index === null || health.index === undefined ? '-' : `${fmtNum(health.index, 2)}x`;
+    const mm7Value = numberOrNull(health.mm7Current?.rps);
+    const mm7Text = mm7Value === null ? 'MM7 pendente' : fmtBRL(mm7Value);
+    const mm7PeriodText = health.mm7Current ? rpsPeriodLabel(health.mm7Current) : 'MM7 pendente';
     const rulerValue = numberOrNull(health.ruler?.median);
     const lowerValue = numberOrNull(health.ruler?.lower);
     const upperValue = numberOrNull(health.ruler?.p75);
@@ -2332,22 +2381,23 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       `Fonte receita: ${model.fonte_receita || 'bridge_orders_customers'}`,
       `Fonte sessões: ${model.fonte_sessoes || 'shopify_sessions_daily'}`,
       'Base diaria: receita total / sessoes',
-      'Leitura principal: RPS MM7 = receita 7d / sessoes 7d',
-      'Regua: mesma linha quando houver pares; sem pares usa mediana propria por fase',
+      'Decisao: RPS fixo da fase = soma(receita) / soma(sessoes)',
+      'Curva visual: RPS MM7 = receita 7d / sessoes 7d',
+      'Regua: mesma linha quando houver pares; sem pares usa fase anterior do proprio produto',
       'Sem GA4, marketing, campanhas ou atribuição',
       `Dado até: ${fmtDateSlash(sourceUntil)}`
     ];
-    const narrative = `${selected.modelo}: ${health.status.label} com RPS MM7 de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs regua ${rulerText} (${basisText}); tendencia ${trendText} vs ${previousText}.`;
+    const narrative = `${selected.modelo}: ${health.status.label} com RPS fixo de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs regua fixa ${rulerText} (${basisText}); tendencia ${trendText} vs ${previousText}. MM7 atual ${mm7Text} fica no grafico como tendencia.`;
 
     wrap.innerHTML = `
       <div class="share-period-copy">
-        <div class="share-period-kicker">${labelTip('Saude por RPS MM7', 'RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. O status compara com a regua da propria linha/produto; quando houver 2+ lancamentos da mesma linha, usa essa mediana, senao usa a fase da propria linha.')}</div>
+        <div class="share-period-kicker">${labelTip('Saude por RPS fixo', 'A decisao usa RPS fixo da fase: soma(receita) / soma(sessoes) na janela da fase. A curva MM7 continua no grafico apenas para leitura de tendencia diaria.')}</div>
         <strong>Leitura rapida</strong>
         <span>${escapeHtml(narrative)}</span>
       </div>
       <div class="share-period-metrics share-period-metrics--rps">
         ${sharePeriodCompactMetricHtml({
-          label: 'RPS MM7',
+          label: 'RPS fixo',
           value: fmtBRL(health.current.rps),
           helper: `${periodText} | ${fmtNum(health.current.sessoes)} sessoes`,
           tone: 'neutral'
@@ -2373,7 +2423,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       </div>
       <details class="share-period-method">
         <summary>Base</summary>
-        <span>${escapeHtml(`${methodItems.join(' | ')} | Faixa da regua no D+${fmtNum(health.day)}: ${bandText}`)}</span>
+        <span>${escapeHtml(`${methodItems.join(' | ')} | MM7 atual: ${mm7Text} (${mm7PeriodText}) | Faixa da regua no D+${fmtNum(health.day)}: ${bandText}`)}</span>
       </details>
     `;
   }
@@ -3906,7 +3956,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">RPS MM7 da loja total com regua por linha/produto. Produto, cor e canal nao entram no calculo.</span>'
+      ? '<span class="ramp-rps-scope">RPS fixo decide a saude; MM7 fica como tendencia visual. Produto, cor e canal nao entram no calculo.</span>'
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -9575,7 +9625,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `RPS MM7 com regua por linha/produto - ${coverage}`;
+          subText.textContent = `Curva MM7; status por RPS fixo da fase - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -9768,8 +9818,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                       if (!bench) return 'Regua pendente para este D+.';
                       const source = bench.basisLabel || bench.sourceLabel || 'regua propria';
                       return [
-                        `Regua: ${fmtBRL(bench.median)} | ${source}`,
-                        `Faixa: ${fmtBRL(bench.lower)} a ${fmtBRL(bench.p75)}`
+                        `Regua fixa: ${fmtBRL(bench.median)} | ${source}`,
+                        `Faixa: ${fmtBRL(bench.lower)} a ${fmtBRL(bench.p75)}`,
+                        'Metodo: soma(receita) / soma(sessoes) na janela da fase.'
                       ];
                     }
                     const meta = ctx.dataset.rpsMeta?.[day];

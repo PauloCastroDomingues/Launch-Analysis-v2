@@ -253,17 +253,18 @@ sessoes = ultima versao diaria de shopify_sessions_daily por data, usando ingest
 
 Essa leitura não usa GA4, tabelas de marketing, campanhas ou atribuição. O JSON público esperado é `data/lancamentos_rps_dia.json`; ausência de sessões fica pendente e não vira zero. Quando há sessões e não há pedido válido no dia, a receita do dia pode ser 0.
 
-Para reduzir ruído, o gráfico principal não usa o RPS diário bruto como linha de decisão. A leitura visual usa **RPS MM7**:
+Para reduzir ruído sem perder fidelidade, o gráfico separa tendência visual de diagnóstico:
 
 ```txt
 RPS MM7 = receita_total dos ultimos 7 dias / sessoes dos ultimos 7 dias
-Regua RPS = mediana do RPS MM7 da propria linha/produto na fase de vida comercial
-Indice RPS = RPS MM7 do produto / Regua RPS da linha/produto
+RPS fixo da fase = soma(receita da fase) / soma(sessoes da fase)
+Regua RPS = RPS fixo da propria linha/produto na janela comparavel
+Indice RPS = RPS fixo do produto / Regua RPS da linha/produto
 ```
 
-O RPS diário continua disponível como detalhe de auditoria no tooltip. A saúde do produto é lida por RPS MM7, tendência contra os 7 dias anteriores e régua da própria linha/produto. A mediana geral do grupo não é usada como régua padrão porque cada linha tem ticket próprio.
+O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A saúde do produto, o índice e o status usam RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como régua padrão porque cada linha tem ticket próprio.
 
-Quando houver 2 ou mais lançamentos da mesma linha, a régua usa mediana e faixa P25-P75 dessa mesma linha. Quando não houver par real da mesma linha, a régua usa a mediana própria do produto por fase de vida comercial (D0-D30, D31-D90, D91-D180, D181+) e uma faixa saudável de 90%-110%.
+Quando houver 2 ou mais lançamentos da mesma linha, a régua usa mediana e faixa P25-P75 do RPS fixo dessa mesma linha na janela comparável. Quando não houver par real da mesma linha, a régua usa a fase anterior do próprio produto; na fase inicial, o status fica como base inicial até existir uma fase anterior comparável.
 
 ### Regra canônica de classificação de SKU/produto
 

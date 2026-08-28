@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260828-rps-regua-v61" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260828-rps-fixo-v62" />
 </head>
 <body>
   <div class="app-shell">
@@ -222,14 +222,14 @@
           <div class="chart-card wide launch-chart-panel is-active" data-chart-panel="normalized">
             <div class="chart-head">
               <div>
-                <div class="chart-title chart-title--with-tip"><span id="chart-normalized-title">RPS MM7 - Saude por linha</span><button id="chart-normalized-help" class="help-button help-button--mini" type="button" data-tooltip="RPS MM7 = receita dos últimos 7 dias / sessões dos últimos 7 dias. O status usa régua por linha/produto; quando não há pares da mesma linha, usa a própria fase da curva. Não usa GA4, marketing, campanhas ou atribuição." aria-label="Ajuda sobre RPS">i</button></div>
-                <div class="chart-sub" id="chart-normalized-sub">RPS suavizado em 7 dias com régua própria</div>
+                <div class="chart-title chart-title--with-tip"><span id="chart-normalized-title">RPS - Saude por linha</span><button id="chart-normalized-help" class="help-button help-button--mini" type="button" data-tooltip="Diagnóstico principal: RPS fixo da fase = soma(receita) / soma(sessões). A curva MM7 suaviza a tendência visual. Não usa GA4, marketing, campanhas ou atribuição." aria-label="Ajuda sobre RPS">i</button></div>
+                <div class="chart-sub" id="chart-normalized-sub">Curva MM7; status por RPS fixo da fase</div>
               </div>
               <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
                 <div class="ramp-control-group">
                   <span class="ramp-control-label">Métrica</span>
                   <div class="chart-mode-toggle normalized-ramp-metric-controls" role="group" aria-label="Métrica da rampa">
-                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario" data-tooltip="RPS MM7 = receita dos últimos 7 dias / sessões dos últimos 7 dias. Usa régua por linha/produto, bridge_orders_customers e shopify_sessions_daily.">RPS</button>
+                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario" data-tooltip="Diagnóstico por RPS fixo da fase; curva visual em MM7. Usa bridge_orders_customers e shopify_sessions_daily.">RPS</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada" data-tooltip="Receita acumulada dia a dia desde o D0.">Faturamento</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal" data-tooltip="Receita somada em blocos de 30 dias desde o D0.">Fat. mês</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal" data-tooltip="Pedidos somados em blocos de 30 dias desde o D0.">Pedidos mês</button>
@@ -501,7 +501,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260828-rps-regua-v61"></script>
-  <script src="assets/presentation.js?v=20260828-rps-regua-v61"></script>
+  <script src="assets/app.js?v=20260828-rps-fixo-v62"></script>
+  <script src="assets/presentation.js?v=20260828-rps-fixo-v62"></script>
 </body>
 </html>
