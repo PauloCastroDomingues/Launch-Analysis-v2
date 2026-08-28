@@ -2,8 +2,8 @@
 --
 -- Objetivo:
 -- Verificar se os pedidos antigos de Avant/GT estao vindo de SHOPIFY ou SHOPPUB
--- e onde a chave de atribuicao por canal deixa de casar:
--- email normalizado + data do pedido + valor total.
+-- e onde a chave estavel de atribuicao por canal deixa de casar:
+-- source_order_id/order_id ou order_name.
 --
 -- Rode em BigQuery com JOB LOCATION = southamerica-east1.
 
@@ -33,6 +33,8 @@ itens AS (
     DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') AS data_pedido,
     o.paid_at,
     o.created_at,
+    NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '') AS source_order_id,
+    NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '') AS order_name,
     NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '') AS email_norm,
     ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2) AS total_amount,
     canal_real.canal AS canal_real,
@@ -63,9 +65,14 @@ itens AS (
       )
     )
   LEFT JOIN `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` canal_real
-    ON canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
-   AND canal_real.paid_date_brt = DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo')
-   AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+    ON (
+      canal_real.source_order_id IS NOT NULL
+      AND REGEXP_REPLACE(LOWER(canal_real.source_order_id), r'[^a-z0-9]+', '') = REGEXP_REPLACE(LOWER(COALESCE(NULLIF(TRIM(CAST(o.source_order_id AS STRING)), ''), '')), r'[^a-z0-9]+', '')
+    )
+    OR (
+      canal_real.order_name IS NOT NULL
+      AND REGEXP_REPLACE(LOWER(canal_real.order_name), r'[^a-z0-9]+', '') = REGEXP_REPLACE(LOWER(COALESCE(NULLIF(TRIM(CAST(o.order_name AS STRING)), ''), '')), r'[^a-z0-9]+', '')
+    )
   WHERE i.is_valid_order = TRUE
     AND SAFE_CAST(i.quantity AS INT64) > 0
 ),
@@ -76,6 +83,7 @@ pedido_modelo AS (
     order_sk,
     ANY_VALUE(source_system) AS source_system,
     ANY_VALUE(data_pedido) AS data_pedido,
+    COUNTIF(source_order_id IS NULL AND order_name IS NULL) > 0 AS sem_chave_estavel,
     COUNTIF(paid_at IS NULL) > 0 AS sem_paid_at,
     COUNTIF(created_at IS NULL) > 0 AS sem_created_at,
     COUNTIF(email_norm IS NULL) > 0 AS sem_email,
@@ -90,6 +98,7 @@ SELECT
   modelo,
   COALESCE(source_system, 'SEM_SOURCE_SYSTEM') AS source_system,
   COUNT(*) AS pedidos,
+  COUNTIF(sem_chave_estavel) AS pedidos_sem_chave_estavel,
   COUNTIF(sem_paid_at) AS pedidos_sem_paid_at,
   COUNTIF(sem_created_at) AS pedidos_sem_created_at,
   COUNTIF(sem_email) AS pedidos_sem_email,

@@ -22,6 +22,12 @@ node scripts\auditar_pacote_publico.js
 node scripts\auditar_atribuicao_exportado.js data\lancamentos_produtos_dia.json
 ```
 
+## Regras Operacionais Locais
+
+- Prints, screenshots e artefatos de validacao visual (`layout-*.png`, `layout-*.html`, capturas desktop/mobile) nao devem ficar dentro do projeto. Gere fora da pasta do repositorio ou apague ao terminar a validacao.
+- Nao ha requisito de versao mobile para este dashboard. Ajustes mobile/responsivos so entram quando houver pedido explicito.
+- Estas regras podem ficar como anotacao local no README e nao precisam ser commitadas.
+
 ## Modelos
 
 Os modelos ficam em `data/lancamentos_modelos.json`.
@@ -133,7 +139,7 @@ reise-launch-dashboard-v2/
 | `data/manifest.json` | Snapshot da última exportação e `data_quality`. |
 | `sql/auditoria_historico_gt_avant.sql` | Auditoria correta para GT e Avant. |
 | `sql/auditoria_lancamentos_ssot.sql` | Auditoria canônica para todos os modelos usando `fct_order_item`, `order_sk`, pedidos válidos e receita bruta/líquida. |
-| `sql/canal_atribuicao_pedido_mirror.sql` | SQL operacional da replica cross-region de atribuicao last-click por email + data + valor. |
+| `sql/canal_atribuicao_pedido_mirror.sql` | SQL operacional da replica cross-region de atribuicao last-click por source_order_id/order_id ou order_name. |
 | `sql/lancamentos_produtos_dia.sql` | Query-base do pipeline de vendas por lançamento. |
 | `sql/diagnostico_monochrome*.sql` | Diagnóstico de cadastro/match do Monochrome. |
 
@@ -193,7 +199,7 @@ Funções principais:
 - Quando existe `lancamentos_produtos_dia.json` para um modelo, o front prioriza o pipeline diário. `lancamentos_historico.json` fica como fallback/benchmark estático e passa pela mesma normalização de contrato das janelas do pipeline.
 - Lançamento futuro entra como `status = planejado` em `lancamentos_modelos.json`.
 - Rodar queries do dashboard em `southamerica-east1`.
-- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us` por rotina agendada/carga cross-region ou pela sincronizacao automatica de `exportarTudo()`. O join do dashboard prioriza `source_order_id` quando a mirror tiver essa coluna e usa email normalizado + data paga BRT + valor total arredondado como fallback. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica`/`receita_crm` como `null`.
+- Excecao operacional: atribuicao real depende da tabela espelho `mart_shared.canal_atribuicao_pedido_mirror`, criada a partir de `mart_growth_us.shopify__orders_journey_latest_v` por rotina agendada/carga cross-region ou pela sincronizacao automatica de `exportarTudo()`. O join usa apenas chave estavel (`source_order_id`/`order_id` ou `order_name`); nao usa email normalizado + data paga + valor como fallback. A classificacao vigente separa aquisicao pura: `Midia paga` exige sinal de anuncio (`cpc`, `pmax`, `paid`, `demand-gen`, `performance`, `ads`, `display`, `source_type` pago etc.); `Organico` exige sinal organico de busca/social/SEO; `Direto`, `E-mail/CRM`, `WhatsApp`, `Outro atribuido` e `Nao atribuido` ficam como controles separados. Se a mirror ainda nao existir, `exportarTudo()` continua sem quebrar e mantem `receita_paga`/`receita_organica`/`receita_crm` como `null`.
 
 ## Pipeline de Vendas por Modelo
 
@@ -207,7 +213,8 @@ variant_title | sub_modelo | cor | tamanho | pedidos | pedidos_validos | pares
 receita | receita_bruta | desconto | receita_liquida | novos | recorrentes
 match_text_norm | modelo_id_detectado | d0 | dia_desde_d0 | canal_real | tipo_real
 receita_paga | receita_organica | receita_crm | receita_outros_canais
-pedidos_pagos | pedidos_organicos | pedidos_crm | pedidos_outros_canais
+receita_sem_match_atribuicao | pedidos_pagos | pedidos_organicos
+pedidos_crm | pedidos_outros_canais | pedidos_sem_match_atribuicao
 flags_qualidade | fonte
 ```
 
@@ -296,7 +303,7 @@ O investimento usado no dashboard é a soma de `midia_paga.json` + `crm_disparos
 
 No export BigQuery, `metas_mensais.json` gera um calendário de apoio cobrindo os D0 exportáveis até D+90. Isso mantém Avant e GT dentro do recorte diário de canais mesmo sem meta diária cadastrada em dez/2025-jan/2026; a atribuição executiva do produto continua vindo dos pedidos classificados em `lancamentos_produtos_dia.json`.
 
-ROAS de investimento = `receita_paga / investimento total`. CPA de investimento = `investimento total / pedidos_pagos`. Receita e pedidos organicos representam todo pedido sem sinal de midia paga, incluindo CRM/owned, direto, busca organica, referral e pedidos sem UTM pago. Se a atribuicao real por pedido nao vier no payload, ROAS/CPA ficam vazios.
+ROAS de investimento = `receita_paga / investimento total`. CPA de investimento = `investimento total / pedidos_pagos`. Receita e pedidos pagos representam pedidos com sinal de anuncio (`cpc`, `pmax`, `paid`, `demand-gen`, `performance`, `ads`, `display`, `source_type` pago etc.). `receita_organica`/`pedidos_organicos` representam apenas busca/social/SEO organico. Direto, E-mail/CRM, WhatsApp, outros atribuidos e nao atribuidos ficam nas colunas de controle, nao dentro de organico. Se a atribuicao real por pedido nao vier no payload, ROAS/CPA ficam vazios.
 
 Para exportar essas abas, configure:
 
@@ -342,15 +349,15 @@ Esse script resume cobertura de `metas_mensais`, investimento de aquisição, pl
 
 ### Atribuição paga versus orgânica
 
-O fluxo operacional atual publica uma divisão binária: **mídia paga** e **orgânico**. `exportarTudo()` sincroniza a origem/UTM existente no BigQuery (`mart_growth_us.shopify__orders_journey_latest_v`) para `mart_shared.canal_atribuicao_pedido_mirror` e preserva essa classificação no payload de vendas.
+O fluxo operacional atual publica uma leitura de aquisicao pura: **midia paga** e **organico** como colunas principais, com controles separados para Direto, E-mail/CRM, WhatsApp, outros atribuidos e nao atribuidos. `exportarTudo()` sincroniza a origem/UTM existente no BigQuery (`mart_growth_us.shopify__orders_journey_latest_v`) para `mart_shared.canal_atribuicao_pedido_mirror`, classifica cada pedido e preserva o tipo no payload de vendas.
 
 Essa camada separa **venda atribuida por pedido** de **investimento**:
 
-O export nao exige backfill manual. Ele consulta a origem ja existente no job `US`, grava a mirror em `southamerica-east1` e usa `source_order_id`/`order_name`/email+data+valor apenas como chave operacional interna. Quando existe origem granular, pedido com sinal pago entra em midia paga e os demais entram em organico.
+O export nao exige backfill manual. Ele consulta a origem ja existente no job `US`, grava a mirror em `southamerica-east1` e cruza pedidos apenas por `source_order_id`/`order_id` ou `order_name`. A classificacao vem de `shopify__orders_journey_latest_v`: sinais de anuncio (`cpc`, `pmax`, `paid`, `demand-gen`, `performance` etc.) entram em midia paga; sinais organicos de busca/social/SEO entram em organico; direto, e-mail/CRM, WhatsApp, outros e nao atribuidos ficam fora dessas duas colunas principais.
 
-- Quando a origem granular historica nao cobre todos os pedidos, o SSOT preenche `receita_paga`, `receita_organica`, `pedidos_pagos` e `pedidos_organicos` com uma alocacao binaria diaria/de janela (`shopify_*_allocated`). O frontend preserva esses campos e nao reclassifica a linha novamente.
-- A conciliacao exibida no dashboard valida se `pago + organico = total`; ela nao significa 100% de cobertura granular de last-click. A auditoria `scripts/auditar_atribuicao_exportado.js` mostra separadamente o metodo usado e a cobertura de origem granular.
-- Na origem granular, a prioridade e a coluna equivalente a `utm_medium` / "Midia da campanha UTM": `cpc`, `ppc`, `paid`, `ads`, `adwords`, `gads`, `pmax` e similares entram em midia paga, mesmo quando o canal de indicacao aparece como instagram/facebook/google. Todo pedido sem sinal pago entra em organico.
+- O export de produtos nao deve usar alocacao diaria/de janela (`shopify_*_allocated`) nem cruzamento por email+data+valor para preencher pedidos pagos ou organicos. Pedido pago/organico precisa ser inteiro e vir da classificacao por pedido.
+- A conciliacao exibida no dashboard nao deve mais forcar `pago + organico = total`; a diferenca esperada fica nas colunas de controle. A auditoria `scripts/auditar_atribuicao_exportado.js` mostra separadamente o metodo usado e a cobertura de origem granular.
+- Quando a mirror tiver match, ela vence qualquer fallback de origem do pedido. A ordem da regra importa: sinais pagos sao testados antes de sinais organicos; depois entram Direto, E-mail/CRM, WhatsApp, Organico, Outro atribuido ou Nao atribuido.
 - Investimento continua vindo de `metas_mensais.json` ou dos cadastros manuais de mídia/CRM. Ele nao e deduzido a partir dos pedidos.
 - ROAS de investimento so deve ser tratado como atribuicao quando existir custo declarado e pedidos/receita classificados como vindos de investimento no payload de vendas. Caso contrario, investimento e contexto, nao prova de causalidade.
 - As abas manuais de midia paga e CRM nao recebem campanhas extras. Elas alimentam investimento total; vendas nao declaradas aparecem apenas no resumo agregado por canal do lancamento.

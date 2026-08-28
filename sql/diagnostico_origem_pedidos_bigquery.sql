@@ -2,8 +2,7 @@
 --
 -- Objetivo:
 -- 1) encontrar campos de origem/canal disponiveis no SSOT;
--- 2) classificar pedidos de lancamento em paid quando a UTM/origem indica midia paga
---    e organic para todo o restante;
+-- 2) classificar pedidos pela regra SSOT de 9 canais;
 -- 3) validar se os pedidos pagos e organicos do dashboard podem ser
 --    preenchidos por origem real do BigQuery.
 --
@@ -114,16 +113,11 @@ pedidos AS (
   LEFT JOIN `reise-ssot.mart_shared.canal_atribuicao_pedido_mirror` canal_real
     ON (
       canal_real.source_order_id IS NOT NULL
-      AND canal_real.source_order_id = NULLIF(TRIM(CAST(o.source_order_id AS STRING)), '')
+      AND REGEXP_REPLACE(LOWER(canal_real.source_order_id), r'[^a-z0-9]+', '') = REGEXP_REPLACE(LOWER(COALESCE(NULLIF(TRIM(CAST(o.source_order_id AS STRING)), ''), '')), r'[^a-z0-9]+', '')
     )
     OR (
       canal_real.order_name IS NOT NULL
-      AND canal_real.order_name = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
-    )
-    OR (
-      canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
-      AND canal_real.paid_date_brt = DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo')
-      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
+      AND REGEXP_REPLACE(LOWER(canal_real.order_name), r'[^a-z0-9]+', '') = REGEXP_REPLACE(LOWER(COALESCE(NULLIF(TRIM(CAST(o.order_name AS STRING)), ''), '')), r'[^a-z0-9]+', '')
     )
 ),
 origem_raw AS (
@@ -161,6 +155,17 @@ origem_raw AS (
       JSON_EXTRACT_SCALAR(order_json, '$.acquisition_source'),
       JSON_EXTRACT_SCALAR(order_json, '$.source')
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([
+      utm_source_mirror,
+      JSON_EXTRACT_SCALAR(order_json, '$.last_utm_source'),
+      JSON_EXTRACT_SCALAR(order_json, '$.utm_source'),
+      JSON_EXTRACT_SCALAR(order_json, '$.utmSource'),
+      JSON_EXTRACT_SCALAR(order_json, '$.ga_session_source'),
+      JSON_EXTRACT_SCALAR(order_json, '$.gaSessionSource'),
+      JSON_EXTRACT_SCALAR(order_json, '$.session_source'),
+      JSON_EXTRACT_SCALAR(order_json, '$.traffic_source'),
+      JSON_EXTRACT_SCALAR(order_json, '$.acquisition_source')
+    ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_utm_source,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([
       utm_medium_mirror,
       raw_medium_mirror,
@@ -204,6 +209,17 @@ origem_norm AS (
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
       NORMALIZE_AND_CASEFOLD(CONCAT(
         COALESCE(raw_channel, ''), ' ',
+        COALESCE(raw_utm_source, '')
+      ), NFD),
+      r'\p{M}',
+      ''
+    ), r'[^a-z0-9]+', ' ')) AS source_resolved_match,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_channel, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_channel_key,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_utm_source, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_utm_source_key,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_medium, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_medium_key,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(CONCAT(
+        COALESCE(raw_channel, ''), ' ',
         COALESCE(raw_source, ''), ' ',
         COALESCE(raw_medium, ''), ' ',
         COALESCE(raw_campaign, ''), ' ',
@@ -214,22 +230,45 @@ origem_norm AS (
     ), r'[^a-z0-9]+', ' ')) AS origem_match
   FROM origem_raw
 ),
+origem_signal AS (
+  SELECT
+    *,
+    TRIM(CONCAT(source_resolved_match, ' ', raw_medium_match)) AS attribution_signal_match
+  FROM origem_norm
+),
 classificado AS (
   SELECT
     *,
     CASE
-      WHEN tipo_mirror = 'paid' THEN 'paid'
-      WHEN tipo_mirror IS NOT NULL THEN 'organic'
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        THEN 'paid'
-      ELSE 'organic'
-    END AS tipo_estimado,
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(instagram|facebook|meta)')
+        AND REGEXP_CONTAINS(attribution_signal_match, r'(^| )(cpc|pmax|paid|performance)( |$)')
+        THEN 'Meta ADS'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|doubleclick|adwords|youtube|(^| )yt( |$))')
+        AND REGEXP_CONTAINS(attribution_signal_match, r'(^| )(cpc|pmax|paid|pago|shopping|display|performance|ads)( |$)')
+        THEN 'Google ADS'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)')
+        AND REGEXP_CONTAINS(raw_medium_match, r'grupo.*vip')
+        THEN 'WhatsApp Nao Oficial'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)')
+        THEN 'WhatsApp Oficial'
+      WHEN REGEXP_CONTAINS(attribution_signal_match, r'(email|e mail|mail)')
+        THEN 'E-mail'
+      WHEN raw_channel_key IN ('', 'nenhum', 'none', 'direct')
+        THEN 'Direto'
+      WHEN raw_medium_key = 'bio'
+        THEN 'Social'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(facebook|instagram|tiktok|youtube|linktr|shareable)')
+        THEN 'Social'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|bing|duckduckgo|yahoo|brave|ecosia)')
+        THEN 'Organico'
+      ELSE 'Outros'
+    END AS canal_estimado,
     ARRAY_TO_STRING(
       ARRAY(
         SELECT campo
         FROM UNNEST([
           STRUCT('raw_channel' AS campo, raw_channel AS valor),
+          STRUCT('raw_utm_source' AS campo, raw_utm_source AS valor),
           STRUCT('raw_source' AS campo, raw_source AS valor),
           STRUCT('raw_medium' AS campo, raw_medium AS valor),
           STRUCT('raw_campaign' AS campo, raw_campaign AS valor),
@@ -239,12 +278,22 @@ classificado AS (
       ),
       ', '
     ) AS campos_com_sinal
-  FROM origem_norm
+  FROM origem_signal
+),
+classificado_tipo AS (
+  SELECT
+    *,
+    CASE
+      WHEN canal_estimado IN ('Meta ADS', 'Google ADS', 'WhatsApp Oficial') THEN 'paid'
+      ELSE 'organic'
+    END AS tipo_estimado
+  FROM classificado
 )
 SELECT
   modelo_id,
   modelo,
   source_system,
+  canal_estimado,
   COALESCE(tipo_estimado, 'sem_sinal') AS tipo_estimado,
   COUNT(DISTINCT order_sk) AS pedidos,
   ROUND(SUM(receita_bruta), 2) AS receita_bruta,
@@ -255,6 +304,6 @@ SELECT
   ARRAY_AGG(DISTINCT NULLIF(raw_medium, '') IGNORE NULLS LIMIT 10) AS exemplos_raw_medium,
   ARRAY_AGG(DISTINCT NULLIF(raw_campaign, '') IGNORE NULLS LIMIT 10) AS exemplos_raw_campaign,
   ARRAY_AGG(DISTINCT NULLIF(regra_atribuicao_real, '') IGNORE NULLS LIMIT 10) AS regras_atribuicao
-FROM classificado
-GROUP BY modelo_id, modelo, source_system, tipo_estimado
-ORDER BY modelo_id, tipo_estimado, pedidos DESC;
+FROM classificado_tipo
+GROUP BY modelo_id, modelo, source_system, canal_estimado, tipo_estimado
+ORDER BY modelo_id, tipo_estimado, canal_estimado, pedidos DESC;

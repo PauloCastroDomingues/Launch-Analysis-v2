@@ -2,13 +2,14 @@
 -- Rode em JOB LOCATION = US.
 --
 -- Este arquivo fica apenas como referencia historica da classificacao de canal
--- dentro de mart_growth_us. O pipeline do dashboard NAO usa source_order_id,
--- order_name ou customer_sk como chave entre regioes.
+-- dentro de mart_growth_us.
 --
 -- Contrato atual do dashboard:
 --   1) gerar a mirror em sql/canal_atribuicao_pedido_mirror.sql;
 --   2) carregar mart_shared.canal_atribuicao_pedido_mirror em southamerica-east1;
---   3) cruzar por email_norm + paid_date_brt + total_amount.
+--   3) cruzar por source_order_id/order_id ou order_name;
+--   4) classificar como organico apenas nas combinacoes definidas pelo usuario;
+--      todo restante fica paid.
 
 WITH
 buyers AS (
@@ -56,42 +57,53 @@ joined AS (
     j.last_utm_medium,
     j.last_utm_campaign,
 
-    LOWER(TRIM(COALESCE(j.last_source_description, j.last_utm_source, j.last_source))) AS raw_channel,
+    LOWER(TRIM(COALESCE(j.last_source_description, j.last_source))) AS raw_channel,
+    LOWER(TRIM(COALESCE(j.last_utm_source, ''))) AS raw_utm_source,
     LOWER(TRIM(COALESCE(j.last_utm_medium, ''))) AS raw_medium
   FROM orders o
   LEFT JOIN journey j
     ON j.order_id = o.source_order_id
 ),
-classified AS (
+normalized AS (
   SELECT
     data,
     order_name,
     source_order_id,
     total_amount,
     is_new,
-
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_channel, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_channel_key,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_utm_source, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_utm_source_key,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_medium, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_medium_key,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(raw_channel, ''), ' ', COALESCE(raw_utm_source, '')), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS source_resolved_match,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(raw_channel, ''), ' ', COALESCE(raw_utm_source, ''), ' ', COALESCE(raw_medium, '')), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS origem_match,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_medium, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', ' ')) AS raw_medium_match
+  FROM joined
+),
+classified_base AS (
+  SELECT
+    *,
     CASE
-      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
-      WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
-      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'Direct'
-      WHEN raw_channel LIKE '%instagram%' THEN 'Instagram'
-      WHEN raw_channel LIKE '%facebook%' THEN 'Facebook'
-      WHEN raw_channel LIKE '%whatsapp%' THEN 'Whatsapp'
-      WHEN raw_channel LIKE '%tiktok%' THEN 'Tiktok'
-      WHEN raw_channel LIKE '%youtube%' THEN 'Youtube'
-      WHEN raw_channel LIKE '%bing%' THEN 'Bing'
-      WHEN raw_channel LIKE '%rd station%' OR raw_channel LIKE '%rdstation%' THEN 'Rd Station'
-      WHEN raw_channel LIKE '%linktr%' THEN 'Linktr.Ee'
-      WHEN raw_channel LIKE '%google%' THEN 'Google'
-      ELSE INITCAP(raw_channel)
-    END AS canal,
-
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(instagram|facebook|meta)') AND REGEXP_CONTAINS(origem_match, r'(^| )(cpc|pmax|paid|performance)( |$)') THEN 'Meta ADS'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|doubleclick|adwords|youtube|(^| )yt( |$))') AND REGEXP_CONTAINS(origem_match, r'(^| )(cpc|pmax|paid|pago|shopping|display|performance|ads)( |$)') THEN 'Google ADS'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)') AND REGEXP_CONTAINS(raw_medium_match, r'grupo.*vip') THEN 'WhatsApp Nao Oficial'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)') THEN 'WhatsApp Oficial'
+      WHEN REGEXP_CONTAINS(origem_match, r'(email|e mail|mail)') THEN 'E-mail'
+      WHEN raw_channel_key IN ('', 'nenhum', 'none', 'direct') THEN 'Direto'
+      WHEN raw_medium_key = 'bio' THEN 'Social'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(facebook|instagram|tiktok|youtube|linktr|shareable)') THEN 'Social'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|bing|duckduckgo|yahoo|brave|ecosia)') THEN 'Organico'
+      ELSE 'Outros'
+    END AS canal
+  FROM normalized
+),
+classified AS (
+  SELECT
+    *,
     CASE
-      WHEN LOWER(TRIM(last_source_type)) = 'direct' OR raw_channel IN ('direct','(direct)') THEN 'organic'
-      WHEN REGEXP_CONTAINS(raw_medium, r'(cpcp|cpc|ppc|pmax|paid|paidsocial|paid[_ -]?social|paidsearch|paid[_ -]?search|display|affiliate|affiliates|demand[_ -]?gen)') THEN 'paid'
+      WHEN canal IN ('Meta ADS', 'Google ADS', 'WhatsApp Oficial') THEN 'paid'
       ELSE 'organic'
     END AS tipo
-  FROM joined
+  FROM classified_base
 )
 SELECT
   data,

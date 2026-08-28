@@ -18,7 +18,7 @@
 
 const DEFAULT_INVESTMENT_SPREADSHEET_ID = '1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68';
 
-const EXPORT_SCRIPT_VERSION = '20260811-paid-platform-utm-window-mix-v25';
+const EXPORT_SCRIPT_VERSION = '20260821-shopify-paid-signal-parity-v41';
 
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
@@ -56,6 +56,8 @@ const AVISO_INVESTIMENTO = 'Nao mede atribuicao real de clique/conversao. Mostra
 
 function exportarTudo() {
   validarGithubConfig_();
+  const generatedAt = Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX");
+  const exportDate = Utilities.formatDate(new Date(), CONFIG.timeZone, 'yyyy-MM-dd');
   Logger.log(`exportarTudo versao=${EXPORT_SCRIPT_VERSION}`);
   const modelos = carregarModelos_();
   const exportaveis = modelos.filter(ehModeloExportavel_);
@@ -66,6 +68,8 @@ function exportarTudo() {
   const sazonalidadeStatus = sincronizarDatasSazonaisSeDisponivel_();
   const eventoComercialStatus = garantirEventosComerciaisProdutoSeDisponivel_();
   const canalMirrorStatus = sincronizarCanalAtribuicaoMirrorSePossivel_(exportaveis);
+  const rampaDia = exportaveis.length ? consultarRampaDia_(exportaveis) : [];
+  const clientesJanelasStatus = consultarClientesJanelasSeDisponivel_(exportaveis, generatedAt, exportDate);
   const produtosDia = exportaveis.length ? consultarProdutosDia_(exportaveis) : [];
   const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(exportaveis);
   const dataQuality = {};
@@ -88,6 +92,23 @@ function exportarTudo() {
 
   dataQuality.atribuicao_canal = auditarAtribuicaoCanal_(produtosDia);
   dataQuality.atribuicao_canal.mirror_sync = canalMirrorStatus;
+  dataQuality.rampa_produtos_dia = {
+    status: 'd0_ate_data_atual',
+    data_fim_exportada: exportDate,
+    fonte: 'lancamentos_rampa_dia.json',
+    observacao: 'Arquivo agregado por modelo/dia para rampa estendida. Dias sem venda nao geram linha no JSON; o dashboard preenche a linha acumulada quando o manifesto confirma cobertura ate a data atual.'
+  };
+  dataQuality.clientes_base = {
+    status: clientesJanelasStatus.status,
+    fonte: 'lancamentos_clientes_janelas.json',
+    rows: clientesJanelasStatus.rows,
+    base_atual_clientes: clientesJanelasStatus.base_atual_clientes === null || clientesJanelasStatus.base_atual_clientes === undefined
+      ? null
+      : clientesJanelasStatus.base_atual_clientes,
+    observacao: clientesJanelasStatus.status === 'synced'
+      ? 'Clientes unicos, novos/recorrentes e base ativada exportados de forma agregada pelo SSOT, sem PII.'
+      : (clientesJanelasStatus.error_summary || 'Aguardando export agregado de clientes/base pelo SSOT.')
+  };
   logAtribuicaoCanalPorModelo_(dataQuality.atribuicao_canal);
   if (!CONFIG.canalAttributionEnabled) {
     warnings.push('Atribuicao real de canal desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; receita_paga/receita_organica permanecem null.');
@@ -97,8 +118,15 @@ function exportarTudo() {
   if (canalMirrorStatus.status === 'failed') {
     warnings.push(`Mirror de atribuicao por pedido nao sincronizada: ${canalMirrorStatus.error_summary || canalMirrorStatus.error || 'erro desconhecido'}.`);
   }
+  if (clientesJanelasStatus.status === 'failed') {
+    warnings.push(`lancamentos_clientes_janelas.json nao exportado: ${clientesJanelasStatus.error_summary || 'erro desconhecido'}.`);
+  } else if (clientesJanelasStatus.status !== 'synced') {
+    warnings.push('lancamentos_clientes_janelas.json pendente; clientes unicos, base ativada e expectativa por base atual seguem como null/pendente.');
+  }
 
   logProdutosDiaExport_(exportaveis, produtosDia);
+  escreverJsonGitHub_('lancamentos_rampa_dia.json', rampaDia);
+  if (clientesJanelasStatus.payload) escreverJsonGitHub_('lancamentos_clientes_janelas.json', clientesJanelasStatus.payload);
   escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
   if (auditoriaMonochrome) escreverJsonGitHub_('auditoria_monochrome.json', auditoriaMonochrome);
 
@@ -138,7 +166,7 @@ function exportarTudo() {
   warnings.push('impacto_investimento.json aposentado: correlacao por janela nao e atribuicao real.');
 
   const manifest = {
-    generated_at: Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+    generated_at: generatedAt,
     script_version: EXPORT_SCRIPT_VERSION,
     project: 'Reise Launch Analysis v2',
     model_source: 'github_json',
@@ -150,6 +178,8 @@ function exportarTudo() {
       datas_sazonais: sazonalidadeStatus.rows,
       eventos_comerciais_produto: eventoComercialStatus.rows,
       canal_atribuicao_pedido_mirror: canalMirrorStatus.rows,
+      lancamentos_rampa_dia: rampaDia.length,
+      lancamentos_clientes_janelas: clientesJanelasStatus.rows,
       lancamentos_produtos_dia: produtosDia.length,
       auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
       investigacao_linhas_suspeitas: investigacaoMonochromeStatus.rows,
@@ -168,6 +198,7 @@ function exportarTudo() {
       datas_sazonais: sazonalidadeStatus.status,
       eventos_comerciais_produto: eventoComercialStatus.status,
       canal_atribuicao_pedido_mirror: canalMirrorStatus.status,
+      lancamentos_clientes_janelas: clientesJanelasStatus.status,
       investigacao_linhas_suspeitas: investigacaoMonochromeStatus.status,
       sub_modelos_dia: subModelosStatus.status,
       estoque: estoqueStatus.status,
@@ -180,6 +211,8 @@ function exportarTudo() {
     },
     files: [
       'lancamentos_modelos.json',
+      'lancamentos_rampa_dia.json',
+      'lancamentos_clientes_janelas.json',
       'lancamentos_produtos_dia.json',
       'auditoria_monochrome.json',
       'investigacao_linhas_suspeitas.json',
@@ -515,17 +548,12 @@ pedidos AS (
       canal_real.order_name IS NOT NULL
       AND canal_real.order_name = NULLIF(LOWER(TRIM(CAST(o.order_name AS STRING))), '')
     )
-    OR (
-      canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
-      AND canal_real.paid_date_brt = DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo')
-      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
-    )
 ),
 sinais AS (
   SELECT
     *,
-    REGEXP_CONTAINS(LOWER(COALESCE(order_json, '')), r'(utm|gclid|fbclid|cpc|ppc|pmax|paid|adwords|gads|googleadservices)') AS json_tem_sinal_marketing,
-    REGEXP_CONTAINS(LOWER(COALESCE(order_json, '')), r'(utm_medium|utm%5fmedium|cpc|ppc|cpm|pmax|paid|adwords|gads|gclid|fbclid)') AS json_tem_sinal_pago,
+    REGEXP_CONTAINS(LOWER(COALESCE(order_json, '')), r'(utm|gclid|fbclid|cpc|ppc|pmax|paid|performance|demand[-_ ]?gen|adwords|gads|googleadservices)') AS json_tem_sinal_marketing,
+    REGEXP_CONTAINS(LOWER(COALESCE(order_json, '')), r'(utm_medium|utm%5fmedium|cpc|ppc|cpm|pmax|paid|performance|demand[-_ ]?gen|adwords|gads|gclid|fbclid)') AS json_tem_sinal_pago,
     COALESCE(
       REGEXP_EXTRACT(LOWER(COALESCE(order_json, '')), r'"(?:last[_ -]?)?utm[_ -]?medium"\\s*:\\s*"([^"]+)"'),
       REGEXP_EXTRACT(LOWER(COALESCE(order_json, '')), r'(?:utm_medium|utm%5fmedium)(?:=|%3d)([^&#"\\\\ ]+)')
@@ -764,9 +792,10 @@ function modelosNormCteSql_() {
 function itensClassificadosV1CteSql_(options) {
   const opts = options || {};
   const sourceCte = opts.sourceCte || 'itens_validos';
+  const endDateSql = opts.endDateSql || `CURRENT_DATE('${CONFIG.timeZone}')`;
   const joinCond = opts.usarJanelaD0 === false
     ? 'TRUE'
-    : 'i.data BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 90 DAY)';
+    : `i.data BETWEEN m.d0 AND ${endDateSql}`;
   const partitionBy = opts.partitionBy || 'order_sk, line_item_key';
 
   return `itens_candidatos_v1 AS (
@@ -921,20 +950,499 @@ itens_classificados_v1 AS (
 }
 
 function consultarProdutosDia_(modelos) {
+  const exportaveis = modelos || [];
+  if (exportaveis.length <= 1) return consultarProdutosDiaQuery_(exportaveis);
+
+  const rows = [];
+  exportaveis.forEach(modelo => {
+    Logger.log(`lancamentos_produtos_dia: consultando ${modelo.modelo_id} em detalhe ate D+90.`);
+    const modeloRows = consultarProdutosDiaQuery_([modelo]);
+    Logger.log(`lancamentos_produtos_dia: ${modelo.modelo_id} retornou ${modeloRows.length} linhas.`);
+    modeloRows.forEach(row => rows.push(row));
+  });
+  Logger.log(`lancamentos_produtos_dia: total agregado ${rows.length} linhas em ${exportaveis.length} modelos.`);
+  return rows;
+}
+
+function consultarRampaDia_(modelos) {
   const modelosSql = modelos.map(m => {
     const termosRegex = termosRegex_(m);
     const skuPrefixos = skuPrefixos_(m);
     return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
   }).join('\nUNION ALL\n');
-  const canalMirrorDisponivel = CONFIG.canalAttributionEnabled && tabelaMartSharedExiste_('canal_atribuicao_pedido_mirror');
+  const canalDailyDisponivel = false;
+  const dailyShareCteSql = canalDailyDisponivel ? `daily_share AS (
+  SELECT
+    data,
+    SAFE_DIVIDE(SUM(COALESCE(pedidos_pagos, 0)), NULLIF(SUM(COALESCE(pedidos_total, 0)), 0)) AS share_pedidos_pagos,
+    SAFE_DIVIDE(SUM(COALESCE(pedidos_organicos, 0)), NULLIF(SUM(COALESCE(pedidos_total, 0)), 0)) AS share_pedidos_organicos,
+    SAFE_DIVIDE(SUM(COALESCE(receita_paga, 0)), NULLIF(SUM(COALESCE(receita_total, 0)), 0)) AS share_receita_paga,
+    SAFE_DIVIDE(SUM(COALESCE(receita_organica, 0)), NULLIF(SUM(COALESCE(receita_total, 0)), 0)) AS share_receita_organica,
+    ARRAY_AGG(regra_atribuicao IGNORE NULLS ORDER BY IF(regra_atribuicao = 'shopify_last_click_daily_allocated', 1, 2) LIMIT 1)[SAFE_OFFSET(0)] AS regra_atribuicao
+  FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_daily_share\`
+  WHERE data >= (SELECT MIN(d0) FROM modelos_norm)
+    AND data <= CURRENT_DATE('${CONFIG.timeZone}')
+  GROUP BY data
+)` : `daily_share AS (
+  SELECT
+    DATE(NULL) AS data,
+    CAST(NULL AS NUMERIC) AS share_pedidos_pagos,
+    CAST(NULL AS NUMERIC) AS share_pedidos_organicos,
+    CAST(NULL AS NUMERIC) AS share_receita_paga,
+    CAST(NULL AS NUMERIC) AS share_receita_organica,
+    CAST(NULL AS STRING) AS regra_atribuicao
+  FROM (SELECT 1 AS _empty)
+  WHERE FALSE
+)`;
+
+  const query = `
+WITH modelos AS (
+  ${modelosSql}
+),
+${modelosNormCteSql_()},
+itens_validos AS (
+  SELECT
+    i.order_partition_date_brt AS data,
+    CAST(i.order_sk AS STRING) AS order_sk,
+    COALESCE(
+      NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), ''),
+      TO_JSON_STRING(STRUCT(
+        CAST(i.order_sk AS STRING) AS order_sk,
+        CAST(i.sku AS STRING) AS sku,
+        CAST(i.item_name AS STRING) AS item_name,
+        SAFE_CAST(i.quantity AS INT64) AS quantity,
+        SAFE_CAST(i.line_gross_amount AS NUMERIC) AS line_gross_amount,
+        SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS line_discount_amount
+      ))
+    ) AS line_item_key,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
+    SAFE_CAST(i.quantity AS INT64) AS pares,
+    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita_bruta,
+    SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS desconto,
+    SAFE_CAST(i.line_gross_amount - IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS receita_liquida,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM \`reise-ssot.mart_shared.fct_order_item\` i
+  LEFT JOIN (
+    SELECT
+      UPPER(TRIM(sku)) AS sku_key,
+      ARRAY_AGG(NULLIF(TRIM(cor), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS cor
+    FROM \`reise-ssot.mart_shared.produto_lancamento_v\`
+    WHERE NULLIF(TRIM(sku), '') IS NOT NULL
+    GROUP BY 1
+  ) pl_match
+    ON pl_match.sku_key = UPPER(TRIM(i.sku))
+  WHERE i.is_valid_order = TRUE
+    AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
+    AND i.order_partition_date_brt <= CURRENT_DATE('${CONFIG.timeZone}')
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+),
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key', endDateSql: `CURRENT_DATE('${CONFIG.timeZone}')` })},
+${dailyShareCteSql}
+SELECT
+  c.modelo_id,
+  c.data,
+  'rampa_diaria_agregada' AS origem,
+  COUNT(DISTINCT c.order_sk) AS pedidos,
+  COUNT(DISTINCT c.order_sk) AS pedidos_validos,
+  SUM(c.pares) AS pares,
+  ROUND(SUM(c.receita_bruta), 2) AS receita,
+  ROUND(SUM(c.receita_bruta), 2) AS receita_bruta,
+  ROUND(SUM(c.desconto), 2) AS desconto,
+  ROUND(SUM(c.receita_liquida), 2) AS receita_liquida,
+  CAST(NULL AS INT64) AS novos,
+  CAST(NULL AS INT64) AS recorrentes,
+  c.d0 AS d0,
+  DATE_DIFF(c.data, c.d0, DAY) AS dia_desde_d0,
+  CAST(NULL AS STRING) AS canal_real,
+  CAST(NULL AS STRING) AS tipo_real,
+  CASE
+    WHEN COUNT(ds.data) = 0 THEN CAST(NULL AS STRING)
+    ELSE COALESCE(ANY_VALUE(ds.regra_atribuicao), 'shopify_launch_ramp_daily_allocated')
+  END AS regra_atribuicao_real,
+  CASE
+    WHEN COUNT(ds.data) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(c.receita_bruta) * COALESCE(ANY_VALUE(ds.share_receita_paga), ANY_VALUE(ds.share_pedidos_pagos), 0), 2)
+  END AS receita_paga,
+  CASE
+    WHEN COUNT(ds.data) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SUM(c.receita_bruta) * COALESCE(ANY_VALUE(ds.share_receita_organica), 1 - COALESCE(ANY_VALUE(ds.share_receita_paga), ANY_VALUE(ds.share_pedidos_pagos), 0)), 2)
+  END AS receita_organica,
+  CAST(NULL AS NUMERIC) AS receita_crm,
+  CAST(NULL AS NUMERIC) AS receita_outros_canais,
+  CAST(NULL AS NUMERIC) AS receita_sem_match_atribuicao,
+  CASE
+    WHEN COUNT(ds.data) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(COUNT(DISTINCT c.order_sk) * COALESCE(ANY_VALUE(ds.share_pedidos_pagos), ANY_VALUE(ds.share_receita_paga), 0), 4)
+  END AS pedidos_pagos,
+  CASE
+    WHEN COUNT(ds.data) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(COUNT(DISTINCT c.order_sk) * COALESCE(ANY_VALUE(ds.share_pedidos_organicos), 1 - COALESCE(ANY_VALUE(ds.share_pedidos_pagos), ANY_VALUE(ds.share_receita_paga), 0)), 4)
+  END AS pedidos_organicos,
+  CAST(NULL AS NUMERIC) AS pedidos_crm,
+  CAST(NULL AS NUMERIC) AS pedidos_outros_canais,
+  CAST(NULL AS NUMERIC) AS pedidos_sem_match_atribuicao,
+  COUNT(DISTINCT c.sku) AS skus_distintos,
+  TO_JSON_STRING(STRUCT(
+    'fct_order_item' AS fonte_base,
+    'is_valid_order = TRUE' AS regra_pedido_valido,
+    'receita = receita_bruta' AS regra_receita_dashboard,
+    IF(COUNT(ds.data) > 0, COALESCE(ANY_VALUE(ds.regra_atribuicao), 'shopify_launch_ramp_daily_allocated'), 'sem_atribuicao_real') AS regra_atribuicao_real,
+    'rampa_diaria_agregada_d0_ate_current_date' AS regra_join_atribuicao,
+    'agregado_modelo_dia' AS regra_classificacao
+  )) AS flags_qualidade,
+  'reise-ssot.mart_shared.fct_order_item' AS fonte
+FROM itens_classificados_v1 c
+LEFT JOIN daily_share ds
+  ON ds.data = c.data
+GROUP BY c.modelo_id, c.data, c.d0
+ORDER BY c.modelo_id, c.data;`;
+
+  const rows = runBq_(query);
+  Logger.log(`lancamentos_rampa_dia: export agregada retornou ${rows.length} linhas.`);
+  return rows;
+}
+
+function consultarClientesJanelasSeDisponivel_(modelos, generatedAt, exportDate) {
+  const exportaveis = modelos || [];
+  if (!exportaveis.length) {
+    return {
+      status: 'skipped',
+      rows: 'skipped',
+      base_atual_clientes: null,
+      payload: {
+        generated_at: generatedAt,
+        export_date: exportDate,
+        fonte: 'reise-ssot.mart_shared.fct_order_item',
+        privacidade: 'agregado_sem_pii',
+        base_atual: null,
+        janelas: []
+      }
+    };
+  }
+
+  try {
+    const payload = consultarClientesJanelas_(exportaveis, generatedAt, exportDate);
+    const rows = Array.isArray(payload.janelas) ? payload.janelas.length : 0;
+    const baseAtualClientes = payload.base_atual ? payload.base_atual.base_atual_clientes : null;
+    Logger.log(`lancamentos_clientes_janelas: ${rows} linhas; base_atual_clientes=${baseAtualClientes === null ? 'pendente' : baseAtualClientes}.`);
+    return {
+      status: rows ? 'synced' : 'empty',
+      rows,
+      base_atual_clientes: baseAtualClientes,
+      payload
+    };
+  } catch (error) {
+    const resumo = resumirErro_(error);
+    Logger.log(`lancamentos_clientes_janelas nao exportado. Erro: ${resumo}`);
+    return {
+      status: 'failed',
+      rows: 'skipped',
+      base_atual_clientes: null,
+      error_summary: resumo,
+      payload: null
+    };
+  }
+}
+
+function consultarClientesJanelas_(modelos, generatedAt, exportDate) {
+  const modelosSql = modelos.map(m => {
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+  }).join('\nUNION ALL\n');
+  const exportDateSql = `DATE('${sql_(exportDate)}')`;
+
+  const query = `
+WITH modelos AS (
+  ${modelosSql}
+),
+${modelosNormCteSql_()},
+orders_valid AS (
+  SELECT
+    CAST(o.order_sk AS STRING) AS order_sk,
+    DATE(COALESCE(o.paid_at, o.created_at), '${CONFIG.timeZone}') AS data_pedido,
+    CASE
+      WHEN NULLIF(TRIM(CAST(o.customer_sk AS STRING)), '') IS NOT NULL
+        THEN CONCAT('customer_sk:', TRIM(CAST(o.customer_sk AS STRING)))
+      WHEN REGEXP_CONTAINS(NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), ''), r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        THEN CONCAT('email:', LOWER(TRIM(CAST(o.customer_email AS STRING))))
+      WHEN LENGTH(NULLIF(REGEXP_REPLACE(COALESCE(
+        CAST(o.customer_phone_digits AS STRING),
+        CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.customer_phone') AS STRING),
+        ''
+      ), r'\\D', ''), '')) BETWEEN 8 AND 15
+        THEN CONCAT('phone:', NULLIF(REGEXP_REPLACE(COALESCE(
+          CAST(o.customer_phone_digits AS STRING),
+          CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(o), '$.customer_phone') AS STRING),
+          ''
+        ), r'\\D', ''), ''))
+      ELSE NULL
+    END AS customer_key
+  FROM \`${CONFIG.bqProjectId}.mart_shared.orders_all_valid_no_migracao\` o
+  WHERE DATE(COALESCE(o.paid_at, o.created_at), '${CONFIG.timeZone}') <= ${exportDateSql}
+),
+customer_first_purchase AS (
+  SELECT
+    customer_key,
+    MIN(data_pedido) AS primeira_compra
+  FROM orders_valid
+  WHERE customer_key IS NOT NULL
+  GROUP BY customer_key
+),
+base_atual AS (
+  SELECT
+    COUNT(DISTINCT customer_key) AS base_atual_clientes
+  FROM orders_valid
+  WHERE customer_key IS NOT NULL
+),
+base_by_model AS (
+  SELECT
+    m.modelo_id,
+    COUNT(DISTINCT IF(o.data_pedido < m.d0, o.customer_key, NULL)) AS base_total_d0
+  FROM modelos_norm m
+  LEFT JOIN orders_valid o
+    ON o.customer_key IS NOT NULL
+  GROUP BY m.modelo_id
+),
+itens_validos AS (
+  SELECT
+    i.order_partition_date_brt AS data,
+    CAST(i.order_sk AS STRING) AS order_sk,
+    COALESCE(
+      NULLIF(TRIM(CAST(JSON_EXTRACT_SCALAR(TO_JSON_STRING(i), '$.line_item_id') AS STRING)), ''),
+      TO_JSON_STRING(STRUCT(
+        CAST(i.order_sk AS STRING) AS order_sk,
+        CAST(i.sku AS STRING) AS sku,
+        CAST(i.item_name AS STRING) AS item_name,
+        SAFE_CAST(i.quantity AS INT64) AS quantity,
+        SAFE_CAST(i.line_gross_amount AS NUMERIC) AS line_gross_amount,
+        SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS line_discount_amount
+      ))
+    ) AS line_item_key,
+    NULLIF(TRIM(CAST(i.sku AS STRING)), '') AS sku,
+    NULLIF(TRIM(CAST(i.item_name AS STRING)), '') AS item_name,
+    SAFE_CAST(i.quantity AS INT64) AS pares,
+    SAFE_CAST(i.line_gross_amount AS NUMERIC) AS receita_bruta,
+    SAFE_CAST(IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS desconto,
+    SAFE_CAST(i.line_gross_amount - IFNULL(i.line_discount_amount, 0) AS NUMERIC) AS receita_liquida,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.item_name, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS item_name_norm,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(i.sku, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '') AS sku_compact,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(i.sku, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(pl_match.cor, '')), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' ')) AS match_text_norm
+  FROM \`${CONFIG.bqProjectId}.mart_shared.fct_order_item\` i
+  LEFT JOIN (
+    SELECT
+      UPPER(TRIM(sku)) AS sku_key,
+      ARRAY_AGG(NULLIF(TRIM(cor), '') IGNORE NULLS LIMIT 1)[SAFE_OFFSET(0)] AS cor
+    FROM \`${CONFIG.bqProjectId}.mart_shared.produto_lancamento_v\`
+    WHERE NULLIF(TRIM(sku), '') IS NOT NULL
+    GROUP BY 1
+  ) pl_match
+    ON pl_match.sku_key = UPPER(TRIM(i.sku))
+  WHERE i.is_valid_order = TRUE
+    AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
+    AND i.order_partition_date_brt <= ${exportDateSql}
+    AND SAFE_CAST(i.quantity AS INT64) > 0
+),
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key', endDateSql: exportDateSql })},
+launch_orders AS (
+  SELECT
+    c.modelo_id,
+    c.d0,
+    c.data,
+    DATE_DIFF(c.data, c.d0, DAY) AS dia_desde_d0,
+    c.order_sk,
+    ov.customer_key,
+    SUM(c.pares) AS pares,
+    SUM(c.receita_bruta) AS receita
+  FROM itens_classificados_v1 c
+  LEFT JOIN orders_valid ov
+    ON ov.order_sk = c.order_sk
+  WHERE DATE_DIFF(c.data, c.d0, DAY) >= 0
+  GROUP BY 1, 2, 3, 4, 5, 6
+),
+window_defs AS (
+  SELECT '7d' AS janela, 7 AS end_day, 1 AS ordem UNION ALL
+  SELECT '15d', 15, 2 UNION ALL
+  SELECT '30d', 30, 3 UNION ALL
+  SELECT '60d', 60, 4 UNION ALL
+  SELECT '90d', 90, 5
+),
+model_windows AS (
+  SELECT
+    m.modelo_id,
+    m.d0,
+    w.janela,
+    w.end_day,
+    w.ordem,
+    DATE_ADD(m.d0, INTERVAL w.end_day DAY) AS end_date,
+    CASE
+      WHEN DATE_ADD(m.d0, INTERVAL w.end_day DAY) <= ${exportDateSql} THEN 'fechada'
+      ELSE 'janela_aberta'
+    END AS status
+  FROM modelos_norm m
+  CROSS JOIN window_defs w
+
+  UNION ALL
+
+  SELECT
+    m.modelo_id,
+    m.d0,
+    'extended' AS janela,
+    GREATEST(DATE_DIFF(${exportDateSql}, m.d0, DAY), 0) AS end_day,
+    6 AS ordem,
+    ${exportDateSql} AS end_date,
+    'estendida' AS status
+  FROM modelos_norm m
+)
+SELECT
+  mw.modelo_id,
+  mw.janela,
+  mw.end_day AS window_day,
+  mw.d0 AS start_date,
+  mw.end_date,
+  mw.status,
+  CASE WHEN mw.status = 'janela_aberta' THEN CAST(NULL AS INT64) ELSE COUNT(DISTINCT lo.order_sk) END AS pedidos,
+  CASE WHEN mw.status = 'janela_aberta' THEN CAST(NULL AS INT64) ELSE SUM(lo.pares) END AS pares,
+  CASE WHEN mw.status = 'janela_aberta' THEN CAST(NULL AS NUMERIC) ELSE ROUND(SUM(lo.receita), 2) END AS receita,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT lo.customer_key)
+  END AS clientes_unicos,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(fp.primeira_compra >= mw.d0, lo.customer_key, NULL))
+  END AS novos_clientes,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(fp.primeira_compra < mw.d0, lo.customer_key, NULL))
+  END AS recorrentes_clientes,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SAFE_DIVIDE(SUM(lo.receita), COUNT(DISTINCT lo.customer_key)), 2)
+  END AS receita_por_cliente,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SAFE_DIVIDE(COUNT(DISTINCT lo.order_sk), COUNT(DISTINCT lo.customer_key)), 4)
+  END AS pedidos_por_cliente,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SAFE_DIVIDE(SUM(lo.pares), COUNT(DISTINCT lo.customer_key)), 4)
+  END AS pares_por_cliente,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SAFE_DIVIDE(SUM(lo.pares), COUNT(DISTINCT lo.customer_key)), 4)
+  END AS unidades_por_cliente,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SAFE_DIVIDE(COUNT(DISTINCT IF(fp.primeira_compra < mw.d0, lo.customer_key, NULL)), NULLIF(ANY_VALUE(b.base_total_d0), 0)), 6)
+  END AS pct_base_ativada,
+  CASE
+    WHEN mw.status = 'janela_aberta' OR COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN CAST(NULL AS INT64)
+    ELSE COUNT(DISTINCT IF(fp.primeira_compra < mw.d0, lo.customer_key, NULL))
+  END AS clientes_base_compraram,
+  ANY_VALUE(b.base_total_d0) AS base_total_d0,
+  ANY_VALUE(ba.base_atual_clientes) AS base_atual_clientes,
+  CASE WHEN mw.status = 'janela_aberta' THEN CAST(NULL AS INT64) ELSE COUNT(DISTINCT IF(lo.customer_key IS NOT NULL, lo.order_sk, NULL)) END AS pedidos_com_customer_key,
+  CASE WHEN mw.status = 'janela_aberta' THEN CAST(NULL AS INT64) ELSE COUNT(DISTINCT IF(lo.customer_key IS NULL, lo.order_sk, NULL)) END AS pedidos_sem_customer_key,
+  CASE
+    WHEN mw.status = 'janela_aberta' THEN CAST(NULL AS NUMERIC)
+    ELSE ROUND(SAFE_DIVIDE(COUNT(DISTINCT IF(lo.customer_key IS NOT NULL, lo.order_sk, NULL)), NULLIF(COUNT(DISTINCT lo.order_sk), 0)), 6)
+  END AS customer_key_coverage_pct,
+  CASE
+    WHEN mw.status = 'janela_aberta' THEN 'janela_aberta'
+    WHEN COUNT(DISTINCT lo.order_sk) = 0 THEN 'sem_venda_na_janela'
+    WHEN COUNTIF(lo.customer_key IS NOT NULL) = 0 THEN 'pendente_customer_key'
+    WHEN SAFE_DIVIDE(COUNT(DISTINCT IF(lo.customer_key IS NOT NULL, lo.order_sk, NULL)), NULLIF(COUNT(DISTINCT lo.order_sk), 0)) < 0.98 THEN 'parcial_customer_key'
+    ELSE 'ssot_agregado'
+  END AS qualidade,
+  'fct_order_item + orders_all_valid_no_migracao' AS fonte,
+  'agregado_sem_pii' AS privacidade
+FROM model_windows mw
+LEFT JOIN launch_orders lo
+  ON lo.modelo_id = mw.modelo_id
+ AND lo.dia_desde_d0 BETWEEN 0 AND mw.end_day
+LEFT JOIN customer_first_purchase fp
+  ON fp.customer_key = lo.customer_key
+LEFT JOIN base_by_model b
+  ON b.modelo_id = mw.modelo_id
+CROSS JOIN base_atual ba
+GROUP BY mw.modelo_id, mw.janela, mw.end_day, mw.d0, mw.end_date, mw.status, mw.ordem
+ORDER BY mw.modelo_id, mw.ordem;`;
+
+  const rows = runBq_(query).map(row => ({
+    modelo_id: row.modelo_id || null,
+    janela: row.janela || null,
+    window_day: numberOrNull_(row.window_day),
+    start_date: row.start_date || null,
+    end_date: row.end_date || null,
+    status: row.status || null,
+    pedidos: numberOrNull_(row.pedidos),
+    pares: numberOrNull_(row.pares),
+    receita: numberOrNull_(row.receita),
+    clientes_unicos: numberOrNull_(row.clientes_unicos),
+    novos_clientes: numberOrNull_(row.novos_clientes),
+    recorrentes_clientes: numberOrNull_(row.recorrentes_clientes),
+    receita_por_cliente: numberOrNull_(row.receita_por_cliente),
+    pedidos_por_cliente: numberOrNull_(row.pedidos_por_cliente),
+    pares_por_cliente: numberOrNull_(row.pares_por_cliente),
+    unidades_por_cliente: numberOrNull_(row.unidades_por_cliente),
+    pct_base_ativada: numberOrNull_(row.pct_base_ativada) === null
+      ? ratioSeguro_(row.clientes_base_compraram, row.base_total_d0)
+      : numberOrNull_(row.pct_base_ativada),
+    clientes_base_compraram: numberOrNull_(row.clientes_base_compraram),
+    base_total_d0: numberOrNull_(row.base_total_d0),
+    base_atual_clientes: numberOrNull_(row.base_atual_clientes),
+    pedidos_com_customer_key: numberOrNull_(row.pedidos_com_customer_key),
+    pedidos_sem_customer_key: numberOrNull_(row.pedidos_sem_customer_key),
+    customer_key_coverage_pct: numberOrNull_(row.customer_key_coverage_pct),
+    qualidade: row.qualidade || 'pendente',
+    fonte: row.fonte || 'fct_order_item + orders_all_valid_no_migracao',
+    privacidade: row.privacidade || 'agregado_sem_pii'
+  }));
+  const baseAtualClientes = rows
+    .map(row => row.base_atual_clientes)
+    .find(value => value !== null);
+
+  return {
+    generated_at: generatedAt,
+    export_date: exportDate,
+    fonte: 'reise-ssot.mart_shared.fct_order_item + mart_shared.orders_all_valid_no_migracao',
+    regra_cliente: 'customer_sk > email valido > telefone normalizado; chaves usadas apenas dentro do BigQuery',
+    privacidade: 'agregado_sem_pii',
+    base_atual: baseAtualClientes === undefined
+      ? null
+      : {
+        data_referencia: exportDate,
+        base_atual_clientes: baseAtualClientes,
+        fonte: 'orders_all_valid_no_migracao_customer_key_distinct'
+      },
+    janelas: rows
+  };
+}
+
+function consultarProdutosDiaQuery_(modelos) {
+  const modelosSql = modelos.map(m => {
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, DATE('${sql_(m.day_zero_base)}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+  }).join('\nUNION ALL\n');
+  const detalheEndSql = 'DATE_ADD(m.d0, INTERVAL 90 DAY)';
+  const detalheGlobalEndSql = 'DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)';
+  const usarMirrorProdutosDia = true;
+  const canalMirrorDisponivel = usarMirrorProdutosDia && CONFIG.canalAttributionEnabled && tabelaMartSharedExiste_('canal_atribuicao_pedido_mirror');
   const canalMirrorSourceOrderDisponivel = canalMirrorDisponivel && colunaMartSharedExiste_('canal_atribuicao_pedido_mirror', 'source_order_id');
   const canalMirrorOrderNameDisponivel = canalMirrorDisponivel && colunaMartSharedExiste_('canal_atribuicao_pedido_mirror', 'order_name');
-  const canalDailyDisponivel = CONFIG.canalAttributionEnabled && tabelaMartSharedExiste_('canal_atribuicao_daily_share');
-  const canalAtribuicaoDisponivel = CONFIG.canalAttributionEnabled;
+  const canalDailyDisponivel = false;
+  const canalAtribuicaoDisponivel = CONFIG.canalAttributionEnabled && canalMirrorDisponivel;
   if (!CONFIG.canalAttributionEnabled) {
     Logger.log('atribuicao_real: desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; exportacao continua no estado atual sem canal real.');
+  } else if (canalMirrorDisponivel) {
+    Logger.log('atribuicao_real: produtos_dia usa mirror por pedido criada a partir de shopify__orders_journey_latest_v; match so por source_order_id/order_name; aquisicao pura: midia paga e organico separados de direto/email/whatsapp/outros/nao atribuido.');
   } else {
-    Logger.log('atribuicao_real: usando last-click/UTM do SSOT por pedido; UTM/source de plataforma paga tem prioridade, e pedido sem UTM granular e alocado por mix diario/janela do SSOT.');
+    Logger.log('atribuicao_real: mirror por pedido ausente; export segue sem atribuicao real de canal para evitar fallback incorreto de origem do pedido.');
   }
   const canalAtribuicaoCteSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoCteSql_(canalMirrorDisponivel, canalMirrorSourceOrderDisponivel, canalMirrorOrderNameDisponivel) : '';
   const canalAtribuicaoSelectSql = canalAtribuicaoDisponivel ? canalAtribuicaoPedidoSelectSql_() : canalAtribuicaoPedidoNullSelectSql_();
@@ -948,8 +1456,9 @@ function consultarProdutosDia_(modelos) {
       (daily.data IS NOT NULL OR daily_window.modelo_id IS NOT NULL)
       AND (
         ic.regra_atribuicao_real IS NULL
-        OR ic.regra_atribuicao_real = 'sem_utm_organico'
+        OR ic.regra_atribuicao_real = 'sem_journey_regra_usuario'
         OR LOWER(COALESCE(ic.canal_real, '')) = 'unattributed'
+        OR ${usarMirrorProdutosDia ? 'FALSE' : 'TRUE'}
       )
     ) AS usar_atribuicao_daily` : `CAST(NULL AS NUMERIC) AS share_pedidos_pagos,
     CAST(NULL AS NUMERIC) AS share_pedidos_organicos,
@@ -967,7 +1476,7 @@ function consultarProdutosDia_(modelos) {
       ARRAY_AGG(regra_atribuicao IGNORE NULLS ORDER BY IF(regra_atribuicao = 'shopify_last_click_daily_allocated', 1, 2) LIMIT 1)[SAFE_OFFSET(0)] AS regra_atribuicao
     FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_daily_share\`
     WHERE data >= (SELECT MIN(d0) FROM modelos_norm)
-      AND data <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+      AND data <= ${detalheGlobalEndSql}
     GROUP BY data
   ) daily
     ON daily.data = ic.data
@@ -981,7 +1490,7 @@ function consultarProdutosDia_(modelos) {
       'shopify_window_mix_allocated' AS regra_atribuicao
     FROM modelos_norm m
     JOIN \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_daily_share\` d
-      ON d.data BETWEEN m.d0 AND DATE_ADD(m.d0, INTERVAL 90 DAY)
+      ON d.data BETWEEN m.d0 AND ${detalheEndSql}
     GROUP BY m.modelo_id
   ) daily_window
     ON daily_window.modelo_id = ic.modelo_id` : '';
@@ -1051,7 +1560,7 @@ ${canalAtribuicaoJoinSql}
     ON pl_match.sku_key = UPPER(TRIM(i.sku))
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
-    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND i.order_partition_date_brt <= ${detalheGlobalEndSql}
     AND SAFE_CAST(i.quantity AS INT64) > 0
 ),
 cliente_pedidos_source AS (
@@ -1066,7 +1575,7 @@ cliente_pedidos_source AS (
       ''
     ), r'\\D', ''), '') AS phone_norm
   FROM \`reise-ssot.mart_shared.orders_all_valid_no_migracao\` o
-  WHERE DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+  WHERE DATE(COALESCE(o.paid_at, o.created_at), '${CONFIG.timeZone}') <= ${detalheGlobalEndSql}
 ),
 cliente_pedidos_com_key AS (
   SELECT
@@ -1096,7 +1605,7 @@ cliente_primeira_compra AS (
   FROM cliente_pedidos
   GROUP BY customer_key
 ),
-${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })},
+${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key', endDateSql: detalheEndSql })},
 itens_classificados AS (
   SELECT
     c.*,
@@ -1201,21 +1710,33 @@ SELECT
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
     ELSE ROUND(SUM(CASE
       WHEN usar_atribuicao_daily THEN receita_bruta * COALESCE(share_receita_organica, 1 - COALESCE(share_receita_paga, share_pedidos_pagos, 0))
-      WHEN tipo_real IS NOT NULL AND tipo_real != 'paid' THEN receita_bruta
+      WHEN tipo_real = 'organic' THEN receita_bruta
       ELSE 0
     END), 2)
   END AS receita_organica,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE CAST(0 AS NUMERIC)
+    ELSE ROUND(SUM(CASE
+      WHEN usar_atribuicao_daily THEN 0
+      WHEN tipo_real = 'crm' THEN receita_bruta
+      ELSE 0
+    END), 2)
   END AS receita_crm,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE CAST(0 AS NUMERIC)
+    ELSE ROUND(SUM(CASE
+      WHEN usar_atribuicao_daily THEN 0
+      WHEN tipo_real = 'other' THEN receita_bruta
+      ELSE 0
+    END), 2)
   END AS receita_outros_canais,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE CAST(0 AS NUMERIC)
+    ELSE ROUND(SUM(CASE
+      WHEN usar_atribuicao_daily THEN 0
+      WHEN tipo_real = 'unmatched' THEN receita_bruta
+      ELSE 0
+    END), 2)
   END AS receita_sem_match_atribuicao,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
@@ -1231,28 +1752,43 @@ SELECT
     ELSE ROUND(SUM(CASE
       WHEN cliente_row_num != 1 THEN 0
       WHEN usar_atribuicao_daily THEN COALESCE(share_pedidos_organicos, 1 - COALESCE(share_pedidos_pagos, share_receita_paga, 0))
-      WHEN tipo_real IS NOT NULL AND tipo_real != 'paid' THEN 1
+      WHEN tipo_real = 'organic' THEN 1
       ELSE 0
     END), 4)
   END AS pedidos_organicos,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE CAST(0 AS NUMERIC)
+    ELSE ROUND(SUM(CASE
+      WHEN cliente_row_num != 1 THEN 0
+      WHEN usar_atribuicao_daily THEN 0
+      WHEN tipo_real = 'crm' THEN 1
+      ELSE 0
+    END), 4)
   END AS pedidos_crm,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE CAST(0 AS NUMERIC)
+    ELSE ROUND(SUM(CASE
+      WHEN cliente_row_num != 1 THEN 0
+      WHEN usar_atribuicao_daily THEN 0
+      WHEN tipo_real = 'other' THEN 1
+      ELSE 0
+    END), 4)
   END AS pedidos_outros_canais,
   CASE
     WHEN COUNTIF(tipo_real IS NOT NULL OR usar_atribuicao_daily) = 0 THEN CAST(NULL AS NUMERIC)
-    ELSE CAST(0 AS NUMERIC)
+    ELSE ROUND(SUM(CASE
+      WHEN cliente_row_num != 1 THEN 0
+      WHEN usar_atribuicao_daily THEN 0
+      WHEN tipo_real = 'unmatched' THEN 1
+      ELSE 0
+    END), 4)
   END AS pedidos_sem_match_atribuicao,
   COUNT(DISTINCT sku) AS skus_distintos,
   TO_JSON_STRING(STRUCT(
     'fct_order_item' AS fonte_base,
     'is_valid_order = TRUE' AS regra_pedido_valido,
     'receita = receita_bruta' AS regra_receita_dashboard,
-    IF(COUNTIF(usar_atribuicao_daily) > 0, COALESCE(ANY_VALUE(regra_atribuicao_daily), 'shopify_last_click_daily_allocated'), COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'email_data_valor_last_click', 'sem_atribuicao_real'))) AS regra_atribuicao_real,
+    IF(COUNTIF(usar_atribuicao_daily) > 0, COALESCE(ANY_VALUE(regra_atribuicao_daily), 'shopify_last_click_daily_allocated'), COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'mirror_stable_key_shopify_paid_signal_parity_v41', 'sem_atribuicao_real'))) AS regra_atribuicao_real,
     IF(COUNTIF(usar_atribuicao_daily) > 0, COALESCE(ANY_VALUE(regra_atribuicao_daily), 'shopify_last_click_daily_allocated'), COALESCE(ANY_VALUE(regra_atribuicao_real), IF(COUNTIF(tipo_real IS NOT NULL) > 0, 'atribuicao_real_pedido', 'origem_pedido_binaria'))) AS regra_join_atribuicao,
     ANY_VALUE(regra_classificacao) AS regra_classificacao
   )) AS flags_qualidade,
@@ -1293,6 +1829,118 @@ function normalizarCanalPedido_(value) {
     .trim();
 }
 
+function normalizarAtribuicaoKey_(value) {
+  return normalizarCanalPedido_(value).replace(/[^a-z0-9]+/g, '');
+}
+
+function canalAtribuicaoDetalhado_(rawChannel, utmSource, utmMedium, utmCampaign, sourceType) {
+  const channelText = normalizarCanalPedido_(rawChannel);
+  const sourceText = normalizarCanalPedido_(utmSource);
+  const mediumText = normalizarCanalPedido_(utmMedium);
+  const campaignText = normalizarCanalPedido_(utmCampaign);
+  const sourceTypeText = normalizarCanalPedido_(sourceType);
+  const sourceResolved = [channelText, sourceText].filter(Boolean).join(' ');
+  const signalText = [sourceResolved, mediumText, campaignText, sourceTypeText].filter(Boolean).join(' ');
+  const channelKey = normalizarAtribuicaoKey_(rawChannel);
+  const mediumKey = normalizarAtribuicaoKey_(utmMedium);
+  const sourceTypeKey = normalizarAtribuicaoKey_(sourceType);
+
+  if (!signalText) {
+    return 'Nao atribuido';
+  }
+  if (
+    /(^| )(cpc|ppc|pmax|paid|paid social|paid search|paidsearch|paidsocial|display|cpm|cpv|shopping|performance|max performance|performance max|demand gen|demandgen|remarketing|retargeting|affiliate|affiliates|programmatic|sponsored|ad|ads)( |$)/.test(mediumText)
+    || ['paid', 'advertising', 'ad', 'ads', 'paidsearch', 'paidsocial', 'paidshopping', 'paidmedia', 'paidother', 'paidvideo', 'paidreferral'].includes(sourceTypeKey)
+    || /(^| )(cpc|ppc|pmax|paid|paid social|paid search|paidsearch|paidsocial|display|cpm|cpv|shopping|performance|max performance|performance max|demand gen|demandgen|remarketing|retargeting|affiliate|affiliates|programmatic|sponsored|google ads|facebook ads|meta ads|instagram ads|tiktok ads|bing ads|microsoft ads|adwords|gads|googleadservices|gclid|fbclid)( |$)/.test(signalText)
+  ) {
+    return 'Midia paga';
+  }
+  if (sourceTypeKey === 'direct' || channelKey === 'direct' || (['nenhum', 'none'].includes(channelKey) && !sourceText)) {
+    return 'Direto';
+  }
+  if (
+    sourceTypeKey === 'email'
+    || /(^| )(email|e mail|newsletter|crm)( |$)/.test(mediumText)
+    || /(^| )(klaviyo|rd station|rdstation|shopify email|mailchimp)( |$)/.test(signalText)
+  ) {
+    return 'E-mail/CRM';
+  }
+  if (/(^| )(whatsapp|whats app|whtasapp|whats|wpp|wa|wa me|api whatsapp|wl co)( |$)/.test(signalText)) {
+    return 'WhatsApp';
+  }
+  if (
+    /(^| )(organic|organic search|organic social|seo|bio)( |$)/.test(mediumText)
+    || ['seo', 'search', 'social', 'organic'].includes(sourceTypeKey)
+    || /(^| )(google|bing|yahoo|duckduckgo|ecosia|instagram|facebook|tiktok|youtube|pinterest|linkedin)( |$)/.test(signalText)
+  ) {
+    return 'Organico';
+  }
+  return 'Outro atribuido';
+}
+
+function tipoAtribuicaoDetalhado_(canal) {
+  if (canal === 'Midia paga') return 'paid';
+  if (canal === 'Organico') return 'organic';
+  if (canal === 'E-mail/CRM') return 'crm';
+  if (canal === 'Nao atribuido') return 'unmatched';
+  return 'other';
+}
+
+function grupoCanalAtribuicao_(tipo) {
+  if (tipo === 'paid') return 'Midia paga';
+  if (tipo === 'organic') return 'Organico';
+  if (tipo === 'crm') return 'E-mail/CRM';
+  if (tipo === 'unmatched') return 'Nao atribuido';
+  return 'Controle';
+}
+
+function attributionKeySql_(expression) {
+  return `REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(${expression}, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', '')`;
+}
+
+function attributionWordsSql_(expression) {
+  return `TRIM(REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(${expression}, ''), NFD), r'\\p{M}', ''), r'[^a-z0-9]+', ' '))`;
+}
+
+function canalAtribuicaoSql_(rawChannelExpr, utmSourceExpr, utmMediumExpr, utmCampaignExpr = "''", sourceTypeExpr = "''") {
+  const channelText = attributionWordsSql_(rawChannelExpr);
+  const sourceText = attributionWordsSql_(utmSourceExpr);
+  const mediumText = attributionWordsSql_(utmMediumExpr);
+  const campaignText = attributionWordsSql_(utmCampaignExpr);
+  const sourceTypeText = attributionWordsSql_(sourceTypeExpr);
+  const sourceResolved = `TRIM(CONCAT(${channelText}, ' ', ${sourceText}))`;
+  const signalText = `TRIM(CONCAT(${sourceResolved}, ' ', ${mediumText}, ' ', ${campaignText}, ' ', ${sourceTypeText}))`;
+  const channelKey = attributionKeySql_(rawChannelExpr);
+  const sourceTypeKey = attributionKeySql_(sourceTypeExpr);
+
+  return `CASE
+      WHEN ${signalText} = '' THEN 'Nao atribuido'
+      WHEN REGEXP_CONTAINS(${mediumText}, r'(^| )(cpc|ppc|pmax|paid|paid social|paid search|paidsearch|paidsocial|display|cpm|cpv|shopping|performance|max performance|performance max|demand gen|demandgen|remarketing|retargeting|affiliate|affiliates|programmatic|sponsored|ad|ads)( |$)')
+        OR ${sourceTypeKey} IN ('paid', 'advertising', 'ad', 'ads', 'paidsearch', 'paidsocial', 'paidshopping', 'paidmedia', 'paidother', 'paidvideo', 'paidreferral')
+        OR REGEXP_CONTAINS(${signalText}, r'(^| )(cpc|ppc|pmax|paid|paid social|paid search|paidsearch|paidsocial|display|cpm|cpv|shopping|performance|max performance|performance max|demand gen|demandgen|remarketing|retargeting|affiliate|affiliates|programmatic|sponsored|google ads|facebook ads|meta ads|instagram ads|tiktok ads|bing ads|microsoft ads|adwords|gads|googleadservices|gclid|fbclid)( |$)') THEN 'Midia paga'
+      WHEN ${sourceTypeKey} = 'direct' OR ${channelKey} = 'direct' OR (${channelKey} IN ('nenhum', 'none') AND ${sourceText} = '') THEN 'Direto'
+      WHEN ${sourceTypeKey} = 'email'
+        OR REGEXP_CONTAINS(${mediumText}, r'(^| )(email|e mail|newsletter|crm)( |$)')
+        OR REGEXP_CONTAINS(${signalText}, r'(^| )(klaviyo|rd station|rdstation|shopify email|mailchimp)( |$)') THEN 'E-mail/CRM'
+      WHEN REGEXP_CONTAINS(${signalText}, r'(^| )(whatsapp|whats app|whtasapp|whats|wpp|wa|wa me|api whatsapp|wl co)( |$)') THEN 'WhatsApp'
+      WHEN REGEXP_CONTAINS(${mediumText}, r'(^| )(organic|organic search|organic social|seo|bio)( |$)')
+        OR ${sourceTypeKey} IN ('seo', 'search', 'social', 'organic')
+        OR REGEXP_CONTAINS(${signalText}, r'(^| )(google|bing|yahoo|duckduckgo|ecosia|instagram|facebook|tiktok|youtube|pinterest|linkedin)( |$)') THEN 'Organico'
+      ELSE 'Outro atribuido'
+    END`;
+}
+
+function tipoAtribuicaoSql_(rawChannelExpr, utmSourceExpr, utmMediumExpr, utmCampaignExpr = "''", sourceTypeExpr = "''") {
+  const canalSql = canalAtribuicaoSql_(rawChannelExpr, utmSourceExpr, utmMediumExpr, utmCampaignExpr, sourceTypeExpr);
+  return `CASE
+      WHEN ${canalSql} = 'Midia paga' THEN 'paid'
+      WHEN ${canalSql} = 'Organico' THEN 'organic'
+      WHEN ${canalSql} = 'E-mail/CRM' THEN 'crm'
+      WHEN ${canalSql} = 'Nao atribuido' THEN 'unmatched'
+      ELSE 'other'
+    END`;
+}
+
 function tipoCanalPedidoRow_(row) {
   const explicitType = normalizarCanalPedido_([
     row.tipo_real,
@@ -1301,26 +1949,18 @@ function tipoCanalPedidoRow_(row) {
     row.channel_type
   ].filter(Boolean).join(' '));
   if (/(^| )(paid|pago|midia paga|paid media)( |$)/.test(explicitType)) return 'paid';
-  if (/(^| )(unmatched|sem origem|sem utm|sem atribuicao|sem match|unattributed|unknown|an unknown source|not set)( |$)/.test(explicitType)) return 'organic';
-  if (isSemOrigemCanalPedidoRow_(row)) return 'organic';
-  if (/(^| )(owned|crm|email|newsletter|whatsapp|sms|organic|organico|seo|direct|referral|other|outros)( |$)/.test(explicitType)) return 'organic';
-
-  const channelText = normalizarCanalPedido_([
-    row.canal_real,
-    row.canal,
-    row.channel,
-    row.chanel,
-    row.grupo_canal,
-    row.raw_channel,
-    row.raw_medium,
-    row.raw_source,
-    row.utm_medium,
-    row.utm_source
-  ].filter(Boolean).join(' '));
-  if (!channelText) return '';
-  if (/(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen|cpc|ppc|cpm|paid|ads|anuncio|anuncios|patrocinad)( |$)/.test(channelText)) return 'paid';
-  if (isSemOrigemCanalPedidoRow_(row)) return 'organic';
-  return 'organic';
+  if (/(^| )(organic|organico)( |$)/.test(explicitType)) return 'organic';
+  if (/(^| )(crm|email|e mail|newsletter)( |$)/.test(explicitType)) return 'crm';
+  if (/(^| )(unmatched|nao atribuido|sem match|sem atribuicao)( |$)/.test(explicitType)) return 'unmatched';
+  if (/(^| )(other|outro|direto|direct|whatsapp)( |$)/.test(explicitType)) return 'other';
+  const canal = canalAtribuicaoDetalhado_(
+    row.raw_channel || row.canal_real || row.canal || row.channel || row.chanel,
+    row.utm_source || row.raw_utm_source || row.raw_source,
+    row.utm_medium || row.raw_medium,
+    row.utm_campaign || row.raw_campaign,
+    row.source_type || row.raw_source_type
+  );
+  return tipoAtribuicaoDetalhado_(canal);
 }
 
 function isSemOrigemCanalPedidoRow_(row) {
@@ -1440,12 +2080,18 @@ function auditarAtribuicaoCanal_(rows) {
     if (tipo === 'paid') {
       bucket.pedidos_pagos[orderKey] = true;
       bucket.receita_paga += receita;
-    } else if (tipo === 'organic' || tipo === 'owned' || tipo === 'crm') {
+    } else if (tipo === 'organic') {
       bucket.pedidos_organicos[orderKey] = true;
       bucket.receita_organica += receita;
+    } else if (tipo === 'crm' || tipo === 'owned') {
+      bucket.pedidos_crm[orderKey] = true;
+      bucket.receita_crm += receita;
+    } else if (tipo === 'unmatched') {
+      bucket.pedidos_sem_match[orderKey] = true;
+      bucket.receita_sem_match_atribuicao += receita;
     } else if (tipo) {
-      bucket.pedidos_organicos[orderKey] = true;
-      bucket.receita_organica += receita;
+      bucket.pedidos_outros[orderKey] = true;
+      bucket.receita_outros_canais += receita;
     }
   };
 
@@ -1593,7 +2239,7 @@ itens_validos AS (
     ON pl_match.sku_key = UPPER(TRIM(i.sku))
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
-    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND i.order_partition_date_brt <= CURRENT_DATE('${CONFIG.timeZone}')
     AND SAFE_CAST(i.quantity AS INT64) > 0
 ),
 ${itensClassificadosV1CteSql_({ partitionBy: 'order_sk, line_item_key' })}
@@ -2712,20 +3358,27 @@ function resumoCanalAtribuicaoMirrorExistente_(bounds) {
   const predicate = windows.map(window => (
     `(paid_date_brt BETWEEN DATE(${sqlString_(window.minDate)}) AND DATE(${sqlString_(window.maxDate)}))`
   )).join('\n  OR ');
+  const tipoRuleSql = tipoAtribuicaoSql_(
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.raw_channel')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_source')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_medium')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_campaign')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.raw_source_type')`
+  );
   const rows = runBq_(`
 SELECT
-  SUM(qtd) AS rows,
-  SUM(IF(tipo = 'paid', qtd, 0)) AS paid_rows,
-  SUM(IF(tipo != 'paid', qtd, 0)) AS organic_rows,
+  SUM(qtd) AS row_count,
+  SUM(IF(tipo_recalculado = 'paid', qtd, 0)) AS paid_rows,
+  SUM(IF(tipo_recalculado = 'organic', qtd, 0)) AS organic_rows,
   TO_JSON_STRING(ARRAY_AGG(STRUCT(regra_atribuicao_real, qtd) ORDER BY regra_atribuicao_real)) AS source_counts_json
 FROM (
   SELECT
-    tipo,
+    ${tipoRuleSql} AS tipo_recalculado,
     regra_atribuicao_real,
     COUNT(*) AS qtd
-  FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\`
+  FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\` AS canal_real
   WHERE ${predicate}
-  GROUP BY tipo, regra_atribuicao_real
+  GROUP BY tipo_recalculado, regra_atribuicao_real
 )`);
   const row = rows[0] || {};
   const sourceCounts = {};
@@ -2734,7 +3387,7 @@ FROM (
     sourceCounts[key] = Number(item.qtd || 0);
   });
   return {
-    rows: numberOrNull_(row.rows) || 0,
+    rows: numberOrNull_(row.row_count) || 0,
     paid_rows: numberOrNull_(row.paid_rows) || 0,
     organic_rows: numberOrNull_(row.organic_rows) || 0,
     source_counts: sourceCounts
@@ -2742,11 +3395,12 @@ FROM (
 }
 
 function canalAtribuicaoMirrorBounds_(modelos) {
+  const today = dateIsoKey_(new Date());
   const windows = (modelos || [])
     .map(modelo => ({
       modeloId: modelo.modelo_id || null,
       minDate: dateIsoKey_(modelo.day_zero_base),
-      maxDate: addDaysIso_(dateIsoKey_(modelo.day_zero_base), 90)
+      maxDate: today
     }))
     .filter(window => window.minDate && window.maxDate)
     .sort((a, b) => a.minDate.localeCompare(b.minDate));
@@ -2768,8 +3422,8 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
     return {
       status: 'not_used',
       rows: 'skipped',
-      attribution_source: 'core_order_origin_fields',
-      rule: 'paid_se_sinal_de_midia_paga_senao_organic'
+      attribution_source: 'shopify__orders_journey_latest_v',
+      rule: 'shopify_paid_signal_parity_v41'
     };
   }
   const bounds = canalAtribuicaoMirrorBounds_(modelos);
@@ -2780,7 +3434,11 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
 
   try {
     garantirTabelaCanalAtribuicaoMirror_();
-    const dailyStatus = sincronizarCanalAtribuicaoDailyShareSePossivel_(bounds);
+    const dailyStatus = {
+      status: 'not_used',
+      rows: 'skipped',
+      rule: 'pedido_real_shopify_journey_latest_v; match source_order_id/order_name; shopify_paid_signal_parity_v41'
+    };
     if (tabelaMartSharedTemStreamingBuffer_('canal_atribuicao_pedido_mirror')) {
       const resumoExistente = resumoCanalAtribuicaoMirrorExistente_(bounds);
       Logger.log(`canal_atribuicao_pedido_mirror: streaming buffer ativo; reutilizando cache existente (${resumoExistente.rows} pedidos).`);
@@ -2808,7 +3466,7 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
       bqError = error;
       Logger.log(`canal_atribuicao_pedido_mirror: fonte BigQuery/Shopify existente indisponivel; tentando seguir com planilha. Erro: ${error.message}`);
     }
-    const rows = deduplicarCanalAtribuicaoRows_([...(sheetStatus.rows_data || []), ...bqRows]);
+    const rows = deduplicarCanalAtribuicaoRows_([...bqRows, ...(sheetStatus.rows_data || [])]);
     try {
       limparCanalAtribuicaoMirror_(bounds);
     } catch (error) {
@@ -2951,8 +3609,8 @@ function normalizarAtribuicaoPedidoPlanilhaRow_(row, lineNumber, bounds) {
     'total'
   ]));
 
-  if (!sourceOrderId && !orderName && !(email && paidDate && totalAmount !== null)) {
-    Logger.log(`atribuicao_pedidos linha ${lineNumber} ignorada: informe source_order_id, order_name/pedido ou email+data_pedido+valor_pedido.`);
+  if (!sourceOrderId && !orderName) {
+    Logger.log(`atribuicao_pedidos linha ${lineNumber} ignorada: informe source_order_id ou order_name/pedido.`);
     return null;
   }
 
@@ -2995,6 +3653,12 @@ function normalizarAtribuicaoPedidoPlanilhaRow_(row, lineNumber, bounds) {
     'campanha',
     'last_utm_campaign'
   ]));
+  const rawSourceType = stringOrNull_(pickRowValue_(row, [
+    'source_type',
+    'last_source_type',
+    'tipo_fonte',
+    'raw_source_type'
+  ]));
   const explicitType = stringOrNull_(pickRowValue_(row, [
     'tipo',
     'tipo_real',
@@ -3013,10 +3677,14 @@ function normalizarAtribuicaoPedidoPlanilhaRow_(row, lineNumber, bounds) {
     raw_channel: rawChannel,
     raw_source: rawSource,
     raw_medium: rawMedium,
+    raw_campaign: rawCampaign,
+    raw_source_type: rawSourceType,
     utm_source: rawSource,
-    utm_medium: rawMedium
+    utm_medium: rawMedium,
+    utm_campaign: rawCampaign,
+    source_type: rawSourceType
   });
-  const canal = canalAtribuicaoManual_(tipo, rawChannel, rawSource, rawMedium);
+  const canal = canalAtribuicaoManual_(tipo, rawChannel, rawSource, rawMedium, rawCampaign, rawSourceType);
 
   return {
     email_norm: email ? email.trim().toLowerCase() : null,
@@ -3026,30 +3694,21 @@ function normalizarAtribuicaoPedidoPlanilhaRow_(row, lineNumber, bounds) {
     order_name: orderName,
     canal,
     tipo,
-    grupo_canal: tipo === 'paid' ? 'Midia paga' : 'Organico',
+    grupo_canal: grupoCanalAtribuicao_(tipo),
     utm_source: rawSource,
     utm_medium: rawMedium,
     utm_campaign: rawCampaign,
     raw_channel: rawChannel,
     raw_medium: rawMedium,
     raw_source: rawSource,
+    raw_source_type: rawSourceType,
     pedidos_na_chave: null,
     regra_atribuicao_real: 'planilha_atribuicao_pedido'
   };
 }
 
-function canalAtribuicaoManual_(tipo, rawChannel, rawSource, rawMedium) {
-  const text = normalizarCanalPedido_([rawChannel, rawSource, rawMedium].filter(Boolean).join(' '));
-  if (tipo === 'paid') {
-    if (/(^| )(google|google ads|googleads|adwords|gads|pmax|performance max)( |$)/.test(text)) return 'Google Ads';
-    if (/(^| )(meta|facebook|instagram|fb ads|ig ads)( |$)/.test(text)) return 'Meta';
-    return 'Midia paga';
-  }
-  if (/(^| )(email|newsletter|crm|klaviyo|rd station|rdstation|sms|whatsapp|disparo)( |$)/.test(text)) return 'CRM / Organico';
-  if (/(^| )(instagram|facebook)( |$)/.test(text)) return 'Organic Social';
-  if (/(^| )(google|bing|yahoo|duckduckgo|brave)( |$)/.test(text)) return 'Organic Search';
-  if (/(^| )(direct|direto)( |$)/.test(text)) return 'Direct';
-  return rawChannel || rawSource || 'Organico';
+function canalAtribuicaoManual_(tipo, rawChannel, rawSource, rawMedium, rawCampaign, rawSourceType) {
+  return canalAtribuicaoDetalhado_(rawChannel, rawSource, rawMedium, rawCampaign, rawSourceType);
 }
 
 function deduplicarCanalAtribuicaoRows_(rows) {
@@ -3070,10 +3729,6 @@ function chaveCanalAtribuicaoRow_(row) {
   if (sourceOrderId) return `source:${sourceOrderId}`;
   const orderName = normalizarChavePedido_(row.order_name);
   if (orderName) return `name:${orderName}`;
-  const email = stringOrNull_(row.email_norm);
-  const date = dateIsoKey_(row.paid_date_brt);
-  const amount = numberOrNull_(row.total_amount);
-  if (email && date && amount !== null) return `fallback:${email.toLowerCase()}|${date}|${round2_(amount)}`;
   return '';
 }
 
@@ -3189,6 +3844,7 @@ function sincronizarCanalAtribuicaoDailyShareSePossivel_(bounds) {
 function consultarCanalAtribuicaoDailyShareUs_(bounds) {
   const minDateSql = sqlString_(bounds.minDate);
   const maxDateSql = sqlString_(bounds.maxDate);
+  const tipoLastClickSql = tipoAtribuicaoSql_('referring_channel_norm', 'utm_source_norm', 'utm_medium_norm');
   const query = `
 WITH last_click_base AS (
   SELECT
@@ -3227,16 +3883,7 @@ WITH last_click_base AS (
 last_click_classificado AS (
   SELECT
     data,
-    CASE
-      WHEN REGEXP_CONTAINS(utm_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paidsocial|paid|display|demand[-_ ]gen|ads?|adwords|gads)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        OR (
-          REGEXP_CONTAINS(utm_source_match, r'(^| )(meta|facebook|instagram|fb|ig|google|googleads|gads|adwords)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        )
-        THEN 'paid'
-      ELSE 'organic'
-    END AS tipo,
+    ${tipoLastClickSql} AS tipo,
     COALESCE(pedidos, 0) AS pedidos,
     COALESCE(receita, 0) AS receita
   FROM last_click_base
@@ -3246,10 +3893,10 @@ last_click_diario AS (
     data,
     SUM(pedidos) AS pedidos_total,
     SUM(IF(tipo = 'paid', pedidos, 0)) AS pedidos_pagos,
-    SUM(IF(tipo != 'paid', pedidos, 0)) AS pedidos_organicos,
+    SUM(IF(tipo = 'organic', pedidos, 0)) AS pedidos_organicos,
     SUM(receita) AS receita_total,
     SUM(IF(tipo = 'paid', receita, 0)) AS receita_paga,
-    SUM(IF(tipo != 'paid', receita, 0)) AS receita_organica,
+    SUM(IF(tipo = 'organic', receita, 0)) AS receita_organica,
     'shopify_last_click_daily_allocated' AS regra_atribuicao
   FROM last_click_classificado
   GROUP BY data
@@ -3259,10 +3906,10 @@ channels_proxy_diario AS (
     data,
     SUM(COALESCE(SAFE_CAST(pedidos AS NUMERIC), 0)) AS pedidos_total,
     SUM(IF(LOWER(TRIM(CAST(tipo AS STRING))) = 'paid', COALESCE(SAFE_CAST(pedidos AS NUMERIC), 0), 0)) AS pedidos_pagos,
-    SUM(IF(LOWER(TRIM(CAST(tipo AS STRING))) != 'paid', COALESCE(SAFE_CAST(pedidos AS NUMERIC), 0), 0)) AS pedidos_organicos,
+    SUM(IF(LOWER(TRIM(CAST(tipo AS STRING))) = 'organic', COALESCE(SAFE_CAST(pedidos AS NUMERIC), 0), 0)) AS pedidos_organicos,
     SUM(COALESCE(SAFE_CAST(vendas AS NUMERIC), 0)) AS receita_total,
     SUM(IF(LOWER(TRIM(CAST(tipo AS STRING))) = 'paid', COALESCE(SAFE_CAST(vendas AS NUMERIC), 0), 0)) AS receita_paga,
-    SUM(IF(LOWER(TRIM(CAST(tipo AS STRING))) != 'paid', COALESCE(SAFE_CAST(vendas AS NUMERIC), 0), 0)) AS receita_organica,
+    SUM(IF(LOWER(TRIM(CAST(tipo AS STRING))) = 'organic', COALESCE(SAFE_CAST(vendas AS NUMERIC), 0), 0)) AS receita_organica,
     'shopify_channels_daily_proxy_allocated' AS regra_atribuicao
   FROM \`${CONFIG.bqProjectId}.mart_growth_us.shopify_channels_daily_v\`
   WHERE data BETWEEN DATE(${minDateSql}) AND DATE(${maxDateSql})
@@ -3364,6 +4011,8 @@ function inserirCanalAtribuicaoDailyShare_(rows) {
 function consultarCanalAtribuicaoMirrorUs_(bounds) {
   const minDateSql = sqlString_(bounds.minDate);
   const maxDateSql = sqlString_(bounds.maxDate);
+  const canalRuleSql = canalAtribuicaoSql_('raw_channel', 'raw_utm_source', 'raw_medium', 'raw_campaign', 'raw_source_type');
+  const tipoRuleSql = tipoAtribuicaoSql_('raw_channel', 'raw_utm_source', 'raw_medium', 'raw_campaign', 'raw_source_type');
   const windows = (bounds.windows || [{ minDate: bounds.minDate, maxDate: bounds.maxDate }])
     .filter(window => window.minDate && window.maxDate);
   const windowsSql = windows.map(window => (
@@ -3509,9 +4158,10 @@ orders AS (
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS direct_source_type,
     COUNT(*) OVER (
       PARTITION BY
-        NULLIF(LOWER(TRIM(CAST(b.email_norm AS STRING))), ''),
-        b.paid_date_brt,
-        ROUND(SAFE_CAST(b.total_amount AS NUMERIC), 2)
+        COALESCE(
+          NULLIF(TRIM(CAST(b.source_order_id AS STRING)), ''),
+          NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '')
+        )
     ) AS pedidos_na_chave
   FROM \`${CONFIG.bqProjectId}.mart_growth_us.bridge_orders_customers\` b
   WHERE b.paid_date_brt BETWEEN DATE(${minDateSql}) AND DATE(${maxDateSql})
@@ -3520,10 +4170,8 @@ orders AS (
       FROM janelas janela
       WHERE b.paid_date_brt BETWEEN janela.data_inicio AND janela.data_fim
     )
-    AND b.total_amount IS NOT NULL
     AND (
-      NULLIF(LOWER(TRIM(CAST(b.email_norm AS STRING))), '') IS NOT NULL
-      OR NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
+      NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
       OR NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '') IS NOT NULL
     )
 ),
@@ -3554,15 +4202,14 @@ joined AS (
     o.source_order_id,
     o.pedidos_na_chave,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_source_description, j.last_source, o.direct_channel]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_channel,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_medium, o.direct_medium]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_medium]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_source, j.last_source, o.direct_source]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_source, o.direct_utm_source]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_utm_source,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_campaign, o.direct_campaign]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_source_type, o.direct_source_type]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source_type,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_source]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_utm_source,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_campaign]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_source_type]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source_type,
     CASE
-      WHEN j.order_id IS NOT NULL THEN 'shopify_customer_journey_last_click'
-      WHEN o.direct_channel IS NOT NULL OR o.direct_source IS NOT NULL OR o.direct_medium IS NOT NULL THEN 'bridge_order_origin_fields'
-      ELSE 'sem_utm_organico'
+      WHEN j.order_id IS NOT NULL OR j.order_name IS NOT NULL THEN 'shopify_journey_latest_v'
+      ELSE 'sem_journey_regra_usuario'
     END AS origem_atribuicao
   FROM orders o
   LEFT JOIN journey j
@@ -3608,56 +4255,18 @@ classified AS (
     total_amount,
     source_order_id,
     order_name,
-    COALESCE(NULLIF(TRIM(CAST(last_utm_source AS STRING)), ''), raw_source) AS utm_source,
+    raw_utm_source AS utm_source,
     COALESCE(NULLIF(TRIM(CAST(last_utm_medium AS STRING)), ''), raw_medium) AS utm_medium,
     COALESCE(NULLIF(TRIM(CAST(last_utm_campaign AS STRING)), ''), raw_campaign) AS utm_campaign,
     raw_channel,
     raw_medium,
     raw_source,
+    raw_source_type,
     raw_utm_source,
     pedidos_na_chave,
     origem_atribuicao,
-    CASE
-      WHEN origem_match = ''
-        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|unattributed|unknown|referral|linktr|ga4)')
-        THEN 'Unattributed'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads)( |$)')
-        OR (
-          REGEXP_CONTAINS(raw_utm_source_match, r'(^| )(meta|facebook|instagram|fb|ig)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        ) THEN 'Meta'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        OR (
-          REGEXP_CONTAINS(raw_utm_source_match, r'(^| )(google|googleads|gads|adwords)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        ) THEN 'Google Ads'
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)') THEN 'Midia paga'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(crm|email|newsletter|klaviyo|rdstation|rd station|sms|whatsapp|disparo)( |$)') THEN 'CRM / Organico'
-      WHEN REGEXP_CONTAINS(raw_channel_match, r'(instagram|facebook)') THEN 'Organic Social'
-      WHEN REGEXP_CONTAINS(raw_channel_match, r'(google|bing|yahoo|duckduckgo|brave)') THEN 'Organic Search'
-      WHEN raw_source_type_match = 'direct' OR raw_channel_match IN ('direct', '(direct)') THEN 'Direct'
-      WHEN raw_channel LIKE '%whatsapp%' THEN 'Whatsapp'
-      WHEN raw_channel LIKE '%tiktok%' THEN 'Tiktok'
-      WHEN raw_channel LIKE '%youtube%' THEN 'Youtube'
-      WHEN raw_channel LIKE '%linktr%' THEN 'Linktr.Ee'
-      WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
-      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
-      ELSE INITCAP(raw_channel)
-    END AS canal,
-    CASE
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        OR (
-          REGEXP_CONTAINS(raw_utm_source_match, r'(^| )(meta|facebook|instagram|fb|ig|google|googleads|gads|adwords)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        )
-        THEN 'paid'
-      WHEN origem_match = ''
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(unattributed|unknown|an unknown source|not set)( |$)')
-        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|referral|linktr|ga4)')
-        THEN 'organic'
-      ELSE 'organic'
-    END AS tipo
+    ${canalRuleSql} AS canal,
+    ${tipoRuleSql} AS tipo
   FROM normalized
 )
 SELECT
@@ -3670,7 +4279,10 @@ SELECT
   tipo,
   CASE
     WHEN tipo = 'paid' THEN 'Midia paga'
-    ELSE 'Organico'
+    WHEN tipo = 'organic' THEN 'Organico'
+    WHEN tipo = 'crm' THEN 'E-mail/CRM'
+    WHEN tipo = 'unmatched' THEN 'Nao atribuido'
+    ELSE 'Controle'
   END AS grupo_canal,
   utm_source,
   utm_medium,
@@ -3678,11 +4290,12 @@ SELECT
   raw_channel,
   raw_medium,
   raw_source,
+  raw_source_type,
   pedidos_na_chave,
   origem_atribuicao AS regra_atribuicao_real
 FROM classified
 QUALIFY ROW_NUMBER() OVER (
-  PARTITION BY COALESCE(source_order_id, order_name, CONCAT(email_norm, '|', CAST(paid_date_brt AS STRING), '|', CAST(total_amount AS STRING)))
+  PARTITION BY COALESCE(source_order_id, order_name)
   ORDER BY
     CASE tipo
       WHEN 'paid' THEN 1
@@ -3707,9 +4320,10 @@ QUALIFY ROW_NUMBER() OVER (
     raw_channel: row.raw_channel || null,
     raw_medium: row.raw_medium || null,
     raw_source: row.raw_source || null,
+    raw_source_type: row.raw_source_type || null,
     pedidos_na_chave: numberOrNull_(row.pedidos_na_chave),
-    regra_atribuicao_real: row.regra_atribuicao_real || 'sem_utm_organico'
-  })).filter(row => row.paid_date_brt && row.total_amount !== null && (row.source_order_id || row.order_name || row.email_norm));
+    regra_atribuicao_real: row.regra_atribuicao_real || 'sem_journey_regra_usuario'
+  })).filter(row => row.paid_date_brt && (row.source_order_id || row.order_name));
 }
 
 function garantirTabelaCanalAtribuicaoMirror_() {
@@ -3729,6 +4343,7 @@ CREATE TABLE IF NOT EXISTS \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_
   raw_channel STRING,
   raw_medium STRING,
   raw_source STRING,
+  raw_source_type STRING,
   pedidos_na_chave INT64,
   regra_atribuicao_real STRING
 )
@@ -3737,6 +4352,7 @@ CLUSTER BY email_norm, total_amount`;
   runBq_(query);
   runBq_(`ALTER TABLE \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\` ADD COLUMN IF NOT EXISTS source_order_id STRING`);
   runBq_(`ALTER TABLE \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\` ADD COLUMN IF NOT EXISTS order_name STRING`);
+  runBq_(`ALTER TABLE \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\` ADD COLUMN IF NOT EXISTS raw_source_type STRING`);
 }
 
 function limparCanalAtribuicaoMirror_(bounds) {
@@ -3783,6 +4399,22 @@ function inserirCanalAtribuicaoMirror_(rows) {
 }
 
 function canalAtribuicaoPedidoCteSql_(usarMirror, usarSourceOrderMirror, usarOrderNameMirror) {
+  const canalMirrorSql = canalAtribuicaoSql_(
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.raw_channel')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_source')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_medium')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_campaign')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.raw_source_type')`
+  );
+  const tipoMirrorSql = tipoAtribuicaoSql_(
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.raw_channel')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_source')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_medium')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.utm_campaign')`,
+    `JSON_EXTRACT_SCALAR(TO_JSON_STRING(canal_real), '$.raw_source_type')`
+  );
+  const canalOrderSql = canalAtribuicaoSql_('raw_channel', 'raw_utm_source', 'raw_medium', 'raw_campaign', 'raw_source_type');
+  const tipoOrderSql = tipoAtribuicaoSql_('raw_channel', 'raw_utm_source', 'raw_medium', 'raw_campaign', 'raw_source_type');
   const sourceOrderMatchSql = usarSourceOrderMirror
     ? `      WHEN canal_real.source_order_id IS NOT NULL THEN CONCAT('source_order_id:', canal_real.source_order_id)\n`
     : '';
@@ -3803,17 +4435,25 @@ function canalAtribuicaoPedidoCteSql_(usarMirror, usarSourceOrderMirror, usarOrd
     )
     OR `
     : '';
+  const mirrorPresentSql = [
+    usarSourceOrderMirror ? 'canal_real.source_order_id IS NOT NULL' : '',
+    usarOrderNameMirror ? 'canal_real.order_name IS NOT NULL' : ''
+  ].filter(Boolean).join(' OR ') || 'canal_real.paid_date_brt IS NOT NULL';
   const mirrorMatchKeySql = usarMirror ? `CASE
-${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NULL THEN CAST(NULL AS STRING)
-      ELSE CONCAT(canal_real.email_norm, '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
+${sourceOrderMatchSql}${orderNameMatchSql}      ELSE CAST(NULL AS STRING)
     END AS match_key_mirror,` : `CAST(NULL AS STRING) AS match_key_mirror,`;
-  const mirrorSelectSql = usarMirror ? `canal_real.canal AS canal_mirror,
+  const mirrorSelectSql = usarMirror ? `CASE
+      WHEN NOT (${mirrorPresentSql}) THEN CAST(NULL AS STRING)
+      ELSE ${canalMirrorSql}
+    END AS canal_mirror,
     CASE
-      WHEN canal_real.tipo IS NULL THEN CAST(NULL AS STRING)
-      WHEN canal_real.tipo = 'paid' THEN 'paid'
-      ELSE 'organic'
+      WHEN NOT (${mirrorPresentSql}) THEN CAST(NULL AS STRING)
+      ELSE ${tipoMirrorSql}
     END AS tipo_mirror,
-    canal_real.regra_atribuicao_real AS regra_mirror,
+    CASE
+      WHEN NOT (${mirrorPresentSql}) THEN CAST(NULL AS STRING)
+      ELSE COALESCE(canal_real.regra_atribuicao_real, 'mirror_shopify_paid_signal_parity_v41')
+    END AS regra_mirror,
     ${mirrorMatchKeySql}` : `CAST(NULL AS STRING) AS canal_mirror,
     CAST(NULL AS STRING) AS tipo_mirror,
     CAST(NULL AS STRING) AS regra_mirror,
@@ -3826,30 +4466,36 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
         ROW_NUMBER() OVER (
           PARTITION BY COALESCE(
             NULLIF(REGEXP_REPLACE(LOWER(COALESCE(canal_real.source_order_id, '')), r'[^a-z0-9]+', ''), ''),
-            NULLIF(REGEXP_REPLACE(LOWER(COALESCE(canal_real.order_name, '')), r'[^a-z0-9]+', ''), ''),
-            CONCAT(COALESCE(canal_real.email_norm, ''), '|', CAST(canal_real.paid_date_brt AS STRING), '|', CAST(canal_real.total_amount AS STRING))
+            NULLIF(REGEXP_REPLACE(LOWER(COALESCE(canal_real.order_name, '')), r'[^a-z0-9]+', ''), '')
           )
           ORDER BY
-            CASE WHEN canal_real.tipo = 'paid' THEN 1 ELSE 2 END,
             CASE canal_real.regra_atribuicao_real
-              WHEN 'shopify_customer_journey_last_click' THEN 1
-              WHEN 'bridge_order_origin_fields' THEN 2
+              WHEN 'shopify_journey_latest_v' THEN 1
+              WHEN 'shopify_customer_journey_last_click' THEN 2
               WHEN 'planilha_atribuicao_pedido' THEN 3
               ELSE 9
+            END,
+            CASE
+              WHEN ${tipoMirrorSql} = 'paid' THEN 1
+              ELSE 2
             END,
             canal_real.canal
         ) AS _rn
       FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\` canal_real
       WHERE canal_real.paid_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
-        AND canal_real.paid_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+        AND canal_real.paid_date_brt <= CURRENT_DATE('${CONFIG.timeZone}')
+        AND (
+          NULLIF(REGEXP_REPLACE(LOWER(COALESCE(canal_real.source_order_id, '')), r'[^a-z0-9]+', ''), '') IS NOT NULL
+          OR NULLIF(REGEXP_REPLACE(LOWER(COALESCE(canal_real.order_name, '')), r'[^a-z0-9]+', ''), '') IS NOT NULL
+        )
     )
     WHERE _rn = 1
   ) canal_real
-    ON ${sourceOrderJoinSql}${orderNameJoinSql}(
-      canal_real.email_norm = NULLIF(LOWER(TRIM(CAST(o.customer_email AS STRING))), '')
-      AND canal_real.paid_date_brt = DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo')
-      AND canal_real.total_amount = ROUND(SAFE_CAST(o.total_amount AS NUMERIC), 2)
-    )` : '';
+    ON ${sourceOrderJoinSql}${orderNameJoinSql}FALSE` : '';
+  const fallbackCanalSql = "canal_origem_pedido";
+  const fallbackTipoSql = "tipo_origem_pedido";
+  const fallbackRegraSql = "'core_order_shopify_paid_signal_parity_v41'";
+  const fallbackMatchSql = "CONCAT('order_origin:', order_sk)";
 
   return `pedido_atribuicao_raw AS (
   SELECT
@@ -3984,7 +4630,7 @@ ${sourceOrderMatchSql}${orderNameMatchSql}      WHEN canal_real.email_norm IS NU
   FROM \`${CONFIG.bqProjectId}.core.order\` o
 ${mirrorJoinSql}
   WHERE DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') >= (SELECT MIN(d0) FROM modelos_norm)
-    AND DATE(COALESCE(o.paid_at, o.created_at), 'America/Sao_Paulo') <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND DATE(COALESCE(o.paid_at, o.created_at), '${CONFIG.timeZone}') <= CURRENT_DATE('${CONFIG.timeZone}')
     AND o.is_valid_order = TRUE
 ),
 pedido_atribuicao_norm AS (
@@ -4016,70 +4662,29 @@ pedido_atribuicao_norm AS (
 pedido_atribuicao_classificada AS (
   SELECT
     *,
-    CASE
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads)( |$)')
-        OR (
-          REGEXP_CONTAINS(raw_utm_source_match, r'(^| )(meta|facebook|instagram|fb|ig)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        ) THEN 'Meta'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        OR (
-          REGEXP_CONTAINS(raw_utm_source_match, r'(^| )(google|googleads|gads|adwords)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        ) THEN 'Google Ads'
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)') THEN 'Midia paga'
-      WHEN origem_match = ''
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(unattributed|unknown|an unknown source|not set)( |$)')
-        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|referral|linktr|ga4)')
-        THEN 'Organico'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(crm|email|newsletter|klaviyo|rdstation|rd station|sms|whatsapp|disparo)( |$)') THEN 'CRM / Organico'
-      WHEN REGEXP_CONTAINS(raw_channel_match, r'(instagram|facebook)') THEN 'Organic Social'
-      WHEN REGEXP_CONTAINS(raw_channel_match, r'(google|bing|yahoo|duckduckgo|brave)') THEN 'Organic Search'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )ga4( |$)') THEN 'GA4'
-      WHEN raw_channel IS NOT NULL THEN INITCAP(raw_channel)
-      WHEN raw_source IS NOT NULL THEN INITCAP(raw_source)
-      ELSE 'Organico'
-    END AS canal_origem_pedido,
-    CASE
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        OR (
-          REGEXP_CONTAINS(raw_utm_source_match, r'(^| )(meta|facebook|instagram|fb|ig|google|googleads|gads|adwords)( |$)')
-          AND NOT REGEXP_CONTAINS(origem_match, r'(^| )(direct|direto|organic|organico|seo|referral|referal|linktr|whatsapp|email|newsletter|crm|sms|klaviyo|rdstation|rd station)( |$)')
-        )
-        THEN 'paid'
-      WHEN origem_match = ''
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(unattributed|unknown|an unknown source|not set)( |$)')
-        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|referral|linktr|ga4)')
-        THEN 'organic'
-      ELSE 'organic'
-    END AS tipo_origem_pedido
+    ${canalOrderSql} AS canal_origem_pedido,
+    ${tipoOrderSql} AS tipo_origem_pedido
   FROM pedido_atribuicao_norm
 ),
 pedido_atribuicao AS (
   SELECT
     order_sk,
     CASE
-      WHEN tipo_mirror = 'paid' THEN canal_mirror
-      WHEN tipo_origem_pedido = 'paid' THEN canal_origem_pedido
-      ELSE COALESCE(canal_mirror, canal_origem_pedido)
+      WHEN tipo_mirror IS NOT NULL THEN canal_mirror
+      ELSE ${fallbackCanalSql}
     END AS canal_real,
     CASE
-      WHEN tipo_mirror = 'paid' OR tipo_origem_pedido = 'paid' THEN 'paid'
-      ELSE 'organic'
+      WHEN tipo_mirror IS NOT NULL THEN tipo_mirror
+      ELSE ${fallbackTipoSql}
     END AS tipo_real,
     CASE
-      WHEN tipo_mirror = 'paid' THEN COALESCE(regra_mirror, 'email_data_valor_last_click_mirror')
-      WHEN tipo_origem_pedido = 'paid' THEN 'core_order_origin_fields'
-      WHEN tipo_mirror IS NOT NULL THEN COALESCE(regra_mirror, 'email_data_valor_last_click_mirror')
-      WHEN tipo_origem_pedido IS NOT NULL THEN 'core_order_origin_fields'
+      WHEN tipo_mirror IS NOT NULL THEN COALESCE(regra_mirror, 'mirror_shopify_paid_signal_parity_v41')
+      WHEN tipo_origem_pedido IS NOT NULL THEN ${fallbackRegraSql}
       ELSE CAST(NULL AS STRING)
     END AS regra_atribuicao_real,
     CASE
-      WHEN tipo_mirror = 'paid' AND match_key_mirror IS NOT NULL THEN match_key_mirror
-      WHEN tipo_origem_pedido = 'paid' THEN CONCAT('order_origin:', order_sk)
       WHEN match_key_mirror IS NOT NULL THEN match_key_mirror
-      WHEN tipo_origem_pedido IS NOT NULL THEN CONCAT('order_origin:', order_sk)
+      WHEN tipo_origem_pedido IS NOT NULL THEN ${fallbackMatchSql}
       ELSE CAST(NULL AS STRING)
     END AS atribuicao_match_key
   FROM pedido_atribuicao_classificada
@@ -4087,7 +4692,7 @@ pedido_atribuicao AS (
     PARTITION BY order_sk
     ORDER BY
       CASE WHEN tipo_mirror IS NOT NULL THEN 0 ELSE 1 END,
-      CASE WHEN tipo_mirror = 'paid' OR tipo_origem_pedido = 'paid' THEN 1 ELSE 2 END,
+      CASE WHEN tipo_mirror = 'paid' THEN 1 ELSE 2 END,
       COALESCE(canal_mirror, canal_origem_pedido)
   ) = 1
 ),`;
@@ -4365,7 +4970,7 @@ itens_validos AS (
     ON pl_match.sku_key = UPPER(TRIM(i.sku))
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= (SELECT MIN(d0) FROM modelos_norm)
-    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND i.order_partition_date_brt <= CURRENT_DATE('${CONFIG.timeZone}')
     AND SAFE_CAST(i.quantity AS INT64) > 0
     AND SAFE_CAST(i.line_gross_amount AS NUMERIC) > 0
 ),
@@ -4388,7 +4993,7 @@ receita_empresa_dia AS (
   FROM \`reise-ssot.mart_shared.fct_order_item\` i
   WHERE i.is_valid_order = TRUE
     AND i.order_partition_date_brt >= DATE_SUB((SELECT MIN(d0) FROM modelos_norm), INTERVAL 90 DAY)
-    AND i.order_partition_date_brt <= DATE_ADD((SELECT MAX(d0) FROM modelos_norm), INTERVAL 90 DAY)
+    AND i.order_partition_date_brt <= CURRENT_DATE('${CONFIG.timeZone}')
     AND SAFE_CAST(i.quantity AS INT64) > 0
     AND SAFE_CAST(i.line_gross_amount AS NUMERIC) > 0
   GROUP BY 1
@@ -4402,7 +5007,7 @@ datas_modelo AS (
     day AS dias_desde_lancamento,
     DATE_ADD(m.d0, INTERVAL day DAY) AS data_calendario
   FROM modelos_norm m,
-  UNNEST(GENERATE_ARRAY(0, 90)) AS day
+  UNNEST(GENERATE_ARRAY(0, DATE_DIFF(CURRENT_DATE('${CONFIG.timeZone}'), m.d0, DAY))) AS day
   WHERE DATE_ADD(m.d0, INTERVAL day DAY) < CURRENT_DATE('America/Sao_Paulo')
 ),
 eventos_comerciais_cadastro AS (
@@ -4745,6 +5350,8 @@ function consultarMetasMensaisBigQuery_(modelos) {
   const goalScope = getProp_('TARGET_GOAL_SCOPE', 'shopify_geral');
   const goalScopeSql = sqlString_(goalScope);
   const calendarBounds = metasMensaisCalendarBoundsSql_(modelos);
+  const canalLastClickSql = canalAtribuicaoSql_('referring_channel_norm', 'utm_source_norm', 'utm_medium_norm');
+  const tipoLastClickSql = tipoAtribuicaoSql_('referring_channel_norm', 'utm_source_norm', 'utm_medium_norm');
   const query = `
 WITH actual_cutoff AS (
   SELECT MAX(data) AS max_data
@@ -4932,18 +5539,8 @@ vendas_canal_base AS (
 vendas_canal_classificado AS (
   SELECT
     data,
-    CASE
-      WHEN REGEXP_CONTAINS(utm_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paidsocial|paid|display|demand[-_ ]gen|ads?|adwords|gads)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        THEN 'Midia paga'
-      ELSE 'Organico'
-    END AS canal,
-    CASE
-      WHEN REGEXP_CONTAINS(utm_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paidsocial|paid|display|demand[-_ ]gen|ads?|adwords|gads)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        THEN 'paid'
-      ELSE 'organic'
-    END AS tipo,
+    ${canalLastClickSql} AS canal,
+    ${tipoLastClickSql} AS tipo,
     pedidos,
     receita
   FROM vendas_canal_base
@@ -5948,6 +6545,7 @@ function castBq_(value) {
   if (value === null || value === undefined) return null;
   if (/^-?\d+$/.test(String(value))) return Number(value);
   if (/^-?\d+\.\d+$/.test(String(value))) return Number(value);
+  if (/^-?\d+(?:\.\d+)?e-?\d+$/i.test(String(value))) return Number(value);
   return value;
 }
 

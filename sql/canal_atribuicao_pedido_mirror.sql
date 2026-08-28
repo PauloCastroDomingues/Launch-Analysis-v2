@@ -6,8 +6,12 @@
 --   reise-ssot.mart_shared.canal_atribuicao_pedido_mirror
 --
 -- Final join key:
---   source_order_id when available; fallback to order_name, then
---   email_norm + paid_date_brt + total_amount
+--   source_order_id/order_id when available; fallback only to order_name.
+--   Do not join journey attribution by email/date/value.
+-- Channel rule:
+--   The SSOT classifies each order into 9 channels, then derives paid/organic.
+--   Paid: Meta ADS, Google ADS, WhatsApp Oficial.
+--   Organic: WhatsApp Nao Oficial, E-mail, Direto, Social, Organico, Outros.
 --
 -- Reversibility:
 --   The Apps Script only consumes this table when
@@ -17,7 +21,7 @@
 --
 -- Do not expose order_id, order_name or customer_sk in the public dashboard
 -- payload. source_order_id can be mirrored into mart_shared as an internal join
--- key, with email/date/value kept as fallback.
+-- key. email/date/value is retained only as audit context, not as join key.
 --
 -- STEP 1 - run in BigQuery JOB LOCATION = US.
 -- Replace the EXPORT DATA URI with a GCS bucket/path available to your project.
@@ -146,21 +150,20 @@ orders AS (
     ]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS direct_source_type,
     COUNT(*) OVER (
       PARTITION BY
-        NULLIF(LOWER(TRIM(CAST(b.email_norm AS STRING))), ''),
-        b.paid_date_brt,
-        ROUND(SAFE_CAST(b.total_amount AS NUMERIC), 2)
+        COALESCE(
+          NULLIF(TRIM(CAST(b.source_order_id AS STRING)), ''),
+          NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '')
+        )
     ) AS pedidos_na_chave
   FROM `reise-ssot.mart_growth_us.bridge_orders_customers` b
   WHERE b.paid_date_brt IS NOT NULL
-    AND b.total_amount IS NOT NULL
     AND EXISTS (
       SELECT 1
       FROM janelas janela
       WHERE b.paid_date_brt BETWEEN janela.data_inicio AND janela.data_fim
     )
     AND (
-      NULLIF(LOWER(TRIM(CAST(b.email_norm AS STRING))), '') IS NOT NULL
-      OR NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
+      NULLIF(TRIM(CAST(b.source_order_id AS STRING)), '') IS NOT NULL
       OR NULLIF(LOWER(TRIM(CAST(b.order_name AS STRING))), '') IS NOT NULL
     )
 ),
@@ -191,14 +194,14 @@ joined AS (
     j.last_utm_campaign,
     o.pedidos_na_chave,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_source_description, j.last_source, o.direct_channel]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_channel,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_medium, o.direct_medium]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_medium]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_medium,
     (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_source, j.last_source, o.direct_source]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_campaign, o.direct_campaign]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
-    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_source_type, o.direct_source_type]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source_type,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_source]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_utm_source,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_utm_campaign]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_campaign,
+    (SELECT LOWER(TRIM(value)) FROM UNNEST([j.last_source_type]) AS value WHERE NULLIF(TRIM(value), '') IS NOT NULL LIMIT 1) AS raw_source_type,
     CASE
-      WHEN j.order_id IS NOT NULL THEN 'shopify_customer_journey_last_click'
-      WHEN o.direct_channel IS NOT NULL OR o.direct_source IS NOT NULL OR o.direct_medium IS NOT NULL THEN 'bridge_order_origin_fields'
-      ELSE 'sem_utm_organico'
+      WHEN j.order_id IS NOT NULL OR j.order_name IS NOT NULL THEN 'shopify_journey_latest_v'
+      ELSE 'sem_journey_regra_usuario'
     END AS origem_atribuicao
   FROM orders o
   LEFT JOIN journey j
@@ -217,6 +220,23 @@ normalized AS (
     REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_channel, ''), NFD), r'\p{M}', '') AS raw_channel_match,
     REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_source, ''), NFD), r'\p{M}', '') AS raw_source_match,
     REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_medium, ''), NFD), r'\p{M}', '') AS raw_medium_match,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_channel, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_channel_key,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_utm_source, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_utm_source_key,
+    REGEXP_REPLACE(REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_medium, ''), NFD), r'\p{M}', ''), r'[^a-z0-9]+', '') AS raw_medium_key,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(CONCAT(COALESCE(raw_channel, ''), ' ', COALESCE(raw_utm_source, '')), NFD),
+      r'\p{M}',
+      ''
+    ), r'[^a-z0-9]+', ' ')) AS source_resolved_match,
+    TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
+      NORMALIZE_AND_CASEFOLD(CONCAT(
+        COALESCE(raw_channel, ''), ' ',
+        COALESCE(raw_utm_source, ''), ' ',
+        COALESCE(raw_medium, '')
+      ), NFD),
+      r'\p{M}',
+      ''
+    ), r'[^a-z0-9]+', ' ')) AS attribution_signal_match,
     REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_campaign, ''), NFD), r'\p{M}', '') AS raw_campaign_match,
     REGEXP_REPLACE(NORMALIZE_AND_CASEFOLD(COALESCE(raw_source_type, ''), NFD), r'\p{M}', '') AS raw_source_type_match,
     TRIM(REGEXP_REPLACE(REGEXP_REPLACE(
@@ -239,7 +259,7 @@ classified AS (
     total_amount,
     source_order_id,
     order_name,
-    COALESCE(NULLIF(TRIM(CAST(last_utm_source AS STRING)), ''), raw_source) AS utm_source,
+    raw_utm_source AS utm_source,
     COALESCE(NULLIF(TRIM(CAST(last_utm_medium AS STRING)), ''), raw_medium) AS utm_medium,
     COALESCE(NULLIF(TRIM(CAST(last_utm_campaign AS STRING)), ''), raw_campaign) AS utm_campaign,
     raw_channel,
@@ -250,32 +270,32 @@ classified AS (
     pedidos_na_chave,
     origem_atribuicao,
     CASE
-      WHEN origem_match = ''
-        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|unattributed|unknown|referral|linktr|ga4)')
-        THEN 'Unattributed'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads)( |$)') THEN 'Meta'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)') THEN 'Google Ads'
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)') THEN 'Midia paga'
-      WHEN REGEXP_CONTAINS(origem_match, r'(^| )(crm|email|newsletter|klaviyo|rdstation|rd station|sms|whatsapp|disparo)( |$)') THEN 'CRM / Organico'
-      WHEN REGEXP_CONTAINS(raw_channel_match, r'(instagram|facebook)') THEN 'Organic Social'
-      WHEN REGEXP_CONTAINS(raw_channel_match, r'(google|bing|yahoo|duckduckgo|brave)') THEN 'Organic Search'
-      WHEN raw_source_type_match = 'direct' OR raw_channel_match IN ('direct', '(direct)') THEN 'Direct'
-      WHEN raw_channel LIKE '%whatsapp%' THEN 'Whatsapp'
-      WHEN raw_channel LIKE '%tiktok%' THEN 'Tiktok'
-      WHEN raw_channel LIKE '%youtube%' THEN 'Youtube'
-      WHEN raw_channel LIKE '%linktr%' THEN 'Linktr.Ee'
-      WHEN raw_channel LIKE '%unknown%' THEN 'An Unknown Source'
-      WHEN raw_channel IS NULL OR raw_channel = '' THEN 'Unattributed'
-      ELSE INITCAP(raw_channel)
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(instagram|facebook|meta)') AND REGEXP_CONTAINS(attribution_signal_match, r'(^| )(cpc|pmax|paid|performance)( |$)') THEN 'Meta ADS'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|doubleclick|adwords|youtube|(^| )yt( |$))') AND REGEXP_CONTAINS(attribution_signal_match, r'(^| )(cpc|pmax|paid|pago|shopping|display|performance|ads)( |$)') THEN 'Google ADS'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)') AND REGEXP_CONTAINS(raw_medium_match, r'grupo.*vip') THEN 'WhatsApp Nao Oficial'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)') THEN 'WhatsApp Oficial'
+      WHEN REGEXP_CONTAINS(attribution_signal_match, r'(email|e mail|mail)') THEN 'E-mail'
+      WHEN raw_channel_key IN ('', 'nenhum', 'none', 'direct') THEN 'Direto'
+      WHEN raw_medium_key = 'bio' THEN 'Social'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(facebook|instagram|tiktok|youtube|linktr|shareable)') THEN 'Social'
+      WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|bing|duckduckgo|yahoo|brave|ecosia)') THEN 'Organico'
+      ELSE 'Outros'
     END AS canal,
     CASE
-      WHEN REGEXP_CONTAINS(raw_medium_match, r'(cpcp|cpc|ppc|cpm|pmax|paid|paidsocial|paid[ _-]?social|paidsearch|paid[ _-]?search|display|affiliate|affiliates|demand[ _-]?gen|ads?|adwords|gads|anuncio|anuncios|patrocinad)')
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen)( |$)')
-        THEN 'paid'
-      WHEN origem_match = ''
-        OR REGEXP_CONTAINS(origem_match, r'(^| )(unattributed|unknown|an unknown source|not set)( |$)')
-        OR NOT REGEXP_CONTAINS(origem_match, r'(meta|facebook|instagram|google|bing|yahoo|duckduckgo|brave|tiktok|youtube|cpc|ppc|cpm|pmax|paid|ads|adwords|gads|email|newsletter|crm|sms|whatsapp|rdstation|rd station|klaviyo|organic|seo|direct|referral|linktr|ga4)')
-        THEN 'organic'
+      WHEN (
+        CASE
+          WHEN REGEXP_CONTAINS(source_resolved_match, r'(instagram|facebook|meta)') AND REGEXP_CONTAINS(attribution_signal_match, r'(^| )(cpc|pmax|paid|performance)( |$)') THEN 'Meta ADS'
+          WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|doubleclick|adwords|youtube|(^| )yt( |$))') AND REGEXP_CONTAINS(attribution_signal_match, r'(^| )(cpc|pmax|paid|pago|shopping|display|performance|ads)( |$)') THEN 'Google ADS'
+          WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)') AND REGEXP_CONTAINS(raw_medium_match, r'grupo.*vip') THEN 'WhatsApp Nao Oficial'
+          WHEN REGEXP_CONTAINS(source_resolved_match, r'(^| )(whatsapp|whtasapp|whats|wpp|wa)( |$)') THEN 'WhatsApp Oficial'
+          WHEN REGEXP_CONTAINS(attribution_signal_match, r'(email|e mail|mail)') THEN 'E-mail'
+          WHEN raw_channel_key IN ('', 'nenhum', 'none', 'direct') THEN 'Direto'
+          WHEN raw_medium_key = 'bio' THEN 'Social'
+          WHEN REGEXP_CONTAINS(source_resolved_match, r'(facebook|instagram|tiktok|youtube|linktr|shareable)') THEN 'Social'
+          WHEN REGEXP_CONTAINS(source_resolved_match, r'(google|bing|duckduckgo|yahoo|brave|ecosia)') THEN 'Organico'
+          ELSE 'Outros'
+        END
+      ) IN ('Meta ADS', 'Google ADS', 'WhatsApp Oficial') THEN 'paid'
       ELSE 'organic'
     END AS tipo
   FROM normalized
@@ -302,7 +322,7 @@ SELECT
   origem_atribuicao AS regra_atribuicao_real
 FROM classified
 QUALIFY ROW_NUMBER() OVER (
-  PARTITION BY COALESCE(source_order_id, order_name, CONCAT(email_norm, '|', CAST(paid_date_brt AS STRING), '|', CAST(total_amount AS STRING)))
+  PARTITION BY COALESCE(source_order_id, order_name)
   ORDER BY
     CASE tipo
       WHEN 'paid' THEN 1
