@@ -13,10 +13,11 @@
     'estoque',
     'calendario_br',
     'share_trajetoria',
+    'lancamentos_rps_dia',
     'auditoria_monochrome',
     'lancamentos_analise_avancada'
   ];
-  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_rampa_dia', 'lancamentos_clientes_janelas', 'lancamentos_produtos_dia', 'share_trajetoria', 'auditoria_monochrome']);
+  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_rampa_dia', 'lancamentos_clientes_janelas', 'lancamentos_produtos_dia', 'share_trajetoria', 'lancamentos_rps_dia', 'auditoria_monochrome']);
 
   const CORES_MODELO = {
     gt: { line: '#F07800', fill: 'rgba(240,120,0,0.12)' },
@@ -51,6 +52,7 @@
     { key: 'organic', label: 'Organico' }
   ];
   const RAMP_METRIC_KEYS = [
+    'rps_diario',
     'receita_acumulada',
     'receita_mensal',
     'pedidos_mensal',
@@ -101,7 +103,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     channelFilter: 'all',
     snapshotClock: null,
     normalizedChartMode: 'linha',
-    normalizedRampMetric: 'share_semanal',
+    normalizedRampMetric: 'rps_diario',
     rampTimeLens: 'all',
     launchChartView: 'normalized',
     commercialChartMetric: 'investimento',
@@ -1534,6 +1536,17 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function rampMetricConfig(key = selectedRampMetricKey()) {
     const configs = {
+      rps_diario: {
+        key: 'rps_diario',
+        label: 'RPS - Receita por sessão',
+        shortLabel: 'RPS',
+        field: 'rps',
+        format: 'brl',
+        cadence: 'dia',
+        cumulative: false,
+        rps: true,
+        tooltip: 'RPS = receita total / sessões. Receita vem de mart_growth_us.bridge_orders_customers; sessões vêm de mart_growth_us.shopify_sessions_daily. Não usa GA4, marketing, campanhas ou atribuição.'
+      },
       receita_acumulada: {
         key: 'receita_acumulada',
         label: 'Rampa de faturamento',
@@ -1566,7 +1579,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       },
       share_semanal: {
         key: 'share_semanal',
-        label: 'Ritmo por share de vendas semanal',
+        label: 'Share de vendas semanal',
         shortLabel: 'Share de vendas',
         field: 'receita',
         format: 'pct',
@@ -1779,6 +1792,232 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       }
     }
     return { data, lastDataDay: rows.length ? Math.max(...rows.map((row) => row.day)) : null, sourceRows: rows };
+  }
+
+  function rampPeriodAnalysisWrap() {
+    return $('rps-period-analysis') || $('share-period-analysis');
+  }
+
+  function rpsModelForLaunch(launch) {
+    return state.data?.lancamentos_rps_dia?.modelos?.[launch?.modelo_id] || null;
+  }
+
+  function rpsPointsForLaunch(launch, maxDay) {
+    const model = rpsModelForLaunch(launch);
+    const points = Array.isArray(model?.pontos) ? model.pontos : [];
+    const endDay = Math.max(0, Number(maxDay) || 0);
+    return points
+      .map((point) => {
+        const day = numberOrNull(point.dias_desde_lancamento)
+          ?? numberOrNull(point.dia_desde_d0)
+          ?? dayIndex(analysisDayZero(launch), point.data_calendario || point.data);
+        const receitaTotal = numberOrNull(point.receita_total ?? point.receita);
+        const sessoes = numberOrNull(point.sessoes);
+        return {
+          ...point,
+          day,
+          data_calendario: point.data_calendario || point.data || null,
+          receita_total: receitaTotal,
+          pedidos: numberOrNull(point.pedidos),
+          sessoes,
+          rps: numberOrNull(point.rps) ?? ratioOrNull(receitaTotal, sessoes),
+          ingest_ts: point.ingest_ts || null
+        };
+      })
+      .filter((point) => point.day !== null && point.day >= 0 && point.day <= endDay)
+      .sort((a, b) => a.day - b.day);
+  }
+
+  function rpsRampDatasetData(launch, metric, maxDay) {
+    const data = Array(maxDay + 1).fill(null);
+    const rpsMeta = Array(maxDay + 1).fill(null);
+    const points = rpsPointsForLaunch(launch, maxDay);
+    points.forEach((point) => {
+      if (point.day === null || point.rps === null) return;
+      data[point.day] = point.rps;
+      rpsMeta[point.day] = {
+        ...point,
+        formula: 'receita_total / sessoes'
+      };
+    });
+    const validDays = rpsMeta
+      .map((meta, day) => meta ? day : null)
+      .filter((day) => day !== null);
+    return {
+      data,
+      rpsMeta,
+      lastDataDay: validDays.length ? Math.max(...validDays) : null,
+      sourceRows: points,
+      sourceLabel: 'lancamentos_rps_dia.json'
+    };
+  }
+
+  function rpsSummaryForRange(launch, startDay, endDay) {
+    const points = rpsPointsForLaunch(launch, Math.max(0, Number(endDay) || 0))
+      .filter((point) => point.day >= startDay && point.day <= endDay && point.sessoes !== null);
+    if (!points.length) return null;
+    const receita = points.reduce((acc, point) => acc + Number(point.receita_total || 0), 0);
+    const sessoes = points.reduce((acc, point) => acc + Number(point.sessoes || 0), 0);
+    const pedidos = points.some((point) => point.pedidos !== null)
+      ? points.reduce((acc, point) => acc + Number(point.pedidos || 0), 0)
+      : null;
+    return {
+      startDay,
+      endDay,
+      startIso: points[0]?.data_calendario || null,
+      endIso: points[points.length - 1]?.data_calendario || null,
+      daysCovered: points.length,
+      receita,
+      sessoes,
+      pedidos,
+      rps: ratioOrNull(receita, sessoes)
+    };
+  }
+
+  function rpsSelectedWindowSummaryForLaunch(launch) {
+    const targetEnd = selectedPeriodEndDay(launch, { capToAvailable: false });
+    if (targetEnd === null) return null;
+    const points = rpsPointsForLaunch(launch, targetEnd);
+    const validDays = points.filter((point) => point.rps !== null).map((point) => point.day);
+    if (!validDays.length) return null;
+    const endDay = Math.min(targetEnd, Math.max(...validDays));
+    const summary = rpsSummaryForRange(launch, 0, endDay);
+    return summary ? { ...summary, targetEndDay: targetEnd, partial: endDay < targetEnd } : null;
+  }
+
+  function rpsRecentWindowSummaryForLaunch(launch, windowDays = 7) {
+    const maxDay = launchCurrentRampDay(launch);
+    const points = rpsPointsForLaunch(launch, maxDay).filter((point) => point.rps !== null);
+    if (!points.length) return null;
+    const lastDay = points[points.length - 1].day;
+    const size = Math.max(1, Number(windowDays) || 7);
+    const currentStart = Math.max(0, lastDay - size + 1);
+    const current = rpsSummaryForRange(launch, currentStart, lastDay);
+    const previousEnd = currentStart - 1;
+    const previousStart = Math.max(0, previousEnd - size + 1);
+    const previous = previousEnd >= 0 ? rpsSummaryForRange(launch, previousStart, previousEnd) : null;
+    return {
+      current,
+      previous,
+      delta: current?.rps !== null && previous?.rps ? (current.rps / previous.rps) - 1 : null
+    };
+  }
+
+  function rpsRankForWindow(chartLaunches, selectedId) {
+    const rows = (chartLaunches || [])
+      .map((launch) => {
+        const summary = rpsSelectedWindowSummaryForLaunch(launch);
+        return summary && summary.rps !== null ? { launch, summary, value: summary.rps } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
+    const selectedRank = rows.findIndex((row) => row.launch.modelo_id === selectedId);
+    return {
+      rows,
+      rank: selectedRank >= 0 ? selectedRank + 1 : null,
+      total: rows.length,
+      leader: rows[0] || null
+    };
+  }
+
+  function rpsPeriodLabel(summary) {
+    if (!summary) return 'período pendente';
+    const start = summary.startDay === 0 ? 'D0' : `D+${summary.startDay}`;
+    const suffix = summary.partial ? ' parcial' : '';
+    return `${start} a D+${summary.endDay}${suffix}`;
+  }
+
+  function renderRpsPeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
+    const wrap = rampPeriodAnalysisWrap();
+    if (!wrap) return;
+    if (!selected) {
+      wrap.innerHTML = '';
+      return;
+    }
+
+    const model = rpsModelForLaunch(selected);
+    const selectedWindow = rpsSelectedWindowSummaryForLaunch(selected);
+    const recent = rpsRecentWindowSummaryForLaunch(selected, 7);
+
+    if (!model || !selectedWindow) {
+      wrap.innerHTML = `
+        <div class="share-period-copy">
+          <div class="share-period-kicker">${labelTip('RPS', 'RPS = receita total / sessões. Receita vem de bridge_orders_customers e sessões de shopify_sessions_daily.')}</div>
+          <strong>RPS pendente</strong>
+          <span>Falta data/lancamentos_rps_dia.json para este lançamento. Rode exportarTudo para gerar o JSON oficial a partir do SSOT e do ShopifyQL.</span>
+        </div>
+      `;
+      return;
+    }
+
+    const rank = rpsRankForWindow(chartLaunches, selected.modelo_id);
+    const rankValue = rank?.rank ? `${fmtNum(rank.rank)}/${fmtNum(rank.total)}` : '-';
+    const leaderText = rank?.leader && rank.leader.launch.modelo_id !== selected.modelo_id
+      ? `lider: ${rank.leader.launch.modelo} (${fmtBRL(rank.leader.value)})`
+      : 'lider ou empatado';
+    const periodText = rpsPeriodLabel(selectedWindow);
+    const recentPeriodText = recent?.current ? rpsPeriodLabel(recent.current) : 'ultimos 7 dias pendentes';
+    const deltaText = recent?.delta === null || recent?.delta === undefined ? 'sem comparativo' : fmtSignedPct(recent.delta, 0);
+    const sourceUntil = model.dado_ate || selectedWindow.endIso || snapshotIso();
+    const methodItems = [
+      `Fonte receita: ${model.fonte_receita || 'bridge_orders_customers'}`,
+      `Fonte sessões: ${model.fonte_sessoes || 'shopify_sessions_daily'}`,
+      'Fórmula: receita total / sessões',
+      'Sem GA4, marketing, campanhas ou atribuição',
+      `Dado até: ${fmtDateSlash(sourceUntil)}`
+    ];
+    const narrative = `${selected.modelo}: ${fmtBRL(selectedWindow.rps)} por sessão em ${periodText}. Receita e sessões são totais da loja no calendário alinhado ao D0.`;
+
+    wrap.innerHTML = `
+      <div class="share-period-copy">
+        <div class="share-period-kicker">${labelTip('Receita por sessão', 'RPS = receita total / sessões. Não usa GA4, marketing, campanhas ou atribuição.')}</div>
+        <strong>Leitura rapida</strong>
+        <span>${escapeHtml(narrative)}</span>
+      </div>
+      <div class="share-period-metrics">
+        ${sharePeriodCompactMetricHtml({
+          label: 'Janela',
+          value: fmtBRL(selectedWindow.rps),
+          helper: `${periodText} | ${fmtNum(selectedWindow.sessoes)} sessões`,
+          tone: 'neutral'
+        })}
+        ${sharePeriodCompactMetricHtml({
+          label: 'Ult. 7 dias',
+          value: recent?.current ? fmtBRL(recent.current.rps) : '-',
+          helper: `${recentPeriodText} | ${deltaText}`,
+          tone: shareTrendTone(recent?.delta)
+        })}
+        ${sharePeriodCompactMetricHtml({
+          label: 'Grupo',
+          value: rankValue,
+          helper: leaderText,
+          tone: rank?.rank === 1 ? 'positive' : 'neutral'
+        })}
+      </div>
+      <details class="share-period-method">
+        <summary>Base</summary>
+        <span>${escapeHtml(methodItems.join(' | '))}</span>
+      </details>
+    `;
+  }
+
+  function renderRampPeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
+    const wrap = rampPeriodAnalysisWrap();
+    if (!wrap) return;
+    const metric = rampMetricConfig();
+    if ((state.normalizedChartMode || 'linha') !== 'linha') {
+      wrap.innerHTML = '';
+      return;
+    }
+    if (metric.rps) {
+      renderRpsPeriodAnalysis(selected, chartLaunches);
+      return;
+    }
+    if (metric.share) {
+      renderSharePeriodAnalysis(selected, chartLaunches);
+      return;
+    }
+    wrap.innerHTML = '';
   }
 
   function shareTrajectoryPointsForLaunch(launch, maxDay) {
@@ -2348,7 +2587,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function renderSharePeriodAnalysisVerbose(selected, chartLaunches = selectedCompareLaunches()) {
-    const wrap = $('share-period-analysis');
+    const wrap = rampPeriodAnalysisWrap();
     if (!wrap) return;
     if (!selected) {
       wrap.innerHTML = '';
@@ -2447,7 +2686,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function renderSharePeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
-    const wrap = $('share-period-analysis');
+    const wrap = rampPeriodAnalysisWrap();
     if (!wrap) return;
     if (!selected) {
       wrap.innerHTML = '';
@@ -3288,6 +3527,23 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const modelOptions = availableComparisonLaunches();
     const productOptions = productFilterOptions();
     const colorOptions = productColorFilterOptions();
+    const isRps = Boolean(metric?.rps);
+    const productScopeControls = isRps
+      ? '<span class="ramp-rps-scope">Loja total: receita SSOT / sessões ShopifyQL. Produto, cor e canal não entram.</span>'
+      : `
+        <label class="ramp-filter-field"><span>Produto</span>
+          <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
+            <option value="all" ${state.productFilter === 'all' ? 'selected' : ''}>Todos produtos</option>
+            ${productOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="ramp-filter-field"><span>Cor</span>
+          <select class="ramp-quick-select" data-ramp-quick-filter="color" aria-label="Filtrar cor na curva" ${colorOptions.length ? '' : 'disabled'}>
+            <option value="all" ${state.productColorFilter === 'all' ? 'selected' : ''}>Todas cores</option>
+            ${colorOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productColorFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+          </select>
+        </label>
+      `;
     wrap.innerHTML = `
       ${lensButtons}
       <div class="ramp-quick-row ramp-filter-row">
@@ -3303,18 +3559,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             ${modelOptions.map((launch) => `<option value="${escapeHtml(launch.modelo_id)}" ${launch.modelo_id === state.primaryModelId ? 'selected' : ''}>${escapeHtml(launch.modelo)}</option>`).join('')}
           </select>
         </label>
-        <label class="ramp-filter-field"><span>Produto</span>
-          <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
-            <option value="all" ${state.productFilter === 'all' ? 'selected' : ''}>Todos produtos</option>
-            ${productOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
-          </select>
-        </label>
-        <label class="ramp-filter-field"><span>Cor</span>
-          <select class="ramp-quick-select" data-ramp-quick-filter="color" aria-label="Filtrar cor na curva" ${colorOptions.length ? '' : 'disabled'}>
-            <option value="all" ${state.productColorFilter === 'all' ? 'selected' : ''}>Todas cores</option>
-            ${colorOptions.map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === state.productColorFilter ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
-          </select>
-        </label>
+        ${productScopeControls}
         <button type="button" class="ramp-quick-clear" data-ramp-quick-clear>Limpar</button>
       </div>
     `;
@@ -8907,6 +9152,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const isMonthly = rampMetric.cadence === 'mes';
       const isHealth = Boolean(rampMetric.health);
       const isShare = Boolean(rampMetric.share);
+      const isRps = Boolean(rampMetric.rps);
       const isWeekly = isHealth || rampMetric.cadence === 'semana';
       const maxDay = normalizedRampMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected]);
       renderRampQuickControls(maxDay, rampMetric, mode);
@@ -8950,7 +9196,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           : isMonthly || lensBounds.key === 'all'
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
-        if (isShare) {
+        if (isRps) {
+          subText.textContent = `Receita total / sessões por dia de vida comercial - ${coverage}`;
+        } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
         } else {
@@ -8972,7 +9220,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           datasets: [
             ...normalizedLaunches.map((launch, index) => {
               const filteredSeries = isProductFilterActive() || isChannelFilterActive();
-              const series = isShare
+              const series = isRps
+                ? rpsRampDatasetData(launch, rampMetric, maxDay)
+                : isShare
                 ? shareRampDatasetData(launch, rampMetric, maxDay)
                 : isHealth
                 ? rampHealthChartDatasetData(launch, maxDay)
@@ -8997,7 +9247,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                 ? numberOrNull(series.lastDataIndex)
                 : numberOrNull(series.lastDataDay) ?? (validDataDays.length ? Math.max(...validDataDays) : null);
               const isSelected = launch.modelo_id === selected.modelo_id;
-              const sourceLabel = isShare
+              const sourceLabel = isRps
+                ? 'lancamentos_rps_dia.json'
+                : isShare
                 ? series.sourceLabel
                 : isHealth
                 ? series.sourceLabel
@@ -9053,6 +9305,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                 sourceLabel,
                 healthMeta: series.healthMeta || null,
                 shareMeta: series.shareMeta || null,
+                rpsMeta: series.rpsMeta || null,
                 metricKey: rampMetric.key
               };
             }),
@@ -9108,6 +9361,16 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                       `${filterNote} Fonte: ${ctx.dataset.sourceLabel}.`
                     ];
                   }
+                  if (isRps) {
+                    const day = lensStart + ctx.dataIndex;
+                    const meta = ctx.dataset.rpsMeta?.[day];
+                    if (!meta) return 'RPS pendente: sem sessões ShopifyQL para esta data.';
+                    return [
+                      `Receita total: ${fmtBRL(meta.receita_total)} | Sessões: ${fmtNum(meta.sessoes)}`,
+                      `Pedidos validos: ${meta.pedidos === null ? 'pendente' : fmtNum(meta.pedidos)}`,
+                      'Fonte: bridge_orders_customers + shopify_sessions_daily.'
+                    ];
+                  }
                   if (isHealth) {
                     const meta = ctx.dataset.healthMeta?.[weeklyLens.startWeek + ctx.dataIndex];
                     if (!meta) return 'Ainda nao ha uma semana completa neste ponto.';
@@ -9149,17 +9412,24 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             y: {
               ...(isHealth ? { beginAtZero: true, min: 0, max: 1 } : {}),
               ...(isShare ? { beginAtZero: true, min: 0, suggestedMax: 0.3 } : {}),
+              ...(isRps ? { beginAtZero: true } : {}),
               ticks: { callback: (v) => formatRampValue(v, rampMetric, true) },
               grid: { color: 'rgba(255,255,255,0.045)' }
             }
           }
         })
       });
-      if (canvasId === 'chart-normalized') renderRampHealthInsight(selected);
+      if (canvasId === 'chart-normalized') {
+        renderRampPeriodAnalysis(selected, normalizedLaunches);
+        renderRampHealthInsight(selected);
+      }
       return;
     }
 
-    if (canvasId === 'chart-normalized') renderRampHealthInsight(selected);
+    if (canvasId === 'chart-normalized') {
+      renderRampPeriodAnalysis(selected);
+      renderRampHealthInsight(selected);
+    }
 
     const comparisonMetric = rampMetricConfig('receita_acumulada');
     const sharedOptions = (dates, checkpoints) => chartOptions({
@@ -10538,7 +10808,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   function renderCharts(selected) {
     destroyCharts();
     const chartLaunches = selectedCompareLaunches();
-    renderSharePeriodAnalysis(selected, chartLaunches);
+    renderRampPeriodAnalysis(selected, chartLaunches);
     if (!window.Chart) return;
 
     const labels = WINDOW_KEYS;

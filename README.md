@@ -238,6 +238,21 @@ Receita de mídia/CRM não substitui receita SSOT do lançamento. Planilhas exte
 
 No launch dashboard, o rótulo técnico é sempre `CPA` (`investimento / pedidos`). Não use `CPS` no código ou no JSON deste dashboard, porque no roadmap do SSOT geral `CPS` significa custo por sessão.
 
+### Regra canônica de RPS
+
+A análise de ritmo/share semanal foi substituída por **RPS (Receita por Sessão)** no gráfico principal de evolução. O cálculo usa apenas:
+
+- Receita: `reise-ssot.mart_growth_us.bridge_orders_customers`
+- Sessões: `reise-ssot.mart_growth_us.shopify_sessions_daily`
+
+```txt
+RPS = receita_total / sessoes
+receita_total = soma de total_amount por paid_date_brt, deduplicada por order_name
+sessoes = ultima versao diaria de shopify_sessions_daily por data, usando ingest_ts
+```
+
+Essa leitura não usa GA4, tabelas de marketing, campanhas ou atribuição. O JSON público esperado é `data/lancamentos_rps_dia.json`; ausência de sessões fica pendente e não vira zero. Quando há sessões e não há pedido válido no dia, a receita do dia pode ser 0.
+
 ### Regra canônica de classificação de SKU/produto
 
 A classificação usada por vendas, auditoria Monochrome e estoque fica centralizada na CTE `itens_classificados_v1` em `apps_script/ExportLaunchAnalysis.gs`.

@@ -18,7 +18,7 @@
 
 const DEFAULT_INVESTMENT_SPREADSHEET_ID = '1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68';
 
-const EXPORT_SCRIPT_VERSION = '20260821-shopify-paid-signal-parity-v41';
+const EXPORT_SCRIPT_VERSION = '20260828-rps-receita-por-sessao-v42';
 
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
@@ -71,6 +71,7 @@ function exportarTudo() {
   const rampaDia = exportaveis.length ? consultarRampaDia_(exportaveis) : [];
   const clientesJanelasStatus = consultarClientesJanelasSeDisponivel_(exportaveis, generatedAt, exportDate);
   const produtosDia = exportaveis.length ? consultarProdutosDia_(exportaveis) : [];
+  const rpsDiaStatus = exportarRpsDiaSeDisponivel_(exportaveis, generatedAt);
   const auditoriaMonochrome = consultarAuditoriaMonochromeSeAtivo_(exportaveis);
   const dataQuality = {};
   const warnings = [
@@ -109,6 +110,16 @@ function exportarTudo() {
       ? 'Clientes unicos, novos/recorrentes e base ativada exportados de forma agregada pelo SSOT, sem PII.'
       : (clientesJanelasStatus.error_summary || 'Aguardando export agregado de clientes/base pelo SSOT.')
   };
+  dataQuality.rps = {
+    status: rpsDiaStatus.status,
+    fonte_receita: 'reise-ssot.mart_growth_us.bridge_orders_customers',
+    fonte_sessoes: 'reise-ssot.mart_growth_us.shopify_sessions_daily',
+    formula: 'receita_total / sessoes',
+    rows: rpsDiaStatus.rows,
+    observacao: rpsDiaStatus.status === 'exported'
+      ? 'RPS exportado por data calendario e alinhado ao D0 de cada lancamento. Nao usa GA4, marketing, campanhas ou atribuicao.'
+      : (rpsDiaStatus.error_summary || 'Aguardando export de RPS por SSOT + ShopifyQL.')
+  };
   logAtribuicaoCanalPorModelo_(dataQuality.atribuicao_canal);
   if (!CONFIG.canalAttributionEnabled) {
     warnings.push('Atribuicao real de canal desligada por ATRIBUICAO_REAL_CANAL_ENABLED=false; receita_paga/receita_organica permanecem null.');
@@ -123,11 +134,15 @@ function exportarTudo() {
   } else if (clientesJanelasStatus.status !== 'synced') {
     warnings.push('lancamentos_clientes_janelas.json pendente; clientes unicos, base ativada e expectativa por base atual seguem como null/pendente.');
   }
+  if (rpsDiaStatus.status === 'failed') {
+    warnings.push(`lancamentos_rps_dia.json nao exportado: ${rpsDiaStatus.error_summary || 'erro desconhecido'}.`);
+  }
 
   logProdutosDiaExport_(exportaveis, produtosDia);
   escreverJsonGitHub_('lancamentos_rampa_dia.json', rampaDia);
   if (clientesJanelasStatus.payload) escreverJsonGitHub_('lancamentos_clientes_janelas.json', clientesJanelasStatus.payload);
   escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
+  if (rpsDiaStatus.payload) escreverJsonGitHub_('lancamentos_rps_dia.json', rpsDiaStatus.payload);
   if (auditoriaMonochrome) escreverJsonGitHub_('auditoria_monochrome.json', auditoriaMonochrome);
 
   const investigacaoMonochromeStatus = exportarInvestigacaoMonochromeSeDisponivel_(exportaveis);
@@ -181,6 +196,7 @@ function exportarTudo() {
       lancamentos_rampa_dia: rampaDia.length,
       lancamentos_clientes_janelas: clientesJanelasStatus.rows,
       lancamentos_produtos_dia: produtosDia.length,
+      lancamentos_rps_dia: rpsDiaStatus.rows,
       auditoria_monochrome: auditoriaMonochrome ? 1 : 'skipped',
       investigacao_linhas_suspeitas: investigacaoMonochromeStatus.rows,
       sub_modelos_dia: subModelosStatus.rows,
@@ -199,6 +215,7 @@ function exportarTudo() {
       eventos_comerciais_produto: eventoComercialStatus.status,
       canal_atribuicao_pedido_mirror: canalMirrorStatus.status,
       lancamentos_clientes_janelas: clientesJanelasStatus.status,
+      lancamentos_rps_dia: rpsDiaStatus.status,
       investigacao_linhas_suspeitas: investigacaoMonochromeStatus.status,
       sub_modelos_dia: subModelosStatus.status,
       estoque: estoqueStatus.status,
@@ -214,6 +231,7 @@ function exportarTudo() {
       'lancamentos_rampa_dia.json',
       'lancamentos_clientes_janelas.json',
       'lancamentos_produtos_dia.json',
+      'lancamentos_rps_dia.json',
       'auditoria_monochrome.json',
       'investigacao_linhas_suspeitas.json',
       'sub_modelos_dia.json',
@@ -4901,6 +4919,182 @@ function exportarEstoqueSeDisponivel_(modelos) {
     Logger.log(`Estoque nao exportado; mantendo estoque.json atual. Erro: ${error.message}`);
     return { status: 'skipped', rows: 'skipped', error: error.message };
   }
+}
+
+function exportarRpsDiaSeDisponivel_(modelos, generatedAt) {
+  if (!modelos.length) {
+    Logger.log('Sem modelos exportaveis com day_zero_base valido; RPS nao consultado.');
+    return {
+      status: 'skipped',
+      rows: 'skipped',
+      payload: {
+        generated_at: generatedAt,
+        fonte_receita: 'reise-ssot.mart_growth_us.bridge_orders_customers',
+        fonte_sessoes: 'reise-ssot.mart_growth_us.shopify_sessions_daily',
+        formula: 'receita_total / sessoes',
+        modelos: {}
+      }
+    };
+  }
+
+  try {
+    const rps = consultarRpsDia_(modelos, generatedAt);
+    Logger.log(`lancamentos_rps_dia: ${rps.rows} pontos para ${Object.keys(rps.payload.modelos || {}).length} modelos.`);
+    return { status: 'exported', rows: rps.rows, payload: rps.payload };
+  } catch (error) {
+    const resumoErro = resumirErro_(error);
+    Logger.log(`lancamentos_rps_dia.json nao exportado; mantendo arquivo atual. Erro: ${resumoErro}`);
+    return { status: 'failed', rows: 'failed', error: error.message, error_summary: resumoErro, payload: null };
+  }
+}
+
+function consultarRpsDia_(modelos, generatedAt) {
+  const modelosSql = modelos.map(m => {
+    const termosRegex = termosRegex_(m);
+    const skuPrefixos = skuPrefixos_(m);
+    const d0 = sql_(m.day_zero_base);
+    return `SELECT '${sql_(m.modelo_id)}' AS modelo_id, '${sql_(m.modelo)}' AS modelo, '${sql_(m.linha || m.modelo)}' AS linha, DATE('${d0}') AS d0, '${sql_(termosRegex)}' AS termos_busca, '${sql_(skuPrefixos)}' AS sku_prefixos`;
+  }).join('\nUNION ALL\n');
+
+  const query = `
+WITH modelos AS (
+  ${modelosSql}
+),
+${modelosNormCteSql_()},
+datas_modelo AS (
+  SELECT
+    m.modelo_id,
+    m.modelo,
+    COALESCE(NULLIF(m.linha, ''), m.modelo, m.modelo_id) AS linha,
+    m.d0 AS day_zero_base,
+    day AS dias_desde_lancamento,
+    DATE_ADD(m.d0, INTERVAL day DAY) AS data_calendario
+  FROM modelos_norm m,
+  UNNEST(GENERATE_ARRAY(0, DATE_DIFF(CURRENT_DATE('${CONFIG.timeZone}'), m.d0, DAY))) AS day
+),
+pedidos_validos AS (
+  SELECT
+    CAST(paid_date_brt AS DATE) AS data,
+    LOWER(TRIM(CAST(order_name AS STRING))) AS order_name,
+    MAX(SAFE_CAST(total_amount AS NUMERIC)) AS total_amount
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.bridge_orders_customers\`
+  WHERE CAST(paid_date_brt AS DATE) BETWEEN (SELECT MIN(d0) FROM modelos_norm) AND CURRENT_DATE('${CONFIG.timeZone}')
+    AND NULLIF(TRIM(CAST(order_name AS STRING)), '') IS NOT NULL
+  GROUP BY 1, 2
+),
+receita_dia AS (
+  SELECT
+    data,
+    ROUND(SUM(total_amount), 2) AS receita_total,
+    COUNT(DISTINCT order_name) AS pedidos
+  FROM pedidos_validos
+  GROUP BY 1
+),
+sessoes_latest AS (
+  SELECT
+    CAST(data AS DATE) AS data,
+    SAFE_CAST(sessoes AS INT64) AS sessoes,
+    ingest_ts
+  FROM \`${CONFIG.bqProjectId}.mart_growth_us.shopify_sessions_daily\`
+  WHERE CAST(data AS DATE) BETWEEN (SELECT MIN(d0) FROM modelos_norm) AND CURRENT_DATE('${CONFIG.timeZone}')
+  QUALIFY ROW_NUMBER() OVER (
+    PARTITION BY CAST(data AS DATE)
+    ORDER BY ingest_ts DESC
+  ) = 1
+),
+base AS (
+  SELECT
+    d.modelo_id,
+    d.modelo,
+    d.linha,
+    d.day_zero_base,
+    d.dias_desde_lancamento,
+    d.data_calendario,
+    COALESCE(r.receita_total, 0) AS receita_total,
+    COALESCE(r.pedidos, 0) AS pedidos,
+    s.sessoes,
+    SAFE_DIVIDE(COALESCE(r.receita_total, 0), NULLIF(s.sessoes, 0)) AS rps,
+    CAST(s.ingest_ts AS STRING) AS ingest_ts
+  FROM datas_modelo d
+  JOIN sessoes_latest s
+    ON s.data = d.data_calendario
+  LEFT JOIN receita_dia r
+    ON r.data = d.data_calendario
+)
+SELECT
+  modelo_id,
+  ANY_VALUE(modelo) AS modelo,
+  ANY_VALUE(linha) AS linha,
+  CAST(ANY_VALUE(day_zero_base) AS STRING) AS day_zero_base,
+  MAX(dias_desde_lancamento) AS dias_disponiveis,
+  90 AS janela_alvo_dias,
+  CAST(MAX(data_calendario) AS STRING) AS dado_ate,
+  SUM(receita_total) AS receita_total_periodo,
+  SUM(sessoes) AS sessoes_periodo,
+  SUM(pedidos) AS pedidos_periodo,
+  SAFE_DIVIDE(SUM(receita_total), NULLIF(SUM(sessoes), 0)) AS rps_periodo,
+  TO_JSON_STRING(ARRAY_AGG(STRUCT(
+    dias_desde_lancamento,
+    CAST(data_calendario AS STRING) AS data_calendario,
+    receita_total,
+    sessoes,
+    rps,
+    pedidos,
+    ingest_ts,
+    'reise-ssot.mart_growth_us.bridge_orders_customers' AS fonte_receita,
+    'reise-ssot.mart_growth_us.shopify_sessions_daily' AS fonte_sessoes,
+    'receita_total / sessoes' AS formula
+  ) ORDER BY dias_desde_lancamento)) AS pontos_json
+FROM base
+WHERE sessoes IS NOT NULL
+GROUP BY modelo_id
+ORDER BY modelo_id`;
+
+  const rows = runBq_(query, CONFIG.bqUsLocation);
+  const payload = {
+    generated_at: generatedAt || Utilities.formatDate(new Date(), CONFIG.timeZone, "yyyy-MM-dd'T'HH:mm:ssXXX"),
+    fonte_receita: 'reise-ssot.mart_growth_us.bridge_orders_customers',
+    fonte_sessoes: 'reise-ssot.mart_growth_us.shopify_sessions_daily',
+    formula: 'receita_total / sessoes',
+    observacao: 'RPS diario por calendario, alinhado ao D0 de cada lancamento. Nao usa GA4, marketing, campanhas ou atribuicao.',
+    modelos: {}
+  };
+  let pointCount = 0;
+
+  rows.forEach(row => {
+    const pontos = JSON.parse(row.pontos_json || '[]').map(point => ({
+      dias_desde_lancamento: Number(point.dias_desde_lancamento),
+      data_calendario: point.data_calendario || null,
+      receita_total: numberOrNull_(point.receita_total),
+      sessoes: numberOrNull_(point.sessoes),
+      rps: numberOrNull_(point.rps),
+      pedidos: numberOrNull_(point.pedidos),
+      ingest_ts: point.ingest_ts || null,
+      fonte_receita: point.fonte_receita || 'reise-ssot.mart_growth_us.bridge_orders_customers',
+      fonte_sessoes: point.fonte_sessoes || 'reise-ssot.mart_growth_us.shopify_sessions_daily',
+      formula: point.formula || 'receita_total / sessoes'
+    }));
+    payload.modelos[row.modelo_id] = {
+      modelo: row.modelo || row.modelo_id,
+      linha: row.linha || row.modelo || row.modelo_id,
+      day_zero_base: row.day_zero_base || null,
+      janela_completa: Number(row.dias_disponiveis || 0) >= Number(row.janela_alvo_dias || 90),
+      dias_disponiveis: numberOrNull_(row.dias_disponiveis),
+      janela_alvo_dias: numberOrNull_(row.janela_alvo_dias),
+      dado_ate: row.dado_ate || null,
+      receita_total_periodo: numberOrNull_(row.receita_total_periodo),
+      sessoes_periodo: numberOrNull_(row.sessoes_periodo),
+      pedidos_periodo: numberOrNull_(row.pedidos_periodo),
+      rps_periodo: numberOrNull_(row.rps_periodo),
+      fonte_receita: payload.fonte_receita,
+      fonte_sessoes: payload.fonte_sessoes,
+      formula: payload.formula,
+      pontos
+    };
+    pointCount += pontos.length;
+  });
+
+  return { payload, rows: pointCount };
 }
 
 function exportarShareTrajetoriaSeDisponivel_(modelos) {

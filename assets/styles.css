@@ -5318,6 +5318,19 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   letter-spacing: .06em;
   text-transform: uppercase;
 }
+.ramp-rps-scope {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-2);
+  border-radius: 7px;
+  background: var(--bg-card-2);
+  color: var(--txt-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+  padding: 6px 10px;
+}
 .ramp-quick-clear:hover,
 .ramp-quick-clear:focus-visible {
   color: var(--orange);
