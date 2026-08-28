@@ -257,10 +257,13 @@ Para reduzir ruído, o gráfico principal não usa o RPS diário bruto como linh
 
 ```txt
 RPS MM7 = receita_total dos ultimos 7 dias / sessoes dos ultimos 7 dias
-Indice RPS = RPS MM7 do produto / mediana do grupo no mesmo D+
+Regua RPS = mediana do RPS MM7 da propria linha/produto na fase de vida comercial
+Indice RPS = RPS MM7 do produto / Regua RPS da linha/produto
 ```
 
-O RPS diário continua disponível como detalhe de auditoria no tooltip. A saúde do produto é lida por RPS MM7, tendência contra os 7 dias anteriores, mediana do grupo e faixa P25-P75 dos lançamentos comparáveis.
+O RPS diário continua disponível como detalhe de auditoria no tooltip. A saúde do produto é lida por RPS MM7, tendência contra os 7 dias anteriores e régua da própria linha/produto. A mediana geral do grupo não é usada como régua padrão porque cada linha tem ticket próprio.
+
+Quando houver 2 ou mais lançamentos da mesma linha, a régua usa mediana e faixa P25-P75 dessa mesma linha. Quando não houver par real da mesma linha, a régua usa a mediana própria do produto por fase de vida comercial (D0-D30, D31-D90, D91-D180, D181+) e uma faixa saudável de 90%-110%.
 
 ### Regra canônica de classificação de SKU/produto
 

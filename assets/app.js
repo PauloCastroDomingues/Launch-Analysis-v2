@@ -1539,14 +1539,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const configs = {
       rps_diario: {
         key: 'rps_diario',
-        label: 'RPS MM7 - Saúde do produto',
+        label: 'RPS MM7 - Saude por linha',
         shortLabel: 'RPS MM7',
         field: 'rps',
         format: 'brl',
         cadence: 'dia',
         cumulative: false,
         rps: true,
-        tooltip: 'Leitura principal: RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. Receita vem de mart_growth_us.bridge_orders_customers; sessoes vêm de mart_growth_us.shopify_sessions_daily. Não usa GA4, marketing, campanhas ou atribuição.'
+        tooltip: 'Leitura principal: RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. Status usa regua por linha/produto: mesma linha quando houver pares, ou mediana propria por fase. Receita vem de mart_growth_us.bridge_orders_customers; sessoes vem de mart_growth_us.shopify_sessions_daily. Nao usa GA4, marketing, campanhas ou atribuicao.'
       },
       receita_acumulada: {
         key: 'receita_acumulada',
@@ -1937,14 +1937,127 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     };
   }
 
-  function rpsBenchmarkDatasetData(chartLaunches, maxDay) {
-    const launchSeries = (chartLaunches || []).map((launch) => ({
+  function rpsLatestDataDay(launch) {
+    const model = rpsModelForLaunch(launch);
+    const points = Array.isArray(model?.pontos) ? model.pontos : [];
+    const dayZero = analysisDayZero(launch);
+    const days = points
+      .map((point) => numberOrNull(point.dias_desde_lancamento)
+        ?? numberOrNull(point.dia_desde_d0)
+        ?? dayIndex(dayZero, point.data_calendario || point.data))
+      .filter((day) => day !== null && day >= 0);
+    return days.length ? Math.max(...days) : launchCurrentRampDay(launch);
+  }
+
+  function rpsLineKey(launch) {
+    const model = rpsModelForLaunch(launch);
+    return normalizeText(model?.linha || launch?.linha || launch?.modelo || launch?.modelo_id || '');
+  }
+
+  function rpsLineLabel(launch) {
+    const model = rpsModelForLaunch(launch);
+    return model?.linha || launch?.linha || launch?.modelo || 'linha selecionada';
+  }
+
+  function rpsRulerPeerLaunches(selected, chartLaunches = selectedCompareLaunches()) {
+    const selectedKey = rpsLineKey(selected);
+    const peers = (chartLaunches || []).filter((launch) => rpsLineKey(launch) === selectedKey);
+    return peers.some((launch) => launch.modelo_id === selected?.modelo_id)
+      ? peers
+      : [selected, ...peers].filter(Boolean);
+  }
+
+  function rpsPhaseConfig(day) {
+    const value = numberOrNull(day);
+    if (value === null || value <= 30) return { key: 'd0_30', label: 'D0-D30', start: 0, end: 30 };
+    if (value <= 90) return { key: 'd31_90', label: 'D31-D90', start: 31, end: 90 };
+    if (value <= 180) return { key: 'd91_180', label: 'D91-D180', start: 91, end: 180 };
+    return { key: 'd181_plus', label: 'D181+', start: 181, end: null };
+  }
+
+  function rpsPhaseConfigs(maxDay) {
+    return [
+      { key: 'd0_30', label: 'D0-D30', start: 0, end: 30, minPoints: 1 },
+      { key: 'd31_90', label: 'D31-D90', start: 31, end: 90, minPoints: 7 },
+      { key: 'd91_180', label: 'D91-D180', start: 91, end: 180, minPoints: 7 },
+      { key: 'd181_plus', label: 'D181+', start: 181, end: maxDay, minPoints: 7 }
+    ];
+  }
+
+  function rpsSeriesValuesInRange(series, startDay, endDay) {
+    const values = [];
+    for (let day = Math.max(0, Number(startDay) || 0); day <= endDay; day += 1) {
+      const value = numberOrNull(series.data?.[day]);
+      if (value !== null) values.push(value);
+    }
+    return values;
+  }
+
+  function rpsSelfRulerDatasetData(selected, maxDay) {
+    const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
+    const validDays = series.data
+      .map((value, day) => numberOrNull(value) !== null ? day : null)
+      .filter((day) => day !== null);
+    const data = Array(maxDay + 1).fill(null);
+    const lower = Array(maxDay + 1).fill(null);
+    const upper = Array(maxDay + 1).fill(null);
+    const meta = Array(maxDay + 1).fill(null);
+    if (!validDays.length) {
+      return { lower, median: data, p75: upper, meta, mode: 'self', peerCount: 1, lineLabel: rpsLineLabel(selected) };
+    }
+    const lastDataDay = Math.min(maxDay, Math.max(...validDays));
+    const phaseSummaries = new Map();
+    let fallback = null;
+    rpsPhaseConfigs(maxDay).forEach((phase) => {
+      const phaseEnd = Math.min(phase.end ?? maxDay, lastDataDay);
+      if (phase.start > phaseEnd) {
+        phaseSummaries.set(phase.key, fallback);
+        return;
+      }
+      const values = rpsSeriesValuesInRange(series, phase.start, phaseEnd);
+      const enoughData = values.length >= phase.minPoints;
+      const value = enoughData ? rpsQuantile(values, 0.5, 4) : null;
+      const summary = value === null ? fallback : {
+        value,
+        lower: value * 0.90,
+        upper: value * 1.10,
+        count: values.length,
+        phaseLabel: phase.label,
+        basisLabel: `regua propria ${phase.label}`,
+        mode: 'self'
+      };
+      if (summary && value !== null) fallback = summary;
+      phaseSummaries.set(phase.key, summary || fallback);
+    });
+    for (let day = 0; day <= lastDataDay; day += 1) {
+      const phase = rpsPhaseConfig(day);
+      const summary = phaseSummaries.get(phase.key) || fallback;
+      if (!summary || summary.value === null) continue;
+      data[day] = summary.value;
+      lower[day] = summary.lower;
+      upper[day] = summary.upper;
+      meta[day] = {
+        ...summary,
+        day,
+        lineLabel: rpsLineLabel(selected),
+        count: summary.count,
+        lower: summary.lower,
+        median: summary.value,
+        p75: summary.upper,
+        sourceLabel: `${selected.modelo}: mediana propria do RPS MM7 por fase`
+      };
+    }
+    return { lower, median: data, p75: upper, meta, mode: 'self', peerCount: 1, lineLabel: rpsLineLabel(selected) };
+  }
+
+  function rpsPeerRulerDatasetData(selected, peerLaunches, maxDay) {
+    const launchSeries = (peerLaunches || []).map((launch) => ({
       launch,
       series: rpsRampDatasetData(launch, rampMetricConfig('rps_diario'), maxDay)
     }));
-    const p25 = Array(maxDay + 1).fill(null);
+    const lower = Array(maxDay + 1).fill(null);
     const median = Array(maxDay + 1).fill(null);
-    const p75 = Array(maxDay + 1).fill(null);
+    const upper = Array(maxDay + 1).fill(null);
     const meta = Array(maxDay + 1).fill(null);
     for (let day = 0; day <= maxDay; day += 1) {
       const rows = launchSeries
@@ -1956,28 +2069,44 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         .filter((row) => row.value !== null)
         .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
       const values = rows.map((row) => row.value);
-      if (!values.length) continue;
-      p25[day] = rpsQuantile(values, 0.25, 4);
+      if (values.length < 2) continue;
+      lower[day] = rpsQuantile(values, 0.25, 4);
       median[day] = rpsQuantile(values, 0.5, 4);
-      p75[day] = rpsQuantile(values, 0.75, 4);
+      upper[day] = rpsQuantile(values, 0.75, 4);
       meta[day] = {
         count: rows.length,
-        p25: p25[day],
+        lower: lower[day],
         median: median[day],
-        p75: p75[day],
-        rows
+        p75: upper[day],
+        rows,
+        lineLabel: rpsLineLabel(selected),
+        phaseLabel: rpsPhaseConfig(day).label,
+        basisLabel: `mesma linha (${rpsLineLabel(selected)})`,
+        mode: 'peer',
+        sourceLabel: `mediana de ${rows.length} lancamentos da mesma linha`
       };
     }
-    return { p25, median, p75, meta };
+    return { lower, median, p75: upper, meta, mode: 'peer', peerCount: peerLaunches.length, lineLabel: rpsLineLabel(selected) };
   }
 
-  function rpsBenchmarkChartDatasets(chartLaunches, maxDay, lensStart, lensEnd) {
-    const benchmark = rpsBenchmarkDatasetData(chartLaunches, maxDay);
+  function rpsRulerDatasetData(selected, chartLaunches, maxDay) {
+    const peers = rpsRulerPeerLaunches(selected, chartLaunches);
+    if (peers.length >= 2) {
+      const peerRuler = rpsPeerRulerDatasetData(selected, peers, maxDay);
+      if (peerRuler.meta.some(Boolean)) return peerRuler;
+    }
+    return rpsSelfRulerDatasetData(selected, maxDay);
+  }
+
+  function rpsRulerChartDatasets(selected, chartLaunches, maxDay, lensStart, lensEnd) {
+    const ruler = rpsRulerDatasetData(selected, chartLaunches, maxDay);
     const slice = (values) => values.slice(lensStart, lensEnd + 1);
+    const bandLabel = ruler.mode === 'peer' ? 'Faixa da linha (P25-P75)' : 'Faixa saudavel da regua';
+    const rulerLabel = ruler.mode === 'peer' ? `Regua da linha ${ruler.lineLabel}` : `Regua ${selected.modelo}`;
     return [
       {
-        label: 'Faixa do grupo (P25-P75)',
-        data: slice(benchmark.p75),
+        label: bandLabel,
+        data: slice(ruler.p75),
         borderColor: 'rgba(76, 175, 125, 0)',
         backgroundColor: 'rgba(76, 175, 125, 0.12)',
         pointRadius: 0,
@@ -1987,11 +2116,11 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         fill: false,
         isRpsReferenceBand: true,
         isRpsBandAnchor: true,
-        rpsBenchmarkMeta: benchmark.meta
+        rpsRulerMeta: ruler.meta
       },
       {
-        label: 'Faixa do grupo (P25-P75)',
-        data: slice(benchmark.p25),
+        label: bandLabel,
+        data: slice(ruler.lower),
         borderColor: 'rgba(76, 175, 125, 0)',
         backgroundColor: 'rgba(76, 175, 125, 0.12)',
         pointRadius: 0,
@@ -2000,11 +2129,11 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         spanGaps: true,
         fill: '-1',
         isRpsReferenceBand: true,
-        rpsBenchmarkMeta: benchmark.meta
+        rpsRulerMeta: ruler.meta
       },
       {
-        label: 'Mediana do grupo',
-        data: slice(benchmark.median),
+        label: rulerLabel,
+        data: slice(ruler.median),
         borderColor: 'rgba(255, 255, 255, 0.62)',
         backgroundColor: 'rgba(255, 255, 255, 0.12)',
         borderDash: [6, 4],
@@ -2015,8 +2144,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         tension: 0.32,
         spanGaps: true,
         fill: false,
-        isRpsBenchmarkMedian: true,
-        rpsBenchmarkMeta: benchmark.meta
+        isRpsRulerMedian: true,
+        rpsRulerMeta: ruler.meta
       }
     ];
   }
@@ -2105,43 +2234,38 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return 'D181+';
   }
 
-  function rpsBenchmarkForDay(chartLaunches, day, selectedId) {
+  function rpsRulerForDay(selected, chartLaunches, day) {
     const endDay = Math.max(0, Number(day) || 0);
-    const selectedMetric = rampMetricConfig('rps_diario');
-    const rows = (chartLaunches || [])
-      .map((launch) => {
-        const series = rpsRampDatasetData(launch, selectedMetric, endDay);
-        const value = numberOrNull(series.data?.[endDay]);
-        return value === null ? null : { launch, value, meta: series.rpsMeta?.[endDay] || null };
-      })
-      .filter(Boolean)
-      .sort((a, b) => Number(b.value || 0) - Number(a.value || 0));
-    const values = rows.map((row) => row.value);
-    const selectedRank = rows.findIndex((row) => row.launch.modelo_id === selectedId);
+    const comparison = [...(chartLaunches || [])];
+    if (selected && !comparison.some((launch) => launch.modelo_id === selected.modelo_id)) comparison.push(selected);
+    const ruler = rpsRulerDatasetData(selected, comparison, endDay);
+    const meta = ruler.meta?.[endDay] || null;
+    if (!meta) return null;
     return {
-      rows,
-      count: rows.length,
-      rank: selectedRank >= 0 ? selectedRank + 1 : null,
-      leader: rows[0] || null,
-      p25: rpsQuantile(values, 0.25, 4),
-      median: rpsQuantile(values, 0.5, 4),
-      p75: rpsQuantile(values, 0.75, 4)
+      ...meta,
+      count: meta.count || ruler.peerCount || 1,
+      lower: meta.lower ?? null,
+      median: meta.median ?? null,
+      p75: meta.p75 ?? null,
+      mode: ruler.mode,
+      lineLabel: ruler.lineLabel,
+      basisLabel: meta.basisLabel || (ruler.mode === 'peer' ? `mesma linha (${ruler.lineLabel})` : 'regua propria')
     };
   }
 
   function rpsHealthStatus(index) {
     if (index === null || index === undefined || Number.isNaN(index)) {
-      return { label: 'Pendente', tone: 'neutral', helper: 'benchmark indisponivel' };
+      return { label: 'Pendente', tone: 'neutral', helper: 'regua indisponivel' };
     }
-    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da mediana do grupo' };
+    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da regua da linha' };
     if (index >= 0.90) return { label: 'Saudavel', tone: 'positive', helper: 'dentro da faixa saudavel' };
-    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da mediana do grupo' };
-    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da mediana do grupo' };
+    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da regua da linha' };
+    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da regua da linha' };
   }
 
   function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
     if (!selected) return null;
-    const maxDay = launchCurrentRampDay(selected);
+    const maxDay = rpsLatestDataDay(selected);
     const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
     const days = series.rpsMeta
       .map((meta, day) => meta ? day : null)
@@ -2155,14 +2279,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const trend = current?.rps !== null && previous?.rps ? (current.rps / previous.rps) - 1 : null;
     const comparison = [...(chartLaunches || [])];
     if (!comparison.some((launch) => launch.modelo_id === selected.modelo_id)) comparison.push(selected);
-    const benchmark = rpsBenchmarkForDay(comparison, day, selected.modelo_id);
-    const index = current?.rps !== null && benchmark?.median ? current.rps / benchmark.median : null;
+    const ruler = rpsRulerForDay(selected, comparison, day);
+    const index = current?.rps !== null && ruler?.median ? current.rps / ruler.median : null;
     return {
       day,
       current,
       previous,
       trend,
-      benchmark,
+      ruler,
       index,
       status: rpsHealthStatus(index)
     };
@@ -2194,11 +2318,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const previousText = health.previous ? rpsPeriodLabel(health.previous) : 'janela anterior pendente';
     const trendText = health.trend === null || health.trend === undefined ? 'sem comparativo' : fmtSignedPct(health.trend, 0);
     const indexText = health.index === null || health.index === undefined ? '-' : `${fmtNum(health.index, 2)}x`;
-    const rankText = health.benchmark?.rank ? `${fmtNum(health.benchmark.rank)}/${fmtNum(health.benchmark.count)}` : 'sem ranking';
-    const medianText = health.benchmark?.median ? fmtBRL(health.benchmark.median) : 'mediana pendente';
-    const bandText = health.benchmark?.p25 !== null && health.benchmark?.p75 !== null
-      ? `${fmtBRL(health.benchmark.p25)} a ${fmtBRL(health.benchmark.p75)}`
+    const rulerValue = numberOrNull(health.ruler?.median);
+    const lowerValue = numberOrNull(health.ruler?.lower);
+    const upperValue = numberOrNull(health.ruler?.p75);
+    const rulerText = rulerValue === null ? 'regua pendente' : fmtBRL(rulerValue);
+    const bandText = lowerValue !== null && upperValue !== null
+      ? `${fmtBRL(lowerValue)} a ${fmtBRL(upperValue)}`
       : 'faixa pendente';
+    const basisText = health.ruler?.basisLabel || health.ruler?.sourceLabel || 'regua propria';
     const phaseText = rpsPhaseLabel(health.day);
     const sourceUntil = model.dado_ate || health.current.endIso || snapshotIso();
     const methodItems = [
@@ -2206,15 +2333,15 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       `Fonte sessões: ${model.fonte_sessoes || 'shopify_sessions_daily'}`,
       'Base diaria: receita total / sessoes',
       'Leitura principal: RPS MM7 = receita 7d / sessoes 7d',
-      'Benchmark: mediana e faixa P25-P75 dos lancamentos selecionados',
+      'Regua: mesma linha quando houver pares; sem pares usa mediana propria por fase',
       'Sem GA4, marketing, campanhas ou atribuição',
       `Dado até: ${fmtDateSlash(sourceUntil)}`
     ];
-    const narrative = `${selected.modelo}: ${health.status.label} com RPS MM7 de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs mediana do grupo (${medianText}); tendencia ${trendText} vs ${previousText}.`;
+    const narrative = `${selected.modelo}: ${health.status.label} com RPS MM7 de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs regua ${rulerText} (${basisText}); tendencia ${trendText} vs ${previousText}.`;
 
     wrap.innerHTML = `
       <div class="share-period-copy">
-        <div class="share-period-kicker">${labelTip('Saude por RPS MM7', 'RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. O status compara o produto com a mediana do grupo no mesmo D+.')}</div>
+        <div class="share-period-kicker">${labelTip('Saude por RPS MM7', 'RPS MM7 = receita dos ultimos 7 dias / sessoes dos ultimos 7 dias. O status compara com a regua da propria linha/produto; quando houver 2+ lancamentos da mesma linha, usa essa mediana, senao usa a fase da propria linha.')}</div>
         <strong>Leitura rapida</strong>
         <span>${escapeHtml(narrative)}</span>
       </div>
@@ -2228,7 +2355,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         ${sharePeriodCompactMetricHtml({
           label: 'Indice',
           value: indexText,
-          helper: `mediana ${medianText}`,
+          helper: `regua ${rulerText}`,
           tone: health.index !== null && health.index >= 1 ? 'positive' : health.status.tone
         })}
         ${sharePeriodCompactMetricHtml({
@@ -2240,13 +2367,13 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         ${sharePeriodCompactMetricHtml({
           label: 'Status',
           value: health.status.label,
-          helper: `${phaseText} | grupo ${rankText}`,
+          helper: `${phaseText} | ${basisText}`,
           tone: health.status.tone
         })}
       </div>
       <details class="share-period-method">
         <summary>Base</summary>
-        <span>${escapeHtml(`${methodItems.join(' | ')} | Faixa P25-P75 no D+${fmtNum(health.day)}: ${bandText}`)}</span>
+        <span>${escapeHtml(`${methodItems.join(' | ')} | Faixa da regua no D+${fmtNum(health.day)}: ${bandText}`)}</span>
       </details>
     `;
   }
@@ -3779,7 +3906,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">RPS MM7 da loja total: receita SSOT / sessoes ShopifyQL. Produto, cor e canal nao entram.</span>'
+      ? '<span class="ramp-rps-scope">RPS MM7 da loja total com regua por linha/produto. Produto, cor e canal nao entram no calculo.</span>'
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -9404,7 +9531,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const isShare = Boolean(rampMetric.share);
       const isRps = Boolean(rampMetric.rps);
       const isWeekly = isHealth || rampMetric.cadence === 'semana';
-      const maxDay = normalizedRampMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected]);
+      const comparisonMaxDay = normalizedRampMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected]);
+      const maxDay = isRps ? rpsLatestDataDay(selected) : comparisonMaxDay;
       renderRampQuickControls(maxDay, rampMetric, mode);
       let lensBounds = rampTimeLensBounds(maxDay, rampMetric);
       let weeklyLens = isWeekly
@@ -9447,7 +9575,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `RPS MM7 com destaque do produto, mediana e faixa P25-P75 do grupo - ${coverage}`;
+          subText.textContent = `RPS MM7 com regua por linha/produto - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -9472,7 +9600,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         data: {
           labels: normalizedLabels,
           datasets: [
-            ...(isRps ? rpsBenchmarkChartDatasets(normalizedLaunches, maxDay, lensStart, lensEnd) : []),
+            ...(isRps ? rpsRulerChartDatasets(selected, normalizedLaunches, maxDay, lensStart, lensEnd) : []),
             ...visibleLineLaunches.map((launch, index) => {
               const filteredSeries = isProductFilterActive() || isChannelFilterActive();
               const series = isRps
@@ -9635,12 +9763,13 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                   }
                   if (isRps) {
                     const day = lensStart + ctx.dataIndex;
-                    if (ctx.dataset.isRpsBenchmarkMedian) {
-                      const bench = ctx.dataset.rpsBenchmarkMeta?.[day];
-                      if (!bench) return 'Benchmark pendente para este D+.';
+                    if (ctx.dataset.isRpsRulerMedian) {
+                      const bench = ctx.dataset.rpsRulerMeta?.[day];
+                      if (!bench) return 'Regua pendente para este D+.';
+                      const source = bench.basisLabel || bench.sourceLabel || 'regua propria';
                       return [
-                        `Faixa P25-P75: ${fmtBRL(bench.p25)} a ${fmtBRL(bench.p75)}`,
-                        `Base: ${fmtNum(bench.count)} lancamentos com RPS MM7 neste D+.`
+                        `Regua: ${fmtBRL(bench.median)} | ${source}`,
+                        `Faixa: ${fmtBRL(bench.lower)} a ${fmtBRL(bench.p75)}`
                       ];
                     }
                     const meta = ctx.dataset.rpsMeta?.[day];
