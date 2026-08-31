@@ -258,15 +258,19 @@ Para reduzir ruído sem perder fidelidade, o gráfico separa tendência visual d
 ```txt
 RPS MM7 = receita_total dos ultimos 7 dias / sessoes dos ultimos 7 dias
 RPS fixo da fase = soma(receita da fase) / soma(sessoes da fase)
-Regua RPS = RPS fixo da propria linha/produto na janela comparavel
-Indice RPS = RPS fixo do produto / Regua RPS da linha/produto
+Referencia RPS = RPS fixo da propria linha/produto na janela comparavel
+Indice de sustentacao RPS = RPS fixo do produto / Referencia RPS da linha/produto
 ```
 
-O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A saúde do produto, o índice e o status usam RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como régua padrão porque cada linha tem ticket próprio.
+O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A leitura de saúde, o índice de sustentação e o status usam RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como referência padrão porque cada linha tem ticket próprio.
 
-Quando houver 2 ou mais lançamentos da mesma linha, a régua usa mediana e faixa P25-P75 do RPS fixo dessa mesma linha na janela comparável. Quando não houver par real da mesma linha, a régua usa a fase anterior do próprio produto; na fase inicial, o status fica como base inicial até existir uma fase anterior comparável.
+Quando houver 2 ou mais lançamentos da mesma linha, a referência usa mediana e faixa P25-P75 do RPS fixo dessa mesma linha na janela comparável. Quando não houver par real da mesma linha, a referência usa a fase anterior do próprio produto; na fase inicial, o status fica como base inicial até existir uma fase anterior comparável.
 
-No gráfico, a régua é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). Assim, a régua fica visualmente clara como fixa dentro de cada fase, não como média móvel.
+Os cortes iniciais do índice seguem a leitura operacional do guia de RPS: `>= 0,95` = forte; `0,90 a 0,94` = bom sinal; `0,75 a 0,89` = atenção/sustentação parcial; `< 0,75` = dependência. Esses limites são calibração inicial e podem ser recalibrados com histórico.
+
+No gráfico, a referência é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). Assim, a referência fica visualmente clara como fixa dentro de cada fase, não como média móvel.
+
+O guia de autosustentação define o sinal completo como desacoplamento entre esforço e performance. Como esta visão de RPS foi deliberadamente definida sem GA4, marketing, campanhas ou atribuição, o painel não afirma autosustentação causal; ele mede sustentação do RPS contra uma referência fixa. Para uma leitura completa de autosustentação, seria necessário adicionar um índice de esforço confiável em uma camada separada.
 
 ### Regra canônica de classificação de SKU/produto
 

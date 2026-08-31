@@ -1539,14 +1539,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const configs = {
       rps_diario: {
         key: 'rps_diario',
-        label: 'RPS - Saude por linha',
+        label: 'RPS - Índice de sustentação',
         shortLabel: 'RPS',
         field: 'rps',
         format: 'brl',
         cadence: 'dia',
         cumulative: false,
         rps: true,
-        tooltip: 'Diagnostico principal: RPS fixo da fase = soma(receita) / soma(sessoes). A curva MM7 suaviza a tendencia visual. Status usa regua fixa por fase e por linha/produto: mesma linha quando houver pares, ou fase anterior do proprio produto. Nao usa GA4, marketing, campanhas ou atribuicao.'
+        tooltip: 'Diagnóstico principal: índice de sustentação = RPS fixo da fase / referência fixa da própria linha/produto. A curva MM7 suaviza a tendência visual; a decisão usa RPS fixo por fase. Não usa GA4, marketing, campanhas ou atribuição.'
       },
       receita_acumulada: {
         key: 'receita_acumulada',
@@ -2061,7 +2061,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return rpsRulerMetaFromValue(basisSummary.rps, {
       count: basisSummary.daysCovered,
       phaseLabel: phase.label,
-      basisLabel: isInitialBasis ? `base fixa ${basisSummary.phaseLabel}` : `regua propria ${basisSummary.phaseLabel}`,
+      basisLabel: isInitialBasis ? `base fixa ${basisSummary.phaseLabel}` : `referência própria ${basisSummary.phaseLabel}`,
       mode: 'self',
       lineLabel: rpsLineLabel(selected),
       sourceLabel: isInitialBasis
@@ -2160,8 +2160,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   function rpsRulerChartDatasets(selected, chartLaunches, maxDay, lensStart, lensEnd) {
     const ruler = rpsRulerDatasetData(selected, chartLaunches, maxDay);
     const slice = (values) => values.slice(lensStart, lensEnd + 1);
-    const bandLabel = 'Faixa da regua fixa por fase';
-    const rulerLabel = ruler.mode === 'peer' ? `Regua fixa por fase - ${ruler.lineLabel}` : 'Regua fixa por fase';
+    const bandLabel = 'Faixa da referência fixa';
+    const rulerLabel = ruler.mode === 'peer' ? `Referência fixa por fase - ${ruler.lineLabel}` : 'Referência fixa por fase';
     return [
       {
         label: bandLabel,
@@ -2308,7 +2308,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       p75: meta.p75 ?? null,
       mode: ruler.mode,
       lineLabel: ruler.lineLabel,
-      basisLabel: meta.basisLabel || (ruler.mode === 'peer' ? `mesma linha (${ruler.lineLabel})` : 'regua propria')
+      basisLabel: meta.basisLabel || (ruler.mode === 'peer' ? `mesma linha (${ruler.lineLabel})` : 'referência própria')
     };
   }
 
@@ -2317,12 +2317,12 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       return { label: 'Base inicial', tone: 'neutral', helper: 'sem fase anterior comparavel' };
     }
     if (index === null || index === undefined || Number.isNaN(index)) {
-      return { label: 'Pendente', tone: 'neutral', helper: 'regua indisponivel' };
+      return { label: 'Pendente', tone: 'neutral', helper: 'referência indisponível' };
     }
-    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da regua por fase' };
-    if (index >= 0.90) return { label: 'Saudavel', tone: 'positive', helper: 'dentro da faixa saudavel' };
-    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da regua por fase' };
-    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da regua por fase' };
+    if (index >= 0.95) return { label: 'Forte', tone: 'positive', helper: 'mantém 95%+ da referência' };
+    if (index >= 0.90) return { label: 'Bom sinal', tone: 'positive', helper: 'mantém 90%+ da referência' };
+    if (index >= 0.75) return { label: 'Atenção', tone: 'warning', helper: 'sustentação parcial' };
+    return { label: 'Dependente', tone: 'negative', helper: 'queda forte vs referência' };
   }
 
   function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
@@ -2388,28 +2388,30 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const rulerValue = numberOrNull(health.ruler?.median);
     const lowerValue = numberOrNull(health.ruler?.lower);
     const upperValue = numberOrNull(health.ruler?.p75);
-    const rulerText = rulerValue === null ? 'regua pendente' : fmtBRL(rulerValue);
+    const rulerText = rulerValue === null ? 'referência pendente' : fmtBRL(rulerValue);
     const bandText = lowerValue !== null && upperValue !== null
       ? `${fmtBRL(lowerValue)} a ${fmtBRL(upperValue)}`
       : 'faixa pendente';
-    const basisText = health.ruler?.basisLabel || health.ruler?.sourceLabel || 'regua propria';
+    const basisText = health.ruler?.basisLabel || health.ruler?.sourceLabel || 'referência própria';
     const phaseText = rpsPhaseLabel(health.day);
     const sourceUntil = model.dado_ate || health.current.endIso || snapshotIso();
     const methodItems = [
       `Fonte receita: ${model.fonte_receita || 'bridge_orders_customers'}`,
       `Fonte sessões: ${model.fonte_sessoes || 'shopify_sessions_daily'}`,
-      'Base diaria: receita total / sessoes',
-      'Decisao: RPS fixo da fase = soma(receita) / soma(sessoes)',
-      'Curva visual: RPS MM7 = receita 7d / sessoes 7d',
-      'Regua: mesma linha quando houver pares; sem pares usa fase anterior do proprio produto',
+      'Base diária: receita total / sessões',
+      'Decisão: índice de sustentação = RPS fixo da fase / referência fixa',
+      'RPS fixo da fase = soma(receita) / soma(sessões)',
+      'Curva visual: RPS MM7 = receita 7d / sessões 7d',
+      'Referência: mesma linha quando houver pares; sem pares usa fase anterior do próprio produto',
+      'Autosustentação completa exigiria esforço indexado; este painel mede somente RPS',
       'Sem GA4, marketing, campanhas ou atribuição',
       `Dado até: ${fmtDateSlash(sourceUntil)}`
     ];
-    const narrative = `${selected.modelo}: ${health.status.label} com RPS fixo de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs regua fixa por fase ${rulerText} (${basisText}); tendencia ${trendText} vs ${previousText}. MM7 atual ${mm7Text} fica no grafico como tendencia.`;
+    const narrative = `${selected.modelo}: ${health.status.label} com RPS fixo de ${fmtBRL(health.current.rps)} em ${periodText}. Índice de sustentação ${indexText} vs referência fixa ${rulerText} (${basisText}); tendência ${trendText} vs ${previousText}. MM7 atual ${mm7Text} fica no gráfico como tendência.`;
 
     wrap.innerHTML = `
       <div class="share-period-copy">
-        <div class="share-period-kicker">${labelTip('Saude por RPS fixo', 'A decisao usa RPS fixo da fase: soma(receita) / soma(sessoes) na janela da fase. A curva MM7 continua no grafico apenas para leitura de tendencia diaria.')}</div>
+        <div class="share-period-kicker">${labelTip('Sustentação por RPS fixo', 'A decisão usa índice de sustentação: RPS fixo da fase dividido pela referência fixa da própria linha/produto. A curva MM7 continua no gráfico apenas para leitura de tendência diária.')}</div>
         <strong>Leitura rapida</strong>
         <span>${escapeHtml(narrative)}</span>
       </div>
@@ -2421,9 +2423,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           tone: 'neutral'
         })}
         ${sharePeriodCompactMetricHtml({
-          label: 'Indice',
+          label: 'Sustentação',
           value: indexText,
-          helper: `regua por fase ${rulerText}`,
+          helper: `vs referência ${rulerText}`,
           tone: health.index !== null && health.index >= 1 ? 'positive' : health.status.tone
         })}
         ${sharePeriodCompactMetricHtml({
@@ -2441,7 +2443,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       </div>
       <details class="share-period-method">
         <summary>Base</summary>
-        <span>${escapeHtml(`${methodItems.join(' | ')} | MM7 atual: ${mm7Text} (${mm7PeriodText}) | Faixa da regua por fase no D+${fmtNum(health.day)}: ${bandText}`)}</span>
+        <span>${escapeHtml(`${methodItems.join(' | ')} | MM7 atual: ${mm7Text} (${mm7PeriodText}) | Faixa da referência fixa no D+${fmtNum(health.day)}: ${bandText}`)}</span>
       </details>
     `;
   }
@@ -4024,7 +4026,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">RPS fixo decide a saude; curva MM7 fica como tendencia visual. Produto, cor e canal nao entram no calculo.</span>'
+      ? '<span class="ramp-rps-scope">Índice de sustentação decide o status; curva MM7 fica como tendência visual. Produto, cor e canal não entram no cálculo.</span>'
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -9693,7 +9695,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `Curva MM7; status por regua fixa por fase - ${coverage}`;
+          subText.textContent = `Curva MM7; índice por referência fixa de fase - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -9888,10 +9890,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                     const day = lensStart + ctx.dataIndex;
                     if (ctx.dataset.isRpsRulerMedian) {
                       const bench = ctx.dataset.rpsRulerMeta?.[day];
-                      if (!bench) return 'Regua pendente para este D+.';
-                      const source = bench.basisLabel || bench.sourceLabel || 'regua propria';
+                      if (!bench) return 'Referência pendente para este D+.';
+                      const source = bench.basisLabel || bench.sourceLabel || 'referência própria';
                       return [
-                        `Regua fixa por fase: ${fmtBRL(bench.median)} | ${source}`,
+                        `Referência fixa por fase: ${fmtBRL(bench.median)} | ${source}`,
                         `Faixa: ${fmtBRL(bench.lower)} a ${fmtBRL(bench.p75)}`,
                         'Metodo: soma(receita) / soma(sessoes) na janela da fase.'
                       ];
