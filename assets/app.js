@@ -2169,7 +2169,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const ruler = rpsRulerDatasetData(selected, chartLaunches, maxDay);
     const slice = (values) => values.slice(lensStart, lensEnd + 1);
     const bandLabel = 'Faixa da referência';
-    const rulerLabel = ruler.mode === 'peer' ? `Régua 100% - ${ruler.lineLabel}` : 'Régua 100%';
+    const rulerLabel = ruler.mode === 'peer' ? `Referência 100% - ${ruler.lineLabel}` : 'Referência 100%';
     return [
       {
         label: bandLabel,
@@ -2215,7 +2215,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         rpsRulerMeta: ruler.meta
       },
       {
-        label: 'Régua 90%',
+        label: 'Guia visual 90%',
         data: slice(ruler.good),
         borderColor: 'rgba(76, 175, 125, 0.72)',
         backgroundColor: 'rgba(76, 175, 125, 0.08)',
@@ -2232,7 +2232,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         rpsRulerMeta: ruler.meta
       },
       {
-        label: 'Régua 75%',
+        label: 'Guia visual 75%',
         data: slice(ruler.attention),
         borderColor: 'rgba(245, 184, 76, 0.72)',
         backgroundColor: 'rgba(245, 184, 76, 0.08)',
@@ -2361,10 +2361,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     if (index === null || index === undefined || Number.isNaN(index)) {
       return { label: 'Pendente', tone: 'neutral', helper: 'referência indisponível' };
     }
-    if (index >= 0.95) return { label: 'Forte', tone: 'positive', helper: 'mantém 95%+ da referência' };
-    if (index >= 0.90) return { label: 'Bom sinal', tone: 'positive', helper: 'mantém 90%+ da referência' };
-    if (index >= 0.75) return { label: 'Atenção', tone: 'warning', helper: 'sustentação parcial' };
-    return { label: 'Dependente', tone: 'negative', helper: 'queda forte vs referência' };
+    if (index >= 1) return { label: 'Acima da referência', tone: 'positive', helper: 'RPS fixo acima da referência da fase' };
+    if (index >= 0.90) return { label: 'Próximo da referência', tone: 'neutral', helper: 'entre 90% e 100% da referência' };
+    if (index >= 0.75) return { label: 'Abaixo da referência', tone: 'neutral', helper: 'entre 75% e 90% da referência' };
+    return { label: 'Distante da referência', tone: 'neutral', helper: 'abaixo do guia visual de 75%' };
   }
 
   function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
@@ -4001,7 +4001,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">Réguas no gráfico: 100%, 90% e 75% da referência fixa. A MM7 mostra a tendência.</span>'
+      ? '<span class="ramp-rps-scope">100% é a referência fixa. 90% e 75% são guias visuais provisórios.</span>'
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -9670,7 +9670,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `Curva MM7 com réguas fixas 100/90/75 - ${coverage}`;
+          subText.textContent = `Curva MM7 com referência fixa e guias 90/75 - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -9868,20 +9868,21 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                       if (!bench) return 'Referência pendente para este D+.';
                       const source = bench.basisLabel || bench.sourceLabel || 'referência própria';
                       return [
-                        `Régua 100%: ${fmtBRL(bench.median)} | ${source}`,
+                        `Referência 100%: ${fmtBRL(bench.median)} | ${source}`,
                         `Faixa: ${fmtBRL(bench.lower)} a ${fmtBRL(bench.p75)}`,
-                        'Metodo: soma(receita) / soma(sessoes) na janela da fase.'
+                        'Metodo: soma(receita) / soma(sessoes) na janela da fase.',
+                        'Leitura: referência operacional da fase, não meta estatística calibrada.'
                       ];
                     }
                     if (ctx.dataset.isRpsGuideLine) {
                       const bench = ctx.dataset.rpsRulerMeta?.[day];
-                      if (!bench) return 'Régua pendente para este D+.';
+                      if (!bench) return 'Guia pendente para este D+.';
                       const ratio = numberOrNull(ctx.dataset.rpsGuideRatio);
                       const threshold = ratio === null ? ctx.parsed.y : bench.median * ratio;
                       return [
                         `${ctx.dataset.label}: ${fmtBRL(threshold)} (${fmtPct(ratio, 0)} da referência)`,
                         `Referência 100%: ${fmtBRL(bench.median)}.`,
-                        'Leitura visual: compare a MM7 com as réguas.'
+                        'Guia visual provisório; ainda não é corte calibrado pelo histórico.'
                       ];
                     }
                     const meta = ctx.dataset.rpsMeta?.[day];
