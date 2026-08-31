@@ -1546,7 +1546,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         cadence: 'dia',
         cumulative: false,
         rps: true,
-        tooltip: 'Diagnostico principal: RPS fixo da fase = soma(receita) / soma(sessoes). A curva MM7 suaviza a tendencia visual. Status usa regua fixa por linha/produto: mesma linha quando houver pares, ou fase anterior do proprio produto. Nao usa GA4, marketing, campanhas ou atribuicao.'
+        tooltip: 'Diagnostico principal: RPS fixo da fase = soma(receita) / soma(sessoes). A curva MM7 suaviza a tendencia visual. Status usa regua fixa por fase e por linha/produto: mesma linha quando houver pares, ou fase anterior do proprio produto. Nao usa GA4, marketing, campanhas ou atribuicao.'
       },
       receita_acumulada: {
         key: 'receita_acumulada',
@@ -1984,6 +1984,24 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     ];
   }
 
+  function rpsPhaseBandsForLens(maxDay, lensStart, lensEnd) {
+    const start = Math.max(0, Number(lensStart) || 0);
+    const end = Math.max(start, Number(lensEnd) || 0);
+    return rpsPhaseConfigs(maxDay)
+      .map((phase) => {
+        const phaseEnd = Math.min(phase.end ?? maxDay, maxDay);
+        const visibleStart = Math.max(phase.start, start);
+        const visibleEnd = Math.min(phaseEnd, end);
+        if (visibleStart > visibleEnd) return null;
+        return {
+          label: phase.label,
+          startIndex: visibleStart - start,
+          endIndex: visibleEnd - start
+        };
+      })
+      .filter(Boolean);
+  }
+
   function rpsPhaseForDay(day, maxDay) {
     const phaseKey = rpsPhaseConfig(day).key;
     const phase = rpsPhaseConfigs(maxDay).find((item) => item.key === phaseKey) || rpsPhaseConfig(day);
@@ -2142,8 +2160,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   function rpsRulerChartDatasets(selected, chartLaunches, maxDay, lensStart, lensEnd) {
     const ruler = rpsRulerDatasetData(selected, chartLaunches, maxDay);
     const slice = (values) => values.slice(lensStart, lensEnd + 1);
-    const bandLabel = ruler.mode === 'peer' ? 'Faixa fixa da linha' : 'Faixa da regua fixa';
-    const rulerLabel = ruler.mode === 'peer' ? `Regua fixa ${ruler.lineLabel}` : `Regua fixa ${selected.modelo}`;
+    const bandLabel = 'Faixa da regua fixa por fase';
+    const rulerLabel = ruler.mode === 'peer' ? `Regua fixa por fase - ${ruler.lineLabel}` : 'Regua fixa por fase';
     return [
       {
         label: bandLabel,
@@ -2301,10 +2319,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     if (index === null || index === undefined || Number.isNaN(index)) {
       return { label: 'Pendente', tone: 'neutral', helper: 'regua indisponivel' };
     }
-    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da regua fixa' };
+    if (index >= 1.10) return { label: 'Forte', tone: 'positive', helper: 'acima da regua por fase' };
     if (index >= 0.90) return { label: 'Saudavel', tone: 'positive', helper: 'dentro da faixa saudavel' };
-    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da regua fixa' };
-    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da regua fixa' };
+    if (index >= 0.75) return { label: 'Atencao', tone: 'warning', helper: 'abaixo da regua por fase' };
+    return { label: 'Queda', tone: 'negative', helper: 'bem abaixo da regua por fase' };
   }
 
   function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
@@ -2387,7 +2405,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       'Sem GA4, marketing, campanhas ou atribuição',
       `Dado até: ${fmtDateSlash(sourceUntil)}`
     ];
-    const narrative = `${selected.modelo}: ${health.status.label} com RPS fixo de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs regua fixa ${rulerText} (${basisText}); tendencia ${trendText} vs ${previousText}. MM7 atual ${mm7Text} fica no grafico como tendencia.`;
+    const narrative = `${selected.modelo}: ${health.status.label} com RPS fixo de ${fmtBRL(health.current.rps)} em ${periodText}. Indice ${indexText} vs regua fixa por fase ${rulerText} (${basisText}); tendencia ${trendText} vs ${previousText}. MM7 atual ${mm7Text} fica no grafico como tendencia.`;
 
     wrap.innerHTML = `
       <div class="share-period-copy">
@@ -2405,7 +2423,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         ${sharePeriodCompactMetricHtml({
           label: 'Indice',
           value: indexText,
-          helper: `regua ${rulerText}`,
+          helper: `regua por fase ${rulerText}`,
           tone: health.index !== null && health.index >= 1 ? 'positive' : health.status.tone
         })}
         ${sharePeriodCompactMetricHtml({
@@ -2423,7 +2441,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       </div>
       <details class="share-period-method">
         <summary>Base</summary>
-        <span>${escapeHtml(`${methodItems.join(' | ')} | MM7 atual: ${mm7Text} (${mm7PeriodText}) | Faixa da regua no D+${fmtNum(health.day)}: ${bandText}`)}</span>
+        <span>${escapeHtml(`${methodItems.join(' | ')} | MM7 atual: ${mm7Text} (${mm7PeriodText}) | Faixa da regua por fase no D+${fmtNum(health.day)}: ${bandText}`)}</span>
       </details>
     `;
   }
@@ -3566,6 +3584,55 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     }
   };
 
+  const rpsPhaseBandsPlugin = {
+    id: 'rpsPhaseBands',
+    beforeDatasetsDraw(chart, args, opts) {
+      if (!opts?.enabled) return;
+      const bands = Array.isArray(opts.bands) ? opts.bands : [];
+      if (!bands.length) return;
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales?.x;
+      if (!ctx || !chartArea || !xScale) return;
+      const labelsCount = chart.data?.labels?.length || 0;
+      if (!labelsCount) return;
+      const firstX = xScale.getPixelForValue(0);
+      const secondX = labelsCount > 1 ? xScale.getPixelForValue(1) : chartArea.right;
+      const step = Number.isFinite(secondX - firstX) && Math.abs(secondX - firstX) > 0
+        ? Math.abs(secondX - firstX)
+        : chartArea.width / Math.max(1, labelsCount);
+      ctx.save();
+      bands.forEach((band, index) => {
+        const startIndex = numberOrNull(band.startIndex);
+        const endIndex = numberOrNull(band.endIndex);
+        if (startIndex === null || endIndex === null || endIndex < startIndex) return;
+        const startX = xScale.getPixelForValue(startIndex);
+        const endX = xScale.getPixelForValue(endIndex);
+        if (!Number.isFinite(startX) || !Number.isFinite(endX)) return;
+        const left = Math.max(chartArea.left, Math.min(startX, endX) - step / 2);
+        const right = Math.min(chartArea.right, Math.max(startX, endX) + step / 2);
+        if (right <= left) return;
+        ctx.fillStyle = index % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(255,143,0,0.032)';
+        ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath();
+        ctx.moveTo(left, chartArea.top);
+        ctx.lineTo(left, chartArea.bottom);
+        ctx.stroke();
+        const label = String(band.label || '').trim();
+        if (!label || right - left < 46) return;
+        ctx.setLineDash([]);
+        ctx.font = '800 9px Inter, "Segoe UI", Arial, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.46)';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, left + 8, chartArea.top + 8);
+      });
+      ctx.restore();
+    }
+  };
+
   function configureChartDefaults() {
     if (!window.Chart) return;
     Chart.register(launchCheckpointPlugin);
@@ -3573,6 +3640,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     Chart.register(rankingValueLabelsPlugin);
     Chart.register(commercialMissingBarsPlugin);
     Chart.register(rampStabilizationPlugin);
+    Chart.register(rpsPhaseBandsPlugin);
     Chart.defaults.font.family = 'Inter, "Segoe UI", Arial, sans-serif';
     Chart.defaults.font.size = 11;
     Chart.defaults.color = 'rgba(255,255,255,0.55)';
@@ -3956,7 +4024,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">RPS fixo decide a saude; MM7 fica como tendencia visual. Produto, cor e canal nao entram no calculo.</span>'
+      ? '<span class="ramp-rps-scope">RPS fixo decide a saude; curva MM7 fica como tendencia visual. Produto, cor e canal nao entram no calculo.</span>'
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -9625,7 +9693,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `Curva MM7; status por RPS fixo da fase - ${coverage}`;
+          subText.textContent = `Curva MM7; status por regua fixa por fase - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -9757,10 +9825,15 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ]
         },
         options: chartOptions({
+          layout: { padding: { top: isRps ? 22 : 8, right: 12, bottom: 2, left: 2 } },
           interaction: isHealth || isRps
             ? { mode: 'nearest', intersect: false, axis: 'xy' }
             : { mode: 'index', intersect: false },
           plugins: {
+            rpsPhaseBands: {
+              enabled: isRps,
+              bands: isRps ? rpsPhaseBandsForLens(maxDay, lensStart, lensEnd) : []
+            },
             legend: isHealth || isRps
               ? {
                 position: 'bottom',
@@ -9818,7 +9891,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
                       if (!bench) return 'Regua pendente para este D+.';
                       const source = bench.basisLabel || bench.sourceLabel || 'regua propria';
                       return [
-                        `Regua fixa: ${fmtBRL(bench.median)} | ${source}`,
+                        `Regua fixa por fase: ${fmtBRL(bench.median)} | ${source}`,
                         `Faixa: ${fmtBRL(bench.lower)} a ${fmtBRL(bench.p75)}`,
                         'Metodo: soma(receita) / soma(sessoes) na janela da fase.'
                       ];

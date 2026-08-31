@@ -266,6 +266,8 @@ O RPS diário continua disponível como detalhe de auditoria no tooltip e a curv
 
 Quando houver 2 ou mais lançamentos da mesma linha, a régua usa mediana e faixa P25-P75 do RPS fixo dessa mesma linha na janela comparável. Quando não houver par real da mesma linha, a régua usa a fase anterior do próprio produto; na fase inicial, o status fica como base inicial até existir uma fase anterior comparável.
 
+No gráfico, a régua é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). Assim, a régua fica visualmente clara como fixa dentro de cada fase, não como média móvel.
+
 ### Regra canônica de classificação de SKU/produto
 
 A classificação usada por vendas, auditoria Monochrome e estoque fica centralizada na CTE `itens_classificados_v1` em `apps_script/ExportLaunchAnalysis.gs`.
