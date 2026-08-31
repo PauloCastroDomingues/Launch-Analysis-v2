@@ -4031,6 +4031,14 @@ h1 {
   color: var(--txt-muted);
   margin: 0 0 8px;
 }
+.hero-chart-label--with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero-chart-label--with-tip .help-button--mini {
+  transform: none;
+}
 .topic-tabs {
   display: flex;
   gap: 6px;
@@ -5104,6 +5112,15 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.ramp-control-label--with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+}
+.ramp-control-label--with-tip .help-button--mini {
+  transform: none;
+}
 .chart-mode-toggle {
   display: flex;
   flex-wrap: wrap;
@@ -5270,6 +5287,12 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   font-weight: 900;
   letter-spacing: .06em;
   text-transform: uppercase;
+}
+.ramp-quick-label .label-with-tip {
+  align-items: center;
+}
+.ramp-quick-label .help-button--mini {
+  transform: none;
 }
 .ramp-lens-toggle {
   border-color: var(--border-2);
@@ -5523,6 +5546,12 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   font-size: .76rem;
   font-weight: 900;
   line-height: 1.2;
+}
+.rps-autosustain-chart-title .label-with-tip {
+  align-items: center;
+}
+.rps-autosustain-chart-title .help-button--mini {
+  transform: none;
 }
 .rps-autosustain-chart-canvas {
   min-width: 0;

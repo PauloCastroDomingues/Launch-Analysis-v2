@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260831-rps-autosustain-v68" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260831-rps-autosustain-v70" />
 </head>
 <body>
   <div class="app-shell">
@@ -210,14 +210,17 @@
           </div>
         </div>
         <div class="hero-chart-wrap">
-          <p class="hero-chart-label">Evolução por idade do lançamento</p>
+          <p class="hero-chart-label hero-chart-label--with-tip">
+            <span>Evolução por idade do lançamento</span>
+            <button class="help-button help-button--mini" type="button" data-tooltip="As abas trocam a visão principal: RPS mede receita por sessão; Receita mostra escala financeira; Pares mostra volume físico; Crescimento mostra aceleração; Clientes mostra mix de base; Semanal mostra ritmo por semana desde D0." aria-label="Ajuda sobre visões da evolução">i</button>
+          </p>
           <div class="chart-view-toggle" role="group" aria-label="Escolha do gráfico">
-            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized" data-tooltip="Visão de performance por idade do lançamento. Em RPS, mostra receita total dividida por sessões, com tendência MM7 e régua própria por fase.">RPS</button>
-            <button type="button" class="chart-view-btn" data-chart-view="revenue" data-tooltip="Visão de escala comercial. Compara faturamento acumulado na janela selecionada, sempre alinhado pelo D0 de cada lançamento.">Receita</button>
-            <button type="button" class="chart-view-btn" data-chart-view="pairs" data-tooltip="Visão de volume físico. Compara pares vendidos na mesma janela D+ sem misturar efeito de preço ou ticket médio.">Pares</button>
-            <button type="button" class="chart-view-btn" data-chart-view="multipliers" data-tooltip="Visão de aceleração. Mostra quanto a janela atual cresceu sobre a marca anterior e ajuda a identificar perda ou ganho de tração.">Crescimento</button>
-            <button type="button" class="chart-view-btn" data-chart-view="mix" data-tooltip="Visão de qualidade de base. Mostra novos versus recorrentes na janela selecionada quando há classificação auditada.">Clientes</button>
-            <button type="button" class="chart-view-btn" data-chart-view="weekly" data-tooltip="Visão de ritmo semanal. Agrupa vendas por semana desde D0 para enxergar picos, retomadas e queda de tração sem usar calendário civil.">Semanal</button>
+            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized">RPS</button>
+            <button type="button" class="chart-view-btn" data-chart-view="revenue">Receita</button>
+            <button type="button" class="chart-view-btn" data-chart-view="pairs">Pares</button>
+            <button type="button" class="chart-view-btn" data-chart-view="multipliers">Crescimento</button>
+            <button type="button" class="chart-view-btn" data-chart-view="mix">Clientes</button>
+            <button type="button" class="chart-view-btn" data-chart-view="weekly">Semanal</button>
           </div>
           <div class="chart-card wide launch-chart-panel is-active" data-chart-panel="normalized">
             <div class="chart-head">
@@ -227,21 +230,21 @@
               </div>
               <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
                 <div class="ramp-control-group">
-                  <span class="ramp-control-label">Métrica</span>
+                  <span class="ramp-control-label ramp-control-label--with-tip">Métrica <button class="help-button help-button--mini" type="button" data-tooltip="Define a métrica do gráfico ativo: RPS para saúde por sessão; Faturamento para valor acumulado; Fat. mês e Pedidos mês em blocos de 30 dias; Share mês para participação no total da empresa." aria-label="Ajuda sobre métricas da rampa">i</button></span>
                   <div class="chart-mode-toggle normalized-ramp-metric-controls" role="group" aria-label="Métrica da rampa">
-                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario" data-tooltip="Retenção de RPS por fase; curva visual em MM7. Usa bridge_orders_customers e shopify_sessions_daily.">RPS</button>
-                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada" data-tooltip="Receita acumulada dia a dia desde o D0.">Faturamento</button>
-                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal" data-tooltip="Receita somada em blocos de 30 dias desde o D0.">Fat. mês</button>
-                  <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal" data-tooltip="Pedidos somados em blocos de 30 dias desde o D0.">Pedidos mês</button>
-                  <button type="button" class="chart-mode-btn" data-ramp-metric="share_mensal" data-tooltip="Vendas do lançamento divididas pelas vendas totais da empresa em cada bloco mensal de 30 dias desde o D0.">Share mês</button>
+                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario">RPS</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada">Faturamento</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal">Fat. mês</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal">Pedidos mês</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="share_mensal">Share mês</button>
                   </div>
                 </div>
                 <div class="ramp-control-group">
-                  <span class="ramp-control-label">Comparação</span>
+                  <span class="ramp-control-label ramp-control-label--with-tip">Comparação <button class="help-button help-button--mini" type="button" data-tooltip="Define o que é comparado: D0 -> atual acompanha o destaque no tempo; Entre linhas compara famílias; Dentro da linha compara produtos ou variações quando há recorte disponível." aria-label="Ajuda sobre modos de comparação">i</button></span>
                   <div class="chart-mode-toggle" role="group" aria-label="Modo do gráfico de curva">
-                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha" data-tooltip="Acompanha o lançamento destacado do D0 até o último dia disponível. É a leitura principal de evolução temporal.">D0 -> atual</button>
-                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas" data-tooltip="Compara linhas de produto no mesmo eixo D+. Use para ver se uma linha cresce, cai ou sustenta melhor que as demais.">Entre linhas</button>
-                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos" data-tooltip="Compara subprodutos, cores ou variações dentro da linha destacada quando esse recorte existe no JSON.">Dentro da linha</button>
+                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 -> atual</button>
+                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
+                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
                   </div>
                 </div>
                 <select id="cannibal-line-select" class="cannibal-line-select" hidden></select>
@@ -502,7 +505,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260831-rps-autosustain-v69"></script>
-  <script src="assets/presentation.js?v=20260831-rps-autosustain-v69"></script>
+  <script src="assets/app.js?v=20260831-rps-autosustain-v70"></script>
+  <script src="assets/presentation.js?v=20260831-rps-autosustain-v70"></script>
 </body>
 </html>
