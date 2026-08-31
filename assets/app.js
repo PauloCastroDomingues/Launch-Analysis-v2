@@ -3024,11 +3024,11 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           </div>
           <div class="rps-autosustain-charts">
             <div class="rps-autosustain-chart">
-              <div class="rps-autosustain-chart-title">Performance — Índice de RPS</div>
+              <div class="rps-autosustain-chart-title">${labelTip('Performance — Índice de RPS', 'Mostra a retenção semanal de RPS em base 100. A base é o RPS fixo de D0-D30; valores acima de 100 indicam RPS acima da referência inicial e 90 é o patamar mínimo de preservação usado na regra de autosustentação.')}</div>
               <div class="rps-autosustain-chart-canvas"><canvas id="chart-rps-autosustain-rps"></canvas></div>
             </div>
             <div class="rps-autosustain-chart">
-              <div class="rps-autosustain-chart-title">Esforço — Índice de Esforço</div>
+              <div class="rps-autosustain-chart-title">${labelTip('Esforço — Índice de Esforço', 'Mostra investimento declarado por dia em mídia paga e CRM, também em base 100 contra D0-D30. Cada gráfico tem escala Y própria; semanas sem esforço comparável aparecem como lacuna, não como zero.')}</div>
               <div class="rps-autosustain-chart-canvas"><canvas id="chart-rps-autosustain-effort"></canvas></div>
               <small>${snapshot.missingEffortWeeks ? 'dados de esforço indisponíveis aparecem como lacunas na linha' : 'semana sem declaração de esforço não vira zero automático'}</small>
             </div>
@@ -4666,6 +4666,16 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     });
   }
 
+  function rampTimeLensTooltip(lens) {
+    if (!lens) return '';
+    if (lens.key === 'all') return 'Mostra toda a série disponível desde D0 até o último dia com dado.';
+    if (lens.key === 'launch') return 'Isola a fase inicial D0-D30. Boa para ler a base de referência do lançamento.';
+    if (lens.key === 'sustain') return 'Isola D31-D90. Boa para observar se a performance se mantém depois do lançamento.';
+    if (lens.key === 'maturity') return 'Isola D91-D180. Boa para acompanhar maturidade e estabilização.';
+    if (lens.key === 'tail') return 'Isola D181+. Boa para ler cauda longa e sustentação tardia.';
+    return `Mostra o recorte ${lens.label || ''} da curva.`;
+  }
+
   function renderRampQuickControls(maxDay, metric, mode = state.normalizedChartMode || 'linha') {
     const wrap = $('ramp-quick-controls');
     if (!wrap) return;
@@ -4687,7 +4697,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ${RAMP_TIME_LENSES.map((lens) => {
             const disabled = lens.start > endMax;
             const active = selectedRampTimeLensKey() === lens.key && !disabled;
-            return `<button type="button" class="chart-mode-btn ${active ? 'is-active' : ''}" data-ramp-time-lens="${escapeHtml(lens.key)}" ${disabled ? 'disabled' : ''}>${escapeHtml(lens.label)}</button>`;
+            return `<button type="button" class="chart-mode-btn ${active ? 'is-active' : ''}" data-ramp-time-lens="${escapeHtml(lens.key)}" data-tooltip="${tooltipAttr(rampTimeLensTooltip(lens))}" ${disabled ? 'disabled' : ''}>${escapeHtml(lens.label)}</button>`;
           }).join('')}
         </div>
       </div>
@@ -4698,7 +4708,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const colorOptions = productColorFilterOptions();
     const isRps = Boolean(metric?.rps);
     const productScopeControls = isRps
-      ? '<span class="ramp-rps-scope">100% é a referência fixa. 90% e 75% são guias visuais provisórios.</span>'
+      ? `<span class="ramp-rps-scope" tabindex="0" data-tooltip="${tooltipAttr('A régua de 100% vem da referência fixa da própria linha/produto na fase comparável. Os guias de 90% e 75% são apoio visual, não classificação estatística oficial.')}">100% é a referência fixa. 90% e 75% são guias visuais provisórios.</span>`
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>

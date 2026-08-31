@@ -212,12 +212,12 @@
         <div class="hero-chart-wrap">
           <p class="hero-chart-label">Evolução por idade do lançamento</p>
           <div class="chart-view-toggle" role="group" aria-label="Escolha do gráfico">
-            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized">RPS</button>
-            <button type="button" class="chart-view-btn" data-chart-view="revenue">Receita</button>
-            <button type="button" class="chart-view-btn" data-chart-view="pairs">Pares</button>
-            <button type="button" class="chart-view-btn" data-chart-view="multipliers">Crescimento</button>
-            <button type="button" class="chart-view-btn" data-chart-view="mix">Clientes</button>
-            <button type="button" class="chart-view-btn" data-chart-view="weekly">Semanal</button>
+            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized" data-tooltip="Visão de performance por idade do lançamento. Em RPS, mostra receita total dividida por sessões, com tendência MM7 e régua própria por fase.">RPS</button>
+            <button type="button" class="chart-view-btn" data-chart-view="revenue" data-tooltip="Visão de escala comercial. Compara faturamento acumulado na janela selecionada, sempre alinhado pelo D0 de cada lançamento.">Receita</button>
+            <button type="button" class="chart-view-btn" data-chart-view="pairs" data-tooltip="Visão de volume físico. Compara pares vendidos na mesma janela D+ sem misturar efeito de preço ou ticket médio.">Pares</button>
+            <button type="button" class="chart-view-btn" data-chart-view="multipliers" data-tooltip="Visão de aceleração. Mostra quanto a janela atual cresceu sobre a marca anterior e ajuda a identificar perda ou ganho de tração.">Crescimento</button>
+            <button type="button" class="chart-view-btn" data-chart-view="mix" data-tooltip="Visão de qualidade de base. Mostra novos versus recorrentes na janela selecionada quando há classificação auditada.">Clientes</button>
+            <button type="button" class="chart-view-btn" data-chart-view="weekly" data-tooltip="Visão de ritmo semanal. Agrupa vendas por semana desde D0 para enxergar picos, retomadas e queda de tração sem usar calendário civil.">Semanal</button>
           </div>
           <div class="chart-card wide launch-chart-panel is-active" data-chart-panel="normalized">
             <div class="chart-head">
@@ -239,9 +239,9 @@
                 <div class="ramp-control-group">
                   <span class="ramp-control-label">Comparação</span>
                   <div class="chart-mode-toggle" role="group" aria-label="Modo do gráfico de curva">
-                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha">D0 -> atual</button>
-                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas">Entre linhas</button>
-                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos">Dentro da linha</button>
+                  <button type="button" class="chart-mode-btn is-active" data-chart-mode="linha" data-tooltip="Acompanha o lançamento destacado do D0 até o último dia disponível. É a leitura principal de evolução temporal.">D0 -> atual</button>
+                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-linhas" data-tooltip="Compara linhas de produto no mesmo eixo D+. Use para ver se uma linha cresce, cai ou sustenta melhor que as demais.">Entre linhas</button>
+                  <button type="button" class="chart-mode-btn" data-chart-mode="canibal-submodelos" data-tooltip="Compara subprodutos, cores ou variações dentro da linha destacada quando esse recorte existe no JSON.">Dentro da linha</button>
                   </div>
                 </div>
                 <select id="cannibal-line-select" class="cannibal-line-select" hidden></select>
@@ -502,7 +502,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260831-rps-autosustain-v68"></script>
-  <script src="assets/presentation.js?v=20260831-rps-autosustain-v68"></script>
+  <script src="assets/app.js?v=20260831-rps-autosustain-v69"></script>
+  <script src="assets/presentation.js?v=20260831-rps-autosustain-v69"></script>
 </body>
 </html>
