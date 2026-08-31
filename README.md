@@ -268,7 +268,7 @@ Quando houver 2 ou mais lançamentos da mesma linha, a referência usa mediana e
 
 Os cortes iniciais do índice seguem a leitura operacional do guia de RPS: `>= 0,95` = forte; `0,90 a 0,94` = bom sinal; `0,75 a 0,89` = atenção/sustentação parcial; `< 0,75` = dependência. Esses limites são calibração inicial e podem ser recalibrados com histórico.
 
-No gráfico, a referência é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). Assim, a referência fica visualmente clara como fixa dentro de cada fase, não como média móvel.
+No gráfico, a referência é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). A leitura principal fica no próprio gráfico: a curva vermelha mostra RPS MM7, a régua 100% mostra a referência fixa, a régua 90% marca bom sinal e a régua 75% marca atenção/dependência. Assim, a referência fica visualmente clara como fixa dentro de cada fase, não como média móvel.
 
 O guia de autosustentação define o sinal completo como desacoplamento entre esforço e performance. Como esta visão de RPS foi deliberadamente definida sem GA4, marketing, campanhas ou atribuição, o painel não afirma autosustentação causal; ele mede sustentação do RPS contra uma referência fixa. Para uma leitura completa de autosustentação, seria necessário adicionar um índice de esforço confiável em uma camada separada.
 
