@@ -4032,11 +4032,14 @@ h1 {
   margin: 0 0 8px;
 }
 .hero-chart-label--with-tip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 10px;
+  width: min(100%, 430px);
 }
 .hero-chart-label--with-tip .help-button--mini {
+  flex: 0 0 auto;
   transform: none;
 }
 .topic-tabs {
@@ -5104,6 +5107,7 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 .ramp-control-group {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 .ramp-control-label {
   color: var(--txt-muted);
@@ -5113,12 +5117,15 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   text-transform: uppercase;
 }
 .ramp-control-label--with-tip {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  width: max-content;
+  width: 100%;
+  min-width: 0;
 }
 .ramp-control-label--with-tip .help-button--mini {
+  flex: 0 0 auto;
   transform: none;
 }
 .chart-mode-toggle {
@@ -5283,6 +5290,11 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 }
 .ramp-quick-label {
   color: var(--txt-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 118px;
+  min-height: 18px;
   font-size: .64rem;
   font-weight: 900;
   letter-spacing: .06em;
@@ -5290,8 +5302,11 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 }
 .ramp-quick-label .label-with-tip {
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 .ramp-quick-label .help-button--mini {
+  flex: 0 0 auto;
   transform: none;
 }
 .ramp-lens-toggle {
@@ -5516,6 +5531,17 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   padding: 0 12px;
   border-left: 1px solid var(--border);
 }
+.rps-autosustain-kpi > span .label-with-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.rps-autosustain-kpi > span .help-button--mini {
+  flex: 0 0 auto;
+  transform: none;
+}
 .rps-autosustain-kpi:first-child {
   padding-left: 0;
   border-left: 0;
@@ -5543,14 +5569,18 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 }
 .rps-autosustain-chart-title {
   color: var(--txt-primary);
+  display: flex;
   font-size: .76rem;
   font-weight: 900;
   line-height: 1.2;
 }
 .rps-autosustain-chart-title .label-with-tip {
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 .rps-autosustain-chart-title .help-button--mini {
+  flex: 0 0 auto;
   transform: none;
 }
 .rps-autosustain-chart-canvas {
