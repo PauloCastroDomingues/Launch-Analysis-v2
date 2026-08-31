@@ -260,8 +260,9 @@ RPS MM7 = receita_total dos ultimos 7 dias / sessoes dos ultimos 7 dias
 RPS fixo da fase = soma(receita da fase) / soma(sessoes da fase)
 Referencia RPS = RPS fixo da propria linha/produto na janela comparavel
 Retencao de RPS = RPS fixo da fase atual / RPS D0-D30
-Indice de esforco = esforco diario da fase / esforco diario D0-D30
-Desacoplamento = indice RPS - indice de esforco
+Indice de RPS semanal = RPS semanal / RPS D0-D30
+Indice de esforco semanal = esforco diario da semana / esforco diario D0-D30
+Ponto de desacoplamento = primeira semana em que RPS >= 90 e esforco <= 70 por 4 semanas consecutivas
 ```
 
 O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A leitura de retenção usa RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como referência padrão porque cada linha tem ticket próprio.
@@ -272,9 +273,11 @@ Os percentuais de `90%` e `75%` no gráfico são guias visuais provisórios, der
 
 No gráfico, a referência é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). A leitura principal fica no próprio gráfico: a curva vermelha mostra RPS MM7, a linha de 100% mostra a referência fixa da fase, e as linhas de 90% e 75% funcionam apenas como guias visuais auxiliares. Assim, a referência fica visualmente clara como fixa dentro de cada fase, não como média móvel.
 
-O bloco de autosustentação fica separado da retenção de RPS. Ele compara `Indice RPS` e `Indice de esforco` em base 100, usando D0-D30 como base. O esforço inicial é calculado com investimento declarado em `midia_paga.json` e `crm_disparos.json`, normalizado por dia de fase. A regra inicial usa `RPS_RETENCAO_FORTE = 0,90`, `QUEDA_ESFORCO_MINIMA = 0,30` e `PERIODO_MINIMO_SUSTENTACAO = 1`; esses parâmetros são ajustáveis e não representam calibração estatística universal.
+O bloco de autosustentação fica separado da retenção de RPS. Retenção de RPS mede performance; autosustentação depende da relação entre performance e esforço. A visualização usa dois gráficos empilhados e sincronizados no mesmo eixo D0: `Performance - Indice de RPS` e `Esforco - Indice de Esforco`. Ambos usam D0-D30 como base 100, mas cada gráfico possui sua própria escala Y para evitar que esforço alto comprima a leitura de RPS.
 
-Autosustentação só é classificada quando existe RPS e esforço comparáveis depois da fase base. Se faltar esforço posterior, o painel fica como `Em formação` em vez de assumir investimento zero. A decomposição `Receita = Sessões x RPS` permanece visível para separar queda de exposição de queda de performance, e a observação sobre mix de tráfego foi mantida porque variações no RPS total podem vir de mudança de origem de tráfego.
+A evolução de autosustentação passa a ser semanal, suavizada em janelas de 7 dias. As fases `D0-D30`, `D31-D90`, `D91-D180` e `D181+` aparecem apenas como áreas de fundo. A regra configurável inicial usa `AUTOSUSTAIN_RPS_INDEX_MIN = 90`, `AUTOSUSTAIN_EFFORT_INDEX_MAX = 70` e `AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS = 4`; esses parâmetros são hipóteses operacionais e não representam calibração estatística universal.
+
+Autosustentação só é classificada quando existe RPS e esforço comparáveis depois da fase base. Se faltar esforço posterior, o painel fica como `Dados insuficientes`, a linha de esforço abre lacuna e o texto informa `dados de esforço indisponíveis`; ausência de dado não vira zero. A decomposição `Receita = Sessões x RPS` permanece visível para separar queda de exposição de queda de performance.
 
 ### Regra canônica de classificação de SKU/produto
 

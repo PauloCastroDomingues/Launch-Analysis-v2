@@ -65,8 +65,11 @@
   const RAMP_RHYTHM_WINDOW_DAYS = 7;
   const RPS_SMOOTHING_WINDOW_DAYS = 7;
   const RPS_RETENCAO_FORTE = 0.90;
-  const QUEDA_ESFORCO_MINIMA = 0.30;
-  const PERIODO_MINIMO_SUSTENTACAO = 1;
+  const AUTOSUSTAIN_RPS_INDEX_MIN = 90;
+  const AUTOSUSTAIN_EFFORT_INDEX_MAX = 70;
+  const AUTOSUSTAIN_HIGH_EFFORT_INDEX = 100;
+  const AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS = 4;
+  const AUTOSUSTAIN_WEEK_DAYS = 7;
   const AUTOSUSTAIN_BASE_PHASE_KEY = 'd0_30';
   const RAMP_RHYTHM_TREND_LIMIT = 0.10;
   const RAMP_STABILITY_STRONG_RATIO = 0.50;
@@ -2500,7 +2503,20 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return intervals;
   }
 
-  function rpsAutosustainCrmRowsForPhase(launch, range, referenceDate = manualCommercialReferenceDate(launch)) {
+  function rpsAutosustainDayLabel(day) {
+    const value = Math.max(0, Number(day) || 0);
+    return value === 0 ? 'D0' : `D+${fmtNum(value, 0)}`;
+  }
+
+  function rpsAutosustainRangeLabel(startDay, endDay) {
+    const start = Math.max(0, Number(startDay) || 0);
+    const end = Math.max(start, Number(endDay) || start);
+    return start === end
+      ? rpsAutosustainDayLabel(start)
+      : `${rpsAutosustainDayLabel(start)}-${rpsAutosustainDayLabel(end)}`;
+  }
+
+  function rpsAutosustainCrmRowsForRange(launch, range, referenceDate = manualCommercialReferenceDate(launch)) {
     if (!launch || !range) return [];
     return optionalRows('crm_disparos')
       .filter((row) => row.modelo_id === launch?.modelo_id)
@@ -2514,12 +2530,19 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       .filter(Boolean);
   }
 
-  function rpsAutosustainEffortSummaryForPhase(launch, phase, maxDay, mediaIntervals = rpsAutosustainMediaIntervals(launch), crmReferenceDate = manualCommercialReferenceDate(launch)) {
-    const range = rpsAutosustainPhaseRange(launch, phase, maxDay);
+  function rpsAutosustainCrmRowsForPhase(launch, range, referenceDate = manualCommercialReferenceDate(launch)) {
+    return rpsAutosustainCrmRowsForRange(launch, range, referenceDate);
+  }
+
+  function rpsAutosustainEffortSummaryForRange(launch, range, mediaIntervals = rpsAutosustainMediaIntervals(launch), crmReferenceDate = manualCommercialReferenceDate(launch)) {
     if (!range || !range.days) return null;
+    const startDay = Math.max(0, Number(range.startDay) || 0);
+    const endDay = Math.max(startDay, Number(range.endDay) || startDay);
+    const days = Math.max(0, Number(range.days) || (endDay - startDay + 1));
+    if (!days) return null;
     const mediaContribs = mediaIntervals
       .map((interval) => {
-        const overlap = rpsAutosustainOverlapDays(interval.startDay, interval.endDay, range.startDay, range.endDay);
+        const overlap = rpsAutosustainOverlapDays(interval.startDay, interval.endDay, startDay, endDay);
         if (!overlap) return null;
         const intervalDays = Math.max(1, interval.endDay - interval.startDay + 1);
         return {
@@ -2530,7 +2553,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       })
       .filter(Boolean);
     const mediaValue = sumValues(...mediaContribs.map((row) => row.investimento));
-    const crmRows = rpsAutosustainCrmRowsForPhase(launch, range, crmReferenceDate);
+    const crmRows = rpsAutosustainCrmRowsForRange(launch, { startDay, endDay }, crmReferenceDate);
     const crmValue = sumKnown(crmRows, 'investimento');
     const value = sumValues(mediaValue, crmValue);
     const sourceParts = [
@@ -2539,111 +2562,198 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     ].filter(Boolean);
     return {
       ...range,
+      startDay,
+      endDay,
+      days,
       investimento: value,
-      effortPerDay: value === null ? null : value / range.days,
+      effortPerDay: value === null ? null : value / days,
       mediaValue,
       crmValue,
       mediaRows: mediaContribs.length,
       crmRows: crmRows.length,
-      sourceLabel: sourceParts.length ? sourceParts.join(' + ') : 'sem esforço declarado'
+      sourceLabel: sourceParts.length ? sourceParts.join(' + ') : 'dados de esforço indisponíveis'
     };
   }
 
-  function rpsAutosustainPhaseRows(launch, maxDay) {
-    const phases = rpsPhaseConfigs(maxDay);
+  function rpsAutosustainEffortSummaryForPhase(launch, phase, maxDay, mediaIntervals = rpsAutosustainMediaIntervals(launch), crmReferenceDate = manualCommercialReferenceDate(launch)) {
+    const range = rpsAutosustainPhaseRange(launch, phase, maxDay);
+    return rpsAutosustainEffortSummaryForRange(launch, range, mediaIntervals, crmReferenceDate);
+  }
+
+  function rpsAutosustainWeekRows(launch, maxDay) {
+    const latestDay = Math.max(0, Number(maxDay) || 0);
     const mediaIntervals = rpsAutosustainMediaIntervals(launch);
     const crmReferenceDate = manualCommercialReferenceDate(launch);
-    const rows = phases
+    const basePhase = rpsPhaseConfigs(latestDay).find((phase) => phase.key === AUTOSUSTAIN_BASE_PHASE_KEY)
+      || rpsPhaseConfig(0);
+    const baseRange = rpsAutosustainPhaseRange(launch, basePhase, latestDay);
+    const baseSummary = rpsFixedPhaseSummaryForLaunch(launch, basePhase, latestDay);
+    const baseEffortSummary = rpsAutosustainEffortSummaryForRange(launch, baseRange, mediaIntervals, crmReferenceDate);
+    const base = baseRange ? {
+      ...basePhase,
+      ...baseRange,
+      label: basePhase.label,
+      rpsSummary: baseSummary,
+      effort: baseEffortSummary
+    } : null;
+    const baseRps = numberOrNull(baseSummary?.rps);
+    const baseEffort = numberOrNull(baseEffortSummary?.effortPerDay);
+    const rows = [];
+    for (let startDay = 0; startDay <= latestDay; startDay += AUTOSUSTAIN_WEEK_DAYS) {
+      const targetEndDay = startDay + AUTOSUSTAIN_WEEK_DAYS - 1;
+      const endDay = Math.min(targetEndDay, latestDay);
+      const days = Math.max(0, endDay - startDay + 1);
+      const range = {
+        startDay,
+        endDay,
+        targetEndDay,
+        days,
+        partial: endDay < targetEndDay
+      };
+      const weekIndex = Math.floor(startDay / AUTOSUSTAIN_WEEK_DAYS);
+      const rpsSummary = rpsSummaryForRange(launch, startDay, endDay);
+      const effort = rpsAutosustainEffortSummaryForRange(launch, range, mediaIntervals, crmReferenceDate);
+      const rps = numberOrNull(rpsSummary?.rps);
+      const effortPerDay = numberOrNull(effort?.effortPerDay);
+      const rpsIndex = baseRps && rps !== null ? (rps / baseRps) * 100 : null;
+      const effortIndex = baseEffort && effortPerDay !== null ? (effortPerDay / baseEffort) * 100 : null;
+      rows.push({
+        key: `week_${weekIndex}`,
+        weekIndex,
+        label: `S${weekIndex + 1} · ${rpsAutosustainRangeLabel(startDay, endDay)}`,
+        tickLabel: rpsAutosustainDayLabel(startDay),
+        phase: rpsPhaseConfig(startDay),
+        ...range,
+        isBaseWindow: endDay <= 30,
+        rpsSummary,
+        effort,
+        rpsIndex,
+        effortIndex,
+        retention: rpsIndex === null ? null : rpsIndex / 100,
+        effortDrop: effortIndex === null ? null : 1 - (effortIndex / 100),
+        decoupling: rpsIndex !== null && effortIndex !== null ? rpsIndex - effortIndex : null,
+        sessionsPerDay: rpsSummary?.sessoes && rpsSummary.daysCovered ? rpsSummary.sessoes / rpsSummary.daysCovered : null
+      });
+    }
+    return { rows, base, baseRps, baseEffort, mediaIntervals, crmReferenceDate };
+  }
+
+  function rpsAutosustainPhaseBandsForWeeks(maxDay, rows = []) {
+    return rpsPhaseConfigs(maxDay)
       .map((phase) => {
-        const range = rpsAutosustainPhaseRange(launch, phase, maxDay);
-        if (!range) return null;
-        const rpsSummary = rpsFixedPhaseSummaryForLaunch(launch, phase, maxDay);
-        const effort = rpsAutosustainEffortSummaryForPhase(launch, phase, maxDay, mediaIntervals, crmReferenceDate);
+        const phaseEnd = Math.min(phase.end ?? maxDay, maxDay);
+        const phaseRows = rows.filter((row) => row.endDay >= phase.start && row.startDay <= phaseEnd);
+        if (!phaseRows.length) return null;
         return {
-          ...phase,
-          ...range,
-          rpsSummary,
-          effort,
-          rpsIndex: null,
-          effortIndex: null,
-          retention: null,
-          effortDrop: null,
-          decoupling: null,
-          sessionsPerDay: rpsSummary?.sessoes && rpsSummary.daysCovered ? rpsSummary.sessoes / rpsSummary.daysCovered : null
+          label: phase.label,
+          startIndex: Math.min(...phaseRows.map((row) => row.weekIndex)),
+          endIndex: Math.max(...phaseRows.map((row) => row.weekIndex))
         };
       })
       .filter(Boolean);
-    const base = rows.find((row) => row.key === AUTOSUSTAIN_BASE_PHASE_KEY);
-    const baseRps = numberOrNull(base?.rpsSummary?.rps);
-    const baseEffort = numberOrNull(base?.effort?.effortPerDay);
+  }
+
+  function rpsAutosustainRuns(rows = []) {
+    const runs = [];
+    let currentRun = [];
+    const flushRun = () => {
+      if (currentRun.length) runs.push(currentRun);
+      currentRun = [];
+    };
     rows.forEach((row) => {
-      const rps = numberOrNull(row.rpsSummary?.rps);
-      const effort = numberOrNull(row.effort?.effortPerDay);
-      row.rpsIndex = baseRps && rps !== null ? (rps / baseRps) * 100 : null;
-      row.effortIndex = baseEffort && effort !== null ? (effort / baseEffort) * 100 : null;
-      row.retention = row.rpsIndex === null ? null : row.rpsIndex / 100;
-      row.effortDrop = row.effortIndex === null ? null : 1 - (row.effortIndex / 100);
-      row.decoupling = row.rpsIndex !== null && row.effortIndex !== null ? row.rpsIndex - row.effortIndex : null;
+      const qualifies = row.startDay > 30
+        && !row.partial
+        && row.rpsIndex !== null
+        && row.effortIndex !== null
+        && row.rpsIndex >= AUTOSUSTAIN_RPS_INDEX_MIN
+        && row.effortIndex <= AUTOSUSTAIN_EFFORT_INDEX_MAX;
+      if (qualifies) {
+        currentRun.push(row);
+      } else {
+        flushRun();
+      }
     });
-    return { rows, base, baseRps, baseEffort };
+    flushRun();
+    return runs
+      .filter((run) => run.length >= AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)
+      .map((run) => ({
+        rows: run,
+        start: run[0],
+        end: run[run.length - 1],
+        sustainedWeeks: run.length
+      }));
   }
 
   function rpsAutosustainStatusForSnapshot(snapshot) {
-    const current = snapshot?.current;
+    const current = snapshot?.currentComparable || snapshot?.currentRpsRow;
     if (!snapshot?.base?.rpsSummary || !snapshot?.baseRps) {
-      return { label: 'Em lançamento', tone: 'neutral', detail: 'base D0-D30 de RPS ainda insuficiente' };
+      return { label: 'Dados insuficientes', tone: 'neutral', detail: 'base D0-D30 de RPS ainda insuficiente' };
     }
     if (!snapshot?.baseEffort) {
-      return { label: 'Em formação', tone: 'neutral', detail: 'base D0-D30 de esforço ainda indisponível' };
+      return { label: 'Dados insuficientes', tone: 'neutral', detail: 'base D0-D30 de esforço ainda indisponível' };
     }
-    if (!current || current.key === AUTOSUSTAIN_BASE_PHASE_KEY) {
-      return { label: 'Em lançamento', tone: 'neutral', detail: 'ainda dentro da fase base D0-D30' };
+    if (!snapshot?.postBaseRows?.length) {
+      return { label: 'Dados insuficientes', tone: 'neutral', detail: 'ainda não há semanas posteriores à base D0-D30' };
     }
-    if (current.rpsIndex === null || current.effortIndex === null) {
-      return { label: 'Em formação', tone: 'neutral', detail: 'faltam dados comparáveis de RPS ou esforço na fase atual' };
+    if (!snapshot?.comparableRows?.length) {
+      return { label: 'Dados insuficientes', tone: 'neutral', detail: 'dados de esforço indisponíveis para semanas comparáveis' };
+    }
+    if (snapshot.currentRpsRow?.startDay > 30 && snapshot.currentRpsRow?.effortIndex === null) {
+      return { label: 'Dados insuficientes', tone: 'neutral', detail: 'dados de esforço indisponíveis na semana mais recente' };
+    }
+    if (snapshot.activeDecouplingRun) {
+      return { label: 'Autossustentado', tone: 'positive', detail: `condição mantida por ${fmtNum(snapshot.activeDecouplingRun.sustainedWeeks)} semanas` };
+    }
+    if (!current || current.rpsIndex === null || current.effortIndex === null) {
+      return { label: 'Dados insuficientes', tone: 'neutral', detail: 'faltam dados comparáveis de RPS ou esforço na semana atual' };
     }
 
-    const retention = current.rpsIndex / 100;
-    const effortDrop = current.effortDrop;
-    const completeEvidence = snapshot.comparableRows.length >= PERIODO_MINIMO_SUSTENTACAO && !current.partial;
-    if (current.effortIndex >= 110 && current.rpsIndex < 95) {
-      return { label: 'Saturação', tone: 'warning', detail: 'esforço acima da base com RPS abaixo do patamar inicial' };
+    if (current.rpsIndex >= AUTOSUSTAIN_RPS_INDEX_MIN && current.effortIndex > AUTOSUSTAIN_HIGH_EFFORT_INDEX) {
+      return { label: 'Performance forte sob alto estímulo', tone: 'warning', detail: 'RPS preservado, mas esforço acima da base' };
     }
-    if (current.rpsIndex < 75 && current.effortIndex >= 70) {
-      return { label: 'Deterioração', tone: 'negative', detail: 'RPS caiu de forma estrutural sem alívio relevante de esforço' };
+    if (current.rpsIndex >= AUTOSUSTAIN_RPS_INDEX_MIN && current.effortIndex >= AUTOSUSTAIN_EFFORT_INDEX_MAX && current.effortIndex <= AUTOSUSTAIN_HIGH_EFFORT_INDEX) {
+      return { label: 'Sustentação em formação', tone: 'neutral', detail: 'RPS preservado com esforço em queda, ainda sem 4 semanas no limite' };
     }
-    if (effortDrop >= QUEDA_ESFORCO_MINIMA && retention >= RPS_RETENCAO_FORTE) {
-      return completeEvidence
-        ? { label: 'Autossustentado', tone: 'positive', detail: 'RPS preservado com queda relevante de esforço' }
-        : { label: 'Autosustentação em formação', tone: 'positive', detail: 'sinal positivo, ainda em janela parcial' };
+    if (current.rpsIndex >= AUTOSUSTAIN_RPS_INDEX_MIN && current.effortIndex < AUTOSUSTAIN_EFFORT_INDEX_MAX) {
+      return { label: 'Sustentação em formação', tone: 'positive', detail: `condição positiva ainda abaixo de ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)} semanas` };
     }
-    if (effortDrop >= QUEDA_ESFORCO_MINIMA && retention < RPS_RETENCAO_FORTE) {
-      const similarDrop = current.decoupling !== null && current.decoupling < 15;
-      return {
-        label: similarDrop ? 'Dependente de estímulo' : 'Em formação',
-        tone: similarDrop ? 'warning' : 'neutral',
-        detail: similarDrop ? 'RPS caiu junto com a redução do esforço' : 'esforço caiu, mas a retenção ainda não sustenta conclusão'
-      };
+    if (current.effortIndex >= AUTOSUSTAIN_HIGH_EFFORT_INDEX && current.rpsIndex < AUTOSUSTAIN_RPS_INDEX_MIN) {
+      return { label: 'Baixa resposta ao estímulo', tone: 'negative', detail: 'esforço alto com RPS abaixo do patamar preservado' };
     }
-    return { label: 'Em formação', tone: 'neutral', detail: 'ainda não há desacoplamento suficiente entre performance e esforço' };
+    if (current.effortIndex < AUTOSUSTAIN_HIGH_EFFORT_INDEX && current.rpsIndex < AUTOSUSTAIN_RPS_INDEX_MIN) {
+      return { label: 'Dependente de estímulo', tone: 'warning', detail: 'RPS caiu junto com a redução do esforço' };
+    }
+    return { label: 'Sustentação em formação', tone: 'neutral', detail: 'ainda sem sinal consistente de autosustentação' };
   }
 
   function rpsAutosustainSnapshotForLaunch(launch) {
     if (!launch) return null;
     const maxDay = rpsLatestDataDay(launch);
-    const phasePack = rpsAutosustainPhaseRows(launch, maxDay);
-    const current = [...phasePack.rows]
-      .reverse()
-      .find((row) => row.rpsSummary || row.effort?.investimento !== null) || null;
-    const comparableRows = phasePack.rows
-      .filter((row) => row.key !== AUTOSUSTAIN_BASE_PHASE_KEY)
+    const weekPack = rpsAutosustainWeekRows(launch, maxDay);
+    const postBaseRows = weekPack.rows.filter((row) => row.startDay > 30);
+    const comparableRows = postBaseRows
       .filter((row) => row.rpsIndex !== null && row.effortIndex !== null);
+    const decouplingRuns = rpsAutosustainRuns(weekPack.rows);
+    const currentRpsRow = [...weekPack.rows].reverse().find((row) => row.rpsIndex !== null) || null;
+    const currentComparable = [...comparableRows].reverse().find(Boolean) || null;
+    const activeDecouplingRun = currentComparable
+      ? decouplingRuns.find((run) => run.rows.some((row) => row.weekIndex === currentComparable.weekIndex)) || null
+      : null;
+    const decouplingPoint = activeDecouplingRun || decouplingRuns[0] || null;
     const snapshot = {
       launch,
       maxDay,
-      ...phasePack,
-      current,
-      comparableRows
+      ...weekPack,
+      current: currentComparable || currentRpsRow,
+      currentRpsRow,
+      currentComparable,
+      postBaseRows,
+      comparableRows,
+      decouplingRuns,
+      activeDecouplingRun,
+      decouplingPoint,
+      phaseBands: rpsAutosustainPhaseBandsForWeeks(maxDay, weekPack.rows),
+      missingEffortWeeks: postBaseRows.filter((row) => row.rpsIndex !== null && row.effortIndex === null).length
     };
     snapshot.status = rpsAutosustainStatusForSnapshot(snapshot);
     return snapshot;
@@ -2662,20 +2772,52 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function rpsAutosustainEffortDropCopy(row) {
-    if (!row || row.effortDrop === null || row.effortDrop === undefined) return 'esforço pendente';
-    if (row.effortDrop >= 0) return `esforço caiu ${fmtPct(row.effortDrop, 0)}`;
-    return `esforço subiu ${fmtPct(Math.abs(row.effortDrop), 0)}`;
+    if (!row || row.effortDrop === null || row.effortDrop === undefined) return 'dados de esforço indisponíveis';
+    if (row.effortDrop >= 0) return `esforço caiu ${fmtPct(row.effortDrop, 1)}`;
+    return `esforço subiu ${fmtPct(Math.abs(row.effortDrop), 1)}`;
+  }
+
+  function rpsAutosustainIndexDeltaCopy(index, subject, baseLabel = 'referência inicial') {
+    if (index === null || index === undefined || Number.isNaN(index)) return `${subject} está sem dado comparável`;
+    const delta = (index - 100) / 100;
+    if (Math.abs(delta) < 0.005) return `${subject} está alinhado à ${baseLabel}`;
+    return delta > 0
+      ? `${subject} está ${fmtPct(delta, 1)} acima da ${baseLabel}`
+      : `${subject} está ${fmtPct(Math.abs(delta), 1)} abaixo da ${baseLabel}`;
   }
 
   function rpsAutosustainInterpretation(snapshot) {
-    const current = snapshot?.current;
-    if (!current || current.key === AUTOSUSTAIN_BASE_PHASE_KEY) {
-      return 'Ainda estamos na fase base. A retenção de RPS pode ser lida, mas autosustentação exige uma fase posterior com esforço comparável.';
+    const current = snapshot?.currentComparable || snapshot?.currentRpsRow;
+    const statusLabel = snapshot?.status?.label || '';
+    if (!snapshot?.base?.rpsSummary || !snapshot?.baseRps) {
+      return 'Ainda não há base D0-D30 suficiente para calcular retenção de RPS e autosustentação.';
     }
-    if (current.rpsIndex === null || current.effortIndex === null) {
-      return `RPS da fase ${current.label} já pode ser lido, mas o esforço comparável está incompleto. O painel não classifica autosustentação sem base de esforço.`;
+    if (!snapshot?.baseEffort) {
+      return 'A retenção de RPS pode ser acompanhada, mas a base D0-D30 de esforço está indisponível. Autosustentação depende da relação entre performance e esforço.';
     }
-    return `RPS reteve ${fmtPct(current.retention, 0)} da fase inicial enquanto ${rpsAutosustainEffortDropCopy(current)}. Desacoplamento: ${rpsAutosustainSignedIndex(current.decoupling)}. ${snapshot.status.detail}.`;
+    if (!snapshot?.comparableRows?.length) {
+      const rpsCopy = current?.rpsIndex !== null && current?.rpsIndex !== undefined
+        ? `RPS preservou ${fmtPct(current.rpsIndex / 100, 1)} da referência inicial`
+        : 'RPS ainda não tem semana posterior comparável';
+      return `${rpsCopy}, mas há dados de esforço indisponíveis após D0-D30. Não há evidência suficiente para classificar autosustentação.`;
+    }
+    if (!current || current.rpsIndex === null || current.effortIndex === null) {
+      return 'A série semanal está incompleta. Sem RPS e esforço comparáveis na mesma janela, o painel não classifica autosustentação.';
+    }
+    if (statusLabel === 'Autossustentado' && snapshot.activeDecouplingRun) {
+      const point = snapshot.activeDecouplingRun.start;
+      return `O esforço caiu ${fmtPct(Math.max(0, 1 - (point.effortIndex / 100)), 1)} abaixo da referência enquanto o RPS preservou ${fmtPct(point.rpsIndex / 100, 1)} da performance. O produto apresenta sinais de autosustentação há ${fmtNum(snapshot.activeDecouplingRun.sustainedWeeks)} semanas.`;
+    }
+    if (statusLabel === 'Performance forte sob alto estímulo') {
+      return `${rpsAutosustainIndexDeltaCopy(current.rpsIndex, 'RPS')}, porém o esforço conhecido chegou a ${fmtPct(Math.max(0, (current.effortIndex - 100) / 100), 1)} acima da base. A performance é forte, mas ainda não existe evidência de autosustentação.`;
+    }
+    if (statusLabel === 'Baixa resposta ao estímulo') {
+      return `O esforço está em ${fmtPct(current.effortIndex / 100, 1)} da base, mas o RPS preserva apenas ${fmtPct(current.rpsIndex / 100, 1)} da referência. Há baixa resposta ao estímulo.`;
+    }
+    if (statusLabel === 'Dependente de estímulo') {
+      return `O esforço caiu ${fmtPct(Math.max(0, 1 - (current.effortIndex / 100)), 1)} abaixo da referência e o RPS preservou ${fmtPct(current.rpsIndex / 100, 1)}. A performance acompanha a redução do estímulo.`;
+    }
+    return `RPS preserva ${fmtPct(current.rpsIndex / 100, 1)} da referência inicial e o esforço está em ${fmtPct(current.effortIndex / 100, 1)} da base. Há sustentação em formação, mas a condição de autosustentação ainda não completou ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)} semanas.`;
   }
 
   function rpsAutosustainKpi(label, value, detail, tooltip = '', tone = '') {
@@ -2688,49 +2830,73 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     `;
   }
 
-  function rpsAutosustainChartConfig(snapshot) {
+  function rpsAutosustainIndexAxisMax(values = [], thresholds = []) {
+    const valid = [...values, ...thresholds]
+      .map((value) => numberOrNull(value))
+      .filter((value) => value !== null);
+    const maxValue = Math.max(110, ...valid);
+    const step = maxValue > 300 ? 50 : maxValue > 160 ? 25 : 10;
+    return Math.ceil((maxValue * 1.05) / step) * step;
+  }
+
+  function rpsAutosustainMarkerOptions(snapshot) {
+    const point = snapshot?.decouplingPoint?.start;
+    if (!point) return { enabled: false };
+    return {
+      enabled: true,
+      index: point.weekIndex,
+      dayLabel: rpsAutosustainDayLabel(point.startDay),
+      label: 'Início provável da autosustentação',
+      shortLabel: 'Ponto de desacoplamento'
+    };
+  }
+
+  function rpsAutosustainIndexChartConfig(snapshot, type) {
     const rows = snapshot.rows;
-    const labels = rows.map((row) => row.label);
-    const maxValue = Math.max(110, ...rows.flatMap((row) => [row.rpsIndex, row.effortIndex].filter((value) => value !== null && value !== undefined && !Number.isNaN(value))));
+    const labels = rows.map((row) => row.tickLabel);
+    const isEffort = type === 'effort';
+    const valueKey = isEffort ? 'effortIndex' : 'rpsIndex';
+    const metricLabel = isEffort ? 'Índice de esforço' : 'Índice de RPS';
+    const metricColor = isEffort ? '#F07800' : '#E05252';
+    const thresholds = isEffort
+      ? [
+          { label: 'Base 100', value: 100, color: 'rgba(255,255,255,0.38)', dash: [5, 5] },
+          { label: 'Limite autosustentação 70', value: AUTOSUSTAIN_EFFORT_INDEX_MAX, color: 'rgba(76,175,125,0.78)', dash: [3, 4] }
+        ]
+      : [
+          { label: 'Base 100', value: 100, color: 'rgba(255,255,255,0.38)', dash: [5, 5] },
+          { label: 'RPS preservado 90', value: AUTOSUSTAIN_RPS_INDEX_MIN, color: 'rgba(76,175,125,0.78)', dash: [3, 4] }
+        ];
+    const values = rows.map((row) => row[valueKey]);
+    const axisMax = rpsAutosustainIndexAxisMax(values, thresholds.map((item) => item.value));
     return {
       type: 'line',
       data: {
         labels,
         datasets: [
-          {
-            label: 'Base 100',
-            data: rows.map(() => 100),
-            borderColor: 'rgba(255,255,255,0.38)',
+          ...thresholds.map((threshold) => ({
+            label: threshold.label,
+            data: rows.map(() => threshold.value),
+            borderColor: threshold.color,
             backgroundColor: 'transparent',
-            borderDash: [5, 5],
-            borderWidth: 1,
+            borderDash: threshold.dash,
+            borderWidth: 1.4,
             pointRadius: 0,
             pointHoverRadius: 0,
             fill: false,
-            tension: 0
-          },
+            tension: 0,
+            isAutosustainGuide: true
+          })),
           {
-            label: 'Índice RPS',
-            data: rows.map((row) => row.rpsIndex),
-            borderColor: '#E05252',
-            backgroundColor: 'rgba(224,82,82,0.16)',
+            label: metricLabel,
+            data: values,
+            borderColor: metricColor,
+            backgroundColor: isEffort ? 'rgba(240,120,0,0.14)' : 'rgba(224,82,82,0.16)',
             borderWidth: 2.5,
-            pointRadius: 3,
+            pointRadius: rows.map((row) => row.weekIndex === snapshot.decouplingPoint?.start?.weekIndex ? 4 : 1.8),
             pointHoverRadius: 5,
             tension: 0.28,
-            spanGaps: true,
-            fill: false
-          },
-          {
-            label: 'Índice de esforço',
-            data: rows.map((row) => row.effortIndex),
-            borderColor: '#F07800',
-            backgroundColor: 'rgba(240,120,0,0.14)',
-            borderWidth: 2.5,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            tension: 0.28,
-            spanGaps: true,
+            spanGaps: false,
             fill: false
           }
         ]
@@ -2738,27 +2904,46 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       options: chartOptions({
         layout: { padding: { top: 8, right: 12, bottom: 0, left: 0 } },
         plugins: {
+          rpsPhaseBands: { enabled: true, bands: snapshot.phaseBands },
+          rpsAutosustainMarker: rpsAutosustainMarkerOptions(snapshot),
           legend: { position: 'bottom' },
           tooltip: {
             callbacks: {
+              title: (items) => {
+                const row = rows[items?.[0]?.dataIndex];
+                return row?.label || '';
+              },
               label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y, 0)}`,
               afterLabel: (ctx) => {
                 const row = rows[ctx.dataIndex];
-                if (!row) return '';
+                if (!row || ctx.dataset?.isAutosustainGuide) return '';
+                if (isEffort) {
+                  return [
+                    `Esforço/dia: ${fmtBRL(row.effort?.effortPerDay)}`,
+                    row.effort?.sourceLabel || 'dados de esforço indisponíveis'
+                  ];
+                }
                 return [
-                  `RPS fase: ${fmtBRL(row.rpsSummary?.rps)} | Receita ${fmtBRL(row.rpsSummary?.receita)} | Sessões ${fmtNum(row.rpsSummary?.sessoes)}`,
-                  `Esforço/dia: ${fmtBRL(row.effort?.effortPerDay)} | ${row.effort?.sourceLabel || 'sem esforço declarado'}`,
-                  `Desacoplamento: ${rpsAutosustainSignedIndex(row.decoupling)}`
+                  `RPS MM7: ${fmtBRL(row.rpsSummary?.rps)} | Receita ${fmtBRL(row.rpsSummary?.receita)} | Sessões ${fmtNum(row.rpsSummary?.sessoes)}`,
+                  `Retenção: ${row.retention === null ? '—' : fmtPct(row.retention, 1)}`
                 ];
               }
             }
           }
         },
         scales: {
-          x: { grid: { display: false } },
+          x: {
+            grid: { display: false },
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: 10,
+              callback: (value, index) => rows[index]?.tickLabel || ''
+            }
+          },
           y: {
             beginAtZero: true,
-            suggestedMax: Math.ceil(maxValue / 10) * 10,
+            suggestedMax: axisMax,
             ticks: { callback: (value) => `${fmtNum(value, 0)}` },
             grid: { color: 'rgba(255,255,255,0.045)' }
           }
@@ -2770,8 +2955,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   function renderRpsAutosustainAnalysis(selected) {
     const wrap = $('rps-autosustain-analysis');
     if (!wrap) return;
-    state.charts['chart-rps-autosustain']?.destroy?.();
-    delete state.charts['chart-rps-autosustain'];
+    ['chart-rps-autosustain', 'chart-rps-autosustain-rps', 'chart-rps-autosustain-effort'].forEach((id) => {
+      state.charts[id]?.destroy?.();
+      delete state.charts[id];
+    });
     const shouldShow = Boolean(selected) && (state.normalizedChartMode || 'linha') === 'linha' && Boolean(rampMetricConfig().rps);
     wrap.hidden = !shouldShow;
     if (!shouldShow) {
@@ -2788,8 +2975,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           <div class="rps-autosustain-head">
             <div>
               <span>Autosustentação do produto</span>
-              <strong>Desacoplamento entre performance e esforço</strong>
-              <p>Faltam RPS e esforço por fase para gerar a leitura automática.</p>
+              <strong>Performance e esforço em escalas separadas</strong>
+              <p>Faltam séries semanais de RPS e esforço para gerar a leitura automática.</p>
             </div>
           </div>
         </div>
@@ -2797,45 +2984,64 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       return;
     }
 
-    const retention = current.retention;
-    const effortIndex = current.effortIndex;
-    const effortDrop = current.effortDrop;
-    const revenueSessionCopy = current.rpsSummary
-      ? `Receita ${fmtBRL(current.rpsSummary.receita)} = ${fmtNum(current.rpsSummary.sessoes)} sessões × ${fmtBRL(current.rpsSummary.rps)} RPS`
-      : 'Receita = sessões × RPS; fase atual sem RPS suficiente.';
+    const currentRps = snapshot.currentRpsRow || current;
+    const currentComparable = snapshot.currentComparable;
+    const retention = currentRps?.retention ?? null;
+    const hasCurrentEffort = currentRps?.startDay > 30 && currentRps?.effortIndex !== null;
+    const effortKpiRow = hasCurrentEffort ? currentRps : null;
+    const effortIndex = effortKpiRow?.effortIndex ?? null;
+    const effortDrop = effortKpiRow?.effortDrop ?? null;
+    const decouplingPoint = snapshot.decouplingPoint?.start || null;
+    const decouplingDetail = decouplingPoint
+      ? `RPS retido ${fmtPct(decouplingPoint.rpsIndex / 100, 0)} · esforço ${fmtPct(decouplingPoint.effortIndex / 100, 0)} · ${fmtNum(snapshot.decouplingPoint.sustainedWeeks)} semanas`
+      : snapshot.missingEffortWeeks
+        ? 'dados de esforço indisponíveis'
+        : `condição ainda não mantida por ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)} semanas`;
+    const revenueSessionCopy = currentRps?.rpsSummary
+      ? `Receita ${fmtBRL(currentRps.rpsSummary.receita)} = ${fmtNum(currentRps.rpsSummary.sessoes)} sessões × ${fmtBRL(currentRps.rpsSummary.rps)} RPS`
+      : 'Receita = sessões × RPS; semana atual sem RPS suficiente.';
     const statusTone = status.tone || 'neutral';
     wrap.innerHTML = `
       <div class="rps-autosustain-panel">
         <div class="rps-autosustain-head">
           <div>
             <span>Autosustentação do produto</span>
-            <strong>Desacoplamento entre performance e esforço</strong>
+            <strong>Performance e esforço em escalas separadas</strong>
             <p>${escapeHtml(rpsAutosustainInterpretation(snapshot))}</p>
           </div>
           <div class="rps-autosustain-status rps-autosustain-status--${escapeHtml(statusTone)}">
             <span>Status</span>
             <strong>${escapeHtml(status.label)}</strong>
-            <small>${escapeHtml(current.label)} · ${current.partial ? 'fase parcial' : 'fase observada'}</small>
+            <small>${escapeHtml((currentComparable || currentRps || current)?.label || 'série semanal')} · D0-D30 = 100</small>
           </div>
         </div>
         <div class="rps-autosustain-grid">
           <div class="rps-autosustain-kpis">
-            ${rpsAutosustainKpi('RPS atual', fmtBRL(current.rpsSummary?.rps), `${current.label} · ${fmtNum(current.rpsSummary?.daysCovered)} dias`, 'RPS fixo da fase atual: soma(receita) / soma(sessões).')}
-            ${rpsAutosustainKpi('Retenção de RPS', fmtPct(retention, 1), 'vs D0-D30 = base 100', 'Compara o RPS da fase atual com o RPS da fase de referência. Indica quanto da performance original foi preservada.', retention !== null && retention >= RPS_RETENCAO_FORTE ? 'positive' : '')}
-            ${rpsAutosustainKpi('Índice de esforço', rpsAutosustainBaseIndexLabel(effortIndex), effortDrop === null ? 'sem base comparável' : rpsAutosustainEffortDropCopy(current), 'Esforço diário da fase dividido pelo esforço diário de D0-D30, em base 100. Usa investimento declarado em mídia paga + CRM.', effortDrop !== null && effortDrop >= QUEDA_ESFORCO_MINIMA ? 'positive' : '')}
-            ${rpsAutosustainKpi('Desacoplamento', rpsAutosustainSignedIndex(current.decoupling), 'Índice RPS - índice esforço', 'Indicador de apoio: quanto o RPS ficou acima ou abaixo do esforço em base 100. Não deve ser usado isoladamente.', current.decoupling !== null && current.decoupling > 0 ? 'positive' : '')}
+            ${rpsAutosustainKpi('RPS atual', fmtBRL(currentRps?.rpsSummary?.rps), `${currentRps?.label || 'semana'} · ${fmtNum(currentRps?.rpsSummary?.daysCovered)} dias`, 'RPS semanal suavizado: soma(receita) / soma(sessões) em janela de 7 dias.')}
+            ${rpsAutosustainKpi('Retenção de RPS', retention === null ? '—' : fmtPct(retention, 1), 'performance vs D0-D30', 'Mede somente performance: RPS semanal dividido pelo RPS de D0-D30.', retention !== null && retention >= RPS_RETENCAO_FORTE ? 'positive' : '')}
+            ${rpsAutosustainKpi('Índice de esforço', rpsAutosustainBaseIndexLabel(effortIndex), effortDrop === null ? 'dados de esforço indisponíveis' : rpsAutosustainEffortDropCopy(effortKpiRow), 'Esforço semanal por dia dividido pelo esforço diário de D0-D30, em base 100. Usa investimento declarado em mídia paga + CRM.', effortIndex !== null && effortIndex <= AUTOSUSTAIN_EFFORT_INDEX_MAX ? 'positive' : '')}
+            ${rpsAutosustainKpi('Autosustentação provável', decouplingPoint ? rpsAutosustainDayLabel(decouplingPoint.startDay) : '—', decouplingDetail, 'Data estimada quando RPS >= 90 e esforço <= 70 ficam mantidos por pelo menos 4 semanas consecutivas.', decouplingPoint ? 'positive' : '')}
           </div>
-          <div class="rps-autosustain-chart">
-            <canvas id="chart-rps-autosustain"></canvas>
+          <div class="rps-autosustain-charts">
+            <div class="rps-autosustain-chart">
+              <div class="rps-autosustain-chart-title">Performance — Índice de RPS</div>
+              <div class="rps-autosustain-chart-canvas"><canvas id="chart-rps-autosustain-rps"></canvas></div>
+            </div>
+            <div class="rps-autosustain-chart">
+              <div class="rps-autosustain-chart-title">Esforço — Índice de Esforço</div>
+              <div class="rps-autosustain-chart-canvas"><canvas id="chart-rps-autosustain-effort"></canvas></div>
+              <small>${snapshot.missingEffortWeeks ? 'dados de esforço indisponíveis aparecem como lacunas na linha' : 'semana sem declaração de esforço não vira zero automático'}</small>
+            </div>
           </div>
         </div>
         <div class="rps-autosustain-note">
           <span>${escapeHtml(revenueSessionCopy)}</span>
-          <span>Variações do RPS total podem vir do mix de tráfego; um RPS ajustado por mix fica preparado como próxima camada quando houver origem por sessão.</span>
+          <span>Retenção de RPS mede performance. Autosustentação só é lida quando performance e esforço existem na mesma janela semanal.</span>
         </div>
       </div>
     `;
-    createChart('chart-rps-autosustain', rpsAutosustainChartConfig(snapshot));
+    createChart('chart-rps-autosustain-rps', rpsAutosustainIndexChartConfig(snapshot, 'rps'));
+    createChart('chart-rps-autosustain-effort', rpsAutosustainIndexChartConfig(snapshot, 'effort'));
   }
 
   function renderRpsPeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
@@ -4050,6 +4256,56 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     }
   };
 
+  const rpsAutosustainMarkerPlugin = {
+    id: 'rpsAutosustainMarker',
+    afterDatasetsDraw(chart, args, opts) {
+      if (!opts?.enabled) return;
+      const index = numberOrNull(opts.index);
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales?.x;
+      if (index === null || !ctx || !chartArea || !xScale) return;
+      const x = xScale.getPixelForValue(index);
+      if (!Number.isFinite(x) || x < chartArea.left || x > chartArea.right) return;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.62)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.stroke();
+
+      const label = `${opts.shortLabel || 'Ponto de desacoplamento'} · ${opts.dayLabel || ''}`.trim();
+      const detail = opts.label || 'Início provável da autosustentação';
+      ctx.setLineDash([]);
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.font = '800 10px Inter, "Segoe UI", Arial, sans-serif';
+      const labelWidth = Math.max(ctx.measureText(label).width, ctx.measureText(detail).width);
+      const boxWidth = Math.min(chartArea.width - 8, labelWidth + 18);
+      const boxX = Math.min(Math.max(x + 7, chartArea.left + 4), chartArea.right - boxWidth - 4);
+      const boxY = chartArea.top + 8;
+      ctx.fillStyle = 'rgba(44,44,44,0.88)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(boxX, boxY, boxWidth, 36, 6);
+      } else {
+        ctx.rect(boxX, boxY, boxWidth, 36);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(label, boxX + 9, boxY + 7);
+      ctx.font = '750 9px Inter, "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.62)';
+      ctx.fillText(detail, boxX + 9, boxY + 20);
+      ctx.restore();
+    }
+  };
+
   function configureChartDefaults() {
     if (!window.Chart) return;
     Chart.register(launchCheckpointPlugin);
@@ -4058,6 +4314,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     Chart.register(commercialMissingBarsPlugin);
     Chart.register(rampStabilizationPlugin);
     Chart.register(rpsPhaseBandsPlugin);
+    Chart.register(rpsAutosustainMarkerPlugin);
     Chart.defaults.font.family = 'Inter, "Segoe UI", Arial, sans-serif';
     Chart.defaults.font.size = 11;
     Chart.defaults.color = 'rgba(255,255,255,0.55)';

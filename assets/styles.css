@@ -5476,13 +5476,13 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 .rps-autosustain-status--negative strong { color: var(--negative-text); }
 .rps-autosustain-grid {
   display: grid;
-  grid-template-columns: minmax(360px, .95fr) minmax(360px, 1.05fr);
-  gap: 18px;
+  grid-template-columns: 1fr;
+  gap: 14px;
   align-items: stretch;
 }
 .rps-autosustain-kpis {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px 0;
   align-content: start;
 }
@@ -5493,7 +5493,7 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   padding: 0 12px;
   border-left: 1px solid var(--border);
 }
-.rps-autosustain-kpi:nth-child(odd) {
+.rps-autosustain-kpi:first-child {
   padding-left: 0;
   border-left: 0;
 }
@@ -5507,9 +5507,32 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
 .rps-autosustain-kpi--positive small {
   color: var(--positive);
 }
+.rps-autosustain-charts {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
 .rps-autosustain-chart {
   min-width: 0;
-  height: 220px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 5px;
+}
+.rps-autosustain-chart-title {
+  color: var(--txt-primary);
+  font-size: .76rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.rps-autosustain-chart-canvas {
+  min-width: 0;
+  height: 188px;
+}
+.rps-autosustain-chart small {
+  color: var(--txt-muted);
+  font-size: .64rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 .rps-autosustain-note {
   display: flex;
@@ -5762,6 +5785,9 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
   .rps-autosustain-head {
     grid-template-columns: 1fr;
   }
+  .rps-autosustain-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .rps-autosustain-status {
     justify-items: start;
     padding-left: 0;
@@ -5801,8 +5827,8 @@ td.model-name { color: var(--txt-primary); font-weight: 800; }
     padding-top: 0;
     border-top: 0;
   }
-  .rps-autosustain-chart {
-    height: 240px;
+  .rps-autosustain-chart-canvas {
+    height: 176px;
   }
 }
 .acceleration-grid {
