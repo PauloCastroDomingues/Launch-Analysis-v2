@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260831-rps-guias-v66" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260831-rps-autosustain-v67" />
 </head>
 <body>
   <div class="app-shell">
@@ -222,14 +222,14 @@
           <div class="chart-card wide launch-chart-panel is-active" data-chart-panel="normalized">
             <div class="chart-head">
               <div>
-                <div class="chart-title chart-title--with-tip"><span id="chart-normalized-title">RPS - Índice de sustentação</span><button id="chart-normalized-help" class="help-button help-button--mini" type="button" data-tooltip="Diagnóstico principal: índice de sustentação = RPS fixo da fase / referência fixa da própria linha/produto. A curva MM7 suaviza a tendência visual; a decisão usa RPS fixo por fase. Não usa GA4, marketing, campanhas ou atribuição." aria-label="Ajuda sobre RPS">i</button></div>
+                <div class="chart-title chart-title--with-tip"><span id="chart-normalized-title">RPS - Retenção de RPS</span><button id="chart-normalized-help" class="help-button help-button--mini" type="button" data-tooltip="Retenção de RPS = RPS fixo da fase / RPS da fase de referência. Mede quanto da performance original foi preservada; sozinha não comprova autosustentação." aria-label="Ajuda sobre RPS">i</button></div>
                 <div class="chart-sub" id="chart-normalized-sub">Curva MM7 com referência fixa e guias 90/75</div>
               </div>
               <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
                 <div class="ramp-control-group">
                   <span class="ramp-control-label">Métrica</span>
                   <div class="chart-mode-toggle normalized-ramp-metric-controls" role="group" aria-label="Métrica da rampa">
-                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario" data-tooltip="Índice de sustentação por RPS fixo da fase; curva visual em MM7. Usa bridge_orders_customers e shopify_sessions_daily.">RPS</button>
+                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario" data-tooltip="Retenção de RPS por fase; curva visual em MM7. Usa bridge_orders_customers e shopify_sessions_daily.">RPS</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada" data-tooltip="Receita acumulada dia a dia desde o D0.">Faturamento</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal" data-tooltip="Receita somada em blocos de 30 dias desde o D0.">Fat. mês</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal" data-tooltip="Pedidos somados em blocos de 30 dias desde o D0.">Pedidos mês</button>
@@ -250,6 +250,7 @@
             <div id="ramp-quick-controls" class="ramp-quick-controls" aria-label="Recorte rapido da curva"></div>
             <div id="rps-period-analysis" class="share-period-analysis" aria-live="polite"></div>
             <div class="chart-canvas tall"><canvas id="chart-normalized"></canvas></div>
+            <div id="rps-autosustain-analysis" class="rps-autosustain-analysis" aria-live="polite"></div>
             <div id="ramp-health-insight" class="ramp-health-insight" aria-live="polite"></div>
           </div>
         </div>
@@ -501,7 +502,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260831-rps-guias-v66"></script>
-  <script src="assets/presentation.js?v=20260831-rps-guias-v66"></script>
+  <script src="assets/app.js?v=20260831-rps-autosustain-v67"></script>
+  <script src="assets/presentation.js?v=20260831-rps-autosustain-v67"></script>
 </body>
 </html>

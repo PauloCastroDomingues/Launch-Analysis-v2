@@ -259,10 +259,12 @@ Para reduzir ruído sem perder fidelidade, o gráfico separa tendência visual d
 RPS MM7 = receita_total dos ultimos 7 dias / sessoes dos ultimos 7 dias
 RPS fixo da fase = soma(receita da fase) / soma(sessoes da fase)
 Referencia RPS = RPS fixo da propria linha/produto na janela comparavel
-Indice de sustentacao RPS = RPS fixo do produto / Referencia RPS da linha/produto
+Retencao de RPS = RPS fixo da fase atual / RPS D0-D30
+Indice de esforco = esforco diario da fase / esforco diario D0-D30
+Desacoplamento = indice RPS - indice de esforco
 ```
 
-O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A leitura de saúde, o índice de sustentação e o status usam RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como referência padrão porque cada linha tem ticket próprio.
+O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A leitura de retenção usa RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como referência padrão porque cada linha tem ticket próprio.
 
 Quando houver 2 ou mais lançamentos da mesma linha, a referência usa mediana e faixa P25-P75 do RPS fixo dessa mesma linha na janela comparável. Quando não houver par real da mesma linha, a referência usa a fase anterior do próprio produto; na fase inicial, o status fica como base inicial até existir uma fase anterior comparável.
 
@@ -270,7 +272,9 @@ Os percentuais de `90%` e `75%` no gráfico são guias visuais provisórios, der
 
 No gráfico, a referência é desenhada em degraus e o fundo marca as fases comerciais (`D0-D30`, `D31-D90`, `D91-D180`, `D181+`). A leitura principal fica no próprio gráfico: a curva vermelha mostra RPS MM7, a linha de 100% mostra a referência fixa da fase, e as linhas de 90% e 75% funcionam apenas como guias visuais auxiliares. Assim, a referência fica visualmente clara como fixa dentro de cada fase, não como média móvel.
 
-O guia de autosustentação define o sinal completo como desacoplamento entre esforço e performance. Como esta visão de RPS foi deliberadamente definida sem GA4, marketing, campanhas ou atribuição, o painel não afirma autosustentação causal; ele mede sustentação do RPS contra uma referência fixa. Para uma leitura completa de autosustentação, seria necessário adicionar um índice de esforço confiável em uma camada separada.
+O bloco de autosustentação fica separado da retenção de RPS. Ele compara `Indice RPS` e `Indice de esforco` em base 100, usando D0-D30 como base. O esforço inicial é calculado com investimento declarado em `midia_paga.json` e `crm_disparos.json`, normalizado por dia de fase. A regra inicial usa `RPS_RETENCAO_FORTE = 0,90`, `QUEDA_ESFORCO_MINIMA = 0,30` e `PERIODO_MINIMO_SUSTENTACAO = 1`; esses parâmetros são ajustáveis e não representam calibração estatística universal.
+
+Autosustentação só é classificada quando existe RPS e esforço comparáveis depois da fase base. Se faltar esforço posterior, o painel fica como `Em formação` em vez de assumir investimento zero. A decomposição `Receita = Sessões x RPS` permanece visível para separar queda de exposição de queda de performance, e a observação sobre mix de tráfego foi mantida porque variações no RPS total podem vir de mudança de origem de tráfego.
 
 ### Regra canônica de classificação de SKU/produto
 
