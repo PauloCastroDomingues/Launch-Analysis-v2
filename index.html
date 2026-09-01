@@ -230,9 +230,10 @@
               </div>
               <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
                 <div class="ramp-control-group">
-                  <span class="ramp-control-label ramp-control-label--with-tip">Métrica <button class="help-button help-button--mini" type="button" data-tooltip="Define a métrica do gráfico ativo: RPS para saúde por sessão; Faturamento para valor acumulado; Fat. mês e Pedidos mês em blocos de 30 dias; Share mês para participação no total da empresa." aria-label="Ajuda sobre métricas da rampa">i</button></span>
+                  <span class="ramp-control-label ramp-control-label--with-tip">Métrica <button class="help-button help-button--mini" type="button" data-tooltip="Define a métrica do gráfico ativo: RPS para saúde por sessão; Decomp. RPS abre RPS em receita, sessões e pedidos; Faturamento para valor acumulado; Fat. mês e Pedidos mês em blocos de 30 dias; Share mês para participação no total da empresa." aria-label="Ajuda sobre métricas da rampa">i</button></span>
                   <div class="chart-mode-toggle normalized-ramp-metric-controls" role="group" aria-label="Métrica da rampa">
                   <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario">RPS</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="rps_decomposicao">Decomp. RPS</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada">Faturamento</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal">Fat. mês</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal">Pedidos mês</button>
@@ -505,7 +506,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260831-rps-autosustain-v71"></script>
+  <script src="assets/app.js?v=20260901-rps-decomposition-v73"></script>
   <script src="assets/presentation.js?v=20260831-rps-autosustain-v71"></script>
 </body>
 </html>

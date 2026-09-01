@@ -267,6 +267,8 @@ Ponto de desacoplamento = primeira semana em que RPS >= 90 e esforco <= 70 por 4
 
 O RPS diário continua disponível como detalhe de auditoria no tooltip e a curva MM7 permanece no gráfico para mostrar tendência. A leitura de retenção usa RPS fixo ponderado por sessões, sempre calculado por `soma(receita) / soma(sessoes)`. A mediana geral do grupo não é usada como referência padrão porque cada linha tem ticket próprio.
 
+A visão `Decomp. RPS` mantém a base `D0-D30 = 100` e abre o RPS em quatro índices: RPS, receita/dia, sessões/dia e pedidos/dia. Receita, sessões e pedidos usam média diária da MM7 contra a média diária de D0-D30; RPS usa `receita/sessoes` da MM7 contra o RPS fixo de D0-D30. Assim, a leitura mostra se o RPS preservado vem de escala real, queda de sessões, melhora de conversão/pedidos ou efeito de ticket/mix, sem misturar unidades brutas no mesmo eixo.
+
 Quando houver 2 ou mais lançamentos da mesma linha, a referência usa mediana e faixa P25-P75 do RPS fixo dessa mesma linha na janela comparável. Quando não houver par real da mesma linha, a referência usa a fase anterior do próprio produto; na fase inicial, o status fica como base inicial até existir uma fase anterior comparável.
 
 Os percentuais de `90%` e `75%` no gráfico são guias visuais provisórios, derivados como aproximação inicial do guia de RPS. Eles ajudam a enxergar distância proporcional da referência, mas ainda não são cortes estatísticos validados pela Reise; antes de virarem classificação oficial, devem ser recalibrados com histórico de lançamentos.

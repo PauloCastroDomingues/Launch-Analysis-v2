@@ -53,6 +53,7 @@
   ];
   const RAMP_METRIC_KEYS = [
     'rps_diario',
+    'rps_decomposicao',
     'receita_acumulada',
     'receita_mensal',
     'pedidos_mensal',
@@ -1555,6 +1556,17 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         rps: true,
         tooltip: 'Retenção de RPS = RPS fixo da fase / RPS da fase de referência. Mede quanto da performance original foi preservada; sozinha não comprova autosustentação.'
       },
+      rps_decomposicao: {
+        key: 'rps_decomposicao',
+        label: 'Decomposição do RPS',
+        shortLabel: 'Decomp. RPS',
+        field: null,
+        format: 'index',
+        cadence: 'dia',
+        cumulative: false,
+        rpsDecomposition: true,
+        tooltip: 'Mostra RPS, receita/dia, sessões/dia e pedidos/dia em índice, todos com D0-D30 = 100. Ajuda a separar eficiência de volume.'
+      },
       receita_acumulada: {
         key: 'receita_acumulada',
         label: 'Rampa de faturamento',
@@ -1628,6 +1640,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     if (metric?.format === 'pct_signed') return fmtSignedPct(value, compact ? 0 : 0);
     if (metric?.format === 'pct') return fmtPct(value, compact ? 0 : 0);
     if (metric?.format === 'num') return fmtNum(value);
+    if (metric?.format === 'index') return fmtNum(value, compact ? 0 : 1);
     return fmtBRL(value, compact);
   }
 
@@ -1941,6 +1954,253 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       lastDataDay: validDays.length ? Math.max(...validDays) : null,
       sourceRows: points,
       sourceLabel: 'RPS MM7 a partir de lancamentos_rps_dia.json'
+    };
+  }
+
+  function rpsDecompositionValueIndex(value, baseValue) {
+    const current = numberOrNull(value);
+    const base = numberOrNull(baseValue);
+    return current !== null && base ? (current / base) * 100 : null;
+  }
+
+  function rpsDecompositionDatasetData(launch, maxDay) {
+    const latestDay = Math.max(0, Number(maxDay) || 0);
+    const data = {
+      rpsIndex: Array(latestDay + 1).fill(null),
+      receitaIndex: Array(latestDay + 1).fill(null),
+      sessoesIndex: Array(latestDay + 1).fill(null),
+      pedidosIndex: Array(latestDay + 1).fill(null)
+    };
+    const meta = Array(latestDay + 1).fill(null);
+    const points = rpsPointsForLaunch(launch, latestDay);
+    const byDay = rpsAggregatePointsByDay(points);
+    const baseEndDay = Math.min(30, latestDay);
+    const baseSummary = rpsSummaryForRange(launch, 0, baseEndDay);
+    const baseDays = Math.max(1, Number(baseSummary?.daysCovered) || 0);
+    const base = baseSummary ? {
+      ...baseSummary,
+      receitaPerDay: numberOrNull(baseSummary.receita) === null ? null : baseSummary.receita / baseDays,
+      sessoesPerDay: numberOrNull(baseSummary.sessoes) === null ? null : baseSummary.sessoes / baseDays,
+      pedidosPerDay: numberOrNull(baseSummary.pedidos) === null ? null : baseSummary.pedidos / baseDays
+    } : null;
+
+    for (let day = 0; day <= latestDay; day += 1) {
+      const daily = byDay.get(day);
+      if (!daily || daily.sessoes === null) continue;
+      const startDay = Math.max(0, day - RPS_SMOOTHING_WINDOW_DAYS + 1);
+      const summary = rpsWindowSummaryFromMap(byDay, startDay, day);
+      if (!summary) continue;
+      const windowDays = Math.max(1, Number(summary.daysCovered) || 0);
+      const receitaPerDay = numberOrNull(summary.receita) === null ? null : summary.receita / windowDays;
+      const sessoesPerDay = numberOrNull(summary.sessoes) === null ? null : summary.sessoes / windowDays;
+      const pedidosPerDay = numberOrNull(summary.pedidos) === null ? null : summary.pedidos / windowDays;
+      const row = {
+        ...summary,
+        day,
+        windowDays: RPS_SMOOTHING_WINDOW_DAYS,
+        receitaPerDay,
+        sessoesPerDay,
+        pedidosPerDay,
+        daily_rps: daily.rps,
+        daily_receita_total: daily.receita_total,
+        daily_sessoes: daily.sessoes,
+        daily_pedidos: daily.pedidos,
+        data_calendario: daily.data_calendario || summary.endIso || null,
+        base
+      };
+      row.rpsIndex = rpsDecompositionValueIndex(summary.rps, base?.rps);
+      row.receitaIndex = rpsDecompositionValueIndex(receitaPerDay, base?.receitaPerDay);
+      row.sessoesIndex = rpsDecompositionValueIndex(sessoesPerDay, base?.sessoesPerDay);
+      row.pedidosIndex = rpsDecompositionValueIndex(pedidosPerDay, base?.pedidosPerDay);
+      data.rpsIndex[day] = row.rpsIndex;
+      data.receitaIndex[day] = row.receitaIndex;
+      data.sessoesIndex[day] = row.sessoesIndex;
+      data.pedidosIndex[day] = row.pedidosIndex;
+      meta[day] = row;
+    }
+
+    const validDays = meta
+      .map((row, day) => row ? day : null)
+      .filter((day) => day !== null);
+    return {
+      data,
+      meta,
+      base,
+      lastDataDay: validDays.length ? Math.max(...validDays) : null,
+      sourceRows: points,
+      sourceLabel: 'RPS, receita, sessões e pedidos indexados a D0-D30'
+    };
+  }
+
+  function rpsDecompositionMetricDefs() {
+    return [
+      {
+        key: 'rpsIndex',
+        label: 'RPS índice',
+        color: '#E05252',
+        borderWidth: 3,
+        valueCopy: (meta) => `RPS MM7: ${fmtBRL(meta?.rps)} | Base D0-D30: ${fmtBRL(meta?.base?.rps)}`
+      },
+      {
+        key: 'receitaIndex',
+        label: 'Receita/dia',
+        color: '#4CAF7D',
+        borderWidth: 2.2,
+        valueCopy: (meta) => `Receita/dia MM7: ${fmtBRL(meta?.receitaPerDay)} | Base: ${fmtBRL(meta?.base?.receitaPerDay)}`
+      },
+      {
+        key: 'sessoesIndex',
+        label: 'Sessões/dia',
+        color: '#5BB8D4',
+        borderWidth: 2.2,
+        valueCopy: (meta) => `Sessões/dia MM7: ${fmtNum(meta?.sessoesPerDay)} | Base: ${fmtNum(meta?.base?.sessoesPerDay)}`
+      },
+      {
+        key: 'pedidosIndex',
+        label: 'Pedidos/dia',
+        color: '#F0B84C',
+        borderWidth: 2.2,
+        valueCopy: (meta) => `Pedidos/dia MM7: ${fmtNum(meta?.pedidosPerDay, 1)} | Base: ${fmtNum(meta?.base?.pedidosPerDay, 1)}`
+      }
+    ];
+  }
+
+  function rpsDecompositionChartConfig(selected, maxDay, lensStart, lensEnd, labels) {
+    const series = rpsDecompositionDatasetData(selected, maxDay);
+    const slice = (values) => values.slice(lensStart, lensEnd + 1);
+    const defs = rpsDecompositionMetricDefs();
+    const values = defs.flatMap((def) => slice(series.data[def.key]));
+    const axisMax = rpsAutosustainIndexAxisMax(values, [100, 90]);
+    const baseLine = Array(labels.length).fill(100);
+    const preservedLine = Array(labels.length).fill(90);
+    const lastDataDay = numberOrNull(series.lastDataDay);
+    return {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Base 100',
+            data: baseLine,
+            borderColor: 'rgba(255,255,255,0.48)',
+            backgroundColor: 'transparent',
+            borderDash: [6, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0,
+            fill: false,
+            isRpsDecompositionGuide: true
+          },
+          {
+            label: 'RPS preservado 90',
+            data: preservedLine,
+            borderColor: 'rgba(76,175,125,0.78)',
+            backgroundColor: 'transparent',
+            borderDash: [3, 4],
+            borderWidth: 1.4,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0,
+            fill: false,
+            isRpsDecompositionGuide: true
+          },
+          ...defs.map((def) => {
+            const data = slice(series.data[def.key]);
+            return {
+              label: def.label,
+              data,
+              borderColor: def.color,
+              backgroundColor: `${def.color}22`,
+              borderWidth: def.borderWidth,
+              pointRadius: (ctx) => {
+                const day = lensStart + ctx.dataIndex;
+                if (data[ctx.dataIndex] === null || data[ctx.dataIndex] === undefined) return 0;
+                if (lastDataDay !== null && day === lastDataDay) return 4;
+                return (MILESTONE_DAYS.includes(day) || day % 30 === 0) ? 2 : 0;
+              },
+              pointHoverRadius: 5,
+              pointHitRadius: 10,
+              pointBackgroundColor: def.color,
+              pointBorderColor: '#1A1A1A',
+              pointBorderWidth: 1,
+              tension: 0.28,
+              spanGaps: false,
+              fill: false,
+              rpsDecompositionKey: def.key,
+              rpsDecompositionMeta: series.meta,
+              rpsDecompositionValueCopy: def.valueCopy,
+              sourceLabel: series.sourceLabel
+            };
+          })
+        ]
+      },
+      options: chartOptions({
+        layout: { padding: { top: 22, right: 12, bottom: 2, left: 2 } },
+        interaction: { mode: 'nearest', intersect: false, axis: 'xy' },
+        plugins: {
+          rpsPhaseBands: {
+            enabled: true,
+            bands: rpsPhaseBandsForLens(maxDay, lensStart, lensEnd)
+          },
+          legend: {
+            position: 'bottom',
+            labels: {
+              usePointStyle: true,
+              boxWidth: 8,
+              boxHeight: 8,
+              padding: 16
+            }
+          },
+          tooltip: {
+            position: 'nearest',
+            callbacks: {
+              title: (items) => {
+                const day = lensStart + (items[0]?.dataIndex ?? 0);
+                return day === 0 ? 'D0' : `D+${day}`;
+              },
+              label: (ctx) => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y, 1)}`,
+              afterLabel: (ctx) => {
+                if (ctx.dataset?.isRpsDecompositionGuide) {
+                  return ctx.dataset.label === 'Base 100'
+                    ? 'D0-D30 = referência de comparação.'
+                    : 'Patamar visual para RPS preservado.';
+                }
+                const day = lensStart + ctx.dataIndex;
+                const meta = ctx.dataset.rpsDecompositionMeta?.[day];
+                if (!meta) return 'Dado indisponível nesta data; não é zero.';
+                const copy = typeof ctx.dataset.rpsDecompositionValueCopy === 'function'
+                  ? ctx.dataset.rpsDecompositionValueCopy(meta)
+                  : '';
+                return [
+                  copy,
+                  `Janela MM7: ${rpsPeriodLabel(meta)} | Receita ${fmtBRL(meta.receita)} | Sessões ${fmtNum(meta.sessoes)} | Pedidos ${meta.pedidos === null ? 'pendente' : fmtNum(meta.pedidos)}`,
+                  'Leitura: índices acima de 100 superam a base; abaixo de 100 ficam aquém da base.'
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              maxRotation: 0,
+              callback: (_, index) => {
+                const day = lensStart + index;
+                if (index === 0 || day === lensEnd) return day === 0 ? 'D0' : `D+${day}`;
+                return rampDailyTickLabel(day, lensEnd);
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: axisMax,
+            ticks: { callback: (value) => fmtNum(value, 0) },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
+        }
+      })
     };
   }
 
@@ -4696,9 +4956,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const modelOptions = availableComparisonLaunches();
     const productOptions = productFilterOptions();
     const colorOptions = productColorFilterOptions();
-    const isRps = Boolean(metric?.rps);
-    const productScopeControls = isRps
-      ? `<span class="ramp-rps-scope">100% é a referência fixa. 90% e 75% são guias visuais provisórios.</span>`
+    const isRpsContext = Boolean(metric?.rps || metric?.rpsDecomposition);
+    const productScopeControls = isRpsContext
+      ? `<span class="ramp-rps-scope">${metric?.rpsDecomposition ? 'Índices usam D0-D30 = 100. Receita, sessões e pedidos explicam a variação do RPS.' : '100% é a referência fixa. 90% e 75% são guias visuais provisórios.'}</span>`
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -4716,7 +4976,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     wrap.innerHTML = `
       ${lensButtons}
       <div class="ramp-quick-row ramp-filter-row">
-        <span class="ramp-quick-label">${labelTip('Recorte', 'Define linha e lançamento destacado. Em RPS, produto, cor e canal não entram no cálculo; a régua de 100% vem da própria linha/produto, e 90%/75% são guias visuais provisórios.')}</span>
+        <span class="ramp-quick-label">${labelTip('Recorte', 'Define linha e lançamento destacado. Em RPS e na decomposição, produto, cor e canal não entram no cálculo; as sessões vêm do ShopifyQL e a receita da fonte oficial SSOT.')}</span>
         <label class="ramp-filter-field"><span>Linha</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="line" aria-label="Filtrar linha na curva">
             <option value="all" ${state.lineFilter === 'all' ? 'selected' : ''}>Todas as linhas</option>
@@ -10323,9 +10583,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const isHealth = Boolean(rampMetric.health);
       const isShare = Boolean(rampMetric.share);
       const isRps = Boolean(rampMetric.rps);
+      const isRpsDecomposition = Boolean(rampMetric.rpsDecomposition);
       const isWeekly = isHealth || rampMetric.cadence === 'semana';
       const comparisonMaxDay = normalizedRampMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected]);
-      const maxDay = isRps ? rpsLatestDataDay(selected) : comparisonMaxDay;
+      const maxDay = (isRps || isRpsDecomposition) ? rpsLatestDataDay(selected) : comparisonMaxDay;
       renderRampQuickControls(maxDay, rampMetric, mode);
       let lensBounds = rampTimeLensBounds(maxDay, rampMetric);
       let weeklyLens = isWeekly
@@ -10369,6 +10630,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
           subText.textContent = `Curva MM7 com referência fixa e guias 90/75 - ${coverage}`;
+        } else if (isRpsDecomposition) {
+          subText.textContent = `Índices com D0-D30 = 100 para RPS, receita/dia, sessões/dia e pedidos/dia - ${coverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -10383,7 +10646,16 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             ? `Semanas fechadas desde o D0; o losango marca a primeira estabilizacao confirmada · ${coverage}`
             : `${rampMetric.shortLabel} acumulado por dia desde o lancamento · ${coverage}`;
       }
+      }
+      if (isRpsDecomposition) {
+        createChart(canvasId, rpsDecompositionChartConfig(selected, maxDay, lensStart, lensEnd, normalizedLabels));
+        if (canvasId === 'chart-normalized') {
+          renderRampPeriodAnalysis(selected, normalizedLaunches);
+          renderRampHealthInsight(selected);
+          renderRpsAutosustainAnalysis(null);
         }
+        return;
+      }
       const selectedLineLaunches = normalizedLaunches.filter((launch) => launch.modelo_id === selected.modelo_id);
       const visibleLineLaunches = isRps
         ? (selectedLineLaunches.length ? selectedLineLaunches : [selected])
