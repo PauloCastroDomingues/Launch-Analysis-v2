@@ -29,10 +29,12 @@
     _fallback: ['#E05252', '#5BB8D4', '#A87FD4', '#8FBD56']
   };
 
+  const GENERAL_PERIOD_KEY = 'all';
   const WINDOW_DAYS = { '7d': 7, '15d': 15, '30d': 30, '60d': 60, '90d': 90 };
   const WINDOW_KEYS = Object.keys(WINDOW_DAYS);
   const MODELS_WITHOUT_SUBMODELS = new Set(['rs8_monochrome']);
   const WINDOW_LABELS = {
+    [GENERAL_PERIOD_KEY]: 'Toda a curva',
     '7d': 'D+7',
     '15d': 'D+15',
     '30d': 'D+30',
@@ -40,11 +42,12 @@
     '90d': 'D+90'
   };
   const ANALYSIS_PERIODS = [
-    { key: '7d', label: '7 dias' },
-    { key: '15d', label: '15 dias' },
-    { key: '30d', label: '30 dias' },
-    { key: '60d', label: '60 dias' },
-    { key: '90d', label: '90 dias' }
+    { key: GENERAL_PERIOD_KEY, label: 'Toda a curva' },
+    { key: '7d', label: 'Até D+7' },
+    { key: '15d', label: 'Até D+15' },
+    { key: '30d', label: 'Até D+30' },
+    { key: '60d', label: 'Até D+60' },
+    { key: '90d', label: 'Até D+90' }
   ];
   const CHANNEL_FILTERS = [
     { key: 'all', label: 'Todos os canais' },
@@ -72,6 +75,11 @@
   const AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS = 4;
   const AUTOSUSTAIN_WEEK_DAYS = 7;
   const AUTOSUSTAIN_BASE_PHASE_KEY = 'd0_30';
+  const RPS_DRIVER_SHIFT_MIN_WEEKS = 3;
+  const RPS_EXECUTIVE_PERFORMANCE_COLOR = '#F2F0EA';
+  const RPS_EXECUTIVE_SUPPORT_COLOR = '#5BB8D4';
+  const RPS_EXECUTIVE_TRAFFIC_COLOR = '#7DB4E6';
+  const RPS_EXECUTIVE_EFFICIENCY_COLOR = '#4CAF7D';
   const RAMP_RHYTHM_TREND_LIMIT = 0.10;
   const RAMP_STABILITY_STRONG_RATIO = 0.50;
   const RAMP_STABILITY_MIN_RATIO = 0.35;
@@ -119,12 +127,19 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     canibalLineFilter: null,
     storyAnalysisByModel: {},
     storySubModelByModel: {},
+    rpsExperienceMode: 'executive',
+    rpsDetailsExpanded: false,
+    rpsDetailsOriginScrollY: null,
+    rpsDetailsReturnSlot: null,
+    rpsShowReferences: false,
+    rpsAutosustainSelectedWeekIndex: null,
     charts: {},
     zoomChart: null
   };
 
   const $ = (id) => document.getElementById(id);
   let collapsibleListSequence = 0;
+  let rpsDetailsEscapeBound = false;
 
   const fmtBRL = (value, compact = false) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '—';
@@ -150,6 +165,13 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     if (value === null || value === undefined || Number.isNaN(value)) return 'â€”';
     const prefix = value > 0 ? '+' : '';
     return `${prefix}${fmtPct(value, digits)}`;
+  };
+
+  const fmtSignedBRL = (value, compact = false) => {
+    const parsed = numberOrNull(value);
+    if (parsed === null) return '—';
+    const prefix = parsed > 0 ? '+' : parsed < 0 ? '-' : '';
+    return `${prefix}${fmtBRL(Math.abs(parsed), compact)}`;
   };
 
   const fmtDate = (iso) => {
@@ -1327,13 +1349,17 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     };
   }
 
-  function weeklyFromDaily(daily) {
+  function weeklyFromDaily(daily, maxDay = 90) {
     const weeks = new Map();
+    const endLimit = Math.max(0, Number(maxDay) || 0);
     daily.forEach((row) => {
-      if (row.day < 0 || row.day > 90) return;
+      if (row.day < 0 || row.day > endLimit) return;
       const week = Math.floor(row.day / 7) + 1;
       const key = `Sem ${week}`;
-      const current = weeks.get(key) || { label: key, receita: 0, pedidos: 0 };
+      const weekStart = (week - 1) * 7;
+      const weekEnd = Math.min(weekStart + 6, endLimit);
+      const current = weeks.get(key) || { label: key, startDay: weekStart, endDay: weekEnd, partial: weekEnd < weekStart + 6, receita: 0, pedidos: 0 };
+      current.endDay = Math.max(current.endDay, Math.min(row.day, weekEnd));
       current.receita += Number(row.receita || 0);
       current.pedidos += Number(row.pedidos || 0);
       weeks.set(key, current);
@@ -1455,6 +1481,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function launchWindowRangeLabel(launch, key) {
+    if (key === GENERAL_PERIOD_KEY) return launchOverviewRangeLabel(launch);
     const d0 = analysisDayZero(launch);
     const endDay = windowEndDay(key);
     if (!d0 || endDay === null) return 'janela sem D0';
@@ -1462,13 +1489,71 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function selectedPeriodKey() {
-    return WINDOW_KEYS.includes(state.analysisPeriodKey || '') ? state.analysisPeriodKey : '30d';
+    const key = state.analysisPeriodKey || '';
+    return ANALYSIS_PERIODS.some((period) => period.key === key) ? key : '30d';
+  }
+
+  function isGeneralAnalysisPeriod() {
+    return selectedPeriodKey() === GENERAL_PERIOD_KEY;
+  }
+
+  function launchOverviewEndDay(launch) {
+    const rows = [
+      launch?.acumulado_lancamento,
+      launch?.acumulado_atual
+    ].filter(Boolean);
+    const fromRows = rows.flatMap((row) => [
+      numberOrNull(row?.data_day),
+      numberOrNull(row?.activity_day),
+      numberOrNull(row?.day)
+    ]).filter((value) => value !== null && value >= 0);
+    const fromLaunch = [
+      numberOrNull(launch?.dPlus),
+      latestLaunchDataDay(launch),
+      rampExportEndDay(launch)
+    ].filter((value) => value !== null && value >= 0);
+    const values = [...fromRows, ...fromLaunch];
+    return values.length ? Math.max(...values) : 90;
+  }
+
+  function launchOverviewRangeLabel(launch, endDay = launchOverviewEndDay(launch)) {
+    const day = numberOrNull(endDay);
+    if (day === null) return 'Toda a curva';
+    return `D0 a D+${fmtNum(Math.max(0, day))}`;
+  }
+
+  function overviewWindowForLaunch(launch) {
+    const day = launchOverviewEndDay(launch);
+    const dailyAggregate = day !== null ? launchRevenueForDayRange(launch, 0, day) : null;
+    const bestWindowKey = day === null ? null : [...WINDOW_KEYS]
+      .reverse()
+      .find((key) => windowEndDay(key) <= day && getWindow(launch, key));
+    const source = [dailyAggregate, bestWindowKey ? getWindow(launch, bestWindowKey) : null]
+      .find((item) => item && [item.receita, item.pedidos, item.pares].some((value) => numberOrNull(value) !== null))
+      || null;
+    if (!source) return null;
+    return {
+      ...source,
+      day,
+      activity_day: numberOrNull(source?.activity_day) ?? day,
+      data_day: numberOrNull(source?.data_day) ?? day,
+      label: selectedPeriodLabel()
+    };
   }
 
   function selectedAnalysisWindow(launch) {
     const period = selectedPeriodKey();
     if (!launch) {
       return { key: null, data: null, isCurrentAccumulated: false, label: '—' };
+    }
+    if (isGeneralAnalysisPeriod()) {
+      return {
+        key: period,
+        data: overviewWindowForLaunch(launch),
+        isCurrentAccumulated: true,
+        label: selectedPeriodLabel(),
+        range: launchOverviewRangeLabel(launch)
+      };
     }
 
     return {
@@ -1480,11 +1565,12 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function isSpecificAnalysisPeriod() {
-    return WINDOW_KEYS.includes(state.analysisPeriodKey || '');
+    return WINDOW_KEYS.includes(selectedPeriodKey());
   }
 
   function selectedPeriodEndDay(launch, { capToAvailable = false } = {}) {
     const period = selectedPeriodKey();
+    if (period === GENERAL_PERIOD_KEY) return null;
     const day = WINDOW_DAYS[period] ?? WINDOW_DAYS['30d'];
     if (day === null) return null;
     if (!capToAvailable) return Math.max(0, Math.min(90, day));
@@ -1498,13 +1584,18 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function selectedPeriodWindowKeys(launch) {
     const endDay = selectedPeriodEndDay(launch);
+    if (endDay === null || endDay === undefined) return WINDOW_KEYS;
     return WINDOW_KEYS.filter((key) => windowEndDay(key) <= endDay);
   }
 
   function selectedPeriodLabel() {
     const key = selectedPeriodKey();
     const period = ANALYSIS_PERIODS.find((item) => item.key === key);
-    return period?.label || '30 dias';
+    return period?.label || 'Até D+30';
+  }
+
+  function selectedPeriodScopeLabel() {
+    return isGeneralAnalysisPeriod() ? 'em toda a curva' : `até ${windowLabel(selectedPeriodKey())}`;
   }
 
   function selectedRampMetricKey() {
@@ -1558,14 +1649,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       },
       rps_decomposicao: {
         key: 'rps_decomposicao',
-        label: 'Decomposição do RPS',
+        label: 'Decomposição ao longo do lançamento',
         shortLabel: 'Decomp. RPS',
         field: null,
-        format: 'index',
-        cadence: 'dia',
+        format: 'brl',
+        cadence: 'semana',
         cumulative: false,
         rpsDecomposition: true,
-        tooltip: 'Mostra RPS, receita/dia, sessões/dia e pedidos/dia em índice, todos com D0-D30 = 100. Ajuda a separar eficiência de volume.'
+        tooltip: 'Explica a variação de receita da semana selecionada contra D0-D30 por dois drivers: sessões e RPS.'
       },
       receita_acumulada: {
         key: 'receita_acumulada',
@@ -1659,6 +1750,25 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       .map(launchCurrentRampDay)
       .filter((value) => value !== null && value >= 0);
     return days.length ? Math.max(0, ...days) : 90;
+  }
+
+  function selectedPeriodChartEndDayForLaunch(launch, sourceMaxDay = launchCurrentRampDay(launch)) {
+    const targetDay = selectedPeriodEndDay(launch);
+    const sourceDay = numberOrNull(sourceMaxDay);
+    if (isGeneralAnalysisPeriod()) {
+      const fallbackDay = sourceDay === null ? launchOverviewEndDay(launch) : sourceDay;
+      return Math.max(0, fallbackDay === null ? 0 : fallbackDay);
+    }
+    if (targetDay === null || targetDay === undefined) return sourceDay === null ? 0 : Math.max(0, sourceDay);
+    if (sourceDay === null) return Math.max(0, targetDay);
+    return Math.max(0, Math.min(targetDay, sourceDay));
+  }
+
+  function selectedPeriodChartMaxDay(launches, sourceMaxDay = normalizedRampMaxDay(launches)) {
+    const sourceDay = numberOrNull(sourceMaxDay);
+    if (isGeneralAnalysisPeriod()) return Math.max(0, sourceDay === null ? normalizedRampMaxDay(launches) : sourceDay);
+    const periodDay = WINDOW_DAYS[selectedPeriodKey()] ?? WINDOW_DAYS['30d'];
+    return Math.max(0, Math.min(periodDay, sourceDay === null ? periodDay : sourceDay));
   }
 
   function rampMonthIndex(day) {
@@ -2204,6 +2314,771 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     };
   }
 
+  function rpsDriverSnapshotFromParts(reference, current, extras = {}) {
+    const receita0 = numberOrNull(reference?.receita);
+    const receita1 = numberOrNull(current?.receita);
+    const sessoes0 = numberOrNull(reference?.sessoes);
+    const sessoes1 = numberOrNull(current?.sessoes);
+    const rps0 = numberOrNull(reference?.rps);
+    const rps1 = numberOrNull(current?.rps);
+    if ([receita0, receita1, sessoes0, sessoes1, rps0, rps1].some((value) => value === null)) return null;
+    const efeitoSessoes = (sessoes1 - sessoes0) * ((rps0 + rps1) / 2);
+    const efeitoRps = (rps1 - rps0) * ((sessoes0 + sessoes1) / 2);
+    const variacaoReceita = efeitoSessoes + efeitoRps;
+    const compensacaoRps = efeitoSessoes < 0 && efeitoRps > 0
+      ? efeitoRps / Math.abs(efeitoSessoes)
+      : null;
+    return {
+      previous: reference,
+      current,
+      receita0,
+      receita1,
+      sessoes0,
+      sessoes1,
+      rps0,
+      rps1,
+      efeitoSessoes,
+      efeitoRps,
+      variacaoReceita,
+      compensacaoRps,
+      variacaoPct: receita0 ? variacaoReceita / receita0 : null,
+      afterSessoes: receita0 + efeitoSessoes,
+      afterRps: receita1,
+      pedidos0: numberOrNull(reference?.pedidos),
+      pedidos1: numberOrNull(current?.pedidos),
+      ...extras
+    };
+  }
+
+  function rpsAutosustainSelectedRow(snapshot, updateState = true) {
+    const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    const selectedIndex = numberOrNull(state.rpsAutosustainSelectedWeekIndex);
+    const selected = selectedIndex === null ? null : rows.find((row) => row.weekIndex === selectedIndex);
+    const fallback = selected || snapshot?.currentRpsRow || snapshot?.current || [...rows].reverse().find((row) => row.rpsSummary?.rps !== null) || null;
+    if (fallback && updateState) state.rpsAutosustainSelectedWeekIndex = fallback.weekIndex;
+    return fallback;
+  }
+
+  function rpsEquivalentReferenceFromBase(snapshot, row) {
+    const baseSummary = snapshot?.base?.rpsSummary;
+    const currentSummary = row?.rpsSummary;
+    if (!baseSummary || !currentSummary) return null;
+    const baseDays = Math.max(1, numberOrNull(baseSummary.daysCovered) || numberOrNull(snapshot?.base?.days) || 31);
+    const currentDays = Math.max(1, numberOrNull(currentSummary.daysCovered) || numberOrNull(row?.days) || AUTOSUSTAIN_WEEK_DAYS);
+    const baseSessions = numberOrNull(baseSummary.sessoes);
+    const baseRps = numberOrNull(baseSummary.rps);
+    if (baseSessions === null || baseRps === null) return null;
+    const sessoes = (baseSessions / baseDays) * currentDays;
+    const receita = sessoes * baseRps;
+    return {
+      ...baseSummary,
+      startDay: 0,
+      endDay: currentDays - 1,
+      label: `Base D0-D30 equivalente a ${fmtNum(currentDays)} dias`,
+      daysCovered: currentDays,
+      sessoes,
+      receita,
+      rps: baseRps,
+      referenceMode: 'launch',
+      referenceLabel: 'D0-D30'
+    };
+  }
+
+  function rpsEquivalentReferenceFromPrevious(snapshot, row) {
+    const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    const currentSummary = row?.rpsSummary;
+    if (!currentSummary) return null;
+    const currentDays = Math.max(1, numberOrNull(currentSummary.daysCovered) || numberOrNull(row?.days) || AUTOSUSTAIN_WEEK_DAYS);
+    const previousRow = [...rows]
+      .filter((candidate) => candidate.weekIndex < row.weekIndex && candidate.rpsSummary?.rps !== null && candidate.rpsSummary?.sessoes !== null)
+      .sort((a, b) => b.weekIndex - a.weekIndex)[0] || null;
+    if (!previousRow?.rpsSummary) return null;
+    const previousDays = Math.max(1, numberOrNull(previousRow.rpsSummary.daysCovered) || numberOrNull(previousRow.days) || AUTOSUSTAIN_WEEK_DAYS);
+    const previousSessions = numberOrNull(previousRow.rpsSummary.sessoes);
+    const previousRps = numberOrNull(previousRow.rpsSummary.rps);
+    if (previousSessions === null || previousRps === null) return null;
+    const sessoes = (previousSessions / previousDays) * currentDays;
+    const receita = sessoes * previousRps;
+    return {
+      ...previousRow.rpsSummary,
+      label: previousRow.label,
+      daysCovered: currentDays,
+      sessoes,
+      receita,
+      rps: previousRps,
+      referenceMode: 'previous',
+      referenceLabel: previousRow.label || 'semana anterior'
+    };
+  }
+
+  function rpsTimelineDriverSnapshot(snapshot, row, mode = 'launch') {
+    const currentSummary = row?.rpsSummary;
+    if (!snapshot || !row || !currentSummary) return null;
+    const reference = mode === 'previous'
+      ? rpsEquivalentReferenceFromPrevious(snapshot, row)
+      : rpsEquivalentReferenceFromBase(snapshot, row);
+    if (!reference) return null;
+    const current = {
+      ...currentSummary,
+      label: row.label,
+      weekIndex: row.weekIndex
+    };
+    return rpsDriverSnapshotFromParts(reference, current, {
+      row,
+      weekIndex: row.weekIndex,
+      referenceMode: mode,
+      referenceLabel: reference.referenceLabel || (mode === 'previous' ? 'semana anterior' : 'D0-D30'),
+      currentLabel: row.label,
+      currentTickLabel: row.tickLabel,
+      partial: Boolean(row.partial)
+    });
+  }
+
+  function rpsDriverEffectIsPositive(value) {
+    const parsed = numberOrNull(value);
+    if (parsed === null) return null;
+    return parsed >= 0;
+  }
+
+  function rpsDriverWeekClassification(driver) {
+    if (!driver) return { key: 'pending', label: 'Dados insuficientes', tone: 'neutral' };
+    const sessionsPositive = rpsDriverEffectIsPositive(driver.efeitoSessoes);
+    const rpsPositive = rpsDriverEffectIsPositive(driver.efeitoRps);
+    if (sessionsPositive === null || rpsPositive === null) return { key: 'pending', label: 'Dados insuficientes', tone: 'neutral' };
+    if (sessionsPositive && rpsPositive) return { key: 'healthy_growth', label: 'Crescimento saudável', tone: 'positive' };
+    if (sessionsPositive && !rpsPositive) return { key: 'traffic_dependent', label: 'Dependência de tráfego', tone: 'warning' };
+    if (!sessionsPositive && rpsPositive) return { key: 'traffic_decoupling', label: 'Desacoplamento de tráfego', tone: 'positive' };
+    return { key: 'deterioration', label: 'Deterioração', tone: 'negative' };
+  }
+
+  function rpsDriverDominantComponent(driver) {
+    if (!driver) return { key: 'pending', label: 'Dados insuficientes', tone: 'neutral' };
+    const sessionsAbs = Math.abs(numberOrNull(driver.efeitoSessoes) ?? 0);
+    const rpsAbs = Math.abs(numberOrNull(driver.efeitoRps) ?? 0);
+    if (!sessionsAbs && !rpsAbs) return { key: 'mixed', label: 'Misto', tone: 'neutral' };
+    if (sessionsAbs >= rpsAbs * 1.15) return { key: 'sessions', label: 'Sessões', tone: 'traffic' };
+    if (rpsAbs >= sessionsAbs * 1.15) return { key: 'rps', label: 'RPS', tone: 'rps' };
+    return { key: 'mixed', label: 'Misto', tone: 'neutral' };
+  }
+
+  function rpsDriverConsecutiveRuns(rows = [], predicate, minWeeks = 2) {
+    const runs = [];
+    let currentRun = [];
+    const flush = () => {
+      if (currentRun.length >= minWeeks) {
+        runs.push({
+          rows: currentRun,
+          start: currentRun[0],
+          end: currentRun[currentRun.length - 1],
+          weeks: currentRun.length
+        });
+      }
+      currentRun = [];
+    };
+    rows.forEach((row) => {
+      if (predicate(row)) {
+        currentRun.push(row);
+      } else {
+        flush();
+      }
+    });
+    flush();
+    return runs;
+  }
+
+  function rpsDriverCompensationCopy(driver) {
+    const compensation = numberOrNull(driver?.compensacaoRps);
+    if (compensation === null) return 'não aplicável';
+    if (compensation >= 1) return '100%+ · RPS compensou integralmente';
+    return `${fmtPct(compensation, 1)} · RPS compensou parcialmente`;
+  }
+
+  function rpsTimelineDriverRows(snapshot, mode = 'launch') {
+    const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    return rows.map((row) => {
+      const driver = rpsTimelineDriverSnapshot(snapshot, row, mode);
+      const driverClassification = rpsDriverWeekClassification(driver);
+      const dominantDriver = rpsDriverDominantComponent(driver);
+      return {
+        ...row,
+        driver,
+        efeitoSessoes: driver?.efeitoSessoes ?? null,
+        efeitoRps: driver?.efeitoRps ?? null,
+        variacaoReceita: driver?.variacaoReceita ?? null,
+        driverClassification,
+        dominantDriver
+      };
+    });
+  }
+
+  function rpsRevenueDriverSnapshot(launch, windowDays = RPS_SMOOTHING_WINDOW_DAYS, mode = 'launch') {
+    const snapshot = rpsAutosustainSnapshotForLaunch(launch);
+    const row = rpsAutosustainSelectedRow(snapshot, false);
+    return rpsTimelineDriverSnapshot(snapshot, row, mode);
+  }
+
+  function rpsDriverMainCopy(snapshot) {
+    if (!snapshot) return 'Ainda não há duas janelas comparáveis para decompor a variação da receita.';
+    const direction = snapshot.variacaoReceita >= 0 ? 'cresceu' : 'caiu';
+    const trafficCopy = snapshot.efeitoSessoes >= 0
+      ? `sessões adicionaram ${fmtSignedBRL(snapshot.efeitoSessoes)}`
+      : `sessões retiraram ${fmtBRL(Math.abs(snapshot.efeitoSessoes))}`;
+    const rpsCopy = snapshot.efeitoRps >= 0
+      ? `RPS adicionou ${fmtSignedBRL(snapshot.efeitoRps)}`
+      : `RPS retirou ${fmtBRL(Math.abs(snapshot.efeitoRps))}`;
+    return `Receita ${direction} ${fmtSignedBRL(snapshot.variacaoReceita)}. ${trafficCopy}; ${rpsCopy}.`;
+  }
+
+  function rpsDriverLabel(snapshot) {
+    if (!snapshot) return 'Dados insuficientes';
+    const sessionAbs = Math.abs(snapshot.efeitoSessoes);
+    const rpsAbs = Math.abs(snapshot.efeitoRps);
+    const grew = snapshot.variacaoReceita >= 0;
+    if (sessionAbs >= rpsAbs * 1.15) {
+      return grew ? 'Crescimento puxado por tráfego' : 'Queda puxada por tráfego';
+    }
+    if (rpsAbs >= sessionAbs * 1.15) {
+      return grew ? 'Crescimento puxado por eficiência' : 'Queda puxada por eficiência';
+    }
+    return grew ? 'Crescimento misto' : 'Queda mista';
+  }
+
+  function rpsDriverTone(value) {
+    const parsed = numberOrNull(value);
+    if (parsed === null) return 'neutral';
+    return parsed >= 0 ? 'positive' : 'negative';
+  }
+
+  function rpsDriverTimelineInsight(snapshot) {
+    const rows = rpsTimelineDriverRows(snapshot, 'launch').filter((row) => row.driver);
+    const latest = [...rows].reverse().find(Boolean) || null;
+    const trafficDecouplingRuns = rpsDriverConsecutiveRuns(
+      rows,
+      (row) => row.driverClassification?.key === 'traffic_decoupling',
+      2
+    );
+    const fullCompensationRuns = rpsDriverConsecutiveRuns(
+      rows,
+      (row) => (numberOrNull(row.driver?.compensacaoRps) ?? 0) >= 1,
+      2
+    );
+    const rpsDominanceRuns = rpsDriverConsecutiveRuns(
+      rows,
+      (row) => row.dominantDriver?.key === 'rps',
+      RPS_DRIVER_SHIFT_MIN_WEEKS
+    );
+    const structuralShiftRun = rpsDominanceRuns.find((run) => rows.some((row) => (
+      row.weekIndex < run.start.weekIndex && row.dominantDriver?.key === 'sessions'
+    ))) || null;
+    const activeTrafficDecouplingRun = latest
+      ? trafficDecouplingRuns.find((run) => run.end.weekIndex === latest.weekIndex) || null
+      : null;
+    const activeFullCompensationRun = latest
+      ? fullCompensationRuns.find((run) => run.end.weekIndex === latest.weekIndex) || null
+      : null;
+    return {
+      rows,
+      latest,
+      trafficDecouplingRuns,
+      firstTrafficDecouplingRun: trafficDecouplingRuns[0] || null,
+      activeTrafficDecouplingRun,
+      fullCompensationRuns,
+      activeFullCompensationRun,
+      rpsDominanceRuns,
+      structuralShiftRun
+    };
+  }
+
+  function rpsDriverEffortCaveat(snapshot) {
+    return snapshot?.comparableRows?.length
+      ? 'Autosustentação ainda depende da leitura conjunta com esforço e persistência.'
+      : 'Autosustentação ainda não pode ser confirmada por falta de dados comparáveis de esforço.';
+  }
+
+  function rpsDriverTimelineNarrative(snapshot) {
+    const insight = rpsDriverTimelineInsight(snapshot);
+    if (!insight.rows.length) {
+      return 'Ainda não há semanas fechadas comparáveis para decompor a trajetória entre sessões e RPS.';
+    }
+    if (insight.activeFullCompensationRun) {
+      const shiftSentence = insight.structuralShiftRun
+        ? `A mudança de driver começou aproximadamente em ${insight.structuralShiftRun.start.tickLabel}.`
+        : '';
+      return [`O RPS passou a compensar integralmente a perda de sessões a partir de ${insight.activeFullCompensationRun.start.tickLabel}.`, shiftSentence].filter(Boolean).join(' ');
+    }
+    if (insight.activeTrafficDecouplingRun) {
+      const weeks = insight.activeTrafficDecouplingRun.weeks || insight.activeTrafficDecouplingRun.rows?.length || 0;
+      const shiftSentence = insight.structuralShiftRun
+        ? `A mudança de driver começou aproximadamente em ${insight.structuralShiftRun.start.tickLabel}.`
+        : rpsDriverEffortCaveat(snapshot);
+      return [`Nas últimas ${fmtNum(weeks)} semanas, a redução de sessões vem sendo parcialmente compensada pelo aumento de RPS.`, shiftSentence].filter(Boolean).join(' ');
+    }
+    if (insight.structuralShiftRun) {
+      const priorSession = [...insight.rows]
+        .filter((row) => row.weekIndex < insight.structuralShiftRun.start.weekIndex && row.dominantDriver?.key === 'sessions')
+        .reverse()[0] || null;
+      const firstSentence = priorSession
+        ? `Até ${priorSession.tickLabel}, o resultado foi predominantemente sustentado por sessões.`
+        : '';
+      const secondSentence = `A partir de ${insight.structuralShiftRun.start.tickLabel}, o RPS passou a ser o principal driver e permaneceu assim por ${fmtNum(insight.structuralShiftRun.weeks)} semanas.`;
+      return [firstSentence, secondSentence].filter(Boolean).join(' ');
+    }
+    if (insight.latest?.driverClassification?.key === 'deterioration') {
+      return 'A semana mais recente mostra deterioração: sessões e RPS contribuem negativamente contra D0-D30.';
+    }
+    if (insight.latest?.driverClassification?.key === 'traffic_dependent') {
+      return 'O resultado continua predominantemente dependente de sessões.';
+    }
+    if (insight.latest?.driverClassification?.key === 'healthy_growth') {
+      return 'A semana mais recente mostra crescimento saudável: sessões e RPS contribuem positivamente contra D0-D30.';
+    }
+    if (insight.latest?.dominantDriver?.key === 'sessions') {
+      return 'O produto continua dependente de tráfego: sessões permanecem como principal driver do resultado.';
+    }
+    if (insight.latest?.driverClassification?.key === 'traffic_decoupling') {
+      return `Desacoplamento de tráfego detectado em ${insight.latest.tickLabel}, ainda sem persistência suficiente para leitura estrutural. ${rpsDriverEffortCaveat(snapshot)}`;
+    }
+    if (insight.latest?.dominantDriver?.key === 'rps') {
+      return 'O RPS é o principal driver na semana mais recente, mas ainda não há semanas suficientes para chamar isso de mudança estrutural.';
+    }
+    return 'A decomposição ainda está mista: sessões e RPS alternam contribuição sem um driver dominante persistente.';
+  }
+
+  function rpsDriverTimelineSummaryHtml(snapshot) {
+    const insight = rpsDriverTimelineInsight(snapshot);
+    const latest = insight.latest;
+    const classification = latest?.driverClassification?.label || 'Dados insuficientes';
+    const dominant = latest?.dominantDriver?.label || 'Dados insuficientes';
+    const shiftCopy = insight.structuralShiftRun
+      ? `Mudança estrutural de driver detectada em ${insight.structuralShiftRun.start.tickLabel}.`
+      : 'Mudança estrutural de driver ainda não detectada.';
+    return `
+      <div class="rps-driver-timeline-summary">
+        <p>${escapeHtml(rpsDriverTimelineNarrative(snapshot))}</p>
+        <div>
+          <span>Atual: ${escapeHtml(classification)}</span>
+          <span>Driver dominante: ${escapeHtml(dominant)}</span>
+          <span>${escapeHtml(shiftCopy)}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function rpsDriverShiftMarkerOptions(snapshot) {
+    const insight = rpsDriverTimelineInsight(snapshot);
+    const run = insight.structuralShiftRun;
+    if (!run) return { enabled: false };
+    return {
+      enabled: true,
+      index: run.start.weekIndex,
+      dayLabel: run.start.tickLabel,
+      shortLabel: 'Mudança de driver',
+      label: `RPS dominante por ${fmtNum(run.weeks)} semanas`
+    };
+  }
+
+  function rpsDriverChartConfig(selected) {
+    const snapshot = rpsRevenueDriverSnapshot(selected);
+    const labels = ['Anterior', 'Sessões', 'RPS', 'Atual'];
+    if (!snapshot) {
+      return {
+        type: 'bar',
+        data: { labels, datasets: [] },
+        options: chartOptions({
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { ticks: { callback: (value) => fmtBRL(value, true) }, grid: { color: 'rgba(255,255,255,0.045)' } }
+          }
+        })
+      };
+    }
+    const values = [
+      snapshot.receita0,
+      [Math.min(snapshot.receita0, snapshot.afterSessoes), Math.max(snapshot.receita0, snapshot.afterSessoes)],
+      [Math.min(snapshot.afterSessoes, snapshot.afterRps), Math.max(snapshot.afterSessoes, snapshot.afterRps)],
+      snapshot.receita1
+    ];
+    const colors = [
+      'rgba(255,255,255,0.42)',
+      snapshot.efeitoSessoes >= 0 ? 'rgba(76,175,125,0.86)' : 'rgba(224,82,82,0.86)',
+      snapshot.efeitoRps >= 0 ? 'rgba(76,175,125,0.86)' : 'rgba(224,82,82,0.86)',
+      'rgba(240,120,0,0.86)'
+    ];
+    return {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Receita explicada',
+          data: values,
+          backgroundColor: (ctx) => colors[ctx.dataIndex] || 'rgba(255,255,255,0.3)',
+          borderColor: (ctx) => colors[ctx.dataIndex] || 'rgba(255,255,255,0.3)',
+          borderWidth: 1,
+          borderRadius: 5,
+          borderSkipped: false,
+          maxBarThickness: 92,
+          rpsDriverSnapshot: snapshot
+        }]
+      },
+      options: chartOptions({
+        layout: { padding: { top: 8, right: 12, bottom: 2, left: 2 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => labels[items[0]?.dataIndex] || '',
+              label: (ctx) => {
+                const s = ctx.dataset.rpsDriverSnapshot;
+                if (!s) return '';
+                if (ctx.dataIndex === 0) return `Receita anterior: ${fmtBRL(s.receita0)}`;
+                if (ctx.dataIndex === 1) return `Impacto de sessões: ${fmtSignedBRL(s.efeitoSessoes)}`;
+                if (ctx.dataIndex === 2) return `Impacto de RPS: ${fmtSignedBRL(s.efeitoRps)}`;
+                return `Receita atual: ${fmtBRL(s.receita1)}`;
+              },
+              afterLabel: (ctx) => {
+                const s = ctx.dataset.rpsDriverSnapshot;
+                if (!s) return '';
+                if (ctx.dataIndex === 0) {
+                  return [
+                    `Período: ${rpsPeriodLabel(s.previous)}`,
+                    `Sessões ${fmtNum(s.sessoes0)} | RPS ${fmtBRL(s.rps0)} | Pedidos ${s.pedidos0 === null ? 'pendente' : fmtNum(s.pedidos0)}`
+                  ];
+                }
+                if (ctx.dataIndex === 3) {
+                  return [
+                    `Período: ${rpsPeriodLabel(s.current)}`,
+                    `Sessões ${fmtNum(s.sessoes1)} | RPS ${fmtBRL(s.rps1)} | Pedidos ${s.pedidos1 === null ? 'pendente' : fmtNum(s.pedidos1)}`
+                  ];
+                }
+                return 'Método: efeito calculado pela média dos dois períodos para não deixar residual visual.';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            ticks: { callback: (value) => fmtBRL(value, true) },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
+        }
+      })
+    };
+  }
+
+  function rpsAutosustainSelectWeek(snapshot, rows, event, chart, elements = [], onSelectWeek = null) {
+    if (!snapshot || !chart) return;
+    const directIndex = elements?.[0]?.index;
+    const points = directIndex == null
+      ? chart.getElementsAtEventForMode(event, 'nearest', { intersect: false, axis: 'x' }, true)
+      : [];
+    const index = directIndex ?? points?.[0]?.index;
+    const row = rows?.[index];
+    if (!row) return;
+    state.rpsAutosustainSelectedWeekIndex = row.weekIndex;
+    if (typeof onSelectWeek === 'function') {
+      onSelectWeek(row);
+      return;
+    }
+    renderRpsAutosustainAnalysis(snapshot.launch);
+  }
+
+  function rpsTimelineDriverChartConfig(snapshot, mode = 'launch', onSelectWeek = null, opts = {}) {
+    const rows = rpsTimelineDriverRows(snapshot, mode);
+    const labels = rows.map((row) => row.tickLabel);
+    const options = isPlainObject(opts) ? opts : {};
+    const showDeltaLine = options.showDeltaLine !== false;
+    const compact = options.compact === true;
+    const legendDisplay = options.legendDisplay !== false;
+    const selectedWeekIndex = numberOrNull(state.rpsAutosustainSelectedWeekIndex);
+    const barColor = (ctx, positive, negative) => {
+      const value = numberOrNull(ctx.raw);
+      return value === null || value >= 0 ? positive : negative;
+    };
+    const barBorder = (ctx) => rows[ctx.dataIndex]?.weekIndex === selectedWeekIndex
+      ? 'rgba(255,255,255,0.72)'
+      : 'rgba(255,255,255,0.08)';
+    const values = rows.flatMap((row) => [row.efeitoSessoes, row.efeitoRps, row.variacaoReceita])
+      .map((value) => numberOrNull(value))
+      .filter((value) => value !== null);
+    const maxAbs = Math.max(1000, ...values.map((value) => Math.abs(value)));
+    return {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Efeito Sessões',
+            data: rows.map((row) => row.efeitoSessoes),
+            backgroundColor: (ctx) => barColor(ctx, 'rgba(74,151,210,0.82)', 'rgba(224,82,82,0.72)'),
+            borderColor: barBorder,
+            borderWidth: (ctx) => rows[ctx.dataIndex]?.weekIndex === selectedWeekIndex ? 1.5 : 0,
+            stack: 'drivers',
+            maxBarThickness: 18
+          },
+          {
+            label: 'Efeito RPS',
+            data: rows.map((row) => row.efeitoRps),
+            backgroundColor: (ctx) => barColor(ctx, 'rgba(76,175,125,0.82)', 'rgba(245,184,76,0.74)'),
+            borderColor: barBorder,
+            borderWidth: (ctx) => rows[ctx.dataIndex]?.weekIndex === selectedWeekIndex ? 1.5 : 0,
+            stack: 'drivers',
+            maxBarThickness: 18
+          },
+          ...(showDeltaLine ? [
+          {
+            type: 'line',
+            label: 'Delta Receita',
+            data: rows.map((row) => row.variacaoReceita),
+            borderColor: 'rgba(255,255,255,0.42)',
+            backgroundColor: 'transparent',
+            borderWidth: 1.2,
+            pointRadius: rows.map((row) => row.weekIndex === selectedWeekIndex ? 3 : 0),
+            pointHoverRadius: 4,
+            pointBackgroundColor: '#FFFFFF',
+            pointBorderColor: '#1A1A1A',
+            tension: 0.22,
+            fill: false,
+            order: 0,
+            isRevenueDeltaLine: true
+          }
+          ] : [])
+        ]
+      },
+      options: chartOptions({
+        layout: { padding: { top: compact ? 2 : 8, right: 12, bottom: 0, left: 0 } },
+        interaction: { mode: 'index', intersect: false, axis: 'x' },
+        onClick: (event, elements, chart) => rpsAutosustainSelectWeek(snapshot, rows, event, chart, elements, onSelectWeek),
+        plugins: {
+          rpsPhaseBands: { enabled: true, bands: snapshot?.phaseBands || [], subtle: true },
+          rpsAutosustainMarker: rpsDriverShiftMarkerOptions(snapshot),
+          legend: legendDisplay ? { position: 'bottom' } : { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => rows[items?.[0]?.dataIndex]?.tickLabel || '',
+              label: (ctx) => {
+                const value = numberOrNull(ctx.raw);
+                if (ctx.dataset?.isRevenueDeltaLine) {
+                  return value === null ? 'Delta Receita: pendente' : `Delta Receita: ${fmtSignedBRL(value)}`;
+                }
+                return value === null ? `${ctx.dataset.label}: pendente` : `${ctx.dataset.label.replace('Efeito ', '')}: ${fmtSignedBRL(value)}`;
+              },
+              afterBody: (items) => {
+                const row = rows[items?.[0]?.dataIndex];
+                const driver = row?.driver;
+                if (!driver) return ['Decomposição pendente para esta semana.'];
+                return [
+                  `Receita: ${fmtBRL(driver.receita1)}`,
+                  `Variação vs lançamento: ${fmtSignedBRL(driver.variacaoReceita)}`,
+                  `Compensação pelo RPS: ${rpsDriverCompensationCopy(driver)}`,
+                  `Estado: ${row.driverClassification?.label || 'Dados insuficientes'}`,
+                  `Driver dominante: ${row.dominantDriver?.label || 'Dados insuficientes'}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false },
+            ticks: {
+              maxRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: compact ? 8 : 10,
+              callback: (value, index) => rows[index]?.tickLabel || ''
+            }
+          },
+          y: {
+            stacked: true,
+            suggestedMin: -maxAbs * 1.05,
+            suggestedMax: maxAbs * 1.05,
+            ticks: { callback: (value) => fmtBRL(value, true) },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
+        }
+      })
+    };
+  }
+
+  function rpsDriverWaterfallChartConfig(snapshot) {
+    const labels = ['Referência', 'Sessões', 'RPS', 'Atual'];
+    if (!snapshot) {
+      return {
+        type: 'bar',
+        data: { labels, datasets: [] },
+        options: chartOptions({
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { ticks: { callback: (value) => fmtBRL(value, true) }, grid: { color: 'rgba(255,255,255,0.045)' } }
+          }
+        })
+      };
+    }
+    const values = [
+      snapshot.receita0,
+      [Math.min(snapshot.receita0, snapshot.afterSessoes), Math.max(snapshot.receita0, snapshot.afterSessoes)],
+      [Math.min(snapshot.afterSessoes, snapshot.afterRps), Math.max(snapshot.afterSessoes, snapshot.afterRps)],
+      snapshot.receita1
+    ];
+    const colors = [
+      'rgba(255,255,255,0.42)',
+      snapshot.efeitoSessoes >= 0 ? 'rgba(74,151,210,0.86)' : 'rgba(224,82,82,0.86)',
+      snapshot.efeitoRps >= 0 ? 'rgba(76,175,125,0.86)' : 'rgba(245,184,76,0.82)',
+      'rgba(240,120,0,0.86)'
+    ];
+    return {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Receita explicada',
+          data: values,
+          backgroundColor: (ctx) => colors[ctx.dataIndex] || 'rgba(255,255,255,0.3)',
+          borderColor: (ctx) => colors[ctx.dataIndex] || 'rgba(255,255,255,0.3)',
+          borderWidth: 1,
+          borderRadius: 5,
+          borderSkipped: false,
+          maxBarThickness: 78,
+          rpsDriverSnapshot: snapshot
+        }]
+      },
+      options: chartOptions({
+        layout: { padding: { top: 8, right: 12, bottom: 2, left: 2 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => labels[items[0]?.dataIndex] || '',
+              label: (ctx) => {
+                const s = ctx.dataset.rpsDriverSnapshot;
+                if (!s) return '';
+                if (ctx.dataIndex === 0) return `Receita referência: ${fmtBRL(s.receita0)}`;
+                if (ctx.dataIndex === 1) return `Impacto de sessões: ${fmtSignedBRL(s.efeitoSessoes)}`;
+                if (ctx.dataIndex === 2) return `Impacto de RPS: ${fmtSignedBRL(s.efeitoRps)}`;
+                return `Receita atual: ${fmtBRL(s.receita1)}`;
+              },
+              afterLabel: (ctx) => {
+                const s = ctx.dataset.rpsDriverSnapshot;
+                if (!s) return '';
+                if (ctx.dataIndex === 0) return `Base: ${s.referenceLabel || rpsPeriodLabel(s.previous)}`;
+                if (ctx.dataIndex === 3) return `Semana: ${s.currentLabel || rpsPeriodLabel(s.current)}`;
+                return 'Método: Δ receita = efeito sessões + efeito RPS.';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            ticks: { callback: (value) => fmtBRL(value, true) },
+            grid: { color: 'rgba(255,255,255,0.045)' }
+          }
+        }
+      })
+    };
+  }
+
+  function rpsDriverDetailHtml(driver) {
+    if (!driver) {
+      return `
+        <div class="rps-driver-detail-copy">
+          <span>Detalhe do período</span>
+          <strong>Selecione uma semana com dados</strong>
+          <p>A decomposição fica disponível quando a semana possui receita, sessões e RPS comparáveis à referência D0-D30.</p>
+        </div>
+      `;
+    }
+    return `
+      <div class="rps-driver-detail-copy">
+        <span>${labelTip('Waterfall da semana', 'O waterfall explica a semana selecionada na timeline. A referência é D0-D30 semanalizada para a mesma quantidade de dias, sem recalcular a régua por semana.')}</span>
+        <strong>Detalhe ${escapeHtml(driver.currentTickLabel || driver.currentLabel || rpsPeriodLabel(driver.current))} vs ${escapeHtml(driver.referenceLabel || 'D0-D30')}</strong>
+        <p>${escapeHtml(`${driver.currentLabel || rpsPeriodLabel(driver.current)}. ${rpsDriverMainCopy(driver)}`)}</p>
+      </div>
+      <div class="rps-driver-detail-kpis">
+        <div><span>Receita referência</span><strong>${fmtBRL(driver.receita0)}</strong></div>
+        <div><span>Receita atual</span><strong>${fmtBRL(driver.receita1)}</strong></div>
+        <div><span>Efeito sessões</span><strong>${fmtSignedBRL(driver.efeitoSessoes)}</strong></div>
+        <div><span>Efeito RPS</span><strong>${fmtSignedBRL(driver.efeitoRps)}</strong></div>
+      </div>
+    `;
+  }
+
+  function renderRpsDecompositionAnalysis(selected) {
+    const wrap = rampPeriodAnalysisWrap();
+    if (!wrap) return;
+    state.charts['chart-rps-decomposition-detail']?.destroy?.();
+    delete state.charts['chart-rps-decomposition-detail'];
+    const snapshot = rpsRevenueDriverSnapshot(selected);
+    if (!snapshot) {
+      wrap.innerHTML = `
+        <div class="rps-driver-summary rps-driver-summary--pending">
+          <div>
+            <span>Drivers do resultado</span>
+            <strong>Decomposição indisponível</strong>
+            <p>Ainda não existem duas janelas de 7 dias comparáveis para separar impacto de sessões e impacto de RPS.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    const classification = rpsDriverWeekClassification(snapshot);
+    const driverLabel = classification.label || rpsDriverLabel(snapshot);
+    const variationTone = rpsDriverTone(snapshot.variacaoReceita);
+    const driverReference = snapshot.referenceLabel || 'D0-D30';
+    wrap.innerHTML = `
+      <div class="rps-driver-summary rps-driver-summary--timeline">
+        <div class="rps-driver-copy">
+          <span>${labelTip('Drill-down da semana', 'O gráfico principal mostra a trajetória; este bloco detalha matematicamente a semana selecionada contra D0-D30.')}</span>
+          <strong>${escapeHtml(driverLabel)}</strong>
+          <p>${escapeHtml(`${snapshot.currentTickLabel || snapshot.currentLabel || rpsPeriodLabel(snapshot.current)} vs ${driverReference}. ${rpsDriverMainCopy(snapshot)}`)}</p>
+        </div>
+        <div class="rps-driver-kpis">
+          <div>
+            <span>Receita atual</span>
+            <strong>${fmtBRL(snapshot.receita1)}</strong>
+            <small>${escapeHtml(rpsPeriodLabel(snapshot.current))}</small>
+          </div>
+          <div class="rps-driver-kpi--${variationTone}">
+            <span>Variação</span>
+            <strong>${fmtSignedBRL(snapshot.variacaoReceita)}</strong>
+            <small>${snapshot.variacaoPct === null ? 'vs anterior' : fmtSignedPct(snapshot.variacaoPct, 1)}</small>
+          </div>
+          <div class="rps-driver-kpi--${rpsDriverTone(snapshot.efeitoSessoes)}">
+            <span>Sessões</span>
+            <strong>${fmtSignedBRL(snapshot.efeitoSessoes)}</strong>
+            <small>${fmtNum(snapshot.sessoes0)} → ${fmtNum(snapshot.sessoes1)}</small>
+          </div>
+          <div class="rps-driver-kpi--${rpsDriverTone(snapshot.efeitoRps)}">
+            <span>RPS</span>
+            <strong>${fmtSignedBRL(snapshot.efeitoRps)}</strong>
+            <small>${fmtBRL(snapshot.rps0)} → ${fmtBRL(snapshot.rps1)}</small>
+          </div>
+          <div>
+            <span>Compensação RPS</span>
+            <strong>${escapeHtml(rpsDriverCompensationCopy(snapshot).split(' · ')[0])}</strong>
+            <small>${escapeHtml(rpsDriverCompensationCopy(snapshot).split(' · ')[1] || 'fora de cenário de perda de sessões')}</small>
+          </div>
+        </div>
+        <div class="rps-driver-drilldown">
+          <div class="rps-driver-detail-head">
+            ${rpsDriverDetailHtml(snapshot)}
+          </div>
+          <div class="rps-driver-detail-canvas"><canvas id="chart-rps-decomposition-detail"></canvas></div>
+        </div>
+        <details class="rps-driver-details">
+          <summary>Ver cálculo</summary>
+          <span>Delta receita = efeito sessões + efeito RPS. O efeito de cada componente usa a média dos dois períodos para fechar a soma sem residual.</span>
+        </details>
+      </div>
+    `;
+    createChart('chart-rps-decomposition-detail', rpsDriverWaterfallChartConfig(snapshot));
+  }
+
   function rpsLatestDataDay(launch) {
     const model = rpsModelForLaunch(launch);
     const points = Array.isArray(model?.pontos) ? model.pontos : [];
@@ -2518,6 +3393,12 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     ];
   }
 
+  function rpsReferenceDatasetsForView(selected, chartLaunches, maxDay, lensStart, lensEnd) {
+    const datasets = rpsRulerChartDatasets(selected, chartLaunches, maxDay, lensStart, lensEnd);
+    if (state.rpsShowReferences) return datasets;
+    return datasets.filter((dataset) => dataset.isRpsRulerMedian);
+  }
+
   function rpsSummaryForRange(launch, startDay, endDay) {
     const points = rpsPointsForLaunch(launch, Math.max(0, Number(endDay) || 0))
       .filter((point) => point.day >= startDay && point.day <= endDay && point.sessoes !== null);
@@ -2552,7 +3433,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function rpsRecentWindowSummaryForLaunch(launch, windowDays = 7) {
-    const maxDay = launchCurrentRampDay(launch);
+    const maxDay = rpsLatestDataDay(launch) ?? launchCurrentRampDay(launch);
     const points = rpsPointsForLaunch(launch, maxDay).filter((point) => point.rps !== null);
     if (!points.length) return null;
     const lastDay = points[points.length - 1].day;
@@ -2636,7 +3517,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function rpsHealthSnapshotForLaunch(selected, chartLaunches = selectedCompareLaunches()) {
     if (!selected) return null;
-    const maxDay = rpsLatestDataDay(selected);
+    const maxDay = selectedPeriodChartEndDayForLaunch(selected, rpsLatestDataDay(selected));
     const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
     const days = series.rpsMeta
       .map((meta, day) => meta ? day : null)
@@ -2877,11 +3758,13 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const effortPerDay = numberOrNull(effort?.effortPerDay);
       const rpsIndex = baseRps && rps !== null ? (rps / baseRps) * 100 : null;
       const effortIndex = baseEffort && effortPerDay !== null ? (effortPerDay / baseEffort) * 100 : null;
+      const markerDay = endDay >= latestDay ? endDay : targetEndDay + 1;
       rows.push({
         key: `week_${weekIndex}`,
         weekIndex,
         label: `S${weekIndex + 1} · ${rpsAutosustainRangeLabel(startDay, endDay)}`,
-        tickLabel: rpsAutosustainDayLabel(startDay),
+        tickLabel: rpsAutosustainDayLabel(markerDay),
+        endMarkerDay: markerDay,
         phase: rpsPhaseConfig(startDay),
         ...range,
         isBaseWindow: endDay <= 30,
@@ -2988,13 +3871,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function rpsAutosustainSnapshotForLaunch(launch) {
     if (!launch) return null;
-    const maxDay = rpsLatestDataDay(launch);
+    const maxDay = selectedPeriodChartEndDayForLaunch(launch, rpsLatestDataDay(launch));
     const weekPack = rpsAutosustainWeekRows(launch, maxDay);
-    const postBaseRows = weekPack.rows.filter((row) => row.startDay > 30);
+    const rows = weekPack.rows.filter((row) => !row.partial);
+    const postBaseRows = rows.filter((row) => row.startDay > 30);
     const comparableRows = postBaseRows
       .filter((row) => row.rpsIndex !== null && row.effortIndex !== null);
-    const decouplingRuns = rpsAutosustainRuns(weekPack.rows);
-    const currentRpsRow = [...weekPack.rows].reverse().find((row) => row.rpsIndex !== null) || null;
+    const decouplingRuns = rpsAutosustainRuns(rows);
+    const currentRpsRow = [...rows].reverse().find((row) => row.rpsIndex !== null) || null;
     const currentComparable = [...comparableRows].reverse().find(Boolean) || null;
     const activeDecouplingRun = currentComparable
       ? decouplingRuns.find((run) => run.rows.some((row) => row.weekIndex === currentComparable.weekIndex)) || null
@@ -3004,6 +3888,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       launch,
       maxDay,
       ...weekPack,
+      rows,
+      allRows: weekPack.rows,
       current: currentComparable || currentRpsRow,
       currentRpsRow,
       currentComparable,
@@ -3012,7 +3898,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       decouplingRuns,
       activeDecouplingRun,
       decouplingPoint,
-      phaseBands: rpsAutosustainPhaseBandsForWeeks(maxDay, weekPack.rows),
+      phaseBands: rpsAutosustainPhaseBandsForWeeks(maxDay, rows),
       missingEffortWeeks: postBaseRows.filter((row) => row.rpsIndex !== null && row.effortIndex === null).length
     };
     snapshot.status = rpsAutosustainStatusForSnapshot(snapshot);
@@ -3080,6 +3966,21 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return `RPS preserva ${fmtPct(current.rpsIndex / 100, 1)} da referência inicial e o esforço está em ${fmtPct(current.effortIndex / 100, 1)} da base. Há sustentação em formação, mas a condição de autosustentação ainda não completou ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)} semanas.`;
   }
 
+  function rpsAutosustainTimelineNarrative(snapshot) {
+    const firstRun = snapshot?.decouplingRuns?.[0] || null;
+    const activeRun = snapshot?.activeDecouplingRun || null;
+    const statusLabel = snapshot?.status?.label || 'Dados insuficientes';
+    if (activeRun) {
+      const point = activeRun.start;
+      return `Autosustentação detectada em ${rpsAutosustainDayLabel(point.startDay)}. Desde então, o produto mantém RPS em ${fmtPct(point.rpsIndex / 100, 0)} ou mais com esforço abaixo de ${fmtPct(AUTOSUSTAIN_EFFORT_INDEX_MAX / 100, 0)} da referência.`;
+    }
+    if (firstRun) {
+      const point = firstRun.start;
+      return `Primeiro desacoplamento detectado em ${rpsAutosustainDayLabel(point.startDay)}, mas o estado atual é ${statusLabel}. A condição não deve ser lida como permanente sem persistência atual.`;
+    }
+    return rpsAutosustainInterpretation(snapshot);
+  }
+
   function rpsAutosustainKpi(label, value, detail, tooltip = '', tone = '') {
     return `
       <div class="rps-autosustain-kpi ${tone ? `rps-autosustain-kpi--${tone}` : ''}">
@@ -3106,8 +4007,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       enabled: true,
       index: point.weekIndex,
       dayLabel: rpsAutosustainDayLabel(point.startDay),
-      label: 'Início provável da autosustentação',
-      shortLabel: 'Ponto de desacoplamento'
+      eventLabel: 'Independência começa',
+      label: 'Independência começa',
+      shortLabel: 'Independência começa'
     };
   }
 
@@ -3118,6 +4020,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const valueKey = isEffort ? 'effortIndex' : 'rpsIndex';
     const metricLabel = isEffort ? 'Índice de esforço' : 'Índice de RPS';
     const metricColor = isEffort ? '#F07800' : '#E05252';
+    const selectedWeekIndex = numberOrNull(state.rpsAutosustainSelectedWeekIndex);
     const thresholds = isEffort
       ? [
           { label: 'Base 100', value: 100, color: 'rgba(255,255,255,0.38)', dash: [5, 5] },
@@ -3125,7 +4028,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         ]
       : [
           { label: 'Base 100', value: 100, color: 'rgba(255,255,255,0.38)', dash: [5, 5] },
-          { label: 'RPS preservado 90', value: AUTOSUSTAIN_RPS_INDEX_MIN, color: 'rgba(76,175,125,0.78)', dash: [3, 4] }
+          { label: 'RPS preservado 90', value: AUTOSUSTAIN_RPS_INDEX_MIN, color: 'rgba(76,175,125,0.38)', dash: [2, 6] }
         ];
     const values = rows.map((row) => row[valueKey]);
     const axisMax = rpsAutosustainIndexAxisMax(values, thresholds.map((item) => item.value));
@@ -3153,8 +4056,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             borderColor: metricColor,
             backgroundColor: isEffort ? 'rgba(240,120,0,0.14)' : 'rgba(224,82,82,0.16)',
             borderWidth: 2.5,
-            pointRadius: rows.map((row) => row.weekIndex === snapshot.decouplingPoint?.start?.weekIndex ? 4 : 1.8),
+            pointRadius: rows.map((row) => row.weekIndex === selectedWeekIndex || row.weekIndex === snapshot.decouplingPoint?.start?.weekIndex ? 4 : 1.8),
             pointHoverRadius: 5,
+            pointBackgroundColor: rows.map((row) => row.weekIndex === selectedWeekIndex ? '#FFFFFF' : metricColor),
+            pointBorderColor: '#1A1A1A',
             tension: 0.28,
             spanGaps: false,
             fill: false
@@ -3163,8 +4068,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       },
       options: chartOptions({
         layout: { padding: { top: 8, right: 12, bottom: 0, left: 0 } },
+        onClick: (event, elements, chart) => rpsAutosustainSelectWeek(snapshot, rows, event, chart, elements),
         plugins: {
-          rpsPhaseBands: { enabled: true, bands: snapshot.phaseBands },
+          rpsPhaseBands: { enabled: true, bands: snapshot.phaseBands, subtle: true },
           rpsAutosustainMarker: rpsAutosustainMarkerOptions(snapshot),
           legend: { position: 'bottom' },
           tooltip: {
@@ -3212,38 +4118,598 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     };
   }
 
-  function renderRpsAutosustainAnalysis(selected) {
-    const wrap = $('rps-autosustain-analysis');
-    if (!wrap) return;
-    ['chart-rps-autosustain', 'chart-rps-autosustain-rps', 'chart-rps-autosustain-effort'].forEach((id) => {
-      state.charts[id]?.destroy?.();
-      delete state.charts[id];
+  function currentSelectedLaunch() {
+    return state.launches.find((launch) => launch.modelo_id === state.primaryModelId)
+      || comparableLaunches()[0]
+      || state.launches[0]
+      || null;
+  }
+
+  function isRpsExecutiveView(metric = rampMetricConfig()) {
+    return Boolean(metric?.rps);
+  }
+
+  function setNormalizedMainChartHidden(hidden) {
+    const canvas = $('chart-normalized');
+    const wrap = canvas?.closest?.('.chart-canvas');
+    if (wrap) wrap.hidden = Boolean(hidden);
+  }
+
+  function syncRpsExperienceModeControls() {
+    const detailsExpanded = Boolean(state.rpsDetailsExpanded);
+    const isRpsMetric = Boolean(rampMetricConfig().rps);
+    state.rpsExperienceMode = detailsExpanded ? 'analytic' : 'executive';
+    if (isRpsMetric && state.normalizedRampMetric === 'rps_decomposicao') {
+      state.normalizedRampMetric = 'rps_diario';
+    }
+    document.querySelectorAll('[data-ramp-metric]').forEach((button) => {
+      if (button.dataset.rampMetric === 'rps_decomposicao') {
+        button.hidden = isRpsMetric;
+      }
+      button.classList.toggle('is-active', button.dataset.rampMetric === state.normalizedRampMetric);
     });
-    const shouldShow = Boolean(selected) && (state.normalizedChartMode || 'linha') === 'linha' && Boolean(rampMetricConfig().rps);
-    wrap.hidden = !shouldShow;
-    if (!shouldShow) {
-      wrap.innerHTML = '';
-      return;
+    document.querySelectorAll('[data-rps-experience-mode]').forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.rpsExperienceMode === (state.rpsExperienceMode || 'executive'));
+    });
+    document.querySelectorAll('[data-rps-executive-focus]').forEach((button) => {
+      button.classList.toggle('is-active', !detailsExpanded);
+      button.setAttribute('aria-pressed', String(!detailsExpanded));
+    });
+    document.querySelectorAll('[data-rps-details-toggle]').forEach((button) => {
+      button.classList.toggle('is-active', detailsExpanded);
+      button.classList.toggle('is-expanded', detailsExpanded);
+      button.setAttribute('aria-expanded', String(detailsExpanded));
+      button.textContent = detailsExpanded ? 'Ocultar detalhes ↑' : 'Ver detalhes · 3 análises ↓';
+    });
+  }
+
+  function rpsDetailsToggleButtonHtml(className = 'rps-executive-link', slot = 'main') {
+    const expanded = Boolean(state.rpsDetailsExpanded);
+    return `<button type="button" class="${escapeHtml(className)} ${expanded ? 'is-expanded' : ''}" data-rps-details-toggle data-rps-details-slot="${escapeHtml(slot)}" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="rps-analytic-details-panel">${expanded ? 'Ocultar detalhes ↑' : 'Ver detalhes · 3 análises ↓'}</button>`;
+  }
+
+  function focusRpsDetailsToggle(slot = state.rpsDetailsReturnSlot) {
+    const toggles = [...document.querySelectorAll('[data-rps-details-toggle]')];
+    const toggle = toggles.find((button) => button.dataset.rpsDetailsSlot === slot) || toggles[0];
+    toggle?.focus?.({ preventScroll: true });
+  }
+
+  function scrollRpsDetailsIntoViewIfNeeded() {
+    const panel = $('rps-analytic-details-panel');
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    const topLimit = 64;
+    const bottomLimit = window.innerHeight - 96;
+    if (rect.top < topLimit || rect.top > bottomLimit) {
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    panel.focus?.({ preventScroll: true });
+  }
+
+  function setRpsDetailsExpanded(expanded, trigger = null) {
+    const next = Boolean(expanded);
+    if (next === Boolean(state.rpsDetailsExpanded)) return;
+    if (next) {
+      state.rpsDetailsOriginScrollY = window.scrollY;
+      state.rpsDetailsReturnSlot = trigger?.dataset?.rpsDetailsSlot || null;
+    }
+    const originY = numberOrNull(state.rpsDetailsOriginScrollY);
+    state.rpsDetailsExpanded = next;
+    state.rpsExperienceMode = next ? 'analytic' : 'executive';
+    renderNormalizedChart(currentSelectedLaunch());
+    window.requestAnimationFrame(() => {
+      syncRpsExperienceModeControls();
+      if (next) {
+        scrollRpsDetailsIntoViewIfNeeded();
+        return;
+      }
+      focusRpsDetailsToggle();
+      if (originY !== null) {
+        window.scrollTo({ top: originY, behavior: 'smooth' });
+      } else if (trigger?.closest?.('#rps-analytic-details-panel')) {
+        $('rps-autosustain-analysis')?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+      }
+      state.rpsDetailsOriginScrollY = null;
+      state.rpsDetailsReturnSlot = null;
+    });
+  }
+
+  function bindRpsExperienceModeControls(root = document) {
+    root.querySelectorAll?.('[data-rps-executive-focus]')?.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (state.rpsDetailsExpanded) setRpsDetailsExpanded(false, button);
+      });
+    });
+    root.querySelectorAll?.('[data-rps-details-toggle]')?.forEach((button) => {
+      button.addEventListener('click', () => {
+        setRpsDetailsExpanded(!state.rpsDetailsExpanded, button);
+      });
+    });
+    root.querySelectorAll?.('[data-rps-experience-mode]')?.forEach((button) => {
+      button.addEventListener('click', () => {
+        setRpsDetailsExpanded(button.dataset.rpsExperienceMode === 'analytic', button);
+      });
+    });
+    if (!rpsDetailsEscapeBound) {
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && state.rpsDetailsExpanded) {
+          setRpsDetailsExpanded(false, document.activeElement);
+        }
+      });
+      rpsDetailsEscapeBound = true;
+    }
+  }
+
+  function rpsExperienceToggleHtml() {
+    const expanded = Boolean(state.rpsDetailsExpanded);
+    return `
+      <div class="rps-experience-toggle" role="group" aria-label="Modo de leitura do RPS">
+        <button type="button" class="chart-mode-btn ${expanded ? '' : 'is-active'}" data-rps-executive-focus aria-pressed="${expanded ? 'false' : 'true'}">Visão executiva</button>
+        ${rpsDetailsToggleButtonHtml('chart-mode-btn', 'summary')}
+      </div>
+    `;
+  }
+
+  function rpsExecutiveShortPct(indexValue) {
+    const parsed = numberOrNull(indexValue);
+    return parsed === null ? '—' : fmtPct(parsed / 100, 0);
+  }
+
+  function rpsExecutivePerformanceLabel(retention) {
+    const parsed = numberOrNull(retention);
+    if (parsed === null) return 'Pendente';
+    if (parsed >= 1) return 'Forte';
+    if (parsed >= RPS_RETENCAO_FORTE) return 'Saudável';
+    return 'Atenção';
+  }
+
+  function rpsExecutiveSupportLabel(effortIndex) {
+    const parsed = numberOrNull(effortIndex);
+    if (parsed === null) return 'Pendente';
+    if (parsed <= AUTOSUSTAIN_EFFORT_INDEX_MAX) return 'Reduzido';
+    if (parsed < AUTOSUSTAIN_HIGH_EFFORT_INDEX) return 'Em queda';
+    return 'Alto';
+  }
+
+  function rpsExecutiveConfirmation(snapshot) {
+    if (!snapshot?.currentComparable) {
+      return { value: '—', helper: 'Pendente', tone: '' };
+    }
+    const weeks = snapshot.activeDecouplingRun?.sustainedWeeks
+      ?? rpsLaunchHealthTrailingAutosustainWeeks(snapshot)
+      ?? 0;
+    const capped = Math.min(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS, Math.max(0, weeks));
+    return {
+      value: `${fmtNum(capped, 0)} / ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS, 0)}`,
+      helper: capped >= AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS ? 'Confirmado' : capped > 0 ? 'Quase' : 'Pendente',
+      tone: capped >= AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS ? 'positive' : capped > 0 ? 'warning' : ''
+    };
+  }
+
+  function rpsExecutiveStatus(snapshot, retention, effortIndex, rpsValue) {
+    const hasPerformance = numberOrNull(retention) !== null && numberOrNull(rpsValue) !== null;
+    const hasSupport = numberOrNull(effortIndex) !== null;
+    if (!hasPerformance) {
+      return { label: 'DADOS INSUFICIENTES', tone: 'neutral', detail: 'Faltam dados para comparar performance.' };
+    }
+    if (!hasSupport) {
+      return { label: 'DADOS INSUFICIENTES', tone: 'neutral', detail: 'Suporte indisponível para concluir independência.' };
     }
 
-    const snapshot = rpsAutosustainSnapshotForLaunch(selected);
+    const performanceHealthy = retention >= RPS_RETENCAO_FORTE;
+    const supportReduced = effortIndex <= AUTOSUSTAIN_EFFORT_INDEX_MAX;
+    const supportBelowBase = effortIndex < AUTOSUSTAIN_HIGH_EFFORT_INDEX;
+
+    if (snapshot?.activeDecouplingRun) {
+      return { label: 'INDEPENDENTE', tone: 'positive', detail: 'Performance saudável com suporte reduzido e confirmação suficiente.' };
+    }
+    if (performanceHealthy && supportReduced) {
+      return { label: 'INDEPENDÊNCIA EM FORMAÇÃO', tone: 'positive', detail: 'Performance permanece saudável com menos suporte.' };
+    }
+    if (performanceHealthy && !supportBelowBase) {
+      return { label: 'FORTE, MAS MUITO ESTIMULADO', tone: 'warning', detail: 'Performance boa ainda depende de suporte alto.' };
+    }
+    if (performanceHealthy) {
+      return { label: 'INDEPENDÊNCIA EM FORMAÇÃO', tone: 'neutral', detail: 'Performance saudável e suporte em queda.' };
+    }
+    if (supportReduced) {
+      return { label: 'DEPENDENTE', tone: 'warning', detail: 'Performance cai quando o suporte diminui.' };
+    }
+    return {
+      label: 'PERDENDO FORÇA',
+      tone: effortIndex >= AUTOSUSTAIN_HIGH_EFFORT_INDEX ? 'negative' : 'warning',
+      detail: effortIndex >= AUTOSUSTAIN_HIGH_EFFORT_INDEX
+        ? 'Mesmo com suporte alto, performance caiu.'
+        : 'Performance abaixo da zona saudável.'
+    };
+  }
+
+  function rpsExecutiveTooltipStatus(row, snapshot) {
+    const status = rpsExecutiveStatus(
+      snapshot,
+      row?.retention ?? null,
+      numberOrNull(row?.effortIndex),
+      row?.rpsSummary?.rps
+    ).label;
+    if (status === 'INDEPENDÊNCIA EM FORMAÇÃO') return 'Em formação';
+    if (status === 'FORTE, MAS MUITO ESTIMULADO') return 'Muito estimulado';
+    if (status === 'DADOS INSUFICIENTES') return 'Insuficiente';
+    return status.charAt(0) + status.slice(1).toLowerCase();
+  }
+
+  function rpsExecutiveTitleTip(label, tooltip) {
+    return `<span class="rps-executive-title-tip"><span>${escapeHtml(label)}</span>${tipMultiline(tooltip)}</span>`;
+  }
+
+  function rpsExecutivePerformanceHelp() {
+    return `PERFORMANCE
+
+O que representa:
+quanto da Receita por Sessão do lançamento o produto mantém.
+
+Como ler:
+100% = mesma performance.
+90% = 10% abaixo.
+110% = 10% acima.
+
+Por que importa:
+mostra se o produto mantém eficiência depois do lançamento.`;
+  }
+
+  function rpsExecutiveSupportHelp() {
+    return `SUPORTE
+
+O que representa:
+quanto investimento e CRM o produto ainda recebe em relação ao lançamento.
+
+Como ler:
+100% = mesmo suporte.
+70% = suporte significativamente reduzido.
+Acima de 100% = mais suporte que no lançamento.
+
+Por que importa:
+suporte menor só é bom quando a performance continua saudável.`;
+  }
+
+  function rpsExecutiveDriversHelp() {
+    return `O QUE SUSTENTA O RESULTADO?
+
+O que representa:
+se a variação de receita vem de tráfego ou eficiência.
+
+Como ler:
+acima de zero ajuda a receita.
+abaixo de zero reduz a receita.
+
+Por que importa:
+mostra se o produto depende de tráfego ou se a eficiência compensa a queda de visitas.`;
+  }
+
+  function rpsExecutiveDriverConclusion(snapshot) {
+    const insight = rpsDriverTimelineInsight(snapshot);
+    const latest = insight.latest;
+    if (!latest?.driver) return 'Drivers ainda sem leitura suficiente.';
+    const traffic = numberOrNull(latest.efeitoSessoes);
+    const efficiency = numberOrNull(latest.efeitoRps);
+    if (traffic === null || efficiency === null) return 'Drivers ainda sem leitura suficiente.';
+    if (traffic < 0 && efficiency > 0 && efficiency >= Math.abs(traffic) * 0.85) return 'Eficiência compensa a queda de tráfego.';
+    if (traffic < 0 && efficiency > 0) return 'Eficiência reduz a perda de tráfego.';
+    if (traffic > 0 && efficiency < 0) return 'Resultado ainda depende de tráfego.';
+    if (traffic < 0 && efficiency < 0) return 'Tráfego e eficiência estão caindo.';
+    if (traffic > 0 && efficiency > 0) return 'Os dois motores estão crescendo.';
+    if (traffic > 0) return 'Tráfego sustenta o resultado.';
+    if (efficiency > 0) return 'Eficiência sustenta o resultado.';
+    return 'Drivers estáveis contra o lançamento.';
+  }
+
+  function rpsExecutiveKpiHtml(label, value, detail, tooltip = '', tone = '') {
+    return `
+      <div class="rps-executive-kpi ${tone ? `rps-executive-kpi--${tone}` : ''}">
+        <span>${labelTip(label, tooltip)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        <small>${escapeHtml(detail || '')}</small>
+      </div>
+    `;
+  }
+
+  function rpsExecutiveIndexTooltipCallbacks(snapshot, rows, primaryKey) {
+    return {
+      title: (items) => rows[items?.[0]?.dataIndex]?.tickLabel || '',
+      label: (ctx) => {
+        const row = rows[ctx.dataIndex];
+        if (!row || ctx.dataset?.isAutosustainGuide) return '';
+        if (primaryKey === 'support') return `Suporte         ${rpsExecutiveShortPct(row.effortIndex)}`;
+        return `Performance     ${rpsExecutiveShortPct(row.rpsIndex)}`;
+      },
+      afterBody: (items) => {
+        const row = rows[items?.[0]?.dataIndex];
+        if (!row) return [];
+        const lines = [];
+        if (primaryKey !== 'performance') lines.push(`Performance     ${rpsExecutiveShortPct(row.rpsIndex)}`);
+        if (primaryKey !== 'support') lines.push(`Suporte         ${rpsExecutiveShortPct(row.effortIndex)}`);
+        lines.push(`Status          ${rpsExecutiveTooltipStatus(row, snapshot)}`);
+        return lines;
+      }
+    };
+  }
+
+  function rpsExecutivePointRadius(rows, snapshot) {
+    const selectedWeekIndex = numberOrNull(state.rpsAutosustainSelectedWeekIndex);
+    return rows.map((row) => {
+      if (row.weekIndex === selectedWeekIndex || row.weekIndex === snapshot?.decouplingPoint?.start?.weekIndex) return 3.5;
+      return 1.6;
+    });
+  }
+
+  function rpsExecutivePerformanceChartConfig(snapshot) {
+    const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    const labels = rows.map((row) => row.tickLabel);
+    const values = rows.map((row) => row.rpsIndex);
+    const axisMax = rpsAutosustainIndexAxisMax(values, [100, AUTOSUSTAIN_RPS_INDEX_MIN]);
+    return {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Base',
+            data: rows.map(() => 100),
+            borderColor: 'rgba(255,255,255,0.38)',
+            borderDash: [5, 5],
+            borderWidth: 1.1,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0,
+            isAutosustainGuide: true
+          },
+          {
+            label: 'Zona preservada',
+            data: rows.map(() => AUTOSUSTAIN_RPS_INDEX_MIN),
+            borderColor: 'rgba(255,255,255,0.14)',
+            borderDash: [2, 6],
+            borderWidth: 0.9,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0,
+            isAutosustainGuide: true
+          },
+          {
+            label: 'Performance',
+            data: values,
+            borderColor: RPS_EXECUTIVE_PERFORMANCE_COLOR,
+            backgroundColor: 'rgba(242,240,234,0.10)',
+            borderWidth: 3,
+            pointRadius: rpsExecutivePointRadius(rows, snapshot),
+            pointHoverRadius: 5,
+            pointHitRadius: 10,
+            pointBackgroundColor: RPS_EXECUTIVE_PERFORMANCE_COLOR,
+            pointBorderColor: '#1A1A1A',
+            tension: 0.28,
+            spanGaps: false,
+            fill: false,
+            rpsExecutiveRole: 'performance',
+            rpsExecutiveLineLabel: { suffix: 'Performance', format: 'pct', color: RPS_EXECUTIVE_PERFORMANCE_COLOR }
+          }
+        ]
+      },
+      options: chartOptions({
+        layout: { padding: { top: 10, right: 112, bottom: 0, left: 0 } },
+        interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+        plugins: {
+          rpsExecutiveChartAnnotations: {
+            zones: [
+              { from: 100, to: axisMax, label: 'FORTE', color: 'rgba(76,175,125,0.045)', labelColor: 'rgba(76,175,125,0.75)' },
+              { from: AUTOSUSTAIN_RPS_INDEX_MIN, to: 100, label: 'PRESERVADA', color: 'rgba(232,160,32,0.035)', labelColor: 'rgba(232,160,32,0.76)' },
+              { from: 0, to: AUTOSUSTAIN_RPS_INDEX_MIN, label: 'ATENÇÃO', color: 'rgba(224,82,82,0.032)', labelColor: 'rgba(239,128,128,0.78)' }
+            ],
+            guideLabels: [{ value: 100, label: 'Base' }],
+            currentZone: true
+          },
+          rpsAutosustainMarker: rpsAutosustainMarkerOptions(snapshot),
+          legend: { display: false },
+          tooltip: {
+            filter: (item) => !item.dataset?.isAutosustainGuide,
+            callbacks: rpsExecutiveIndexTooltipCallbacks(snapshot, rows, 'performance')
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (value, index) => rows[index]?.tickLabel || '' }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: axisMax,
+            ticks: { callback: (value) => `${fmtNum(value, 0)}%`, maxTicksLimit: 4 },
+            grid: {
+              color: (ctx) => Number(ctx.tick?.value) === 100 ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.032)'
+            }
+          }
+        }
+      })
+    };
+  }
+
+  function rpsExecutiveSupportChartConfig(snapshot) {
+    const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    const labels = rows.map((row) => row.tickLabel);
+    const values = rows.map((row) => row.effortIndex);
+    const axisMax = rpsAutosustainIndexAxisMax(values, [100, AUTOSUSTAIN_EFFORT_INDEX_MAX]);
+    return {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Base',
+            data: rows.map(() => 100),
+            borderColor: 'rgba(255,255,255,0.32)',
+            borderDash: [5, 5],
+            borderWidth: 1,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0,
+            isAutosustainGuide: true
+          },
+          {
+            label: '70',
+            data: rows.map(() => AUTOSUSTAIN_EFFORT_INDEX_MAX),
+            borderColor: 'rgba(91,184,212,0.34)',
+            borderDash: [2, 5],
+            borderWidth: 1,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            fill: false,
+            tension: 0,
+            isAutosustainGuide: true
+          },
+          {
+            label: 'Suporte',
+            data: values,
+            borderColor: RPS_EXECUTIVE_SUPPORT_COLOR,
+            backgroundColor: 'rgba(91,184,212,0.12)',
+            borderWidth: 2.4,
+            pointRadius: values.map((value) => value === null ? 0 : 1.6),
+            pointHoverRadius: 4,
+            pointHitRadius: 10,
+            pointBackgroundColor: RPS_EXECUTIVE_SUPPORT_COLOR,
+            pointBorderColor: '#1A1A1A',
+            tension: 0.28,
+            spanGaps: false,
+            fill: false,
+            rpsExecutiveRole: 'support',
+            rpsExecutiveLineLabel: { suffix: 'Suporte', format: 'pct', color: RPS_EXECUTIVE_SUPPORT_COLOR }
+          }
+        ]
+      },
+      options: chartOptions({
+        layout: { padding: { top: 4, right: 112, bottom: 0, left: 0 } },
+        interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+        plugins: {
+          rpsExecutiveChartAnnotations: {
+            guideLabels: [
+              { value: 100, label: 'Base' },
+              { value: AUTOSUSTAIN_EFFORT_INDEX_MAX, label: '70' }
+            ]
+          },
+          legend: { display: false },
+          tooltip: {
+            filter: (item) => !item.dataset?.isAutosustainGuide,
+            callbacks: rpsExecutiveIndexTooltipCallbacks(snapshot, rows, 'support')
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (value, index) => rows[index]?.tickLabel || '' }
+          },
+          y: {
+            beginAtZero: true,
+            suggestedMax: axisMax,
+            ticks: { callback: (value) => `${fmtNum(value, 0)}%`, maxTicksLimit: 4 },
+            grid: {
+              color: (ctx) => [70, 100].includes(Number(ctx.tick?.value)) ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.032)'
+            }
+          }
+        }
+      })
+    };
+  }
+
+  function rpsExecutiveDriversChartConfig(snapshot) {
+    const rows = rpsTimelineDriverRows(snapshot, 'launch');
+    const labels = rows.map((row) => row.tickLabel);
+    const traffic = rows.map((row) => row.efeitoSessoes);
+    const efficiency = rows.map((row) => row.efeitoRps);
+    const values = [...traffic, ...efficiency]
+      .map((value) => numberOrNull(value))
+      .filter((value) => value !== null);
+    const maxAbs = Math.max(1000, ...values.map((value) => Math.abs(value))) * 1.12;
+    return {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Tráfego',
+            data: traffic,
+            borderColor: RPS_EXECUTIVE_TRAFFIC_COLOR,
+            backgroundColor: 'rgba(125,180,230,0.10)',
+            borderWidth: 2.1,
+            pointRadius: traffic.map((value) => value === null ? 0 : 1.4),
+            pointHoverRadius: 4,
+            pointHitRadius: 10,
+            pointBackgroundColor: RPS_EXECUTIVE_TRAFFIC_COLOR,
+            pointBorderColor: '#1A1A1A',
+            tension: 0.26,
+            spanGaps: false,
+            fill: false,
+            rpsExecutiveLineLabel: { suffix: 'Tráfego', format: 'brl', color: RPS_EXECUTIVE_TRAFFIC_COLOR }
+          },
+          {
+            label: 'Eficiência',
+            data: efficiency,
+            borderColor: RPS_EXECUTIVE_EFFICIENCY_COLOR,
+            backgroundColor: 'rgba(76,175,125,0.10)',
+            borderWidth: 2.1,
+            pointRadius: efficiency.map((value) => value === null ? 0 : 1.4),
+            pointHoverRadius: 4,
+            pointHitRadius: 10,
+            pointBackgroundColor: RPS_EXECUTIVE_EFFICIENCY_COLOR,
+            pointBorderColor: '#1A1A1A',
+            tension: 0.26,
+            spanGaps: false,
+            fill: false,
+            rpsExecutiveLineLabel: { suffix: 'Eficiência', format: 'brl', color: RPS_EXECUTIVE_EFFICIENCY_COLOR }
+          }
+        ]
+      },
+      options: chartOptions({
+        layout: { padding: { top: 6, right: 126, bottom: 0, left: 0 } },
+        interaction: { mode: 'nearest', intersect: false, axis: 'x' },
+        plugins: {
+          rpsExecutiveChartAnnotations: {
+            guideLabels: [{ value: 0, label: '0' }]
+          },
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (items) => rows[items?.[0]?.dataIndex]?.tickLabel || '',
+              label: (ctx) => {
+                const value = numberOrNull(ctx.raw);
+                return value === null ? `${ctx.dataset.label}: pendente` : `${ctx.dataset.label}: ${fmtSignedBRL(value, true)}`;
+              },
+              afterBody: (items) => {
+                const row = rows[items?.[0]?.dataIndex];
+                return row?.driverClassification?.label ? [`Status: ${row.driverClassification.label}`] : [];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, callback: (value, index) => rows[index]?.tickLabel || '' }
+          },
+          y: {
+            suggestedMin: -maxAbs,
+            suggestedMax: maxAbs,
+            ticks: { callback: (value) => fmtBRL(value, true), maxTicksLimit: 5 },
+            grid: {
+              color: (ctx) => Number(ctx.tick?.value) === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.032)'
+            }
+          }
+        }
+      })
+    };
+  }
+
+  function rpsAutosustainAnalyticDetailData(selected, snapshot) {
     const current = snapshot?.current;
     const status = snapshot?.status || { label: 'Em formação', tone: 'neutral', detail: 'dados insuficientes' };
-    if (!snapshot || !current) {
-      wrap.innerHTML = `
-        <div class="rps-autosustain-panel">
-          <div class="rps-autosustain-head">
-            <div>
-              <span>Autosustentação do produto</span>
-              <strong>Performance e esforço em escalas separadas</strong>
-              <p>Faltam séries semanais de RPS e esforço para gerar a leitura automática.</p>
-            </div>
-          </div>
-        </div>
-      `;
-      return;
-    }
-
     const currentRps = snapshot.currentRpsRow || current;
     const currentComparable = snapshot.currentComparable;
     const retention = currentRps?.retention ?? null;
@@ -3261,13 +4727,89 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       ? `Receita ${fmtBRL(currentRps.rpsSummary.receita)} = ${fmtNum(currentRps.rpsSummary.sessoes)} sessões × ${fmtBRL(currentRps.rpsSummary.rps)} RPS`
       : 'Receita = sessões × RPS; semana atual sem RPS suficiente.';
     const statusTone = status.tone || 'neutral';
-    wrap.innerHTML = `
-      <div class="rps-autosustain-panel">
+    const firstDecouplingRun = snapshot.decouplingRuns?.[0] || null;
+    const selectedRow = rpsAutosustainSelectedRow(snapshot);
+    const selectedDriver = rpsTimelineDriverSnapshot(snapshot, selectedRow, 'launch');
+    const firstDecouplingDetail = firstDecouplingRun
+      ? `RPS ${fmtPct(firstDecouplingRun.start.rpsIndex / 100, 0)} · esforço ${fmtPct(firstDecouplingRun.start.effortIndex / 100, 0)} · ${fmtNum(firstDecouplingRun.sustainedWeeks)} semanas`
+      : snapshot.missingEffortWeeks
+        ? 'dados de esforço indisponíveis'
+        : `critério ainda não mantido por ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)} semanas`;
+    return {
+      current,
+      status,
+      currentRps,
+      currentComparable,
+      retention,
+      effortKpiRow,
+      effortIndex,
+      effortDrop,
+      decouplingDetail,
+      revenueSessionCopy,
+      statusTone,
+      firstDecouplingRun,
+      selectedDriver,
+      firstDecouplingDetail
+    };
+  }
+
+  function rpsAutosustainAnalyticContextHtml(selected, currentRps) {
+    const launchLabel = selected?.modelo || selected?.modelo_id || 'Produto selecionado';
+    const dLabel = currentRps?.tickLabel || currentRps?.label || 'D+ atual';
+    return `
+      <div class="rps-analytic-context" aria-label="Contexto da análise detalhada">
+        <span>${escapeHtml(launchLabel)}</span>
+        <span>${escapeHtml(dLabel)}</span>
+        <span>Referência: D0-D30 = 100</span>
+      </div>
+    `;
+  }
+
+  function rpsAutosustainAnalyticPanelHtml(selected, snapshot, opts = {}) {
+    const inline = Boolean(opts.inline);
+    const {
+      current,
+      currentRps,
+      currentComparable,
+      status,
+      retention,
+      effortKpiRow,
+      effortIndex,
+      effortDrop,
+      decouplingDetail,
+      revenueSessionCopy,
+      statusTone,
+      firstDecouplingRun,
+      selectedDriver,
+      firstDecouplingDetail
+    } = rpsAutosustainAnalyticDetailData(selected, snapshot);
+    const idAttr = inline ? ' id="rps-analytic-details-panel" data-rps-details-panel tabindex="-1"' : '';
+    const panelClasses = inline
+      ? 'rps-autosustain-panel rps-autosustain-panel--details'
+      : 'rps-autosustain-panel';
+    const detailHeader = inline ? `
+      <div class="rps-analytic-detail-head">
+        <div>
+          <span>ANÁLISE DETALHADA</span>
+          <strong>Rampas e evolução do RPS</strong>
+          ${rpsAutosustainAnalyticContextHtml(selected, currentRps)}
+        </div>
+        ${rpsDetailsToggleButtonHtml('rps-executive-link rps-executive-link--collapse', 'details-top')}
+      </div>
+    ` : '';
+    const detailFooter = inline ? `
+      <div class="rps-analytic-detail-footer">
+        ${rpsDetailsToggleButtonHtml('rps-executive-link rps-executive-link--collapse', 'details-bottom')}
+      </div>
+    ` : '';
+    return `
+      <div${idAttr} class="${panelClasses}">
+        ${detailHeader}
         <div class="rps-autosustain-head">
           <div>
             <span>Autosustentação do produto</span>
-            <strong>Performance e esforço em escalas separadas</strong>
-            <p>${escapeHtml(rpsAutosustainInterpretation(snapshot))}</p>
+            <strong>Evolução desde o lançamento</strong>
+            <p>${escapeHtml(rpsAutosustainTimelineNarrative(snapshot))}</p>
           </div>
           <div class="rps-autosustain-status rps-autosustain-status--${escapeHtml(statusTone)}">
             <span>Status</span>
@@ -3280,28 +4822,342 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             ${rpsAutosustainKpi('RPS atual', fmtBRL(currentRps?.rpsSummary?.rps), `${currentRps?.label || 'semana'} · ${fmtNum(currentRps?.rpsSummary?.daysCovered)} dias`, 'RPS semanal suavizado: soma(receita) / soma(sessões) em janela de 7 dias.')}
             ${rpsAutosustainKpi('Retenção de RPS', retention === null ? '—' : fmtPct(retention, 1), 'performance vs D0-D30', 'Mede somente performance: RPS semanal dividido pelo RPS de D0-D30.', retention !== null && retention >= RPS_RETENCAO_FORTE ? 'positive' : '')}
             ${rpsAutosustainKpi('Índice de esforço', rpsAutosustainBaseIndexLabel(effortIndex), effortDrop === null ? 'dados de esforço indisponíveis' : rpsAutosustainEffortDropCopy(effortKpiRow), 'Esforço semanal por dia dividido pelo esforço diário de D0-D30, em base 100. Usa investimento declarado em mídia paga + CRM.', effortIndex !== null && effortIndex <= AUTOSUSTAIN_EFFORT_INDEX_MAX ? 'positive' : '')}
-            ${rpsAutosustainKpi('Autosustentação provável', decouplingPoint ? rpsAutosustainDayLabel(decouplingPoint.startDay) : '—', decouplingDetail, 'Data estimada quando RPS >= 90 e esforço <= 70 ficam mantidos por pelo menos 4 semanas consecutivas.', decouplingPoint ? 'positive' : '')}
+            ${rpsAutosustainKpi('Primeiro desacoplamento', firstDecouplingRun ? rpsAutosustainDayLabel(firstDecouplingRun.start.startDay) : '—', firstDecouplingDetail, 'Primeira semana em que RPS >= 90 e esforço <= 70 ficam mantidos por pelo menos 4 semanas consecutivas. O estado atual pode mudar depois.', firstDecouplingRun ? 'positive' : '')}
+          </div>
+          <div class="rps-autosustain-toolbar">
+            <div>
+              <span>Referência fixa</span>
+              <strong>D0-D30</strong>
+            </div>
+            <small>Semanas fechadas em D+7, D+14, D+21...; clique em uma semana para abrir o waterfall daquele período.</small>
           </div>
           <div class="rps-autosustain-charts">
             <div class="rps-autosustain-chart">
-              <div class="rps-autosustain-chart-title">${labelTip('Performance — Índice de RPS', 'Mostra a retenção semanal de RPS em base 100. A base é o RPS fixo de D0-D30; valores acima de 100 indicam RPS acima da referência inicial e 90 é o patamar mínimo de preservação usado na regra de autosustentação.')}</div>
+              <div class="rps-autosustain-chart-title">${labelTip('Performance do produto', 'Mostra o índice semanal de RPS em base 100. A base é o RPS médio de D0-D30; 90 aparece apenas como referência secundária discreta.')}</div>
               <div class="rps-autosustain-chart-canvas"><canvas id="chart-rps-autosustain-rps"></canvas></div>
             </div>
             <div class="rps-autosustain-chart">
-              <div class="rps-autosustain-chart-title">${labelTip('Esforço — Índice de Esforço', 'Mostra investimento declarado por dia em mídia paga e CRM, também em base 100 contra D0-D30. Cada gráfico tem escala Y própria; semanas sem esforço comparável aparecem como lacuna, não como zero.')}</div>
+              <div class="rps-autosustain-chart-title">${labelTip('Esforço de lançamento', 'Mostra o índice semanal de esforço em base 100 contra D0-D30. A escala Y é própria; semanas sem esforço comparável aparecem como lacuna, não zero.')}</div>
               <div class="rps-autosustain-chart-canvas"><canvas id="chart-rps-autosustain-effort"></canvas></div>
               <small>${snapshot.missingEffortWeeks ? 'dados de esforço indisponíveis aparecem como lacunas na linha' : 'semana sem declaração de esforço não vira zero automático'}</small>
             </div>
+            <div class="rps-autosustain-chart">
+              <div class="rps-autosustain-chart-title">${labelTip('Decomposição ao longo do lançamento', 'Decompõe cada semana fechada contra D0-D30 em efeito Sessões e efeito RPS. Barras positivas elevam receita; negativas reduzem. A leitura indica desacoplamento de tráfego, não autosustentação automática.')}</div>
+              ${rpsDriverTimelineSummaryHtml(snapshot)}
+              <div class="rps-autosustain-chart-canvas rps-autosustain-chart-canvas--drivers"><canvas id="chart-rps-autosustain-drivers"></canvas></div>
+              <small>referência fixa D0-D30 semanalizada; o waterfall abaixo detalha a semana selecionada.</small>
+            </div>
+          </div>
+          <div class="rps-driver-detail">
+            <div class="rps-driver-detail-head">
+              ${rpsDriverDetailHtml(selectedDriver)}
+            </div>
+            <div class="rps-driver-detail-canvas"><canvas id="chart-rps-autosustain-detail"></canvas></div>
           </div>
         </div>
         <div class="rps-autosustain-note">
           <span>${escapeHtml(revenueSessionCopy)}</span>
-          <span>Retenção de RPS mede performance. Autosustentação só é lida quando performance e esforço existem na mesma janela semanal.</span>
+          <span>Retenção de RPS mede performance. Autosustentação cruza performance, esforço e persistência na mesma linha do tempo semanal.</span>
+        </div>
+        ${detailFooter}
+      </div>
+    `;
+  }
+
+  function createRpsAutosustainAnalyticCharts(selected, snapshot) {
+    const { selectedDriver } = rpsAutosustainAnalyticDetailData(selected, snapshot);
+    createChart('chart-rps-autosustain-rps', rpsAutosustainIndexChartConfig(snapshot, 'rps'));
+    createChart('chart-rps-autosustain-effort', rpsAutosustainIndexChartConfig(snapshot, 'effort'));
+    createChart('chart-rps-autosustain-drivers', rpsTimelineDriverChartConfig(snapshot, 'launch'));
+    createChart('chart-rps-autosustain-detail', rpsDriverWaterfallChartConfig(selectedDriver));
+  }
+
+  function renderRpsAutosustainExecutive(selected, snapshot) {
+    const wrap = $('rps-autosustain-analysis');
+    const current = snapshot?.current;
+    if (!wrap || !snapshot || !current) return;
+    const hasEffortSeries = snapshot.rows.some((row) => numberOrNull(row.effortIndex) !== null);
+    const driverRows = rpsTimelineDriverRows(snapshot, 'launch');
+    const hasDrivers = driverRows.some((row) => row.driver);
+    const detailsExpanded = Boolean(state.rpsDetailsExpanded);
+    wrap.innerHTML = `
+      <div class="rps-autosustain-panel rps-autosustain-panel--executive">
+        <div class="rps-executive-card rps-executive-card--performance">
+          <div class="rps-executive-card-head">
+            <strong>${rpsExecutiveTitleTip('PERFORMANCE', rpsExecutivePerformanceHelp())}</strong>
+            <p>Produto continua forte?</p>
+          </div>
+          <div class="rps-executive-chart rps-executive-chart--performance">
+              <canvas id="chart-rps-executive-independence"></canvas>
+          </div>
+        </div>
+        <div class="rps-executive-card rps-executive-card--support">
+          <div class="rps-executive-card-head">
+            <strong>${rpsExecutiveTitleTip('SUPORTE', rpsExecutiveSupportHelp())}</strong>
+            <p>Quanto ainda estamos empurrando?</p>
+          </div>
+          ${hasEffortSeries ? `
+            <div class="rps-executive-chart rps-executive-chart--support">
+              <canvas id="chart-rps-executive-effort"></canvas>
+            </div>
+          ` : `
+            <div class="rps-executive-effort-empty">Não há dados suficientes para avaliar suporte neste período.</div>
+          `}
+        </div>
+        ${hasDrivers ? `
+          <div class="rps-executive-card rps-executive-card--drivers">
+            <div class="rps-executive-card-head">
+              <strong>${rpsExecutiveTitleTip('O QUE SUSTENTA O RESULTADO?', rpsExecutiveDriversHelp())}</strong>
+              <p>${escapeHtml(rpsExecutiveDriverConclusion(snapshot))}</p>
+            </div>
+            <div class="rps-executive-chart rps-executive-chart--drivers">
+              <canvas id="chart-rps-executive-drivers"></canvas>
+            </div>
+          </div>
+        ` : ''}
+        ${detailsExpanded ? '' : rpsDetailsToggleButtonHtml('rps-executive-link', 'executive-end')}
+        ${detailsExpanded ? rpsAutosustainAnalyticPanelHtml(selected, snapshot, { inline: true }) : ''}
+      </div>
+    `;
+    bindRpsExperienceModeControls(wrap);
+    createChart('chart-rps-executive-independence', rpsExecutivePerformanceChartConfig(snapshot));
+    if (hasEffortSeries) createChart('chart-rps-executive-effort', rpsExecutiveSupportChartConfig(snapshot));
+    if (hasDrivers) createChart('chart-rps-executive-drivers', rpsExecutiveDriversChartConfig(snapshot));
+    if (detailsExpanded) createRpsAutosustainAnalyticCharts(selected, snapshot);
+    syncRpsExperienceModeControls();
+  }
+
+  function renderRpsAutosustainAnalysis(selected) {
+    const wrap = $('rps-autosustain-analysis');
+    if (!wrap) return;
+    ['chart-rps-autosustain', 'chart-rps-autosustain-rps', 'chart-rps-autosustain-effort', 'chart-rps-autosustain-drivers', 'chart-rps-autosustain-detail', 'chart-rps-executive-independence', 'chart-rps-executive-effort', 'chart-rps-executive-drivers'].forEach((id) => {
+      state.charts[id]?.destroy?.();
+      delete state.charts[id];
+    });
+    const shouldShow = Boolean(selected) && (state.normalizedChartMode || 'linha') === 'linha' && Boolean(rampMetricConfig().rps);
+    wrap.hidden = !shouldShow;
+    if (!shouldShow) {
+      wrap.innerHTML = '';
+      return;
+    }
+
+    const snapshot = rpsAutosustainSnapshotForLaunch(selected);
+    const current = snapshot?.current;
+    if (!snapshot || !current) {
+      wrap.innerHTML = `
+        <div class="rps-autosustain-panel">
+          <div class="rps-autosustain-head">
+            <div>
+              <span>Autosustentação do produto</span>
+              <strong>Performance e esforço em escalas separadas</strong>
+              <p>Faltam séries semanais de RPS e esforço para gerar a leitura automática.</p>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (isRpsExecutiveView()) {
+      renderRpsAutosustainExecutive(selected, snapshot);
+      return;
+    }
+
+    wrap.innerHTML = rpsAutosustainAnalyticPanelHtml(selected, snapshot);
+    createRpsAutosustainAnalyticCharts(selected, snapshot);
+  }
+
+  function rpsLaunchHealthTrailingAutosustainWeeks(snapshot) {
+    const current = snapshot?.currentComparable;
+    const rows = Array.isArray(snapshot?.rows) ? snapshot.rows : [];
+    if (!current || !rows.length) return null;
+    const currentIndex = rows.findIndex((row) => row.weekIndex === current.weekIndex);
+    if (currentIndex < 0) return null;
+    let count = 0;
+    for (let index = currentIndex; index >= 0; index -= 1) {
+      const row = rows[index];
+      if (row.partial || row.startDay <= 30 || row.rpsIndex === null || row.effortIndex === null) break;
+      if (row.rpsIndex < AUTOSUSTAIN_RPS_INDEX_MIN || row.effortIndex > AUTOSUSTAIN_EFFORT_INDEX_MAX) break;
+      count += 1;
+    }
+    return count || null;
+  }
+
+  function rpsLaunchHealthFallbackStatus(retention, hasEffort) {
+    if (retention === null || retention === undefined) {
+      return { label: 'Dados de RPS insuficientes', tone: 'neutral', detail: 'ainda falta RPS comparável' };
+    }
+    if (retention >= 1) {
+      return {
+        label: hasEffort ? 'Performance acima da base' : 'RPS acima da base',
+        tone: 'positive',
+        detail: hasEffort ? 'performance preservada' : 'esforço comparável pendente'
+      };
+    }
+    if (retention >= RPS_RETENCAO_FORTE) {
+      return {
+        label: hasEffort ? 'RPS preservado' : 'RPS preservado; esforço pendente',
+        tone: 'neutral',
+        detail: hasEffort ? 'performance dentro do patamar mínimo' : 'autosustentação ainda não pode ser lida'
+      };
+    }
+    return {
+      label: 'RPS em atenção',
+      tone: 'warning',
+      detail: hasEffort ? 'performance abaixo de 90% da base' : 'performance abaixo de 90% e esforço pendente'
+    };
+  }
+
+  function rpsLaunchHealthStatus(snapshot, retention, hasEffort) {
+    const status = snapshot?.status || null;
+    if (status && status.label && status.label !== 'Dados insuficientes') return status;
+    return rpsLaunchHealthFallbackStatus(retention, hasEffort);
+  }
+
+  function rpsLaunchHealthTimeKpi(snapshot) {
+    if (snapshot?.activeDecouplingRun) {
+      return {
+        value: `${fmtNum(snapshot.activeDecouplingRun.sustainedWeeks)} sem.`,
+        helper: `desde ${rpsAutosustainDayLabel(snapshot.activeDecouplingRun.start.startDay)}`,
+        tone: 'positive'
+      };
+    }
+    const trailing = rpsLaunchHealthTrailingAutosustainWeeks(snapshot);
+    if (trailing) {
+      return {
+        value: `${fmtNum(trailing)} sem.`,
+        helper: `em teste; mínimo ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS)}`,
+        tone: 'neutral'
+      };
+    }
+    if (snapshot?.currentComparable) {
+      return { value: '0 sem.', helper: 'sem condição ativa', tone: '' };
+    }
+    return { value: '—', helper: 'esforço indisponível', tone: '' };
+  }
+
+  function rpsLaunchHealthDiagnosticCopy(snapshot, status, retention, effortIndex, rpsValue) {
+    if (rpsValue === null || rpsValue === undefined) {
+      return 'Ainda não há RPS suficiente para formar uma leitura executiva confiável.';
+    }
+    const retentionCopy = retention === null || retention === undefined
+      ? `RPS atual ${fmtBRL(rpsValue)}.`
+      : `RPS retém ${fmtPct(retention, 1)} da base D0-D30.`;
+    if (snapshot?.activeDecouplingRun && effortIndex !== null) {
+      return `${retentionCopy} Esforço está em ${fmtPct(effortIndex / 100, 0)} da referência e a condição segue por ${fmtNum(snapshot.activeDecouplingRun.sustainedWeeks)} semanas.`;
+    }
+    if (effortIndex === null || effortIndex === undefined) {
+      return `${retentionCopy} Esforço comparável está indisponível; autosustentação fica pendente.`;
+    }
+    return `${retentionCopy} Esforço está em ${fmtPct(effortIndex / 100, 0)} da referência; ${status.detail}.`;
+  }
+
+  function renderLaunchHealthSummary(selected, chartLaunches = selectedCompareLaunches()) {
+    const wrap = $('launch-health-summary');
+    if (!wrap) return;
+    const shouldShow = Boolean(selected) && (state.normalizedChartMode || 'linha') === 'linha';
+    wrap.hidden = !shouldShow;
+    if (!shouldShow) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const health = rpsHealthSnapshotForLaunch(selected, chartLaunches);
+    const autosustain = rpsAutosustainSnapshotForLaunch(selected);
+    const currentRow = autosustain?.currentRpsRow || autosustain?.current || null;
+    const rpsSummary = currentRow?.rpsSummary || health?.mm7Current || health?.current || null;
+    const rpsValue = numberOrNull(rpsSummary?.rps);
+    const retention = numberOrNull(currentRow?.retention)
+      ?? (autosustain?.baseRps && rpsValue !== null ? rpsValue / autosustain.baseRps : null);
+    const effortRow = autosustain?.currentComparable || currentRow;
+    const effortIndex = numberOrNull(effortRow?.effortIndex);
+    const hasEffort = effortIndex !== null;
+    const status = rpsLaunchHealthStatus(autosustain, retention, hasEffort);
+    const timeKpi = rpsLaunchHealthTimeKpi(autosustain);
+    const statusTone = status.tone || 'neutral';
+    const periodLabel = currentRow?.label || rpsPeriodLabel(rpsSummary);
+    const diagnostic = rpsLaunchHealthDiagnosticCopy(autosustain, status, retention, effortIndex, rpsValue);
+
+    if (isRpsExecutiveView(rampMetricConfig())) {
+      const executiveStatus = rpsExecutiveStatus(autosustain, retention, effortIndex, rpsValue);
+      const confirmation = rpsExecutiveConfirmation(autosustain);
+      const performanceTone = retention !== null && retention >= RPS_RETENCAO_FORTE ? 'positive' : retention !== null ? 'warning' : '';
+      const supportTone = effortIndex !== null && effortIndex <= AUTOSUSTAIN_EFFORT_INDEX_MAX && retention !== null && retention >= RPS_RETENCAO_FORTE
+        ? 'positive'
+        : effortIndex !== null && effortIndex >= AUTOSUSTAIN_HIGH_EFFORT_INDEX ? 'warning' : '';
+      const statusTone = executiveStatus.tone || 'neutral';
+
+      wrap.innerHTML = `
+        <div class="launch-health-card launch-health-card--executive launch-health-card--${escapeHtml(statusTone)}">
+          <div class="launch-health-copy">
+            <span>${labelTip('Status', 'Resume a leitura de independência em seis estados: Independente, Independência em formação, Dependente, Forte mas muito estimulado, Perdendo força ou Dados insuficientes.')}</span>
+            <strong>${escapeHtml(executiveStatus.label)}</strong>
+            <p>${escapeHtml(executiveStatus.detail)}</p>
+          </div>
+          <div class="launch-health-actions">
+            ${rpsExperienceToggleHtml()}
+          </div>
+          <div class="launch-health-kpis launch-health-kpis--executive">
+            ${rpsExecutiveKpiHtml(
+              'Performance',
+              retention === null ? '—' : fmtPct(retention, 0),
+              rpsExecutivePerformanceLabel(retention),
+              rpsExecutivePerformanceHelp(),
+              performanceTone
+            )}
+            ${rpsExecutiveKpiHtml(
+              'Suporte',
+              effortIndex === null ? '—' : rpsExecutiveShortPct(effortIndex),
+              rpsExecutiveSupportLabel(effortIndex),
+              rpsExecutiveSupportHelp(),
+              supportTone
+            )}
+            ${rpsExecutiveKpiHtml(
+              'Confirmação',
+              confirmation.value,
+              confirmation.helper,
+              `Conta semanas consecutivas em que performance >= 90% e suporte <= 70%. Com ${fmtNum(AUTOSUSTAIN_MIN_CONSECUTIVE_WEEKS, 0)} semanas, marca independência provável.`,
+              confirmation.tone || ''
+            )}
+          </div>
+        </div>
+      `;
+      bindRpsExperienceModeControls(wrap);
+      syncRpsExperienceModeControls();
+      return;
+    }
+
+    wrap.innerHTML = `
+      <div class="launch-health-card launch-health-card--${escapeHtml(statusTone)}">
+        <div class="launch-health-copy">
+          <span>${labelTip('Saúde do lançamento', 'Camada executiva: combina performance de RPS, disponibilidade de esforço e tempo em condição para indicar o estado atual do lançamento.')}</span>
+          <strong>${escapeHtml(status.label)}</strong>
+          <p>${escapeHtml(diagnostic)}</p>
+        </div>
+        <div class="launch-health-kpis">
+          <div>
+            <span>${labelTip('RPS atual', 'Receita / sessões na janela semanal mais recente com dados de ShopifyQL.')}</span>
+            <strong>${fmtBRL(rpsValue)}</strong>
+            <small>${escapeHtml(periodLabel)}</small>
+          </div>
+          <div class="${retention !== null && retention >= RPS_RETENCAO_FORTE ? 'launch-health-kpi--positive' : ''}">
+            <span>${labelTip('Retenção de RPS', 'Mede apenas performance: RPS atual dividido pelo RPS da base D0-D30.')}</span>
+            <strong>${retention === null ? '—' : fmtPct(retention, 1)}</strong>
+            <small>performance vs D0-D30</small>
+          </div>
+          <div class="${effortIndex !== null && effortIndex <= AUTOSUSTAIN_EFFORT_INDEX_MAX ? 'launch-health-kpi--positive' : ''}">
+            <span>${labelTip('Índice de esforço', 'Esforço semanal por dia dividido pelo esforço diário de D0-D30. Precisa existir na mesma janela do RPS para classificar autosustentação.')}</span>
+            <strong>${rpsAutosustainBaseIndexLabel(effortIndex)}</strong>
+            <small>${effortIndex === null ? 'dados indisponíveis' : 'base D0-D30 = 100'}</small>
+          </div>
+          <div class="${timeKpi.tone ? `launch-health-kpi--${escapeHtml(timeKpi.tone)}` : ''}">
+            <span>${labelTip('Tempo na condição', 'Conta semanas consecutivas em que RPS >= 90 e esforço <= 70. Com 4 semanas, marca autosustentação provável.')}</span>
+            <strong>${escapeHtml(timeKpi.value)}</strong>
+            <small>${escapeHtml(timeKpi.helper)}</small>
+          </div>
         </div>
       </div>
     `;
-    createChart('chart-rps-autosustain-rps', rpsAutosustainIndexChartConfig(snapshot, 'rps'));
-    createChart('chart-rps-autosustain-effort', rpsAutosustainIndexChartConfig(snapshot, 'effort'));
+    bindRpsExperienceModeControls(wrap);
   }
 
   function renderRpsPeriodAnalysis(selected, chartLaunches = selectedCompareLaunches()) {
@@ -3339,6 +5195,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     }
     if (metric.rps) {
       renderRpsPeriodAnalysis(selected, chartLaunches);
+      return;
+    }
+    if (metric.rpsDecomposition) {
+      renderRpsDecompositionAnalysis(selected);
       return;
     }
     if (metric.share) {
@@ -4126,8 +5986,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function launchSalesRowsForSelectedPeriod(launch) {
     const periodKey = selectedPeriodKey();
-    if (!getWindow(launch, periodKey)) return [];
-    const endDay = selectedPeriodEndDay(launch);
+    if (isSpecificAnalysisPeriod() && !getWindow(launch, periodKey)) return [];
+    const endDay = isGeneralAnalysisPeriod()
+      ? selectedPeriodChartEndDayForLaunch(launch, launchCurrentRampDay(launch))
+      : selectedPeriodEndDay(launch);
     return optionalRows('lancamentos_produtos_dia').filter((row) => {
       if (row.modelo_id !== launch?.modelo_id) return false;
       const idx = dayIndex(analysisDayZero(launch), row.data);
@@ -4478,6 +6340,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       if (!ctx || !chartArea || !xScale) return;
       const labelsCount = chart.data?.labels?.length || 0;
       if (!labelsCount) return;
+      const subtle = opts?.subtle === true;
       const firstX = xScale.getPixelForValue(0);
       const secondX = labelsCount > 1 ? xScale.getPixelForValue(1) : chartArea.right;
       const step = Number.isFinite(secondX - firstX) && Math.abs(secondX - firstX) > 0
@@ -4494,9 +6357,11 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         const left = Math.max(chartArea.left, Math.min(startX, endX) - step / 2);
         const right = Math.min(chartArea.right, Math.max(startX, endX) + step / 2);
         if (right <= left) return;
-        ctx.fillStyle = index % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(255,143,0,0.032)';
+        ctx.fillStyle = subtle
+          ? (index % 2 === 0 ? 'rgba(255,255,255,0.007)' : 'rgba(255,143,0,0.012)')
+          : (index % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'rgba(255,143,0,0.032)');
         ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
-        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.strokeStyle = subtle ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.08)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 5]);
         ctx.beginPath();
@@ -4507,7 +6372,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         if (!label || right - left < 46) return;
         ctx.setLineDash([]);
         ctx.font = '800 9px Inter, "Segoe UI", Arial, sans-serif';
-        ctx.fillStyle = 'rgba(255,255,255,0.46)';
+        ctx.fillStyle = subtle ? 'rgba(255,255,255,0.30)' : 'rgba(255,255,255,0.46)';
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
         ctx.fillText(label, left + 8, chartArea.top + 8);
@@ -4536,8 +6401,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       ctx.lineTo(x, chartArea.bottom);
       ctx.stroke();
 
-      const label = `${opts.shortLabel || 'Ponto de desacoplamento'} · ${opts.dayLabel || ''}`.trim();
-      const detail = opts.label || 'Início provável da autosustentação';
+      const label = opts.eventLabel
+        ? (opts.dayLabel || '')
+        : `${opts.shortLabel || 'Ponto de desacoplamento'} · ${opts.dayLabel || ''}`.trim();
+      const detail = opts.eventLabel || opts.label || 'Início provável da autosustentação';
       ctx.setLineDash([]);
       ctx.textBaseline = 'top';
       ctx.textAlign = 'left';
@@ -4566,6 +6433,160 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     }
   };
 
+  const rpsExecutiveChartAnnotationsPlugin = {
+    id: 'rpsExecutiveChartAnnotations',
+    beforeDatasetsDraw(chart, args, opts) {
+      const zones = Array.isArray(opts?.zones) ? opts.zones : [];
+      if (!zones.length) return;
+      const { ctx, chartArea, scales } = chart;
+      const yScale = scales?.y;
+      if (!ctx || !chartArea || !yScale) return;
+      const lineDataset = chart.data?.datasets?.find((dataset) => dataset.rpsExecutiveLineLabel);
+      const lastValue = lineDataset?.data?.slice?.().reverse?.().find((value) => numberOrNull(value) !== null);
+      const currentZone = opts?.currentZone && lastValue !== undefined
+        ? zones.find((zone) => numberOrNull(lastValue) >= numberOrNull(zone.from) && numberOrNull(lastValue) <= numberOrNull(zone.to))
+        : null;
+
+      ctx.save();
+      zones.forEach((zone) => {
+        const from = Math.max(numberOrNull(zone.from) ?? yScale.min, yScale.min);
+        const to = Math.min(numberOrNull(zone.to) ?? yScale.max, yScale.max);
+        if (to <= from) return;
+        const yTop = yScale.getPixelForValue(to);
+        const yBottom = yScale.getPixelForValue(from);
+        ctx.fillStyle = zone.color || 'rgba(255,255,255,0.02)';
+        ctx.fillRect(chartArea.left, yTop, chartArea.right - chartArea.left, yBottom - yTop);
+      });
+      if (currentZone?.label) {
+        const y = yScale.getPixelForValue((numberOrNull(currentZone.from) + numberOrNull(currentZone.to)) / 2);
+        ctx.font = '800 9px Inter, "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = currentZone.labelColor || 'rgba(255,255,255,0.42)';
+        ctx.fillText(currentZone.label, chartArea.left + 8, y);
+      }
+      ctx.restore();
+    },
+    afterDatasetsDraw(chart, args, opts) {
+      const { ctx, chartArea, scales } = chart;
+      const xScale = scales?.x;
+      const yScale = scales?.y;
+      if (!ctx || !chartArea || !xScale || !yScale) return;
+
+      ctx.save();
+      const labelItems = [];
+      (Array.isArray(opts?.guideLabels) ? opts.guideLabels : []).forEach((guide) => {
+        const value = numberOrNull(guide.value);
+        if (value === null || value < yScale.min || value > yScale.max) return;
+        const y = yScale.getPixelForValue(value);
+        labelItems.push({
+          kind: 'guide',
+          text: String(guide.label || ''),
+          targetY: y,
+          y,
+          x: chartArea.right + 8,
+          color: guide.color || 'rgba(255,255,255,0.48)',
+          font: '800 10px Inter, "Segoe UI", Arial, sans-serif'
+        });
+      });
+
+      (chart.data?.datasets || []).forEach((dataset, datasetIndex) => {
+        const labelConfig = dataset.rpsExecutiveLineLabel;
+        if (!labelConfig) return;
+        const data = Array.isArray(dataset.data) ? dataset.data : [];
+        let pointIndex = -1;
+        for (let index = data.length - 1; index >= 0; index -= 1) {
+          if (numberOrNull(data[index]) !== null) {
+            pointIndex = index;
+            break;
+          }
+        }
+        if (pointIndex < 0) return;
+        const value = numberOrNull(data[pointIndex]);
+        const x = xScale.getPixelForValue(pointIndex);
+        const y = yScale.getPixelForValue(value);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+        const metricValue = labelConfig.format === 'brl'
+          ? fmtSignedBRL(value, true)
+          : rpsExecutiveShortPct(value);
+        const text = `${metricValue} ${labelConfig.suffix || dataset.label || ''}`.trim();
+        const point = chart.getDatasetMeta(datasetIndex)?.data?.[pointIndex];
+        labelItems.push({
+          kind: 'series',
+          text,
+          targetY: y,
+          y,
+          x: Math.min(x + 8, chartArea.right + 8),
+          color: labelConfig.color || dataset.borderColor || '#FFFFFF',
+          font: '900 11px Inter, "Segoe UI", Arial, sans-serif',
+          point
+        });
+      });
+
+      const minGap = Math.max(14, numberOrNull(opts?.labelMinGap) || 0);
+      const minY = chartArea.top + 10;
+      const maxY = chartArea.bottom - 10;
+      const positionedLabels = labelItems
+        .filter((item) => item.text && Number.isFinite(item.targetY))
+        .sort((a, b) => a.targetY - b.targetY);
+      positionedLabels.forEach((item) => {
+        item.y = Math.min(maxY, Math.max(minY, item.targetY));
+      });
+      for (let index = 1; index < positionedLabels.length; index += 1) {
+        const previous = positionedLabels[index - 1];
+        const current = positionedLabels[index];
+        if (current.y < previous.y + minGap) current.y = previous.y + minGap;
+      }
+      const overflow = positionedLabels.length ? positionedLabels[positionedLabels.length - 1].y - maxY : 0;
+      if (overflow > 0) positionedLabels.forEach((item) => { item.y -= overflow; });
+      for (let index = positionedLabels.length - 2; index >= 0; index -= 1) {
+        const next = positionedLabels[index + 1];
+        const current = positionedLabels[index];
+        if (current.y > next.y - minGap) current.y = next.y - minGap;
+      }
+      const underflow = positionedLabels.length ? minY - positionedLabels[0].y : 0;
+      if (underflow > 0) positionedLabels.forEach((item) => { item.y += underflow; });
+
+      positionedLabels.forEach((item) => {
+        ctx.font = item.font;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        const textWidth = ctx.measureText(item.text).width;
+        const canvasRight = numberOrNull(chart.width) || chartArea.right + 140;
+        const labelX = Math.min(item.x, Math.max(chartArea.left + 4, canvasRight - textWidth - 4));
+        if (item.kind === 'series' && item.point && Math.abs(item.y - item.targetY) > 3) {
+          ctx.beginPath();
+          ctx.moveTo(item.point.x + 4, item.point.y);
+          ctx.lineTo(labelX - 4, item.y);
+          ctx.strokeStyle = item.color;
+          ctx.globalAlpha = 0.45;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        ctx.fillStyle = item.color;
+        ctx.shadowColor = item.kind === 'series' ? 'rgba(0,0,0,0.55)' : 'transparent';
+        ctx.shadowBlur = item.kind === 'series' ? 4 : 0;
+        ctx.fillText(item.text, labelX, item.y);
+        ctx.shadowBlur = 0;
+      });
+
+      positionedLabels.forEach((item) => {
+        const point = item.point;
+        if (point) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 3.2, 0, Math.PI * 2);
+          ctx.fillStyle = item.color || '#FFFFFF';
+          ctx.fill();
+          ctx.strokeStyle = '#1A1A1A';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      });
+      ctx.restore();
+    }
+  };
+
   function configureChartDefaults() {
     if (!window.Chart) return;
     Chart.register(launchCheckpointPlugin);
@@ -4575,6 +6596,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     Chart.register(rampStabilizationPlugin);
     Chart.register(rpsPhaseBandsPlugin);
     Chart.register(rpsAutosustainMarkerPlugin);
+    Chart.register(rpsExecutiveChartAnnotationsPlugin);
     Chart.defaults.font.family = 'Inter, "Segoe UI", Arial, sans-serif';
     Chart.defaults.font.size = 11;
     Chart.defaults.color = 'rgba(255,255,255,0.55)';
@@ -4935,7 +6957,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       return;
     }
     wrap.hidden = false;
-    const isDaily = metric?.cadence !== 'mes';
+    const isExecutiveRps = Boolean(metric?.rps);
+    const isDaily = metric?.cadence !== 'mes' && !metric?.rpsDecomposition && !isExecutiveRps;
     const endMax = Math.max(0, Number(maxDay) || 0);
     if (isDaily && rampTimeLensBounds(endMax, metric).unavailable) {
       state.rampTimeLens = 'all';
@@ -4957,8 +6980,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const productOptions = productFilterOptions();
     const colorOptions = productColorFilterOptions();
     const isRpsContext = Boolean(metric?.rps || metric?.rpsDecomposition);
-    const productScopeControls = isRpsContext
-      ? `<span class="ramp-rps-scope">${metric?.rpsDecomposition ? 'Índices usam D0-D30 = 100. Receita, sessões e pedidos explicam a variação do RPS.' : '100% é a referência fixa. 90% e 75% são guias visuais provisórios.'}</span>`
+    const hasActiveQuickFilters = selectedRampTimeLensKey() !== 'all'
+      || (state.lineFilter || 'all') !== 'all'
+      || (state.productFilter || 'all') !== 'all'
+      || (state.productColorFilter || 'all') !== 'all';
+    let productScopeControls = isRpsContext
+      ? metric?.rps
+        ? `<button type="button" class="ramp-reference-toggle ${state.rpsShowReferences ? 'is-active' : ''}" data-rps-reference-toggle aria-pressed="${state.rpsShowReferences ? 'true' : 'false'}">${state.rpsShowReferences ? 'Ocultar referências' : 'Exibir referências'}</button>`
+        : `<span class="ramp-rps-scope">Drivers: sessões × RPS</span>`
       : `
         <label class="ramp-filter-field"><span>Produto</span>
           <select class="ramp-quick-select" data-ramp-quick-filter="product" aria-label="Filtrar produto na curva" ${productOptions.length ? '' : 'disabled'}>
@@ -4973,6 +7002,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           </select>
         </label>
       `;
+    if (isExecutiveRps) {
+      productScopeControls = `<span class="ramp-rps-scope">Janela: ${escapeHtml(selectedPeriodLabel())}</span><span class="ramp-rps-scope">Base D0-D30 = 100</span>`;
+    }
     wrap.innerHTML = `
       ${lensButtons}
       <div class="ramp-quick-row ramp-filter-row">
@@ -4989,7 +7021,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           </select>
         </label>
         ${productScopeControls}
-        <button type="button" class="ramp-quick-clear" data-ramp-quick-clear>Limpar</button>
+        ${hasActiveQuickFilters ? '<button type="button" class="ramp-quick-clear" data-ramp-quick-clear>Limpar filtros</button>' : ''}
       </div>
     `;
 
@@ -5019,6 +7051,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         }
         renderAll();
       });
+    });
+    wrap.querySelector('[data-rps-reference-toggle]')?.addEventListener('click', () => {
+      state.rpsShowReferences = !state.rpsShowReferences;
+      renderNormalizedChart(state.launches.find((launch) => launch.modelo_id === state.primaryModelId) || comparableLaunches()[0] || state.launches[0]);
     });
     wrap.querySelector('[data-ramp-quick-clear]')?.addEventListener('click', () => {
       state.rampTimeLens = 'all';
@@ -5285,10 +7321,11 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function renderPeriodSelector() {
     const wrap = $('period-selector');
+    const currentKey = selectedPeriodKey();
     wrap.innerHTML = `
       <select class="period-select" aria-label="Período principal da análise">
         ${ANALYSIS_PERIODS.map((period) => (
-          `<option value="${period.key}" ${period.key === state.analysisPeriodKey ? 'selected' : ''}>${escapeHtml(period.label)}</option>`
+          `<option value="${period.key}" ${period.key === currentKey ? 'selected' : ''}>${escapeHtml(period.label)}</option>`
         )).join('')}
       </select>`;
     wrap.querySelector('select')?.addEventListener('change', (event) => {
@@ -5320,7 +7357,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             <div class="compare-summary">Este grupo entra em rankings, curvas, comerciais e projeção. O destaque visual só realça uma linha.</div>
             <div class="compare-actions">
               <button class="compare-action" type="button" data-compare-action="all">Todos</button>
-              <button class="compare-action" type="button" data-compare-action="none">Limpar</button>
+              <button class="compare-action" type="button" data-compare-action="none">Limpar seleção</button>
             </div>
           </div>
           ${launches.map((launch) => {
@@ -7157,6 +9194,18 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function selectedPeriodShareContext(launch) {
+    if (isGeneralAnalysisPeriod()) {
+      const selectedWindow = selectedAnalysisWindow(launch);
+      const data = selectedWindow.data || {};
+      const productRevenue = numberOrNull(data.receita);
+      return {
+        launch,
+        share: null,
+        range: selectedWindow.range || launchOverviewRangeLabel(launch),
+        status: productRevenue !== null ? 'acumulado observado' : 'sem acumulado observado',
+        detail: productRevenue !== null ? `${fmtBRL(productRevenue)} acumulado no lançamento` : 'participação geral pendente'
+      };
+    }
     const range = launchWindowRangeLabel(launch, selectedPeriodKey());
     const window = getWindow(launch, selectedPeriodKey());
     if (!window) {
@@ -7198,6 +9247,49 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function compactSalesWindowForLaunch(launch) {
     const key = selectedPeriodKey();
+    const d0 = analysisDayZero(launch);
+    if (isGeneralAnalysisPeriod()) {
+      const observedDay = selectedPeriodChartEndDayForLaunch(launch, launchCurrentRampDay(launch));
+      const raw = isProductFilterActive()
+        ? aggregateLaunchSalesRows(salesRowsForLaunchDayRange(launch, 0, observedDay), {
+          start_day: 0,
+          end_day: observedDay,
+          produto: state.productFilter,
+          cor: state.productColorFilter
+        })
+        : (launch?.acumulado_lancamento || launch?.acumulado_atual || launchRevenueForDayRange(launch, 0, observedDay));
+      const data = applyChannelFilterToSalesData(raw);
+      if (data && [data.receita, data.pedidos, data.pares].some((value) => numberOrNull(value) !== null)) {
+        return {
+          launch,
+          key,
+          data: {
+            ...data,
+            ticket: ratioOrNull(data.receita, data.pedidos),
+            preco_medio_par: ratioOrNull(data.receita, data.pares)
+          },
+          status: 'panorama',
+          statusLabel: selectedPeriodLabel(),
+          range: launchOverviewRangeLabel(launch, observedDay),
+          observedDay,
+          targetDay: null,
+          isPartial: false,
+          source: isProductFilterActive() ? 'vendas filtradas do pipeline' : 'acumulado do lançamento'
+        };
+      }
+      return {
+        launch,
+        key,
+        data: null,
+        status: 'sem_panorama',
+        statusLabel: selectedPeriodLabel(),
+        range: d0 ? launchOverviewRangeLabel(launch, observedDay) : 'sem data de lancamento',
+        observedDay,
+        targetDay: null,
+        isPartial: false,
+        source: 'sem acumulado'
+      };
+    }
     const targetDay = selectedPeriodEndDay(launch);
     const observedForExact = selectedPeriodEndDay(launch, { capToAvailable: true });
     const exact = !isProductFilterActive()
@@ -7205,7 +9297,6 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       : observedForExact !== null && targetDay !== null && observedForExact >= targetDay
         ? filteredWindowDataForLaunch(launch, key)
         : null;
-    const d0 = analysisDayZero(launch);
     if (exact) {
       return {
         launch,
@@ -10233,7 +12324,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function seasonalScoreForLaunchWindow(launch, endDay) {
-    const events = seasonalEventsFor(launch, endDay || 0);
+    const events = seasonalEventsFor(launch, endDay ?? 0);
     return events.reduce((acc, event) => acc + event.score, 0);
   }
 
@@ -10246,7 +12337,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function seasonalContextTooltip(row) {
     const launch = row.launch || {};
-    const endDay = selectedPeriodEndDay(launch) || 0;
+    const endDay = selectedPeriodEndDay(launch) ?? launchOverviewEndDay(launch) ?? 0;
     const events = seasonalEventsFor(launch, endDay);
     const score = events.reduce((acc, event) => acc + event.score, 0);
     const counts = seasonalCounts(events);
@@ -10272,11 +12363,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   function cohortMetricRows(launches, getter, { higherIsBetter = true } = {}) {
     const rows = launches.map((launch) => {
       const value = numberOrNull(getter(launch));
-      const hasWindow = Boolean(getWindow(launch, selectedPeriodKey()));
+      const selectedWindow = selectedAnalysisWindow(launch);
+      const hasWindow = isGeneralAnalysisPeriod()
+        ? Boolean(selectedWindow.data)
+        : Boolean(getWindow(launch, selectedPeriodKey()));
       return {
         launch,
         value,
-        range: launchWindowRangeLabel(launch, selectedPeriodKey()),
+        range: selectedWindow.range || launchWindowRangeLabel(launch, selectedPeriodKey()),
         missing: value === null,
         reason: hasWindow ? 'dado pendente' : `em maturação: ${selectedPeriodLabel()} ainda não fechou`
       };
@@ -10336,7 +12430,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const cohort = comparisonLaunchesWithFocus(selected);
     const periodKey = selectedPeriodKey();
     const periodLabel = selectedPeriodLabel();
-    const windowFor = (launch) => getWindow(launch, periodKey);
+    const windowFor = (launch) => isGeneralAnalysisPeriod()
+      ? selectedAnalysisWindow(launch).data
+      : getWindow(launch, periodKey);
     const days = windowSpanDays(periodKey);
     const auditQuality = auditQualityForLaunch(selected);
     const auditWarning = auditQuality?.status === 'divergente'
@@ -10390,7 +12486,9 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         tooltip: 'Ranking de receita média por dia na janela selecionada.',
         rows: cohortMetricRows(cohort, (launch) => {
           const data = windowFor(launch);
-          return data?.receita && days ? data.receita / days : null;
+          const observedDays = days
+            ?? ((numberOrNull(data?.data_day) ?? numberOrNull(data?.activity_day) ?? numberOrNull(data?.day)) + 1);
+          return data?.receita && observedDays ? data.receita / observedDays : null;
         }),
         formatter: (value) => `${fmtBRL(value)}/dia`,
         selectedId: selected.modelo_id
@@ -10398,7 +12496,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       cohortMetricCard({
         label: 'Contexto comercial',
         tooltip: 'Ranking do saldo sazonal dentro da janela selecionada de cada lançamento. Valores positivos indicam vento a favor; negativos indicam pressão de calendário.',
-        rows: cohortMetricRows(cohort, (launch) => seasonalScoreForLaunchWindow(launch, selectedPeriodEndDay(launch))),
+        rows: cohortMetricRows(cohort, (launch) => seasonalScoreForLaunchWindow(launch, selectedPeriodEndDay(launch) ?? launchOverviewEndDay(launch))),
         formatter: (value) => seasonalScoreLabel(value, value === 0 ? [] : [{ score: value }]),
         selectedId: selected.modelo_id,
         tooltipRenderer: seasonalContextTooltip
@@ -10455,7 +12553,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const metric = rampMetricConfig('receita_acumulada');
     const eligible = launches
       .map((launch) => {
-        const points = rampDailyRowsForLaunch(launch, launchCurrentRampDay(launch))
+        const endDay = selectedPeriodChartEndDayForLaunch(launch, launchCurrentRampDay(launch));
+        const points = rampDailyRowsForLaunch(launch, endDay, metric)
           .map((row) => ({ ...row, data_calendario: dailyCalendarDate(launch, row) }))
           .filter((row) => row.data_calendario && rampSeriesValue(row, metric) !== null);
         return { launch, points };
@@ -10498,8 +12597,16 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function buildCannibalSubmodelData(modelId) {
     const metric = rampMetricConfig('receita_acumulada');
+    const launch = lineLaunchById(modelId);
+    const d0 = analysisDayZero(launch);
+    const endDay = launch ? selectedPeriodChartEndDayForLaunch(launch, launchCurrentRampDay(launch)) : null;
     const rows = subModelDailyRows(modelId)
-      .filter((row) => rampSeriesValue(row, metric) !== null);
+      .filter((row) => {
+        if (rampSeriesValue(row, metric) === null) return false;
+        if (!launch || !d0 || !row.data || endDay === null) return true;
+        const idx = dayIndex(d0, row.data);
+        return idx !== null && idx >= 0 && idx <= endDay;
+      });
     const bySub = new Map();
     rows.forEach((row) => {
       if (!row.sub_modelo_id || !row.data) return;
@@ -10546,8 +12653,15 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
     const subText = $(subTextId);
     const mode = state.normalizedChartMode || 'linha';
+    if (canvasId === 'chart-normalized') {
+      syncRpsExperienceModeControls();
+      setNormalizedMainChartHidden(false);
+    }
     let rampMetric = rampMetricConfig();
-    if (canvasId === 'chart-normalized') renderRpsAutosustainAnalysis(null);
+    if (canvasId === 'chart-normalized') {
+      renderRpsAutosustainAnalysis(null);
+      renderLaunchHealthSummary(null);
+    }
     if (mode !== 'linha') {
       state.normalizedRampMetric = 'receita_acumulada';
       document.querySelectorAll('[data-ramp-metric]').forEach((button) => {
@@ -10586,7 +12700,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const isRpsDecomposition = Boolean(rampMetric.rpsDecomposition);
       const isWeekly = isHealth || rampMetric.cadence === 'semana';
       const comparisonMaxDay = normalizedRampMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected]);
-      const maxDay = (isRps || isRpsDecomposition) ? rpsLatestDataDay(selected) : comparisonMaxDay;
+      const periodMaxDay = selectedPeriodChartMaxDay(normalizedLaunches.length ? normalizedLaunches : [selected], comparisonMaxDay);
+      const maxDay = (isRps || isRpsDecomposition)
+        ? selectedPeriodChartEndDayForLaunch(selected, rpsLatestDataDay(selected))
+        : periodMaxDay;
       renderRampQuickControls(maxDay, rampMetric, mode);
       let lensBounds = rampTimeLensBounds(maxDay, rampMetric);
       let weeklyLens = isWeekly
@@ -10629,9 +12746,15 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           ? `D0 a D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`
           : `${rampTimeLensLabel(lensBounds)} · curva total ate D+${fmtNum(maxDay)} (${fmtDateSlash(snapshotIso())})`;
         if (isRps) {
-          subText.textContent = `Curva MM7 com referência fixa e guias 90/75 - ${coverage}`;
+          subText.textContent = state.rpsShowReferences
+            ? `Curva MM7 com referência fixa e guias 90/75 - ${coverage}`
+            : `Curva MM7 com referência fixa principal - ${coverage}`;
         } else if (isRpsDecomposition) {
-          subText.textContent = `Índices com D0-D30 = 100 para RPS, receita/dia, sessões/dia e pedidos/dia - ${coverage}`;
+          const closedMaxDay = Math.floor((maxDay + 1) / AUTOSUSTAIN_WEEK_DAYS) * AUTOSUSTAIN_WEEK_DAYS;
+          const closedCoverage = closedMaxDay >= AUTOSUSTAIN_WEEK_DAYS
+            ? `semanas fechadas D+7 a D+${fmtNum(closedMaxDay)}`
+            : 'semana fechada pendente';
+          subText.textContent = `Impacto em R$ versus D0-D30: Sessões, RPS e linha secundária de Delta Receita - ${closedCoverage}`;
         } else if (isShare) {
           const periodWord = isMonthly ? 'mes' : 'semana';
           subText.textContent = `Share de vendas por ${periodWord} de vida comercial - ${coverage}`;
@@ -10647,9 +12770,26 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
             : `${rampMetric.shortLabel} acumulado por dia desde o lancamento · ${coverage}`;
       }
       }
+      if (canvasId === 'chart-normalized' && isRpsExecutiveView(rampMetric)) {
+        setNormalizedMainChartHidden(true);
+        if (title) title.textContent = 'RPS - Visão executiva';
+        if (titleHelp) {
+          titleHelp.dataset.tooltip = 'Visão executiva mostra a história em duas curvas: Performance e Suporte. Fórmulas e waterfall ficam em Ver detalhes · 3 análises ↓.';
+        }
+        if (subText) subText.textContent = `Performance, suporte e independência · ${selectedPeriodLabel()}`;
+        renderLaunchHealthSummary(selected, normalizedLaunches);
+        renderRampPeriodAnalysis(selected, normalizedLaunches);
+        renderRampHealthInsight(selected);
+        renderRpsAutosustainAnalysis(selected);
+        return;
+      }
       if (isRpsDecomposition) {
-        createChart(canvasId, rpsDecompositionChartConfig(selected, maxDay, lensStart, lensEnd, normalizedLabels));
+        const driverSnapshot = rpsAutosustainSnapshotForLaunch(selected);
+        createChart(canvasId, rpsTimelineDriverChartConfig(driverSnapshot, 'launch', () => {
+          renderNormalizedChart(selected, canvasId, subTextId);
+        }));
         if (canvasId === 'chart-normalized') {
+          renderLaunchHealthSummary(selected, normalizedLaunches);
           renderRampPeriodAnalysis(selected, normalizedLaunches);
           renderRampHealthInsight(selected);
           renderRpsAutosustainAnalysis(null);
@@ -10665,7 +12805,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         data: {
           labels: normalizedLabels,
           datasets: [
-            ...(isRps ? rpsRulerChartDatasets(selected, normalizedLaunches, maxDay, lensStart, lensEnd) : []),
+            ...(isRps ? rpsReferenceDatasetsForView(selected, normalizedLaunches, maxDay, lensStart, lensEnd) : []),
             ...visibleLineLaunches.map((launch, index) => {
               const filteredSeries = isProductFilterActive() || isChannelFilterActive();
               const series = isRps
@@ -10779,7 +12919,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           plugins: {
             rpsPhaseBands: {
               enabled: isRps,
-              bands: isRps ? rpsPhaseBandsForLens(maxDay, lensStart, lensEnd) : []
+              bands: isRps ? rpsPhaseBandsForLens(maxDay, lensStart, lensEnd) : [],
+              subtle: isRps && !state.rpsShowReferences
             },
             legend: isHealth || isRps
               ? {
@@ -10913,6 +13054,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
         })
       });
       if (canvasId === 'chart-normalized') {
+        renderLaunchHealthSummary(selected, normalizedLaunches);
         renderRampPeriodAnalysis(selected, normalizedLaunches);
         renderRampHealthInsight(selected);
         renderRpsAutosustainAnalysis(isRps ? selected : null);
@@ -10921,6 +13063,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     }
 
     if (canvasId === 'chart-normalized') {
+      renderLaunchHealthSummary(null);
       renderRampPeriodAnalysis(selected);
       renderRampHealthInsight(selected);
     }
@@ -10948,8 +13091,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const title = $('chart-normalized-title');
       const titleHelp = $('chart-normalized-help');
       if (title) title.textContent = 'Faturamento entre linhas';
-      if (titleHelp) titleHelp.dataset.tooltip = 'Compara faturamento diario por data real para enxergar sobreposicao entre lancamentos e linhas.';
-      if (subText) subText.textContent = 'Faturamento diario por linha, alinhado por data real';
+      if (titleHelp) titleHelp.dataset.tooltip = 'Compara faturamento diario por data real dentro da janela selecionada para enxergar sobreposicao entre lancamentos e linhas.';
+      if (subText) subText.textContent = `Faturamento diario por linha ${selectedPeriodScopeLabel()}, alinhado por data real`;
       const { dates, datasets, checkpoints } = buildCannibalTimelineData(comparableLaunches());
       if (!dates.length || !datasets.length) return;
       createChart(canvasId, { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
@@ -10962,8 +13105,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const title = $('chart-normalized-title');
       const titleHelp = $('chart-normalized-help');
       if (title) title.textContent = 'Faturamento dentro da linha';
-      if (titleHelp) titleHelp.dataset.tooltip = 'Compara subprodutos da linha por data real para mostrar concentracao ou dispersao de venda.';
-      if (subText) subText.textContent = `Sub-produtos dentro de ${lineLaunch?.linha || lineLaunch?.modelo || lineId} · ${rampMetric.shortLabel} diario`;
+      if (titleHelp) titleHelp.dataset.tooltip = 'Compara subprodutos da linha por data real dentro da janela selecionada para mostrar concentracao ou dispersao de venda.';
+      if (subText) subText.textContent = `Sub-produtos dentro de ${lineLaunch?.linha || lineLaunch?.modelo || lineId} · ${rampMetric.shortLabel} diario ${selectedPeriodScopeLabel()}`;
       const { dates, datasets, checkpoints } = buildCannibalSubmodelData(lineId);
       if (!dates.length || !datasets.length) return;
       createChart(canvasId, { type: 'line', data: { labels: dates, datasets }, options: sharedOptions(dates, checkpoints) });
@@ -11751,8 +13894,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
   function acquisitionMetricRowsForLaunch(launch) {
     const selectedEnd = selectedPeriodEndDay(launch);
-    return WINDOW_KEYS
-      .filter((key) => windowEndDay(key) <= selectedEnd)
+    const keys = selectedEnd === null || selectedEnd === undefined
+      ? WINDOW_KEYS
+      : WINDOW_KEYS.filter((key) => windowEndDay(key) <= selectedEnd);
+    return keys
       .map((key) => acquisitionWindowForLaunch(launch, key, { requireClosed: true }))
       .filter(Boolean)
       .map((row) => ({
@@ -12440,6 +14585,13 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
 
     const mixWindowFor = (launch) => {
       const key = selectedPeriodKey();
+      if (isGeneralAnalysisPeriod()) {
+        const selectedWindow = selectedAnalysisWindow(launch);
+        return {
+          key,
+          data: selectedWindow.data
+        };
+      }
       return {
         key,
         data: windowData(launch, key)
@@ -12518,19 +14670,42 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       </div>
     ` : '';
 
-    const weeklyLaunches = chartLaunches.filter((launch) => launch.semanas?.length);
-    const weeklyLabels = [...new Set(weeklyLaunches.flatMap((launch) => launch.semanas.map((week) => week.label)))];
-    $('weekly-title').textContent = weeklyLaunches.length ? 'Receita por semana' : 'Semana a semana';
+    const weeklyRowsForChart = (launch) => {
+      const endDay = selectedPeriodChartEndDayForLaunch(launch, launchCurrentRampDay(launch));
+      const dailyRows = rampDailyRowsForLaunch(launch, endDay, rampMetricConfig('receita_acumulada'));
+      if (dailyRows.length) return weeklyFromDaily(dailyRows, endDay);
+      return (launch.semanas || [])
+        .map((week, index) => {
+          const labelWeekNumber = numberOrNull(String(week.label || '').match(/\d+/)?.[0]);
+          const startDay = numberOrNull(week.startDay) ?? (labelWeekNumber ? (labelWeekNumber - 1) * 7 : index * 7);
+          const targetEndDay = Math.min(numberOrNull(week.endDay) ?? startDay + 6, endDay);
+          return {
+            ...week,
+            startDay,
+            endDay: targetEndDay,
+            partial: targetEndDay < startDay + 6
+          };
+        })
+        .filter((week) => week.startDay <= endDay && (numberOrNull(week.receita) !== null || numberOrNull(week.pedidos) !== null));
+    };
+    const weeklyLaunches = chartLaunches
+      .map((launch, index) => ({ launch, index, semanas: weeklyRowsForChart(launch) }))
+      .filter((row) => row.semanas.length);
+    const weeklyLabels = [...new Set(weeklyLaunches.flatMap((row) => row.semanas.map((week) => week.label)))];
+    $('weekly-title').textContent = weeklyLaunches.length
+      ? `Receita por semana ${selectedPeriodScopeLabel()}`
+      : 'Semana a semana';
     createChart('chart-weekly', {
       type: 'bar',
       data: {
         labels: weeklyLabels,
-        datasets: weeklyLaunches.map((launch, index) => ({
-          label: launch.modelo,
-          data: weeklyLabels.map((label) => launch.semanas.find((week) => week.label === label)?.receita ?? null),
-          borderColor: colorFor(launch.modelo_id, index),
-          backgroundColor: colorFor(launch.modelo_id, index),
-          borderWidth: launch.modelo_id === selected.modelo_id ? 2 : 1,
+        datasets: weeklyLaunches.map((row) => ({
+          label: row.launch.modelo,
+          data: weeklyLabels.map((label) => row.semanas.find((week) => week.label === label)?.receita ?? null),
+          weeklyRows: row.semanas,
+          borderColor: colorFor(row.launch.modelo_id, row.index),
+          backgroundColor: colorFor(row.launch.modelo_id, row.index),
+          borderWidth: row.launch.modelo_id === selected.modelo_id ? 2 : 1,
           borderRadius: 5,
           maxBarThickness: 18,
           categoryPercentage: 0.72,
@@ -12556,7 +14731,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${fmtBRL(ctx.parsed.y)}`,
-              afterLabel: () => 'Semana relativa ao D0 de cada lançamento; compara o ritmo semanal entre modelos.'
+              afterLabel: (ctx) => {
+                const week = ctx.dataset.weekRows?.find((item) => item.label === ctx.label);
+                if (!week) return `Semana relativa ao D0; filtro ${selectedPeriodLabel()}.`;
+                const startLabel = week.startDay === 0 ? 'D0' : `D+${fmtNum(week.startDay)}`;
+                const endLabel = `D+${fmtNum(week.endDay)}`;
+                const suffix = week.partial ? ' parcial' : '';
+                return `Janela exibida: ${startLabel} a ${endLabel}${suffix}; filtro ${selectedPeriodLabel()}.`;
+              }
             }
           }
         }
