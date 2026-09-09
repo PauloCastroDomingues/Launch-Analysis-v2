@@ -10015,3 +10015,25 @@ body .presentation-page {
     padding: 18px 42px 18px 0;
   }
 }
+
+/* Launch review: one scorecard, explicit source limits, temporal curves retained. */
+.review-notice { border:1px solid #695529; border-left:3px solid #E0B84C; background:#242016; padding:16px 20px; border-radius:12px; margin:20px 0; color:#ece3cf; }
+.review-notice p { margin:8px 0; line-height:1.55; font-size:13px; }
+.review-notice summary { cursor:pointer; font-size:13px; }
+.review-overview { background:var(--surface, #191b1e); border:1px solid #34373c; padding:24px; border-radius:16px; }
+.review-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; }
+.review-heading h2 { margin:8px 0; font-size:24px; line-height:1.25; }
+.review-period { white-space:nowrap; color:#E0B84C; }
+.review-lead { margin:16px 0 22px; line-height:1.6; }
+.review-scoreboard { width:100%; min-width:1000px; border-collapse:collapse; }
+.review-scoreboard th { text-align:right; font-size:12px; color:#c2c5ca; padding:12px; }
+.review-scoreboard td { padding:16px 12px; border-top:1px solid #34373c; text-align:right; white-space:nowrap; }
+.review-scoreboard th:first-child,.review-scoreboard td:first-child { text-align:left; }
+.review-scoreboard small { display:block; white-space:normal; max-width:240px; color:#a9adb4; margin-top:6px; font-size:11px; }
+.review-highlight { background:rgba(224,184,76,.07); }
+.review-note { font-size:12px; line-height:1.6; color:#b8bcc4; margin:16px 0; }
+.review-actions { display:flex; gap:12px; }
+.review-actions button { padding:10px 16px; border:1px solid #555a64; border-radius:8px; background:transparent; color:inherit; cursor:pointer; }
+
+/* Current selections already appear in the controls and the scorecard. */
+#analysis-context { display:none; }

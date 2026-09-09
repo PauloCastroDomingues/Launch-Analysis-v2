@@ -2067,8 +2067,8 @@ function auditarAtribuicaoCanal_(rows) {
     const temReceitaExplicita = receitasExplicitas.some(value => value !== null);
     const temPedidosExplicitos = pedidosExplicitos.some(value => value !== null);
     if (temReceitaExplicita || temPedidosExplicitos) {
-      const receitaClassificada = receitasExplicitas.reduce((sum, value) => sum + Number(value || 0), 0);
-      const pedidosClassificados = pedidosExplicitos.reduce((sum, value) => sum + Number(value || 0), 0);
+      const receitaClassificada = receitasExplicitas.slice(0, 4).reduce((sum, value) => sum + Number(value || 0), 0);
+      const pedidosClassificados = pedidosExplicitos.slice(0, 4).reduce((sum, value) => sum + Number(value || 0), 0);
       if (receitaClassificada > 0 || pedidosClassificados > 0) {
         bucket.pedidos_classificados[orderKey] = true;
         bucket.receita_classificada += temReceitaExplicita ? receitaClassificada : receita;
@@ -2091,7 +2091,7 @@ function auditarAtribuicaoCanal_(rows) {
       if (Number(pedidosSemMatch || 0) > 0) bucket.pedidos_sem_match[orderKey] = true;
       return;
     }
-    if (tipo) {
+    if (tipo && tipo !== 'unmatched') {
       bucket.pedidos_classificados[orderKey] = true;
       bucket.receita_classificada += receita;
     }

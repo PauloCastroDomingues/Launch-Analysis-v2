@@ -1,6 +1,16 @@
 {
-  "generated_at": "2026-08-20T17:17:05.152Z",
-  "manifest_generated_at": "2026-08-20T14:04:00-03:00",
+  "generated_at": "2026-09-09T12:28:33.878Z",
+  "manifest_generated_at": "2026-08-21T11:45:40-03:00",
+  "rules_version": "20260909-launch-review-v1",
+  "source_signatures": {
+    "lancamentos_modelos": "2533:8f051c9e",
+    "lancamentos_produtos_dia": "10557233:59ac862b",
+    "lancamentos_rampa_dia": "712846:bb0f8dd",
+    "lancamentos_clientes_janelas": "20872:1d329dba",
+    "midia_paga": "11016:cfb22a0b",
+    "crm_disparos": "11783:3a653aa4",
+    "manifest": "6330:c99acd4d"
+  },
   "source_files": [
     "data/lancamentos_modelos.json",
     "data/lancamentos_rampa_dia.json",
@@ -23,7 +33,7 @@
     "base_atual_disponivel": true,
     "rampa_pos_d90_disponivel": true,
     "alertas": [
-      "ROAS com qualidade alocado_ssot/inferido deve ser lido como alocacao ou inferencia, nao atribuicao causal absoluta."
+      "ROAS permanece pendente sem investimento com datas exatas e escopo validado para o produto. Classificação de canal não prova causalidade."
     ]
   },
   "modelos": {
@@ -37,9 +47,9 @@
       "disponibilidade": {
         "ultimo_dia_disponivel": 246,
         "ultimo_dia_com_venda": 246,
-        "ultimo_dia_exportado": 246,
-        "ultima_data_disponivel": "2026-08-20",
-        "data_fim_exportada": "2026-08-20",
+        "ultimo_dia_exportado": 247,
+        "ultima_data_disponivel": "2026-08-21",
+        "data_fim_exportada": "2026-08-21",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "estendida_real"
@@ -82,12 +92,12 @@
                 "qualidade": "pendente"
               },
               "organic": {
-                "receita": 103341,
-                "pedidos": 133,
-                "pares": 133,
+                "receita": null,
+                "pedidos": null,
+                "pares": null,
                 "clientes": null,
-                "ticket_medio": 777,
-                "qualidade": "inferido"
+                "ticket_medio": null,
+                "qualidade": "pendente"
               },
               "crm": {
                 "receita": null,
@@ -106,17 +116,17 @@
                 "qualidade": "pendente"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 103341,
+                "pedidos": 115,
+                "pares": 133,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 898.62,
+                "qualidade": "inferido"
               }
             },
             "canal_qualidade": "inferido",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 112,
             "pedidos_sem_customer_key": 3,
             "customer_key_coverage_pct": 0.973913,
@@ -127,19 +137,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+7. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "15d": {
@@ -179,12 +191,12 @@
                 "qualidade": "pendente"
               },
               "organic": {
-                "receita": 147574,
-                "pedidos": 190,
-                "pares": 190,
+                "receita": null,
+                "pedidos": null,
+                "pares": null,
                 "clientes": null,
-                "ticket_medio": 776.71,
-                "qualidade": "inferido"
+                "ticket_medio": null,
+                "qualidade": "pendente"
               },
               "crm": {
                 "receita": null,
@@ -203,17 +215,17 @@
                 "qualidade": "pendente"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 147574,
+                "pedidos": 167,
+                "pares": 190,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 883.68,
+                "qualidade": "inferido"
               }
             },
             "canal_qualidade": "inferido",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 159,
             "pedidos_sem_customer_key": 8,
             "customer_key_coverage_pct": 0.952096,
@@ -222,21 +234,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 2797.64,
+            "midia_paga": null,
             "crm": null,
+            "total": null,
             "outros": null,
-            "total": 2797.64,
             "linhas_midia_paga": 1,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
-            "investimento_sem_data_confiavel": 2797.64,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+15. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento GT 15d",
+                "investimento": 2797.64,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "30d": {
@@ -276,12 +297,12 @@
                 "qualidade": "pendente"
               },
               "organic": {
-                "receita": 263347,
-                "pedidos": 339,
-                "pares": 339,
+                "receita": 777,
+                "pedidos": 1,
+                "pares": 1,
                 "clientes": null,
-                "ticket_medio": 776.83,
-                "qualidade": "inferido"
+                "ticket_medio": 777,
+                "qualidade": "real"
               },
               "crm": {
                 "receita": null,
@@ -292,25 +313,25 @@
                 "qualidade": "pendente"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 777,
+                "pedidos": 1,
+                "pares": 1,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 777,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 261793,
+                "pedidos": 270,
+                "pares": 337,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 969.6,
+                "qualidade": "inferido"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "misto",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 259,
             "pedidos_sem_customer_key": 13,
             "customer_key_coverage_pct": 0.952206,
@@ -319,21 +340,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 4559.71,
+            "midia_paga": null,
             "crm": null,
+            "total": null,
             "outros": null,
-            "total": 4559.71,
             "linhas_midia_paga": 1,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
-            "investimento_sem_data_confiavel": 4559.71,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento GT 30d",
+                "investimento": 4559.71,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "60d": {
@@ -366,48 +396,48 @@
             "canais": {
               "paid": {
                 "receita": 9821,
-                "pedidos": 13,
+                "pedidos": 11,
                 "pares": 13,
                 "clientes": null,
-                "ticket_medio": 755.46,
-                "qualidade": "inferido"
+                "ticket_medio": 892.82,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 504462,
-                "pedidos": 654,
-                "pares": 654,
+                "receita": 9324,
+                "pedidos": 11,
+                "pares": 12,
                 "clientes": null,
-                "ticket_medio": 771.35,
-                "qualidade": "inferido"
+                "ticket_medio": 847.64,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 8547,
-                "pedidos": 11,
-                "pares": 11,
+                "receita": 3885,
+                "pedidos": 4,
+                "pares": 5,
                 "clientes": null,
-                "ticket_medio": 777,
-                "qualidade": "inferido"
+                "ticket_medio": 971.25,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 11375,
+                "pedidos": 14,
+                "pares": 15,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 812.5,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 488425,
+                "pedidos": 485,
+                "pares": 633,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 1007.06,
+                "qualidade": "inferido"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 511,
             "pedidos_sem_customer_key": 14,
             "customer_key_coverage_pct": 0.973333,
@@ -416,21 +446,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 13367.67,
+            "midia_paga": null,
             "crm": 1049.28,
+            "total": null,
             "outros": null,
-            "total": 14416.95,
             "linhas_midia_paga": 1,
             "linhas_crm": 1,
-            "investimento_com_data_e_canal": 1049.28,
-            "investimento_sem_data_confiavel": 13367.67,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento GT 60d",
+                "investimento": 13367.67,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.7347,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "90d": {
@@ -463,48 +502,48 @@
             "canais": {
               "paid": {
                 "receita": 71480,
-                "pedidos": 92,
+                "pedidos": 81,
                 "pares": 93,
                 "clientes": null,
-                "ticket_medio": 776.96,
-                "qualidade": "inferido"
+                "ticket_medio": 882.47,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 780456,
-                "pedidos": 1010,
-                "pares": 1011,
+                "receita": 71760,
+                "pedidos": 73,
+                "pares": 93,
                 "clientes": null,
-                "ticket_medio": 772.73,
-                "qualidade": "inferido"
+                "ticket_medio": 983.01,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 36239,
-                "pedidos": 47,
-                "pares": 47,
+                "receita": 14763,
+                "pedidos": 18,
+                "pares": 19,
                 "clientes": null,
-                "ticket_medio": 771.04,
-                "qualidade": "inferido"
+                "ticket_medio": 820.17,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 95838,
+                "pedidos": 101,
+                "pares": 125,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 948.89,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 634334,
+                "pedidos": 630,
+                "pares": 821,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 1006.88,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "misto",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 884,
             "pedidos_sem_customer_key": 19,
             "customer_key_coverage_pct": 0.978959,
@@ -513,30 +552,39 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 39187.42,
+            "midia_paga": null,
             "crm": 1049.28,
+            "total": null,
             "outros": null,
-            "total": 40236.7,
             "linhas_midia_paga": 1,
             "linhas_crm": 1,
-            "investimento_com_data_e_canal": 1049.28,
-            "investimento_sem_data_confiavel": 39187.42,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento GT 90d",
+                "investimento": 39187.42,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 1.8241,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         }
       },
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 246,
+        "end_day": 247,
         "start_date": "2025-12-17",
-        "end_date": "2026-08-20",
+        "end_date": "2026-08-21",
         "vendas": {
           "receita": 2703938,
           "receita_liquida": 2252543.09,
@@ -601,7 +649,7 @@
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 94913,
-          "base_atual_clientes": 118149,
+          "base_atual_clientes": 118221,
           "pedidos_com_customer_key": 2642,
           "pedidos_sem_customer_key": 107,
           "customer_key_coverage_pct": 0.961077,
@@ -610,21 +658,30 @@
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
         },
         "investimento": {
-          "midia_paga": 39187.42,
+          "midia_paga": null,
           "crm": 1049.28,
+          "total": null,
           "outros": null,
-          "total": 40236.7,
           "linhas_midia_paga": 1,
           "linhas_crm": 1,
-          "investimento_com_data_e_canal": 1049.28,
-          "investimento_sem_data_confiavel": 39187.42,
-          "confiabilidade": "declarado_manual_sem_data_confiavel"
+          "investimento_com_data_e_canal": null,
+          "investimento_sem_data_confiavel": null,
+          "confiabilidade": "pendente_validacao_janela_e_escopo",
+          "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": [
+            {
+              "campanha": "Investimento GT 90d",
+              "investimento": 39187.42,
+              "data_inicio": null,
+              "data_fim": null
+            }
+          ]
         },
         "roas": {
           "midia_paga": null,
-          "status": "investimento_declarado_roas_pendente",
+          "status": "pendente_validacao_janela_e_escopo",
           "qualidade_receita": "pendente",
-          "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+          "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
         },
         "vida_util": {
           "peak_revenue_day": {
@@ -2392,6 +2449,13 @@
             "receita": 777,
             "pedidos": 1,
             "pares": 1
+          },
+          {
+            "day": 247,
+            "data": "2026-08-21",
+            "receita": 0,
+            "pedidos": 0,
+            "pares": 0
           }
         ]
       },
@@ -2405,11 +2469,11 @@
       "day_zero_base": "2025-12-14",
       "data_oficial": "2025-10-02",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 249,
-        "ultimo_dia_com_venda": 249,
-        "ultimo_dia_exportado": 249,
-        "ultima_data_disponivel": "2026-08-20",
-        "data_fim_exportada": "2026-08-20",
+        "ultimo_dia_disponivel": 250,
+        "ultimo_dia_com_venda": 250,
+        "ultimo_dia_exportado": 250,
+        "ultima_data_disponivel": "2026-08-21",
+        "data_fim_exportada": "2026-08-21",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "estendida_real"
@@ -2452,12 +2516,12 @@
                 "qualidade": "pendente"
               },
               "organic": {
-                "receita": 110618,
-                "pedidos": 209,
-                "pares": 209,
+                "receita": null,
+                "pedidos": null,
+                "pares": null,
                 "clientes": null,
-                "ticket_medio": 529.27,
-                "qualidade": "inferido"
+                "ticket_medio": null,
+                "qualidade": "pendente"
               },
               "crm": {
                 "receita": null,
@@ -2468,25 +2532,25 @@
                 "qualidade": "pendente"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 388,
+                "pedidos": 1,
+                "pares": 1,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 388,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 110230,
+                "pedidos": 171,
+                "pares": 208,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 644.62,
+                "qualidade": "inferido"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "misto",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 167,
             "pedidos_sem_customer_key": 5,
             "customer_key_coverage_pct": 0.97093,
@@ -2497,19 +2561,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+7. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "15d": {
@@ -2549,12 +2615,12 @@
                 "qualidade": "pendente"
               },
               "organic": {
-                "receita": 199224,
-                "pedidos": 375,
-                "pares": 375,
+                "receita": null,
+                "pedidos": null,
+                "pares": null,
                 "clientes": null,
-                "ticket_medio": 531.26,
-                "qualidade": "inferido"
+                "ticket_medio": null,
+                "qualidade": "pendente"
               },
               "crm": {
                 "receita": null,
@@ -2565,25 +2631,25 @@
                 "qualidade": "pendente"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 388,
+                "pedidos": 1,
+                "pares": 1,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 388,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 198836,
+                "pedidos": 314,
+                "pares": 374,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 633.24,
+                "qualidade": "inferido"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "misto",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 304,
             "pedidos_sem_customer_key": 11,
             "customer_key_coverage_pct": 0.965079,
@@ -2592,21 +2658,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 20910.44,
+            "midia_paga": null,
             "crm": null,
+            "total": null,
             "outros": null,
-            "total": 20910.44,
             "linhas_midia_paga": 1,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
-            "investimento_sem_data_confiavel": 20910.44,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+15. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Avant 15d",
+                "investimento": 20910.44,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "30d": {
@@ -2646,12 +2721,12 @@
                 "qualidade": "pendente"
               },
               "organic": {
-                "receita": 383922,
-                "pedidos": 720,
-                "pares": 720,
+                "receita": 3050,
+                "pedidos": 1,
+                "pares": 5,
                 "clientes": null,
-                "ticket_medio": 533.23,
-                "qualidade": "inferido"
+                "ticket_medio": 3050,
+                "qualidade": "real"
               },
               "crm": {
                 "receita": null,
@@ -2662,25 +2737,25 @@
                 "qualidade": "pendente"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 998,
+                "pedidos": 2,
+                "pares": 2,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 499,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 379874,
+                "pedidos": 533,
+                "pares": 713,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 712.71,
+                "qualidade": "inferido"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 521,
             "pedidos_sem_customer_key": 15,
             "customer_key_coverage_pct": 0.972015,
@@ -2689,21 +2764,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 49230.42,
+            "midia_paga": null,
             "crm": null,
+            "total": null,
             "outros": null,
-            "total": 49230.42,
             "linhas_midia_paga": 1,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
-            "investimento_sem_data_confiavel": 49230.42,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Avant 30d",
+                "investimento": 49230.42,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "60d": {
@@ -2736,48 +2820,48 @@
             "canais": {
               "paid": {
                 "receita": 12254,
-                "pedidos": 23,
+                "pedidos": 20,
                 "pares": 23,
                 "clientes": null,
-                "ticket_medio": 532.78,
-                "qualidade": "inferido"
+                "ticket_medio": 612.7,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 1001902,
-                "pedidos": 1854,
-                "pares": 1855,
+                "receita": 13308,
+                "pedidos": 16,
+                "pares": 24,
                 "clientes": null,
-                "ticket_medio": 540.4,
-                "qualidade": "inferido"
+                "ticket_medio": 831.75,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 9094,
-                "pedidos": 16,
-                "pares": 16,
+                "receita": 2828,
+                "pedidos": 3,
+                "pares": 5,
                 "clientes": null,
-                "ticket_medio": 568.38,
-                "qualidade": "inferido"
+                "ticket_medio": 942.67,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 18020,
+                "pedidos": 30,
+                "pares": 35,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 600.67,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 976840,
+                "pedidos": 1391,
+                "pares": 1807,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 702.26,
+                "qualidade": "inferido"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 1441,
             "pedidos_sem_customer_key": 19,
             "customer_key_coverage_pct": 0.986986,
@@ -2786,21 +2870,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 105149.78,
+            "midia_paga": null,
             "crm": 126,
+            "total": null,
             "outros": null,
-            "total": 105275.78,
             "linhas_midia_paga": 1,
             "linhas_crm": 1,
-            "investimento_com_data_e_canal": 126,
-            "investimento_sem_data_confiavel": 105149.78,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Avant 60d",
+                "investimento": 105149.78,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.1165,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "90d": {
@@ -2833,48 +2926,48 @@
             "canais": {
               "paid": {
                 "receita": 211193,
-                "pedidos": 363,
+                "pedidos": 291,
                 "pares": 364,
                 "clientes": null,
-                "ticket_medio": 581.8,
-                "qualidade": "inferido"
+                "ticket_medio": 725.75,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 1795155,
-                "pedidos": 3201,
-                "pares": 3207,
+                "receita": 185635,
+                "pedidos": 226,
+                "pares": 322,
                 "clientes": null,
-                "ticket_medio": 560.81,
-                "qualidade": "inferido"
+                "ticket_medio": 821.39,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 66546,
-                "pedidos": 120,
-                "pares": 121,
+                "receita": 31915,
+                "pedidos": 45,
+                "pares": 57,
                 "clientes": null,
-                "ticket_medio": 554.55,
-                "qualidade": "inferido"
+                "ticket_medio": 709.22,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 190133,
+                "pedidos": 262,
+                "pares": 343,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 725.7,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 1454018,
+                "pedidos": 1966,
+                "pares": 2606,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 739.58,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 2761,
             "pedidos_sem_customer_key": 29,
             "customer_key_coverage_pct": 0.989606,
@@ -2883,50 +2976,59 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 229136.29,
+            "midia_paga": null,
             "crm": 126,
+            "total": null,
             "outros": null,
-            "total": 229262.29,
             "linhas_midia_paga": 1,
             "linhas_crm": 1,
-            "investimento_com_data_e_canal": 126,
-            "investimento_sem_data_confiavel": 229136.29,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Avant 90d",
+                "investimento": 229136.29,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.9217,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         }
       },
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 249,
+        "end_day": 250,
         "start_date": "2025-12-14",
-        "end_date": "2026-08-20",
+        "end_date": "2026-08-21",
         "vendas": {
-          "receita": 8386426,
-          "receita_liquida": 6324624.69,
-          "desconto": 2061801.31,
-          "pedidos": 10564,
-          "pares": 14848,
-          "ticket_medio": 793.87,
-          "preco_medio_par": 564.82,
+          "receita": 8416113,
+          "receita_liquida": 6342745.37,
+          "desconto": 2073367.63,
+          "pedidos": 10597,
+          "pares": 14907,
+          "ticket_medio": 794.2,
+          "preco_medio_par": 564.57,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 9554,
-          "novos_clientes": 8676,
-          "recorrentes_clientes": 878,
-          "receita_por_cliente": 877.79,
+          "clientes_unicos": 9584,
+          "novos_clientes": 8704,
+          "recorrentes_clientes": 880,
+          "receita_por_cliente": 878.14,
           "pedidos_por_cliente": 1.1057,
-          "pares_por_cliente": 1.5541,
-          "unidades_por_cliente": 1.5541,
-          "pct_base_ativada": 0.009294,
-          "clientes_base_compraram": 878,
+          "pares_por_cliente": 1.5554,
+          "unidades_por_cliente": 1.5554,
+          "pct_base_ativada": 0.009315,
+          "clientes_base_compraram": 880,
           "canais": {
             "paid": {
               "receita": null,
@@ -2961,40 +3063,49 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 8386426,
-              "pedidos": 10564,
-              "pares": 14848,
+              "receita": 8416113,
+              "pedidos": 10597,
+              "pares": 14907,
               "clientes": null,
-              "ticket_medio": 793.87,
+              "ticket_medio": 794.2,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 94471,
-          "base_atual_clientes": 118149,
-          "pedidos_com_customer_key": 10282,
-          "pedidos_sem_customer_key": 282,
-          "customer_key_coverage_pct": 0.973306,
+          "base_atual_clientes": 118221,
+          "pedidos_com_customer_key": 10314,
+          "pedidos_sem_customer_key": 283,
+          "customer_key_coverage_pct": 0.973294,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
         },
         "investimento": {
-          "midia_paga": 229136.29,
+          "midia_paga": null,
           "crm": 126,
+          "total": null,
           "outros": null,
-          "total": 229262.29,
           "linhas_midia_paga": 1,
           "linhas_crm": 1,
-          "investimento_com_data_e_canal": 126,
-          "investimento_sem_data_confiavel": 229136.29,
-          "confiabilidade": "declarado_manual_sem_data_confiavel"
+          "investimento_com_data_e_canal": null,
+          "investimento_sem_data_confiavel": null,
+          "confiabilidade": "pendente_validacao_janela_e_escopo",
+          "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": [
+            {
+              "campanha": "Investimento Avant 90d",
+              "investimento": 229136.29,
+              "data_inicio": null,
+              "data_fim": null
+            }
+          ]
         },
         "roas": {
           "midia_paga": null,
-          "status": "investimento_declarado_roas_pendente",
+          "status": "pendente_validacao_janela_e_escopo",
           "qualidade_receita": "pendente",
-          "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+          "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
         },
         "vida_util": {
           "peak_revenue_day": {
@@ -3024,13 +3135,13 @@
             "metrica": "pares",
             "valor": 141
           },
-          "days_to_50pct_revenue": 147,
+          "days_to_50pct_revenue": 148,
           "days_to_80pct_revenue": 200,
           "days_to_90pct_revenue": 218,
           "post_peak_decay_pct": -0.0063,
-          "commercial_life_days": 249,
-          "hype_initial_revenue_pct": 0.0132,
-          "sustain_revenue_pct": 0.9762,
+          "commercial_life_days": 250,
+          "hype_initial_revenue_pct": 0.0131,
+          "sustain_revenue_pct": 0.9763,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -3040,6 +3151,20 @@
             "receita": 388,
             "pedidos": 1,
             "pares": 1
+          },
+          {
+            "day": 1,
+            "data": "2025-12-15",
+            "receita": 0,
+            "pedidos": 0,
+            "pares": 0
+          },
+          {
+            "day": 2,
+            "data": "2025-12-16",
+            "receita": 0,
+            "pedidos": 0,
+            "pares": 0
           },
           {
             "day": 3,
@@ -4766,9 +4891,16 @@
           {
             "day": 249,
             "data": "2026-08-20",
-            "receita": 9945,
-            "pedidos": 15,
-            "pares": 21
+            "receita": 29724,
+            "pedidos": 38,
+            "pares": 60
+          },
+          {
+            "day": 250,
+            "data": "2026-08-21",
+            "receita": 9908,
+            "pedidos": 10,
+            "pares": 20
           }
         ]
       },
@@ -4782,11 +4914,11 @@
       "day_zero_base": "2026-04-16",
       "data_oficial": "2026-04-16",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 126,
-        "ultimo_dia_com_venda": 126,
-        "ultimo_dia_exportado": 126,
-        "ultima_data_disponivel": "2026-08-20",
-        "data_fim_exportada": "2026-08-20",
+        "ultimo_dia_disponivel": 127,
+        "ultimo_dia_com_venda": 127,
+        "ultimo_dia_exportado": 127,
+        "ultima_data_disponivel": "2026-08-21",
+        "data_fim_exportada": "2026-08-21",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "estendida_real"
@@ -4822,48 +4954,48 @@
             "canais": {
               "paid": {
                 "receita": 46735,
-                "pedidos": 65,
+                "pedidos": 44,
                 "pares": 65,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 1062.16,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 61834,
-                "pedidos": 86,
-                "pares": 86,
-                "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
-              },
-              "crm": {
                 "receita": 22289,
-                "pedidos": 31,
+                "pedidos": 27,
                 "pares": 31,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 825.52,
+                "qualidade": "real"
+              },
+              "crm": {
+                "receita": 9347,
+                "pedidos": 12,
+                "pares": 13,
+                "clientes": null,
+                "ticket_medio": 778.92,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 43859,
+                "pedidos": 50,
+                "pares": 61,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 877.18,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 8628,
+                "pedidos": 11,
+                "pares": 12,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 784.36,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 134,
             "pedidos_sem_customer_key": 10,
             "customer_key_coverage_pct": 0.930556,
@@ -4872,21 +5004,36 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 220130.28,
+            "midia_paga": null,
             "crm": 906.14,
+            "total": null,
             "outros": null,
-            "total": 221036.42,
             "linhas_midia_paga": 6,
             "linhas_crm": 3,
-            "investimento_com_data_e_canal": 221036.42,
-            "investimento_sem_data_confiavel": 322.27,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+7. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Phantom 7d",
+                "investimento": 3342.39,
+                "data_inicio": "2026-04-16",
+                "data_fim": "2026-04-22"
+              },
+              {
+                "campanha": "Investimento Phantom 7d",
+                "investimento": 191.05,
+                "data_inicio": "2026-04-16",
+                "data_fim": "2026-04-22"
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.2123,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "15d": {
@@ -4919,48 +5066,48 @@
             "canais": {
               "paid": {
                 "receita": 84842,
-                "pedidos": 118,
+                "pedidos": 81,
                 "pares": 118,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 1047.43,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 108569,
-                "pedidos": 151,
-                "pares": 151,
+                "receita": 43859,
+                "pedidos": 52,
+                "pares": 61,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 843.44,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 33793,
-                "pedidos": 47,
-                "pares": 47,
+                "receita": 16537,
+                "pedidos": 17,
+                "pares": 23,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 972.76,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 66867,
+                "pedidos": 75,
+                "pares": 93,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 891.56,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 15099,
+                "pedidos": 19,
+                "pares": 21,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 794.68,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 226,
             "pedidos_sem_customer_key": 18,
             "customer_key_coverage_pct": 0.92623,
@@ -4969,21 +5116,42 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 234132.92,
+            "midia_paga": null,
             "crm": 1008.14,
+            "total": null,
             "outros": null,
-            "total": 235141.06,
             "linhas_midia_paga": 7,
             "linhas_crm": 4,
-            "investimento_com_data_e_canal": 221138.42,
-            "investimento_sem_data_confiavel": 14324.91,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+15. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Phantom 15d",
+                "investimento": 14002.64,
+                "data_inicio": null,
+                "data_fim": null
+              },
+              {
+                "campanha": "Investimento Phantom 15d",
+                "investimento": 12861.54,
+                "data_inicio": "2026-04-16",
+                "data_fim": "2026-04-30"
+              },
+              {
+                "campanha": "Investimento Phantom 15d",
+                "investimento": 322.27,
+                "data_inicio": "2026-04-16",
+                "data_fim": "2027-04-30"
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.3624,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "30d": {
@@ -5015,49 +5183,49 @@
             "clientes_base_compraram": 141,
             "canais": {
               "paid": {
-                "receita": 125825,
-                "pedidos": 175,
-                "pares": 175,
+                "receita": 123668,
+                "pedidos": 118,
+                "pares": 172,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 1048.03,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 239427,
-                "pedidos": 333,
-                "pares": 333,
+                "receita": 119354,
+                "pedidos": 127,
+                "pares": 166,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 939.8,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 51768,
-                "pedidos": 72,
-                "pares": 72,
+                "receita": 21570,
+                "pedidos": 23,
+                "pares": 30,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 937.83,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 127263,
+                "pedidos": 137,
+                "pares": 177,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 928.93,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 25165,
+                "pedidos": 29,
+                "pares": 35,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 867.76,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 407,
             "pedidos_sem_customer_key": 27,
             "customer_key_coverage_pct": 0.937788,
@@ -5066,21 +5234,36 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 220130.28,
+            "midia_paga": null,
             "crm": 1390.01,
+            "total": null,
             "outros": null,
-            "total": 221520.29,
             "linhas_midia_paga": 6,
             "linhas_crm": 8,
-            "investimento_com_data_e_canal": 221520.29,
-            "investimento_sem_data_confiavel": 322.27,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Phantom 30d",
+                "investimento": 202939.43,
+                "data_inicio": "2026-04-16",
+                "data_fim": "2026-05-15"
+              },
+              {
+                "campanha": "Investimento Phantom 30d",
+                "investimento": 473.6,
+                "data_inicio": "2026-04-17",
+                "data_fim": "2026-05-16"
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.5716,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "60d": {
@@ -5112,49 +5295,49 @@
             "clientes_base_compraram": 219,
             "canais": {
               "paid": {
-                "receita": 221452,
-                "pedidos": 308,
-                "pares": 308,
+                "receita": 214262,
+                "pedidos": 222,
+                "pares": 298,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 965.14,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 579514,
-                "pedidos": 805,
-                "pares": 806,
+                "receita": 288319,
+                "pedidos": 303,
+                "pares": 401,
                 "clientes": null,
-                "ticket_medio": 719.89,
-                "qualidade": "inferido"
+                "ticket_medio": 951.55,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 78371,
-                "pedidos": 109,
-                "pares": 109,
+                "receita": 35231,
+                "pedidos": 38,
+                "pares": 49,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 927.13,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 287600,
+                "pedidos": 310,
+                "pares": 400,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 927.74,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 53925,
+                "pedidos": 59,
+                "pares": 75,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 913.98,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 879,
             "pedidos_sem_customer_key": 53,
             "customer_key_coverage_pct": 0.943133,
@@ -5163,21 +5346,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 255542.91,
+            "midia_paga": null,
             "crm": 1390.01,
+            "total": null,
             "outros": null,
-            "total": 256932.92,
             "linhas_midia_paga": 7,
             "linhas_crm": 8,
-            "investimento_com_data_e_canal": 221520.29,
-            "investimento_sem_data_confiavel": 35734.9,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Phantom 60d",
+                "investimento": 35412.63,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.8666,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "90d": {
@@ -5209,49 +5401,49 @@
             "clientes_base_compraram": 266,
             "canais": {
               "paid": {
-                "receita": 308451,
-                "pedidos": 429,
-                "pares": 429,
+                "receita": 296947,
+                "pedidos": 314,
+                "pares": 413,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 945.69,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 803842,
-                "pedidos": 1117,
-                "pares": 1118,
+                "receita": 386822,
+                "pedidos": 402,
+                "pares": 538,
                 "clientes": null,
-                "ticket_medio": 719.64,
-                "qualidade": "inferido"
+                "ticket_medio": 962.24,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 107850,
-                "pedidos": 150,
-                "pares": 150,
+                "receita": 46735,
+                "pedidos": 48,
+                "pares": 65,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 973.65,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 419177,
+                "pedidos": 453,
+                "pares": 583,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 925.34,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 70462,
+                "pedidos": 77,
+                "pares": 98,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 915.09,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 1224,
             "pedidos_sem_customer_key": 70,
             "customer_key_coverage_pct": 0.945904,
@@ -5260,50 +5452,59 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 270101.96,
+            "midia_paga": null,
             "crm": 1390.01,
+            "total": null,
             "outros": null,
-            "total": 271491.97,
             "linhas_midia_paga": 7,
             "linhas_crm": 8,
-            "investimento_com_data_e_canal": 221520.29,
-            "investimento_sem_data_confiavel": 50293.95,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Phantom 90d",
+                "investimento": 49971.68,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 1.142,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         }
       },
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 126,
+        "end_day": 127,
         "start_date": "2026-04-16",
-        "end_date": "2026-08-20",
+        "end_date": "2026-08-21",
         "vendas": {
-          "receita": 1474669,
-          "receita_liquida": 1141028.57,
-          "desconto": 333640.43,
-          "pedidos": 1553,
-          "pares": 2051,
-          "ticket_medio": 949.56,
+          "receita": 1478983,
+          "receita_liquida": 1144268.25,
+          "desconto": 334714.75,
+          "pedidos": 1558,
+          "pares": 2057,
+          "ticket_medio": 949.28,
           "preco_medio_par": 719,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 1396,
-          "novos_clientes": 1094,
-          "recorrentes_clientes": 302,
-          "receita_por_cliente": 1056.35,
-          "pedidos_por_cliente": 1.1125,
-          "pares_por_cliente": 1.4692,
-          "unidades_por_cliente": 1.4692,
-          "pct_base_ativada": 0.002868,
-          "clientes_base_compraram": 302,
+          "clientes_unicos": 1400,
+          "novos_clientes": 1097,
+          "recorrentes_clientes": 303,
+          "receita_por_cliente": 1056.42,
+          "pedidos_por_cliente": 1.1129,
+          "pares_por_cliente": 1.4693,
+          "unidades_por_cliente": 1.4693,
+          "pct_base_ativada": 0.002877,
+          "clientes_base_compraram": 303,
           "canais": {
             "paid": {
               "receita": null,
@@ -5338,40 +5539,49 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 1474669,
-              "pedidos": 1553,
-              "pares": 2051,
+              "receita": 1478983,
+              "pedidos": 1558,
+              "pares": 2057,
               "clientes": null,
-              "ticket_medio": 949.56,
+              "ticket_medio": 949.28,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 105304,
-          "base_atual_clientes": 118149,
-          "pedidos_com_customer_key": 1476,
+          "base_atual_clientes": 118221,
+          "pedidos_com_customer_key": 1481,
           "pedidos_sem_customer_key": 77,
-          "customer_key_coverage_pct": 0.950419,
+          "customer_key_coverage_pct": 0.950578,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
         },
         "investimento": {
-          "midia_paga": 270101.96,
+          "midia_paga": null,
           "crm": 1390.01,
+          "total": null,
           "outros": null,
-          "total": 271491.97,
           "linhas_midia_paga": 7,
           "linhas_crm": 8,
-          "investimento_com_data_e_canal": 221520.29,
-          "investimento_sem_data_confiavel": 50293.95,
-          "confiabilidade": "declarado_manual_sem_data_confiavel"
+          "investimento_com_data_e_canal": null,
+          "investimento_sem_data_confiavel": null,
+          "confiabilidade": "pendente_validacao_janela_e_escopo",
+          "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": [
+            {
+              "campanha": "Investimento Phantom 90d",
+              "investimento": 49971.68,
+              "data_inicio": null,
+              "data_fim": null
+            }
+          ]
         },
         "roas": {
           "midia_paga": null,
-          "status": "investimento_declarado_roas_pendente",
+          "status": "pendente_validacao_janela_e_escopo",
           "qualidade_receita": "pendente",
-          "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+          "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
         },
         "vida_util": {
           "peak_revenue_day": {
@@ -5401,13 +5611,13 @@
             "metrica": "pares",
             "valor": 33
           },
-          "days_to_50pct_revenue": 50,
+          "days_to_50pct_revenue": 51,
           "days_to_80pct_revenue": 88,
           "days_to_90pct_revenue": 102,
           "post_peak_decay_pct": 0.1544,
-          "commercial_life_days": 125,
-          "hype_initial_revenue_pct": 0.0887,
-          "sustain_revenue_pct": 0.8459,
+          "commercial_life_days": 126,
+          "hype_initial_revenue_pct": 0.0885,
+          "sustain_revenue_pct": 0.8464,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -6296,6 +6506,13 @@
           {
             "day": 126,
             "data": "2026-08-20",
+            "receita": 4314,
+            "pedidos": 5,
+            "pares": 6
+          },
+          {
+            "day": 127,
+            "data": "2026-08-21",
             "receita": 719,
             "pedidos": 1,
             "pares": 1
@@ -6312,14 +6529,14 @@
       "day_zero_base": "2026-06-25",
       "data_oficial": "2026-06-25",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 55,
-        "ultimo_dia_com_venda": 55,
-        "ultimo_dia_exportado": 56,
-        "ultima_data_disponivel": "2026-08-19",
-        "data_fim_exportada": "2026-08-20",
+        "ultimo_dia_disponivel": 57,
+        "ultimo_dia_com_venda": 57,
+        "ultimo_dia_exportado": 57,
+        "ultima_data_disponivel": "2026-08-21",
+        "data_fim_exportada": "2026-08-21",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
-        "janela_estendida_status": "ate_data_atual_com_dias_sem_venda_omitidos"
+        "janela_estendida_status": "ate_ultimo_dia_no_json"
       },
       "janelas": {
         "7d": {
@@ -6351,49 +6568,49 @@
             "clientes_base_compraram": 64,
             "canais": {
               "paid": {
-                "receita": 42421,
-                "pedidos": 59,
-                "pares": 59,
+                "receita": 39545,
+                "pedidos": 41,
+                "pares": 55,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 964.51,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 79090,
-                "pedidos": 110,
-                "pares": 110,
+                "receita": 31636,
+                "pedidos": 36,
+                "pares": 44,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 878.78,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 30917,
-                "pedidos": 43,
-                "pares": 43,
+                "receita": 9347,
+                "pedidos": 11,
+                "pares": 13,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 849.73,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 66867,
+                "pedidos": 74,
+                "pares": 93,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 903.61,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 5033,
+                "pedidos": 5,
+                "pares": 7,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 1006.6,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 112210,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 163,
             "pedidos_sem_customer_key": 4,
             "customer_key_coverage_pct": 0.976048,
@@ -6402,21 +6619,23 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 20254.75,
-            "crm": 2110.86,
+            "midia_paga": null,
+            "crm": 2110.8599999999997,
+            "total": null,
             "outros": null,
-            "total": 22365.61,
             "linhas_midia_paga": 2,
             "linhas_crm": 3,
-            "investimento_com_data_e_canal": 22365.61,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+7. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
-            "midia_paga": 2.0944,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "15d": {
@@ -6448,49 +6667,49 @@
             "clientes_base_compraram": 93,
             "canais": {
               "paid": {
-                "receita": 74776,
-                "pedidos": 104,
-                "pares": 104,
+                "receita": 70462,
+                "pedidos": 77,
+                "pares": 98,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 915.09,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 148833,
-                "pedidos": 207,
-                "pares": 207,
+                "receita": 72619,
+                "pedidos": 76,
+                "pares": 101,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 955.51,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 43140,
-                "pedidos": 60,
-                "pares": 60,
+                "receita": 15099,
+                "pedidos": 16,
+                "pares": 21,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 943.69,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 94908,
+                "pedidos": 105,
+                "pares": 132,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 903.89,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 13661,
+                "pedidos": 15,
+                "pares": 19,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 910.73,
+                "qualidade": "misto"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 112210,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 275,
             "pedidos_sem_customer_key": 14,
             "customer_key_coverage_pct": 0.951557,
@@ -6499,21 +6718,36 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 20254.75,
-            "crm": 2110.86,
+            "midia_paga": null,
+            "crm": 2110.8599999999997,
+            "total": null,
             "outros": null,
-            "total": 22365.61,
             "linhas_midia_paga": 2,
             "linhas_crm": 3,
-            "investimento_com_data_e_canal": 22365.61,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+15. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Facebook ADS Monochrome",
+                "investimento": 17670.54,
+                "data_inicio": "2026-06-25",
+                "data_fim": "2026-07-09"
+              },
+              {
+                "campanha": "Google ADS Monochrome",
+                "investimento": 2584.21,
+                "data_inicio": "2026-06-25",
+                "data_fim": "2026-07-09"
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 3.6918,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "30d": {
@@ -6545,49 +6779,49 @@
             "clientes_base_compraram": 142,
             "canais": {
               "paid": {
-                "receita": 122230,
-                "pedidos": 170,
-                "pares": 170,
+                "receita": 117916,
+                "pedidos": 120,
+                "pares": 164,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 982.63,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 276096,
-                "pedidos": 383,
-                "pares": 384,
+                "receita": 122230,
+                "pedidos": 125,
+                "pares": 170,
                 "clientes": null,
-                "ticket_medio": 720.88,
-                "qualidade": "inferido"
+                "ticket_medio": 977.84,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 64710,
-                "pedidos": 90,
-                "pares": 90,
+                "receita": 24446,
+                "pedidos": 23,
+                "pares": 34,
                 "clientes": null,
-                "ticket_medio": 719,
-                "qualidade": "inferido"
+                "ticket_medio": 1062.87,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 158899,
+                "pedidos": 172,
+                "pares": 221,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 923.83,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 39545,
+                "pedidos": 45,
+                "pares": 55,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 878.78,
+                "qualidade": "real"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 112210,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 462,
             "pedidos_sem_customer_key": 23,
             "customer_key_coverage_pct": 0.952577,
@@ -6596,21 +6830,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 62076.74,
-            "crm": 2110.86,
+            "midia_paga": null,
+            "crm": 2110.8599999999997,
+            "total": null,
             "outros": null,
-            "total": 64187.6,
             "linhas_midia_paga": 3,
             "linhas_crm": 3,
-            "investimento_com_data_e_canal": 22365.61,
-            "investimento_sem_data_confiavel": 41821.99,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Monochrome 30d",
+                "investimento": 41821.99,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 1.969,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "60d": {
@@ -6684,7 +6927,7 @@
             },
             "canal_qualidade": "pendente",
             "base_total_d0": 112210,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -6693,21 +6936,23 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 20254.75,
-            "crm": 2110.86,
+            "midia_paga": null,
+            "crm": 2110.8599999999997,
+            "total": null,
             "outros": null,
-            "total": 22365.61,
             "linhas_midia_paga": 2,
             "linhas_crm": 3,
-            "investimento_com_data_e_canal": 22365.61,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "90d": {
@@ -6781,7 +7026,7 @@
             },
             "canal_qualidade": "pendente",
             "base_total_d0": 112210,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -6790,48 +7035,50 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 20254.75,
-            "crm": 2110.86,
+            "midia_paga": null,
+            "crm": 2110.8599999999997,
+            "total": null,
             "outros": null,
-            "total": 22365.61,
             "linhas_midia_paga": 2,
             "linhas_crm": 3,
-            "investimento_com_data_e_canal": 22365.61,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         }
       },
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 56,
+        "end_day": 57,
         "start_date": "2026-06-25",
-        "end_date": "2026-08-20",
+        "end_date": "2026-08-21",
         "vendas": {
-          "receita": 621935,
-          "receita_liquida": 473417.63,
-          "desconto": 148517.37,
-          "pedidos": 648,
-          "pares": 865,
-          "ticket_medio": 959.78,
+          "receita": 629125,
+          "receita_liquida": 479231.51,
+          "desconto": 149893.49,
+          "pedidos": 657,
+          "pares": 875,
+          "ticket_medio": 957.57,
           "preco_medio_par": 719,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 603,
-          "novos_clientes": 431,
+          "clientes_unicos": 611,
+          "novos_clientes": 439,
           "recorrentes_clientes": 172,
-          "receita_por_cliente": 1031.4,
-          "pedidos_por_cliente": 1.0746,
-          "pares_por_cliente": 1.4345,
-          "unidades_por_cliente": 1.4345,
+          "receita_por_cliente": 1029.66,
+          "pedidos_por_cliente": 1.0753,
+          "pares_por_cliente": 1.4321,
+          "unidades_por_cliente": 1.4321,
           "pct_base_ativada": 0.001533,
           "clientes_base_compraram": 172,
           "canais": {
@@ -6868,40 +7115,49 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 621935,
-              "pedidos": 648,
-              "pares": 865,
+              "receita": 629125,
+              "pedidos": 657,
+              "pares": 875,
               "clientes": null,
-              "ticket_medio": 959.78,
+              "ticket_medio": 957.57,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 112210,
-          "base_atual_clientes": 118149,
-          "pedidos_com_customer_key": 623,
+          "base_atual_clientes": 118221,
+          "pedidos_com_customer_key": 632,
           "pedidos_sem_customer_key": 25,
-          "customer_key_coverage_pct": 0.96142,
+          "customer_key_coverage_pct": 0.961948,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
         },
         "investimento": {
-          "midia_paga": 62076.74,
-          "crm": 2110.86,
+          "midia_paga": null,
+          "crm": 2110.8599999999997,
+          "total": null,
           "outros": null,
-          "total": 64187.6,
           "linhas_midia_paga": 3,
           "linhas_crm": 3,
-          "investimento_com_data_e_canal": 22365.61,
-          "investimento_sem_data_confiavel": 41821.99,
-          "confiabilidade": "declarado_manual_sem_data_confiavel"
+          "investimento_com_data_e_canal": null,
+          "investimento_sem_data_confiavel": null,
+          "confiabilidade": "pendente_validacao_janela_e_escopo",
+          "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": [
+            {
+              "campanha": "Investimento Monochrome 30d",
+              "investimento": 41821.99,
+              "data_inicio": null,
+              "data_fim": null
+            }
+          ]
         },
         "roas": {
           "midia_paga": null,
-          "status": "investimento_declarado_roas_pendente",
+          "status": "pendente_validacao_janela_e_escopo",
           "qualidade_receita": "pendente",
-          "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+          "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
         },
         "vida_util": {
           "peak_revenue_day": {
@@ -6931,13 +7187,13 @@
             "metrica": "pares",
             "valor": 44
           },
-          "days_to_50pct_revenue": 17,
-          "days_to_80pct_revenue": 36,
-          "days_to_90pct_revenue": 46,
+          "days_to_50pct_revenue": 18,
+          "days_to_80pct_revenue": 37,
+          "days_to_90pct_revenue": 47,
           "post_peak_decay_pct": -0.4545,
-          "commercial_life_days": 55,
-          "hype_initial_revenue_pct": 0.2451,
-          "sustain_revenue_pct": 0.5711,
+          "commercial_life_days": 57,
+          "hype_initial_revenue_pct": 0.2423,
+          "sustain_revenue_pct": 0.576,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -7332,6 +7588,20 @@
             "receita": 8628,
             "pedidos": 8,
             "pares": 12
+          },
+          {
+            "day": 56,
+            "data": "2026-08-20",
+            "receita": 3595,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 57,
+            "data": "2026-08-21",
+            "receita": 3595,
+            "pedidos": 4,
+            "pares": 5
           }
         ]
       },
@@ -7347,11 +7617,11 @@
       "day_zero_base": "2026-07-16",
       "data_oficial": "2026-07-16",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 35,
-        "ultimo_dia_com_venda": 35,
-        "ultimo_dia_exportado": 35,
-        "ultima_data_disponivel": "2026-08-20",
-        "data_fim_exportada": "2026-08-20",
+        "ultimo_dia_disponivel": 36,
+        "ultimo_dia_com_venda": 36,
+        "ultimo_dia_exportado": 36,
+        "ultima_data_disponivel": "2026-08-21",
+        "data_fim_exportada": "2026-08-21",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "ate_ultimo_dia_no_json"
@@ -7386,49 +7656,49 @@
             "clientes_base_compraram": 41,
             "canais": {
               "paid": {
-                "receita": 15250,
-                "pedidos": 25,
-                "pares": 25,
+                "receita": 14640,
+                "pedidos": 21,
+                "pares": 24,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 697.14,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 42700,
-                "pedidos": 70,
-                "pares": 70,
+                "receita": 17690,
+                "pedidos": 27,
+                "pares": 29,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 655.19,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 12200,
-                "pedidos": 20,
-                "pares": 20,
+                "receita": 6100,
+                "pedidos": 8,
+                "pares": 10,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 762.5,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 26230,
+                "pedidos": 37,
+                "pares": 43,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 708.92,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 5490,
+                "pedidos": 9,
+                "pares": 9,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 610,
+                "qualidade": "real"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 114292,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 102,
             "pedidos_sem_customer_key": 0,
             "customer_key_coverage_pct": 1,
@@ -7437,21 +7707,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 6931.74,
+            "midia_paga": null,
             "crm": 469.35,
+            "total": null,
             "outros": null,
-            "total": 7401.09,
             "linhas_midia_paga": 1,
             "linhas_crm": 2,
-            "investimento_com_data_e_canal": 469.35,
-            "investimento_sem_data_confiavel": 6931.74,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+7. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Series 2 7d",
+                "investimento": 6931.74,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 2.2,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "15d": {
@@ -7483,49 +7762,49 @@
             "clientes_base_compraram": 48,
             "canais": {
               "paid": {
-                "receita": 15250,
-                "pedidos": 25,
-                "pares": 25,
+                "receita": 14640,
+                "pedidos": 21,
+                "pares": 24,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 697.14,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 63440,
-                "pedidos": 104,
-                "pares": 104,
+                "receita": 18300,
+                "pedidos": 28,
+                "pares": 30,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 653.57,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 12200,
-                "pedidos": 20,
-                "pares": 20,
+                "receita": 6100,
+                "pedidos": 8,
+                "pares": 10,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 762.5,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 26230,
+                "pedidos": 37,
+                "pares": 43,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 708.92,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 25620,
+                "pedidos": 39,
+                "pares": 42,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 656.92,
+                "qualidade": "real"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 114292,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 133,
             "pedidos_sem_customer_key": 0,
             "customer_key_coverage_pct": 1,
@@ -7534,21 +7813,30 @@
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
-            "midia_paga": 16448.62,
+            "midia_paga": null,
             "crm": 469.35,
+            "total": null,
             "outros": null,
-            "total": 16917.97,
             "linhas_midia_paga": 1,
             "linhas_crm": 2,
-            "investimento_com_data_e_canal": 469.35,
-            "investimento_sem_data_confiavel": 16448.62,
-            "confiabilidade": "declarado_manual_sem_data_confiavel"
+            "investimento_com_data_e_canal": null,
+            "investimento_sem_data_confiavel": null,
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+15. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": [
+              {
+                "campanha": "Investimento Series 2 15d",
+                "investimento": 16448.62,
+                "data_inicio": null,
+                "data_fim": null
+              }
+            ]
           },
           "roas": {
-            "midia_paga": 0.9271,
-            "status": "calculado_com_receita_alocada_ou_inferida",
-            "qualidade_receita": "inferido",
-            "observacao": "Valor e leitura do SSOT, nao causalidade absoluta."
+            "midia_paga": null,
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "30d": {
@@ -7580,49 +7868,49 @@
             "clientes_base_compraram": 63,
             "canais": {
               "paid": {
-                "receita": 15250,
-                "pedidos": 25,
-                "pares": 25,
+                "receita": 14640,
+                "pedidos": 21,
+                "pares": 24,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 697.14,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": 113460,
-                "pedidos": 186,
-                "pares": 186,
+                "receita": 18910,
+                "pedidos": 29,
+                "pares": 31,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 652.07,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": 12200,
-                "pedidos": 20,
-                "pares": 20,
+                "receita": 6100,
+                "pedidos": 8,
+                "pares": 10,
                 "clientes": null,
-                "ticket_medio": 610,
-                "qualidade": "inferido"
+                "ticket_medio": 762.5,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 26230,
+                "pedidos": 37,
+                "pares": 43,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 708.92,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 75030,
+                "pedidos": 113,
+                "pares": 123,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 663.98,
+                "qualidade": "real"
               }
             },
-            "canal_qualidade": "inferido",
+            "canal_qualidade": "real",
             "base_total_d0": 114292,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": 208,
             "pedidos_sem_customer_key": 0,
             "customer_key_coverage_pct": 1,
@@ -7633,19 +7921,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": 469.35,
+            "total": null,
             "outros": null,
-            "total": 469.35,
             "linhas_midia_paga": 0,
             "linhas_crm": 2,
-            "investimento_com_data_e_canal": 469.35,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
-            "qualidade_receita": "inferido",
-            "observacao": "Sem investimento de midia paga na janela."
+            "status": "pendente_validacao_janela_e_escopo",
+            "qualidade_receita": "real",
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "60d": {
@@ -7719,7 +8009,7 @@
             },
             "canal_qualidade": "pendente",
             "base_total_d0": 114292,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -7730,19 +8020,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": 469.35,
+            "total": null,
             "outros": null,
-            "total": 469.35,
             "linhas_midia_paga": 0,
             "linhas_crm": 2,
-            "investimento_com_data_e_canal": 469.35,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "90d": {
@@ -7816,7 +8108,7 @@
             },
             "canal_qualidade": "pendente",
             "base_total_d0": 114292,
-            "base_atual_clientes": 118149,
+            "base_atual_clientes": 118221,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -7827,48 +8119,50 @@
           "investimento": {
             "midia_paga": null,
             "crm": 469.35,
+            "total": null,
             "outros": null,
-            "total": 469.35,
             "linhas_midia_paga": 0,
             "linhas_crm": 2,
-            "investimento_com_data_e_canal": 469.35,
+            "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "declarado_com_data"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "investimento_declarado_roas_pendente",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         }
       },
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 35,
+        "end_day": 36,
         "start_date": "2026-07-16",
-        "end_date": "2026-08-20",
+        "end_date": "2026-08-21",
         "vendas": {
-          "receita": 154330,
-          "receita_liquida": 103504.55,
-          "desconto": 50825.45,
-          "pedidos": 229,
-          "pares": 253,
-          "ticket_medio": 673.93,
+          "receita": 157990,
+          "receita_liquida": 105666.92,
+          "desconto": 52323.08,
+          "pedidos": 235,
+          "pares": 259,
+          "ticket_medio": 672.3,
           "preco_medio_par": 610,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 226,
-          "novos_clientes": 158,
-          "recorrentes_clientes": 68,
-          "receita_por_cliente": 682.88,
-          "pedidos_por_cliente": 1.0133,
-          "pares_por_cliente": 1.1195,
-          "unidades_por_cliente": 1.1195,
-          "pct_base_ativada": 0.000595,
-          "clientes_base_compraram": 68,
+          "clientes_unicos": 232,
+          "novos_clientes": 163,
+          "recorrentes_clientes": 69,
+          "receita_por_cliente": 680.99,
+          "pedidos_por_cliente": 1.0129,
+          "pares_por_cliente": 1.1164,
+          "unidades_por_cliente": 1.1164,
+          "pct_base_ativada": 0.000604,
+          "clientes_base_compraram": 69,
           "canais": {
             "paid": {
               "receita": null,
@@ -7903,18 +8197,18 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 154330,
-              "pedidos": 229,
-              "pares": 253,
+              "receita": 157990,
+              "pedidos": 235,
+              "pares": 259,
               "clientes": null,
-              "ticket_medio": 673.93,
+              "ticket_medio": 672.3,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 114292,
-          "base_atual_clientes": 118149,
-          "pedidos_com_customer_key": 229,
+          "base_atual_clientes": 118221,
+          "pedidos_com_customer_key": 235,
           "pedidos_sem_customer_key": 0,
           "customer_key_coverage_pct": 1,
           "clientes_status": "estendida",
@@ -7924,19 +8218,21 @@
         "investimento": {
           "midia_paga": null,
           "crm": 469.35,
+          "total": null,
           "outros": null,
-          "total": 469.35,
           "linhas_midia_paga": 0,
           "linhas_crm": 2,
-          "investimento_com_data_e_canal": 469.35,
+          "investimento_com_data_e_canal": null,
           "investimento_sem_data_confiavel": null,
-          "confiabilidade": "declarado_com_data"
+          "confiabilidade": "pendente_validacao_janela_e_escopo",
+          "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": []
         },
         "roas": {
           "midia_paga": null,
-          "status": "investimento_declarado_roas_pendente",
+          "status": "pendente_validacao_janela_e_escopo",
           "qualidade_receita": "pendente",
-          "observacao": "Existe investimento, mas a receita atribuida confiavel ainda nao esta disponivel."
+          "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
         },
         "vida_util": {
           "peak_revenue_day": {
@@ -7967,12 +8263,12 @@
             "valor": 31
           },
           "days_to_50pct_revenue": 11,
-          "days_to_80pct_revenue": 25,
-          "days_to_90pct_revenue": 30,
+          "days_to_80pct_revenue": 26,
+          "days_to_90pct_revenue": 31,
           "post_peak_decay_pct": -0.5833,
           "commercial_life_days": 35,
-          "hype_initial_revenue_pct": 0.4545,
-          "sustain_revenue_pct": 0.4111,
+          "hype_initial_revenue_pct": 0.444,
+          "sustain_revenue_pct": 0.4247,
           "leitura": "misto"
         },
         "daily_points": [
@@ -8224,9 +8520,16 @@
           {
             "day": 35,
             "data": "2026-08-20",
-            "receita": 1220,
-            "pedidos": 2,
-            "pares": 2
+            "receita": 4270,
+            "pedidos": 7,
+            "pares": 7
+          },
+          {
+            "day": 36,
+            "data": "2026-08-21",
+            "receita": 610,
+            "pedidos": 1,
+            "pares": 1
           }
         ]
       },
@@ -8246,7 +8549,7 @@
         "ultimo_dia_com_venda": null,
         "ultimo_dia_exportado": null,
         "ultima_data_disponivel": null,
-        "data_fim_exportada": "2026-08-20",
+        "data_fim_exportada": "2026-08-21",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "sem_dados"
@@ -8263,19 +8566,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+7. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "15d": {
@@ -8289,19 +8594,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+15. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "30d": {
@@ -8315,19 +8622,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "60d": {
@@ -8341,19 +8650,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
         "90d": {
@@ -8367,19 +8678,21 @@
           "investimento": {
             "midia_paga": null,
             "crm": null,
-            "outros": null,
             "total": null,
+            "outros": null,
             "linhas_midia_paga": 0,
             "linhas_crm": 0,
             "investimento_com_data_e_canal": null,
             "investimento_sem_data_confiavel": null,
-            "confiabilidade": "pendente"
+            "confiabilidade": "pendente_validacao_janela_e_escopo",
+            "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+            "valores_declarados": []
           },
           "roas": {
             "midia_paga": null,
-            "status": "sem_investimento_midia_paga",
+            "status": "pendente_validacao_janela_e_escopo",
             "qualidade_receita": "pendente",
-            "observacao": "Sem investimento de midia paga na janela."
+            "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         }
       },
@@ -8393,19 +8706,21 @@
         "investimento": {
           "midia_paga": null,
           "crm": null,
-          "outros": null,
           "total": null,
+          "outros": null,
           "linhas_midia_paga": 0,
           "linhas_crm": 0,
           "investimento_com_data_e_canal": null,
           "investimento_sem_data_confiavel": null,
-          "confiabilidade": "pendente"
+          "confiabilidade": "pendente_validacao_janela_e_escopo",
+          "observacao": "Janela inclusiva D0 a D+90. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": []
         },
         "roas": {
           "midia_paga": null,
-          "status": "sem_investimento_midia_paga",
+          "status": "pendente_validacao_janela_e_escopo",
           "qualidade_receita": "pendente",
-          "observacao": "Sem investimento de midia paga na janela."
+          "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
         },
         "vida_util": {
           "peak_revenue_day": null,
@@ -8428,7 +8743,7 @@
     }
   },
   "proximos_lancamentos": {
-    "base_atual_clientes": 118149,
+    "base_atual_clientes": 118221,
     "base_atual_fonte": "orders_all_valid_no_migracao_customer_key_distinct",
     "janelas": {
       "7d": {
@@ -8456,10 +8771,10 @@
         "observacao": "Estimativa usa base atual e comportamento historico das janelas fechadas; nao e forecast causal."
       },
       "30d": {
-        "clientes_esperados": 445,
-        "pedidos_esperados": 475,
-        "pares_esperados": 628,
-        "receita_esperada": 456877.05,
+        "clientes_esperados": 446,
+        "pedidos_esperados": 476,
+        "pares_esperados": 630,
+        "receita_esperada": 457903.74,
         "taxa_clientes_sobre_base_mediana": 0.00377,
         "pedidos_por_cliente_mediana": 1.0667,
         "pares_por_cliente_mediana": 1.4118,
@@ -8468,10 +8783,10 @@
         "observacao": "Estimativa usa base atual e comportamento historico das janelas fechadas; nao e forecast causal."
       },
       "60d": {
-        "clientes_esperados": 942,
-        "pedidos_esperados": 999,
-        "pares_esperados": 1290,
-        "receita_esperada": 986113.86,
+        "clientes_esperados": 943,
+        "pedidos_esperados": 1000,
+        "pares_esperados": 1292,
+        "receita_esperada": 987160.69,
         "taxa_clientes_sobre_base_mediana": 0.007977,
         "pedidos_por_cliente_mediana": 1.0606,
         "pares_por_cliente_mediana": 1.3697,

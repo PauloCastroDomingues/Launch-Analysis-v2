@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const Rules = require('../assets/launch-metrics');
 
 const ROOT = path.resolve(__dirname, '..');
 const DATA_DIR = path.join(ROOT, 'data');
@@ -113,10 +114,10 @@ function manifestRampCoverage(manifest) {
 
 function sourceQualityFromRule(rule) {
   const text = normalizeText(rule);
-  if (!text || text.includes('sem atribuicao')) return 'pendente';
+  if (!text || text.includes('sem atribuicao') || text.includes('sem journey')) return 'pendente';
   if (text.includes('allocated') || text.includes('alocado')) return 'alocado_ssot';
   if (text.includes('core_order_origin_fields')) return 'inferido';
-  if (text.includes('customer_journey') || text.includes('last_click') || text.includes('mirror')) return 'real';
+  if (text.includes('customer journey') || text.includes('last click') || text.includes('shopify journey') || text.includes('mirror')) return 'real';
   return 'inferido';
 }
 
@@ -145,18 +146,16 @@ function isPaidRow(row) {
 }
 
 function channelName(row) {
-  if (isPaidRow(row)) return 'paid';
-  const type = normalizeText(row.tipo_real);
-  const channel = normalizeText(row.canal_real || row.canal);
-  if (/(^| )(crm|email|newsletter|whatsapp|sms)( |$)/.test(type) || /(^| )(crm|email|newsletter|whatsapp|sms)( |$)/.test(channel)) return 'crm';
-  if (type || channel || numberOrNull(row.receita_organica) !== null) return 'organic';
-  return 'pending';
+  const type = Rules.channelType(row);
+  return type === 'unmatched' ? 'pending' : type;
 }
 
 function emptyChannel() {
   return {
     receita: null,
     pedidos: null,
+    orderIds: new Set(),
+    pedidosFallback: 0,
     pares: null,
     clientes: null,
     ticket_medio: null,
@@ -169,7 +168,9 @@ function addChannelMetric(bucket, row) {
   const pedidos = numberOrNull(row.pedidos_validos ?? row.pedidos);
   const pares = numberOrNull(row.pares);
   bucket.receita = (bucket.receita ?? 0) + Number(receita || 0);
-  bucket.pedidos = (bucket.pedidos ?? 0) + Number(pedidos || 0);
+  if (row.order_sk) bucket.orderIds.add(row.order_sk);
+  else bucket.pedidosFallback += Number(pedidos || 0);
+  bucket.pedidos = bucket.orderIds.size + bucket.pedidosFallback;
   bucket.pares = (bucket.pares ?? 0) + Number(pares || 0);
   bucket.qualidade = mergeQuality(bucket.qualidade, sourceQualityFromRule(row.regra_atribuicao_real));
 }
@@ -503,30 +504,11 @@ function rowOverlapsWindow(row, model, key) {
 }
 
 function investmentForWindow(model, key, mediaRows, crmRows) {
-  const media = mediaRows.filter((row) => row.modelo_id === model.modelo_id && rowOverlapsWindow(row, model, key));
-  const crm = crmRows.filter((row) => row.modelo_id === model.modelo_id && rowOverlapsWindow(row, model, key));
-  const mediaInvestment = sumKnown(media, 'investimento');
-  const crmInvestment = sumKnown(crm, 'investimento');
-  const totalParts = [mediaInvestment, crmInvestment].filter((value) => value !== null);
-  const manualNoDate = [...media, ...crm].filter((row) => (
-    !row.data_inicio && !row.data_fim && !row.data_disparo
-  ) || row.data_suspeita);
-  return {
-    midia_paga: round(mediaInvestment),
-    crm: round(crmInvestment),
-    outros: null,
-    total: totalParts.length ? round(totalParts.reduce((acc, value) => acc + value, 0)) : null,
-    linhas_midia_paga: media.length,
-    linhas_crm: crm.length,
-    investimento_com_data_e_canal: round(sumKnown([...media, ...crm].filter((row) => (
-      (row.data_inicio || row.data_disparo) && (row.canal || row.campanha)
-    )), 'investimento')),
-    investimento_sem_data_confiavel: round(sumKnown(manualNoDate, 'investimento')),
-    confiabilidade: manualNoDate.length ? 'declarado_manual_sem_data_confiavel' : media.length || crm.length ? 'declarado_com_data' : 'pendente'
-  };
+  return Rules.investmentForWindow(model, key, mediaRows, crmRows);
 }
 
 function roasForWindow(sales, investment) {
+  if (!sales || investment?.confiabilidade !== 'escopo_validado') return { midia_paga: null, status: 'pendente_validacao_janela_e_escopo', qualidade_receita: sales?.canais?.paid?.qualidade || 'pendente', observacao: 'ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga.' };
   const paidRevenue = numberOrNull(sales?.canais?.paid?.receita);
   const mediaInvestment = numberOrNull(investment?.midia_paga);
   const totalInvestment = numberOrNull(investment?.total);
@@ -671,7 +653,9 @@ function build() {
       : null;
     const exportEndDay = coveredDay !== null ? Math.max(maxDay, coveredDay) : maxDay;
     const exportCappedAtD90 = normalizeText(model.status) === 'historico' && maxDay === 90 && !rampCoverage.coversCurrentDate;
-    const daily = dailyRows(modelRampRows);
+    const observedDaily = dailyRows(modelRampRows);
+    const dailyMap = new Map(observedDaily.map(row => [row.day, row]));
+    const daily = rampCoverage.coversCurrentDate && exportEndDay >= 0 ? Array.from({length:exportEndDay + 1}, (_,day) => dailyMap.get(day) || {day, data:addDays(d0,day), receita:0, pedidos:0, pares:0}) : observedDaily;
     const extendedClientRow = clientsByWindow.get(`${model.modelo_id}|extended`) || null;
     const extendedSales = mergeClientMetrics(daily.length ? aggregateSales(windowRows(modelRampRows, maxDay)) : null, extendedClientRow);
     const fixed = modelWindows({ ...model, day_zero_base: d0 }, modelRows, mediaRows, crmRows, exportEndDay, clientsByWindow);
@@ -745,6 +729,8 @@ function build() {
   return {
     generated_at: new Date().toISOString(),
     manifest_generated_at: manifest.generated_at || null,
+    rules_version: Rules.VERSION,
+    source_signatures: Rules.sourceSignatures(Object.fromEntries(Rules.SOURCES.map(name => [name, readJson(name + '.json', null)]))),
     source_files: [
       'data/lancamentos_modelos.json',
       'data/lancamentos_rampa_dia.json',
@@ -769,7 +755,7 @@ function build() {
       alertas: [
         algumHistoricoNoD90 ? 'lancamentos_produtos_dia.json ainda tem historicos terminando exatamente em D+90; rode o export atualizado para confirmar pos-D90.' : null,
         clientesDisponiveis && baseAtualDisponivel ? null : 'clientes unicos, base ativada e expectativa por base atual exigem export agregado do SSOT.',
-        'ROAS com qualidade alocado_ssot/inferido deve ser lido como alocacao ou inferencia, nao atribuicao causal absoluta.'
+        'ROAS permanece pendente sem investimento com datas exatas e escopo validado para o produto. Classificação de canal não prova causalidade.'
       ].filter(Boolean)
     },
     modelos: modelsOut,
@@ -777,6 +763,7 @@ function build() {
   };
 }
 
+if (require.main === module) {
 const payload = build();
 writeJson(OUTPUT, payload);
 console.log(JSON.stringify({
@@ -785,3 +772,5 @@ console.log(JSON.stringify({
   modelos: Object.keys(payload.modelos).length,
   generated_at: payload.generated_at
 }, null, 2));
+}
+module.exports = { build, aggregateSales, investmentForWindow, mergeClientMetrics, lifeMetrics };

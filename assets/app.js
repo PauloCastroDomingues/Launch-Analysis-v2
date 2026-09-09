@@ -1,7 +1,7 @@
 (() => {
+  const Rules = window.ReiseLaunchMetrics;
   const DATA_FILES = [
     'lancamentos_modelos',
-    'lancamentos_historico',
     'lancamentos_rampa_dia',
     'lancamentos_clientes_janelas',
     'lancamentos_produtos_dia',
@@ -17,7 +17,7 @@
     'auditoria_monochrome',
     'lancamentos_analise_avancada'
   ];
-  const NO_EMBEDDED_FALLBACK = new Set(['lancamentos_rampa_dia', 'lancamentos_clientes_janelas', 'lancamentos_produtos_dia', 'share_trajetoria', 'lancamentos_rps_dia', 'auditoria_monochrome']);
+  const NO_EMBEDDED_FALLBACK = new Set(DATA_FILES);
 
   const CORES_MODELO = {
     gt: { line: '#F07800', fill: 'rgba(240,120,0,0.12)' },
@@ -56,7 +56,6 @@
   ];
   const RAMP_METRIC_KEYS = [
     'rps_diario',
-    'rps_decomposicao',
     'receita_acumulada',
     'receita_mensal',
     'pedidos_mensal',
@@ -120,7 +119,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     channelFilter: 'all',
     snapshotClock: null,
     normalizedChartMode: 'linha',
-    normalizedRampMetric: 'rps_diario',
+    normalizedRampMetric: 'receita_acumulada',
     rampTimeLens: 'all',
     launchChartView: 'normalized',
     commercialChartMetric: 'investimento',
@@ -345,31 +344,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     return ruleText.includes('allocated');
   }
 
-  function orderChannelType(row = {}) {
-    const explicitType = normalizeText(row.tipo_real || row.tipo || row.tipo_canal || row.channel_type);
-    if (/(^| )(paid|pago|midia paga|paid media)( |$)/.test(explicitType)) return 'paid';
-    if (/(^| )(organic|organico)( |$)/.test(explicitType)) return 'organic';
-    if (/(^| )(crm|email|e mail|newsletter)( |$)/.test(explicitType)) return 'crm';
-    if (/(^| )(unmatched|nao atribuido|sem match|sem atribuicao)( |$)/.test(explicitType)) return 'unmatched';
-    if (/(^| )(other|outro|direto|direct|whatsapp)( |$)/.test(explicitType)) return 'other';
-
-    const channelText = normalizeText([
-      row.canal_real,
-      row.canal,
-      row.channel,
-      row.chanel,
-      row.grupo_canal,
-      row.raw_channel,
-      row.raw_medium,
-      row.raw_source,
-      row.raw_source_type,
-      row.utm_medium,
-      row.utm_source,
-      row.utm_campaign
-    ].filter(Boolean).join(' '));
-    if (!channelText && isDailyAllocatedAttribution(row)) return null;
-    return detailedAttributionType(detailedAttributionChannel(row));
-  }
+  function orderChannelType(row = {}) { return Rules.channelType(row); }
 
   function attributionQualityMeta(granularPct, allocatedPct = null) {
     const granular = numberOrNull(granularPct);
@@ -472,9 +447,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       if (!res.ok) throw new Error(`${name}: ${res.status}`);
       return await res.json();
     } catch (err) {
-      if (allowFallback && window.REISE_FALLBACK_DATA?.[name] !== undefined) {
-        return window.REISE_FALLBACK_DATA[name];
-      }
+      // Missing sources stay pending; never substitute a snapshot from another date.
       return emptyDataFor(name);
     }
   }
@@ -492,6 +465,8 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     entries.forEach(([name, payload]) => {
       out[name] = payload;
     });
+    out.review_audit = Rules.audit(out);
+    out.review_derived_valid = Rules.derivedMatches(out);
     return out;
   }
 
@@ -1423,12 +1398,10 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
   }
 
   function buildLaunches(data) {
-    const histById = new Map(data.lancamentos_historico.map((item) => [item.modelo_id, item]));
     return data.lancamentos_modelos.map((model, idx) => {
-      const hist = normalizeLaunchMetrics(model, histById.get(model.modelo_id), 'historico');
       const pipelineRows = (data.lancamentos_produtos_dia || []).filter((row) => row.modelo_id === model.modelo_id);
       const pipeline = normalizeLaunchMetrics(model, aggregatePipeline(model, data.lancamentos_produtos_dia || []), 'pipeline');
-      const rawMetrics = pipeline || hist || {
+      const rawMetrics = pipeline || {
         modelo_id: model.modelo_id,
         modelo: model.modelo,
         day_zero_base: canonicalDayZero(model),
@@ -1453,6 +1426,14 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
       const status = normalizedStatus(model.status);
       const isEligible = isEligibleStatus(status) && hasValidDayZero(model) && !isFuture;
       const metrics = completeEligibleMetrics(model, rawMetrics, isEligible);
+      WINDOW_KEYS.forEach(key => {
+        const client = data.lancamentos_clientes_janelas?.janelas?.find(row => row.modelo_id === model.modelo_id && row.janela === key);
+        if (metrics.janelas?.[key]) {
+          metrics.janelas[key].novos = numberOrNull(client?.novos_clientes);
+          metrics.janelas[key].recorrentes = numberOrNull(client?.recorrentes_clientes);
+          metrics.janelas[key].novos_pct = ratioOrNull(client?.novos_clientes, client?.clientes_unicos);
+        }
+      });
       const isActive = status === 'ativo' && !isFuture;
       const isHistorical = status === 'historico';
       return {
@@ -1638,7 +1619,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     const configs = {
       rps_diario: {
         key: 'rps_diario',
-        label: 'RPS - Retenção de RPS',
+        label: 'RPS da loja — contexto',
         shortLabel: 'RPS',
         field: 'rps',
         format: 'brl',
@@ -5053,6 +5034,9 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
   }
 
   function renderLaunchHealthSummary(selected, chartLaunches = selectedCompareLaunches()) {
+    const reviewWrap = $('launch-health-summary');
+    if (reviewWrap) { reviewWrap.hidden = true; reviewWrap.innerHTML = ''; }
+    return;
     const wrap = $('launch-health-summary');
     if (!wrap) return;
     const shouldShow = Boolean(selected) && (state.normalizedChartMode || 'linha') === 'linha';
@@ -7643,7 +7627,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     const mediaBlocked = optionalRows('midia_paga').filter((row) => row.atribuicao_bloqueada || normalizeText(row.metodologia) === 'receita janela agregada');
     const manifestWarnings = Array.isArray(state.data?.manifest?.warnings) ? state.data.manifest.warnings : [];
 
-    const alerts = [];
+    const alerts = [{ type: 'warn', title: 'Revisão de dados em andamento', copy: 'GT e Avant são referências com D0 deslocado e chaves repetidas pendentes no SSOT. RPS descreve a loja; ROAS depende de validar o investimento por produto e janela.' }];
     if (!selectedWindow) {
       alerts.push({
         type: 'warn',
@@ -8186,7 +8170,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
 
   function filteredWindowDataForLaunch(launch, key = selectedPeriodKey()) {
     const endDay = WINDOW_DAYS[key];
-    if (endDay === null || endDay === undefined) return null;
+    if (endDay === null || endDay === undefined || launch?.dPlus < endDay) return null;
     if (!isProductFilterActive()) {
       return applyChannelFilterToSalesData(getWindow(launch, key));
     }
@@ -9477,27 +9461,8 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     return value < 0 ? 0 : value;
   }
 
-  function nonInvestmentRevenueForData(data, investmentRevenue = null, { assumeAllWhenNoInvestment = false } = {}) {
-    const explicit = numberOrNull(data?.receita_organica);
-    if (explicit !== null) return explicit;
-    const total = numberOrNull(data?.receita_total_original)
-      ?? numberOrNull(data?.receita_bruta)
-      ?? numberOrNull(data?.receita);
-    const remainder = nonNegativeRoundedRemainder(total, investmentRevenue, 2);
-    if (remainder !== null) return remainder;
-    if (assumeAllWhenNoInvestment && total !== null) return total;
-    return numberOrNull(data?.receita_organica);
-  }
-
-  function nonInvestmentOrdersForData(data, investmentOrders = null, { assumeAllWhenNoInvestment = false } = {}) {
-    const explicit = numberOrNull(data?.pedidos_organicos);
-    if (explicit !== null) return explicit;
-    const total = numberOrNull(data?.pedidos) ?? numberOrNull(data?.pedidos_validos);
-    const remainder = nonNegativeRoundedRemainder(total, investmentOrders, 0);
-    if (remainder !== null) return remainder;
-    if (assumeAllWhenNoInvestment && total !== null) return total;
-    return numberOrNull(data?.pedidos_organicos);
-  }
+  function nonInvestmentRevenueForData(data) { return numberOrNull(data?.receita_organica); }
+  function nonInvestmentOrdersForData(data) { return numberOrNull(data?.pedidos_organicos); }
 
   function hasExplicitOrderAttribution(data = {}) {
     return [
@@ -11040,10 +11005,51 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     return { launches: [...byId.values()] };
   }
 
+  function renderReviewNotice() {
+    const wrap = $('review-notice'); if (!wrap) return;
+    const audit = state.data?.review_audit || {};
+    const dates = [ ['Vendas e clientes', state.data?.manifest?.generated_at], ['RPS da loja', state.data?.lancamentos_rps_dia?.generated_at] ];
+    wrap.innerHTML = `<strong>Dados de vendas até ${fmtDateSlash(snapshotIso())} · revisão pendente na origem</strong>
+      <p>GT e Avant: D0 diferente do lançamento oficial e ${fmtNum(audit.repeated_keys)} chaves repetidas de pedido + SKU. Vendas preservadas até validação no SSOT. RPS mede a loja; investimento e ROAS exigem validação de janela e escopo.</p>
+      <details><summary>Fontes e limites da comparação</summary><p>${dates.map(([label,date]) => `${label}: ${date ? fmtDateSlash(String(date).slice(0,10)) : 'pendente'}`).join(' · ')}. Análise derivada: ${state.data?.review_derived_valid ? 'recalculada com os arquivos carregados' : 'pendente — fontes diferentes ou arquivo indisponível'}.</p><p>D0 até D+7 inclui 8 datas. D0 até D+30 inclui 31 datas. Toda a curva acompanha cada linha até seu último corte e não é um ranking de idades iguais.</p></details>`;
+  }
+
+  function renderLaunchReview(wrap, selected) {
+    const launches = selectedCompareLaunches();
+    const key = selectedPeriodKey();
+    const fixed = WINDOW_KEYS.includes(key);
+    const showExtraRevenue = !['7d','15d','30d'].includes(key);
+    const dataFor = (launch, windowKey) => launch.dPlus >= WINDOW_DAYS[windowKey] ? filteredWindowDataForLaunch(launch, windowKey) : null;
+    const rows = launches.map(launch => ({ launch, data: fixed ? dataFor(launch,key) : selectedAnalysisWindow(launch).data }));
+    const refs = state.data?.review_audit?.reference_models || [];
+    const eligible = rows.filter(({launch,data}) => !refs.includes(launch.modelo_id) && numberOrNull(data?.receita) !== null);
+    const top = fixed ? [...eligible].sort((a,b) => b.data.receita-a.data.receita)[0] : null;
+    wrap.innerHTML = `<div class="review-overview">
+      <div class="review-heading"><div><div class="eyebrow">Volume · velocidade · sustentação</div><h2>Como cada lançamento performa na mesma idade</h2></div><span class="review-period">${escapeHtml(selectedPeriodLabel())}</span></div>
+      <p class="review-lead">${top ? `<strong>${escapeHtml(top.launch.modelo)}</strong> lidera o faturamento entre os lançamentos com D0 alinhado à data oficial: ${fmtBRL(top.data.receita)}.` : fixed ? 'Sem janela fechada no recorte atual para ordenar os lançamentos.' : 'Toda a curva mostra o percurso observado de cada linha. Use D+7, D+15 ou D+30 para comparar a mesma idade.'}</p>
+      <div class="table-wrap"><table class="review-scoreboard"><thead><tr><th>Lançamento / D0</th><th>Até D+7</th><th>Até D+15</th><th>Até D+30</th>${showExtraRevenue ? `<th>${escapeHtml(selectedPeriodLabel())} · receita</th>` : ''}<th>Pedidos únicos</th><th>Pares</th><th>Ticket / pedido</th></tr></thead><tbody>
+      ${rows.map(({launch,data}) => `<tr class="${launch.modelo_id === selected.modelo_id ? 'review-highlight' : ''}"><td><strong>${escapeHtml(launch.modelo)}</strong><small>${fmtDateSlash(launch.d0)}${refs.includes(launch.modelo_id) ? ' · Referência provisória; lançamento oficial '+fmtDateSlash(launch.data_oficial) : ' · D0 oficial'}</small></td>${['7d','15d','30d'].map(w => `<td>${fmtBRL(dataFor(launch,w)?.receita)}</td>`).join('')}${showExtraRevenue ? `<td>${fmtBRL(data?.receita)}</td>` : ''}<td>${fmtNum(data?.pedidos)}</td><td>${fmtNum(data?.pares)}</td><td>${fmtBRL(ratioOrNull(data?.receita,data?.pedidos))}</td></tr>`).join('') || '<tr><td colspan="8">Selecione um lançamento.</td></tr>'}
+      </tbody></table></div><p class="review-note">Receita bruta dos itens. Pedidos, pares e ticket correspondem a ${escapeHtml(selectedPeriodLabel())}. Pedidos únicos por lançamento; não some pedidos de linhas diferentes como total de clientes. Janelas abertas permanecem pendentes. D+60 e D+90 seguem disponíveis no filtro de período.</p>
+      <div class="review-actions"><button type="button" data-review-jump="curvas">Ver evolução e ritmo</button><button type="button" data-review-jump="clientes-base">Ver clientes</button></div>
+    </div>`;
+    wrap.querySelectorAll('[data-review-jump]').forEach(button => button.addEventListener('click', () => $(button.dataset.reviewJump)?.scrollIntoView({behavior:'smooth'})));
+  }
+
+  function renderStoreRpsContext(selected, canvasId, subTextId) {
+    ['launch-health-summary','rps-autosustain-analysis','ramp-health-insight','rps-period-analysis','ramp-quick-controls'].forEach(id => { const el=$(id); if(el){el.innerHTML='';el.hidden=true;} });
+    setNormalizedMainChartHidden(false);
+    const maxDay = selectedPeriodChartEndDayForLaunch(selected, rpsLatestDataDay(selected));
+    const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
+    const title = $('chart-normalized-title'); if(title) title.textContent='RPS da loja — contexto do período';
+    const sub=$(subTextId); if(sub) sub.textContent='Receita total da loja ÷ sessões totais, em média móvel de 7 dias. Não mede eficiência nem independência do produto. Corte: '+fmtDateSlash(state.data?.lancamentos_rps_dia?.modelos?.[selected.modelo_id]?.dado_ate);
+    const help=$('chart-normalized-help'); if(help) help.dataset.tooltip='Mesma série da loja alinhada ao D0 de cada lançamento. Não atribui receita, tráfego ou efeito de mídia ao produto.';
+    createChart(canvasId, { type:'line', data:{labels:series.data.map((v,i)=>i===0?'D0':'D+'+i),datasets:[{label:'Loja no período de '+selected.modelo,data:series.data,borderColor:'#5BB8D4',backgroundColor:'transparent',pointRadius:0,borderWidth:2,spanGaps:false}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true,title:{display:true,text:'R$ por sessão da loja'}},x:{ticks:{maxTicksLimit:12}}}} });
+  }
+
   function renderStoryBrief(selected) {
     const wrap = $('story-brief');
     if (!wrap || !selected) return;
-    renderCompactLaunchAnalysis(wrap, selected);
+    renderLaunchReview(wrap, selected);
     return;
 
     const model = shareModelForLine(selected.modelo_id);
@@ -11262,6 +11268,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
   }
 
   function renderSelectedHeader(selected) {
+    if (!$('selected-dates')) return;
     const cohort = comparisonLaunchesWithFocus(selected);
     const periodKey = selectedPeriodKey();
     const withWindow = cohort.filter((launch) => Boolean(getWindow(launch, periodKey))).length;
@@ -12658,6 +12665,8 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
       setNormalizedMainChartHidden(false);
     }
     let rampMetric = rampMetricConfig();
+    ['ramp-quick-controls','rps-period-analysis','ramp-health-insight'].forEach(id => {const el=$(id); if(el) el.hidden=false;});
+    if (rampMetric.rps || rampMetric.rpsDecomposition) { renderStoreRpsContext(selected, canvasId, subTextId); return; }
     if (canvasId === 'chart-normalized') {
       renderRpsAutosustainAnalysis(null);
       renderLaunchHealthSummary(null);
@@ -13463,7 +13472,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     if (merged.pct_base_ativada === null) {
       const baseD0 = numberOrNull(merged.base_total_d0);
       const clientesBase = numberOrNull(merged.clientes_base_compraram);
-      merged.pct_base_ativada = baseD0 ? clientesBase / baseD0 : null;
+      merged.pct_base_ativada = baseD0 && clientesBase !== null ? clientesBase / baseD0 : null;
     }
     merged.clientes_status = clientRow.status || null;
     merged.clientes_qualidade = clientRow.qualidade || 'pendente';
@@ -13503,7 +13512,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
 
   function advancedPayload() {
     const payload = state.data?.lancamentos_analise_avancada;
-    return payload && !Array.isArray(payload) ? payload : null;
+    return state.data?.review_derived_valid && payload && !Array.isArray(payload) ? payload : null;
   }
 
   function advancedModelFor(launch) {
@@ -13559,8 +13568,9 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
   function advancedRoasCell(roas) {
     const value = numberOrNull(roas?.midia_paga);
     if (value !== null) {
-      return `${fmtNum(value, 2)}x<div class="metric-sub">${escapeHtml(roas.status || '')}</div>`;
+      return `${fmtNum(value, 2)}x<div class="metric-sub">Receita classificada / investimento validado</div>`;
     }
+    if (roas?.status === 'pendente_validacao_janela_e_escopo') return '<span class="cell-muted">Pendente</span><div class="metric-sub">validar janela e escopo</div>';
     const status = normalizeText(roas?.status);
     const label = status.includes('investimento declarado') ? 'ROAS pendente' : 'sem ROAS';
     return `<span class="cell-muted">${escapeHtml(label)}</span><div class="metric-sub">${escapeHtml(roas?.observacao || 'sem base confiavel')}</div>`;
@@ -13574,13 +13584,14 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     const wrap = $('advanced-clients');
     if (!wrap) return;
     const payload = advancedPayload();
+    if (isProductFilterActive() || state.channelFilter !== 'all') { const panel = $('advanced-clients'); if (panel) panel.innerHTML = '<p class="review-note">Este agregado exige Todos os produtos e Todos os canais. O placar e a curva continuam no recorte selecionado.</p>'; return; }
     const launches = advancedSelectedLaunches();
     if (!payload || !launches.length) {
       wrap.innerHTML = `<div class="empty-state"><div><strong>Sem dados avancados.</strong>Gere data/lancamentos_analise_avancada.json e selecione ao menos um lancamento comparavel.</div></div>`;
       return;
     }
 
-    const rows = launches.flatMap((launch) => WINDOW_KEYS.map((key) => {
+    const rows = launches.flatMap((launch) => (WINDOW_KEYS.includes(selectedPeriodKey()) ? [selectedPeriodKey()] : WINDOW_KEYS).map((key) => {
       const win = advancedWindowFor(launch, key);
       return { launch, key, win, vendas: win?.vendas || null };
     }));
@@ -13598,12 +13609,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         <div class="advanced-summary-card">
           <span>Base atual</span>
           <strong>${advancedCell(baseAtualClientes, fmtNum)}</strong>
-          <small>${escapeHtml(directPayload?.base_atual?.fonte || payload.proximos_lancamentos?.base_atual_fonte || 'pendente no SSOT')}</small>
-        </div>
-        <div class="advanced-summary-card">
-          <span>Proximo lancamento</span>
-          <strong>${forecast?.receita_esperada === null || forecast?.receita_esperada === undefined ? '&mdash;' : fmtBRL(forecast.receita_esperada)}</strong>
-          <small>${forecast ? `${selectedPeriodLabel()} &middot; ${advancedCell(forecast.clientes_esperados, fmtNum, 'clientes pend.')} clientes &middot; ${advancedCell(forecast.pedidos_esperados, fmtNum, 'pedidos pend.')} pedidos &middot; ${advancedCell(forecast.pares_esperados, fmtNum, 'pares pend.')} pares` : 'sem referencia'}</small>
+          <small>Clientes identificados na base do SSOT</small>
         </div>
         <div class="advanced-summary-card">
           <span>Clientes unicos</span>
@@ -13624,7 +13630,6 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
               ${thTip('Pedidos/cliente', 'Pedidos distintos da janela divididos por clientes unicos.', 'num')}
               ${thTip('Pares/cliente', 'Pares vendidos divididos por clientes unicos.', 'num')}
               ${thTip('% base ativada', 'Clientes recorrentes compradores / base total antes do D0.', 'num')}
-              ${thTip('Proxy atual', 'Classificacao atual de novos/recorrentes por pedido; nao substitui cliente unico.', 'num')}
               ${thTip('Status', 'Fechada, aberta, sem dados ou pendente.')}
             </tr>
           </thead>
@@ -13640,7 +13645,6 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
                 <td class="num">${advancedCell(vendas?.pedidos_por_cliente, (value) => fmtNum(value, 2))}</td>
                 <td class="num">${advancedCell(vendas?.pares_por_cliente, (value) => fmtNum(value, 2))}</td>
                 <td class="num">${advancedRatioCell(vendas?.pct_base_ativada, 2)}</td>
-                <td class="num">${advancedCell(vendas?.pedidos_classificados_novos, fmtNum)}<div class="metric-sub">${advancedCell(vendas?.pedidos_classificados_recorrentes, fmtNum)} recorr.</div></td>
                 <td>${advancedStatusBadge(win?.status)}${vendas?.clientes_unicos == null ? '<div class="metric-sub">aguarda data/lancamentos_clientes_janelas.json</div>' : ''}</td>
               </tr>
             `).join('')}
@@ -13658,6 +13662,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
   function renderAdvancedLifecycle() {
     const wrap = $('advanced-lifecycle');
     if (!wrap) return;
+    if (isProductFilterActive() || state.channelFilter !== 'all') { const panel = $('advanced-lifecycle'); if (panel) panel.innerHTML = '<p class="review-note">Este agregado exige Todos os produtos e Todos os canais. O placar e a curva continuam no recorte selecionado.</p>'; return; }
     const launches = advancedSelectedLaunches().filter((launch) => advancedModelFor(launch));
     if (!advancedPayload() || !launches.length) {
       wrap.innerHTML = `<div class="empty-state"><div><strong>Sem rampa avancada.</strong>Gere o JSON avancado para ver vida util e marcos acumulados.</div></div>`;
@@ -13688,10 +13693,10 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
               <div class="advanced-kpi-grid">
                 <div><span>Receita estendida</span><strong>${advancedCell(ramp.vendas?.receita, fmtBRL)}</strong><small>${escapeHtml(ramp.start_date || 'sem data')} a ${escapeHtml(ramp.end_date || 'sem data')}</small></div>
                 <div><span>Pico receita</span><strong>${lifePeakLine(life.peak_revenue_day)}</strong><small>maior dia de faturamento</small></div>
-                <div><span>50 / 80 / 90%</span><strong>${advancedCell(life.days_to_50pct_revenue, (v) => `D+${fmtNum(v)}`)} &middot; ${advancedCell(life.days_to_80pct_revenue, (v) => `D+${fmtNum(v)}`)} &middot; ${advancedCell(life.days_to_90pct_revenue, (v) => `D+${fmtNum(v)}`)}</strong><small>tempo ate receita acumulada</small></div>
+                <div><span>50 / 80 / 90% do observado</span><strong>${advancedCell(life.days_to_50pct_revenue, (v) => `D+${fmtNum(v)}`)} &middot; ${advancedCell(life.days_to_80pct_revenue, (v) => `D+${fmtNum(v)}`)} &middot; ${advancedCell(life.days_to_90pct_revenue, (v) => `D+${fmtNum(v)}`)}</strong><small>Do total observado até o corte; não é previsão de vida útil</small></div>
                 <div><span>Queda pos-pico</span><strong>${advancedRatioCell(life.post_peak_decay_pct, 1)}</strong><small>7 dias depois do pico vs semana do pico</small></div>
-                <div><span>Vida comercial</span><strong>${advancedCell(life.commercial_life_days, (v) => `D+${fmtNum(v)}`)}</strong><small>${escapeHtml(life.leitura || 'pendente')}</small></div>
-                <div><span>Hype / sustentacao</span><strong>${advancedRatioCell(life.hype_initial_revenue_pct, 1)} &middot; ${advancedRatioCell(life.sustain_revenue_pct, 1)}</strong><small>D+7 da receita &middot; pos D+15</small></div>
+                <div><span>Último dia de venda relevante</span><strong>${advancedCell(life.commercial_life_days, (v) => `D+${fmtNum(v)}`)}</strong><small>Não define o fim da vida comercial</small></div>
+                <div><span>Início / após D+15</span><strong>${advancedRatioCell(life.hype_initial_revenue_pct, 1)} &middot; ${advancedRatioCell(life.sustain_revenue_pct, 1)}</strong><small>% do total observado; não comparar entre idades diferentes</small></div>
               </div>
             </div>
           `;
@@ -13703,13 +13708,14 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
   function renderAdvancedChannelsRoas() {
     const wrap = $('advanced-channels-roas');
     if (!wrap) return;
+    if (isProductFilterActive() || state.channelFilter !== 'all') { const panel = $('advanced-channels-roas'); if (panel) panel.innerHTML = '<p class="review-note">Este agregado exige Todos os produtos e Todos os canais. O placar e a curva continuam no recorte selecionado.</p>'; return; }
     const launches = advancedSelectedLaunches().filter((launch) => advancedModelFor(launch));
     if (!advancedPayload() || !launches.length) {
       wrap.innerHTML = '';
       return;
     }
 
-    const rows = launches.flatMap((launch) => WINDOW_KEYS.map((key) => ({
+    const rows = launches.flatMap((launch) => (WINDOW_KEYS.includes(selectedPeriodKey()) ? [selectedPeriodKey()] : WINDOW_KEYS).map((key) => ({
       launch,
       key,
       win: advancedWindowFor(launch, key)
@@ -13724,11 +13730,13 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
               ${thTip('Lancamento', 'Modelo comparado.')}
               ${thTip('Janela', 'Janela relativa ao D0 do lancamento.')}
               ${thTip('Midia paga', 'Receita e pedidos classificados como paid pelo SSOT.', 'num')}
-              ${thTip('Organico', 'Pedidos classificados como WhatsApp Organico, E-mail, Direto, Social, Organico ou Outros.', 'num')}
-              ${thTip('CRM', 'Investimento CRM separado; receita de CRM so aparece com atribuicao real.', 'num')}
+              ${thTip('Orgânico identificado', 'Somente registros explicitamente orgânicos. CRM, outros e sem atribuição são separados.', 'num')}
+              ${thTip('CRM', 'Receita classificada como CRM; investimento separado.', 'num')}
+              ${thTip('Outros', 'Demais canais identificados, incluindo direto.', 'num')}
+              ${thTip('Sem atribuição', 'Origem não identificada. Não conta como orgânico.', 'num')}
               ${thTip('Invest. midia', 'Somente midia_paga.json; CRM nao entra como midia paga.', 'num')}
               ${thTip('Invest. CRM', 'crm_disparos.json na janela do lancamento.', 'num')}
-              ${thTip('Invest. total', 'Midia paga + CRM + outros, quando existirem.', 'num')}
+              ${thTip('Invest. total', 'Só disponível quando mídia e CRM têm valores conhecidos. Ausência não é zero.', 'num')}
               ${thTip('ROAS midia', 'Receita de midia paga / investimento de midia paga, apenas com ressalva de qualidade.', 'num')}
               ${thTip('Qualidade', 'Real, alocado, inferido ou pendente.')}
             </tr>
@@ -13746,10 +13754,12 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
                   <td>${escapeHtml(windowLabel(key))}<div class="metric-sub">${advancedStatusBadge(win?.status)}</div></td>
                   <td class="num">${advancedCell(paid.receita, fmtBRL)}<div class="metric-sub">${advancedCell(paid.pedidos, fmtNum)} pedidos &middot; ${advancedQualityBadge(paid.qualidade)}</div></td>
                   <td class="num">${advancedCell(organic.receita, fmtBRL)}<div class="metric-sub">${advancedCell(organic.pedidos, fmtNum)} pedidos &middot; ${advancedQualityBadge(organic.qualidade)}</div></td>
-                  <td class="num">${advancedCell(crm.receita, fmtBRL)}<div class="metric-sub">receita real CRM; investimento separado</div></td>
+                  <td class="num">${advancedCell(crm.receita, fmtBRL)}<div class="metric-sub">${advancedCell(crm.pedidos, fmtNum)} pedidos</div></td>
+                  <td class="num">${advancedCell(vendas.canais?.other?.receita, fmtBRL)}<div class="metric-sub">${advancedCell(vendas.canais?.other?.pedidos, fmtNum)} pedidos</div></td>
+                  <td class="num">${advancedCell(vendas.canais?.pending?.receita, fmtBRL)}<div class="metric-sub">${advancedCell(vendas.canais?.pending?.pedidos, fmtNum)} pedidos</div></td>
                   <td class="num">${advancedCell(investment.midia_paga, fmtBRL)}</td>
                   <td class="num">${advancedCell(investment.crm, fmtBRL)}</td>
-                  <td class="num">${advancedCell(investment.total, fmtBRL)}<div class="metric-sub">${escapeHtml(investment.confiabilidade || 'pendente')}</div></td>
+                  <td class="num">${advancedCell(investment.total, fmtBRL)}<div class="metric-sub">${investment.confiabilidade === 'escopo_validado' ? 'Escopo validado' : 'Validar janela e escopo'}</div></td>
                   <td class="num">${advancedRoasCell(win?.roas)}</td>
                   <td>${advancedQualityBadge(vendas.canal_qualidade)}<div class="metric-sub">${escapeHtml(win?.roas?.observacao || '')}</div></td>
                 </tr>
@@ -16644,6 +16654,7 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     renderTopMeta();
     renderAnalysisContext(selected);
     renderReadingSupport(selected);
+    renderReviewNotice();
     renderStoryBrief(selected);
     renderCharts(selected);
     renderAdvancedClients();
@@ -16706,7 +16717,7 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     const comparable = comparableLaunches();
     const preferred = defaultComparableLaunch(comparable);
     state.primaryModelId = preferred?.modelo_id;
-    state.compareModelIds = comparable.map((launch) => launch.modelo_id);
+    state.compareModelIds = comparable.filter(launch => launch.d0 === launch.data_oficial).map(launch => launch.modelo_id);
     renderAll();
     window.dispatchEvent(new CustomEvent('reise-dashboard-ready', { detail: getDashboardSnapshot() }));
   }

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260902-rps-exec-story-v82-ux-details" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260909-launch-review-v1" />
 </head>
 <body>
   <div class="app-shell">
@@ -117,6 +117,7 @@
       <div id="analysis-context" class="analysis-context" aria-live="polite"></div>
       <div id="reading-support" class="reading-support" aria-live="polite"></div>
       </div>
+      <div id="review-notice" class="review-notice" role="status"></div>
       <div id="story-brief" class="story-brief" aria-live="polite"></div>
 
       <p class="section-transition-label">Análises de apoio ao diagnóstico</p>
@@ -128,83 +129,13 @@
         <button type="button" class="topic-tab" data-topic="canal-midia">Investimento</button>
       </div>
 
-      <div class="topic-divider" id="topic-placar">Resultado executivo</div>
-      <section id="estado" data-topic="placar">
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">01 · Desempenho comparativo</div>
-            <div class="section-title-row">
-              <h2><span id="selected-title">—</span></h2>
-              <button class="help-button" type="button" data-tooltip="Mostra o placar do grupo comparativo na janela selecionada. Linhas sem janela fechada aparecem como pendentes, não como zero." aria-label="Ajuda sobre estado comparativo">?</button>
-            </div>
-            <p class="section-desc">Principais indicadores do grupo na janela escolhida.</p>
-            <div id="selected-dates" class="selected-dates"></div>
-          </div>
-          <div class="section-head-actions">
-            <div id="selected-status"></div>
-          </div>
-        </div>
-        <div id="launch-state"></div>
-      </section>
-
-      <section id="comparativo" data-topic="placar">
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">02 · Comparativo consolidado</div>
-            <div class="section-title-row">
-              <h2>Tabela única de desempenho por lançamento</h2>
-              <button class="help-button" type="button" data-tooltip="Consolida as janelas D+7 a D+90, ticket, pares, clientes novos, velocidade e diferença contra a média histórica. Janela aberta fica vazia; ausência não vira zero." aria-label="Ajuda sobre comparativo consolidado">?</button>
-            </div>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table style="min-width:1480px">
-            <thead>
-              <tr>
-                <th><span class="th-label">Lançamento <button class="help-button help-button--mini" type="button" data-tooltip="Modelo comparado e D0 analítico usado para alinhar as janelas." aria-label="Ajuda sobre modelo">i</button></span></th>
-                <th><span class="th-label">Faturamento <button class="help-button help-button--mini" type="button" data-tooltip="Receita acumulada na janela selecionada, sempre a partir do lançamento de cada modelo. Janela ausente fica vazia." aria-label="Ajuda sobre receita da janela">i</button></span></th>
-                <th class="num"><span class="th-label">Venda orgânica <button class="help-button help-button--mini" type="button" data-tooltip="Vendas orgânicas atribuídas por last-click no período do lançamento. Fica pendente até receita_organica alimentar o JSON." aria-label="Ajuda sobre vendas orgânicas">i</button></span></th>
-                <th class="num"><span class="th-label">Venda midia paga <button class="help-button help-button--mini" type="button" data-tooltip="Vendas com sinais de anuncio, como cpc, pmax, paid, demand-gen, performance, ads, display ou source_type pago." aria-label="Ajuda sobre vendas de midia paga">i</button></span></th>
-                <th><span class="th-label">D+7 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+7. Nulo significa janela ausente ou ainda aberta." aria-label="Ajuda sobre D+7">i</button></span></th>
-                <th><span class="th-label">D+15 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+15. Para ativos depende do snapshot já ter chegado a D+15." aria-label="Ajuda sobre D+15">i</button></span></th>
-                <th><span class="th-label">D+30 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+30. É a principal janela de comparação comercial." aria-label="Ajuda sobre D+30">i</button></span></th>
-                <th><span class="th-label">D+60 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+60. Use quando todos os comparados tiverem essa janela." aria-label="Ajuda sobre D+60">i</button></span></th>
-                <th><span class="th-label">D+90 <button class="help-button help-button--mini" type="button" data-tooltip="Receita bruta acumulada de D0 até D+90. Marco de consolidação; modelos recentes podem ficar vazios." aria-label="Ajuda sobre D+90">i</button></span></th>
-                <th class="num"><span class="th-label">Ticket médio <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: receita / pedidos na janela selecionada no filtro de período. Mede valor médio por pedido, não volume." aria-label="Ajuda sobre ticket">i</button></span></th>
-                <th class="num"><span class="th-label">Pares <button class="help-button help-button--mini" type="button" data-tooltip="Quantidade de pares vendidos na janela selecionada no filtro de período. Compara demanda física sem misturar preço." aria-label="Ajuda sobre pares">i</button></span></th>
-                <th class="num"><span class="th-label">Novos clientes <button class="help-button help-button--mini" type="button" data-tooltip="Fórmula: novos / (novos + recorrentes) na janela selecionada. Fica vazio sem classificação auditada." aria-label="Ajuda sobre novos">i</button></span></th>
-                <th class="num"><span class="th-label">Ritmo diário <button class="help-button help-button--mini" type="button" data-tooltip="Receita acumulada dividida pelos dias da janela de referência. Leitura de ritmo médio, não previsão." aria-label="Ajuda sobre velocidade">i</button></span></th>
-                <th class="num"><span class="th-label">Var. vs grupo <button class="help-button help-button--mini" type="button" data-tooltip="Diferença entre a receita do modelo e a média histórica na mesma janela fixa. Não usa substituição por outra janela." aria-label="Ajuda sobre diferença vs média">i</button></span></th>
-                <th><span class="th-label">Origem <button class="help-button help-button--mini" type="button" data-tooltip="Mostra se o dado é histórico, pipeline real, parcial, estimado ou auditado." aria-label="Ajuda sobre fonte">i</button></span></th>
-              </tr>
-            </thead>
-            <tbody id="comparison-table"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <div class="topic-divider" id="topic-clientes">Clientes e base</div>
-      <section id="clientes-base" data-topic="clientes">
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">03 &middot; Clientes e base</div>
-            <div class="section-title-row">
-              <h2>Quem comprou e quanto da base foi ativado</h2>
-              <button class="help-button" type="button" data-tooltip="Clientes unicos, novos, recorrentes e base ativada dependem do export agregado do SSOT. Enquanto esse JSON nao existir, aparecem como pendentes, nunca como zero." aria-label="Ajuda sobre clientes e base">?</button>
-            </div>
-            <p class="section-desc">Leitura por janelas comparaveis e expectativa para proximos lancamentos.</p>
-          </div>
-        </div>
-        <div id="advanced-clients"></div>
-      </section>
-
-      <div class="topic-divider" id="topic-curvas">Evolução das vendas</div>
+      <div hidden><span id="selected-title"></span><span id="selected-status"></span></div>
       <section id="curvas" data-topic="curvas">
         <div class="section-head">
           <div>
             <div class="section-kicker">04 · Evolução comparativa</div>
             <div class="section-title-row">
-              <h2>Rampas, RPS e perfil de clientes</h2>
+              <h2>Evolução e ritmo de venda</h2>
               <button class="help-button" type="button" data-tooltip="Compara lançamentos por janelas fixas desde o D0 de cada produto: D+7, D+15, D+30, D+60 e D+90. Exemplo: D+30 do Avant é comparado com D+30 do Phantom, mesmo que tenham ocorrido em meses diferentes." aria-label="Ajuda sobre curvas de aceleração">?</button>
             </div>
           </div>
@@ -212,10 +143,10 @@
         <div class="hero-chart-wrap">
           <p class="hero-chart-label hero-chart-label--with-tip">
             <span>Evolução por idade do lançamento</span>
-            <button class="help-button help-button--mini" type="button" data-tooltip="As abas trocam a visão principal: RPS mede receita por sessão; Receita mostra escala financeira; Pares mostra volume físico; Crescimento mostra aceleração; Clientes mostra mix de base; Semanal mostra ritmo por semana desde D0." aria-label="Ajuda sobre visões da evolução">i</button>
+            <button class="help-button help-button--mini" type="button" data-tooltip="A curva compara receita desde D0. Ritmo semanal usa semanas fechadas. Clientes usa compradores únicos. RPS é apenas contexto da loja, sem atribuir performance ao produto." aria-label="Ajuda sobre visões da evolução">i</button>
           </p>
           <div class="chart-view-toggle" role="group" aria-label="Escolha do gráfico">
-            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized">RPS</button>
+            <button type="button" class="chart-view-btn is-active" data-chart-view="normalized">Curva de receita</button>
             <button type="button" class="chart-view-btn" data-chart-view="revenue">Receita</button>
             <button type="button" class="chart-view-btn" data-chart-view="pairs">Pares</button>
             <button type="button" class="chart-view-btn" data-chart-view="multipliers">Crescimento</button>
@@ -230,11 +161,11 @@
               </div>
               <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
                 <div class="ramp-control-group">
-                  <span class="ramp-control-label ramp-control-label--with-tip">Métrica <button class="help-button help-button--mini" type="button" data-tooltip="Define a métrica do gráfico ativo: RPS para saúde por sessão; Decomp. RPS abre RPS em receita, sessões e pedidos; Faturamento para valor acumulado; Fat. mês e Pedidos mês em blocos de 30 dias; Share mês para participação no total da empresa." aria-label="Ajuda sobre métricas da rampa">i</button></span>
+                  <span class="ramp-control-label ramp-control-label--with-tip">Métrica <button class="help-button help-button--mini" type="button" data-tooltip="Define a métrica do gráfico ativo: RPS da loja como contexto; Faturamento para receita do produto acumulada; Fat. mês e Pedidos mês em blocos de 30 dias; Share mês para participação no total da empresa." aria-label="Ajuda sobre métricas da rampa">i</button></span>
                   <div class="chart-mode-toggle normalized-ramp-metric-controls" role="group" aria-label="Métrica da rampa">
-                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="rps_diario">RPS</button>
-                  <button type="button" class="chart-mode-btn" data-ramp-metric="rps_decomposicao">Decomp. RPS</button>
-                  <button type="button" class="chart-mode-btn" data-ramp-metric="receita_acumulada">Faturamento</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="rps_diario">RPS da loja · contexto</button>
+                  <button type="button" class="chart-mode-btn is-active" data-ramp-metric="receita_acumulada">Receita acumulada</button>
+                  <button type="button" class="chart-mode-btn" data-ramp-metric="saude_rampa">Ritmo semanal</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="receita_mensal">Fat. mês</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="pedidos_mensal">Pedidos mês</button>
                   <button type="button" class="chart-mode-btn" data-ramp-metric="share_mensal">Share mês</button>
@@ -286,15 +217,30 @@
         </div>
       </section>
 
+      <section id="clientes-base" data-topic="clientes">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">03 &middot; Clientes e base</div>
+            <div class="section-title-row">
+              <h2>Quem comprou e quanto da base foi ativado</h2>
+              <button class="help-button" type="button" data-tooltip="Clientes unicos, novos, recorrentes e base ativada dependem do export agregado do SSOT. Enquanto esse JSON nao existir, aparecem como pendentes, nunca como zero." aria-label="Ajuda sobre clientes e base">?</button>
+            </div>
+            <p class="section-desc">Leitura por janelas comparaveis e expectativa para proximos lancamentos.</p>
+          </div>
+        </div>
+        <div id="advanced-clients"></div>
+      </section>
+
+      <div class="topic-divider" id="topic-curvas">Evolução das vendas</div>
       <section id="vida-util" data-topic="curvas">
         <div class="section-head">
           <div>
             <div class="section-kicker">05 &middot; Rampa estendida</div>
             <div class="section-title-row">
-              <h2>Vida util comercial do produto</h2>
+              <h2>Trajetória observada até o corte</h2>
               <button class="help-button" type="button" data-tooltip="Usa o ultimo dia disponivel no JSON de vendas. O export atual ainda limita historicos a D+90; esse limite aparece como alerta em vez de virar zero." aria-label="Ajuda sobre vida util">?</button>
             </div>
-            <p class="section-desc">Pico de venda, marcos de receita acumulada e separacao entre hype inicial e sustentacao.</p>
+            <p class="section-desc">Pico e concentração do faturamento observado. Os percentuais dependem da idade de cada linha e não estimam sua vida útil definitiva.</p>
           </div>
         </div>
         <div id="advanced-lifecycle"></div>
@@ -334,26 +280,11 @@
             <div class="section-kicker">07 · Investimento e canais</div>
             <div class="section-title-row">
               <h2>Investimento e canais</h2>
-              <button class="help-button" type="button" data-tooltip="Compara investimento total por janela de lançamento e a divisao paga versus organica preservada pelo SSOT. Cada modelo e lido a partir da propria data de lançamento." aria-label="Ajuda sobre ações comerciais">?</button>
+              <button class="help-button" type="button" data-tooltip="Separa mídia paga, orgânico identificado, CRM, outros e sem atribuição. Investimento e ROAS ficam pendentes sem janela e escopo validados." aria-label="Ajuda sobre ações comerciais">?</button>
             </div>
-            <p class="section-desc">Investimento total, ROAS por pedidos de midia paga e contraponto orgânico.</p>
+            <p class="section-desc">Canais identificados e valores de investimento sujeitos à validação de janela e escopo.</p>
           </div>
         </div>
-        <div class="chart-card wide" style="margin-bottom:18px">
-          <div class="chart-head">
-            <div>
-              <div class="chart-title chart-title--with-tip"><span>Ranking de investimento</span></div>
-              <div class="chart-sub" id="chart-normalized-media-sub">Investimento na janela selecionada</div>
-            </div>
-            <div class="chart-mode-controls commercial-chart-controls">
-              <div class="chart-mode-toggle" role="group" aria-label="Métrica do gráfico comercial">
-                <button type="button" class="chart-mode-btn is-active" data-commercial-chart-metric="investimento">Invest.</button>
-              </div>
-            </div>
-          </div>
-          <div class="chart-canvas tall"><canvas id="chart-normalized-media"></canvas></div>
-        </div>
-
         <div id="advanced-channels-roas" class="advanced-section-spacer"></div>
         <div id="advanced-alerts" class="advanced-section-spacer"></div>
 
@@ -362,14 +293,14 @@
         <p class="actions-module-label" hidden>Base di&aacute;ria descontinuada</p>
         <div id="daily-source-summary" class="daily-source-summary" hidden></div>
         <div class="actions-grid">
-          <p class="actions-module-label">Investimento total</p>
+          <p class="actions-module-label">Valores declarados · validar antes de somar</p>
           <div class="card">
             <div class="chart-title chart-title--with-tip" style="margin-bottom:12px">
-              <span>Resultado de investimento</span>
-              <button class="help-button help-button--mini" type="button" data-tooltip="Mostra o investimento total da planilha principal. ROAS e CPA usam a parcela paga do SSOT; organico aparece separado e a soma binaria e conciliada com os pedidos totais." aria-label="Ajuda sobre investimento">i</button>
+              <span>Registros de investimento</span>
+              <button class="help-button help-button--mini" type="button" data-tooltip="Valores declarados de investimento. Não somar totais acumulados com campanhas sobrepostas. Sem atribuição não é orgânico." aria-label="Ajuda sobre investimento">i</button>
             </div>
-            <p class="metric-sub">Investimento total na janela. Detalhes operacionais da planilha ficam abaixo sem rateio de venda por campanha.</p>
-            <div id="paid-media-kpis" class="paid-media-kpis"></div>
+            <p class="metric-sub">Registros originais, sem somar janelas sobrepostas ou ratear campanhas. Não representam um total validado para o produto.</p>
+            <div id="paid-media-kpis" class="paid-media-kpis" hidden></div>
             <div class="table-wrap">
               <table class="actions-detail-table actions-detail-table--media">
                 <thead>
@@ -506,8 +437,8 @@
   </div>
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
-  <script src="assets/embedded-data.js?v=20260806-period-column-local-19"></script>
-  <script src="assets/app.js?v=20260903-period-naming-v91"></script>
-  <script src="assets/presentation.js?v=20260831-rps-autosustain-v71"></script>
+  <script src="assets/launch-metrics.js?v=20260909-launch-review-v1"></script>
+  <script src="assets/app.js?v=20260909-launch-review-v1"></script>
+  <script src="assets/presentation.js?v=20260909-launch-review-v1"></script>
 </body>
 </html>

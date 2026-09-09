@@ -1,4 +1,5 @@
 (() => {
+  const Rules = window.ReiseLaunchMetrics;
   const refs = {};
   const state = {
     open: false,
@@ -133,24 +134,7 @@
     return ruleText.includes('allocated');
   }
 
-  function orderChannelType(row = {}) {
-    const explicitType = normalizeText(row.tipo_real || row.tipo || row.tipo_canal || row.channel_type);
-    if (/(^| )(paid|pago|midia paga|paid media)( |$)/.test(explicitType)) return 'paid';
-    if (/(^| )(owned|crm|email|newsletter|whatsapp|sms|organic|organico|seo|direct|referral|other|outros|unmatched|sem origem|sem utm|sem atribuicao|sem match|unattributed|unknown|not set)( |$)/.test(explicitType)) return 'organic';
-    const channelText = normalizeText([
-      row.canal_real,
-      row.canal,
-      row.channel,
-      row.raw_channel,
-      row.raw_medium,
-      row.raw_source,
-      row.utm_medium,
-      row.utm_source
-    ].filter(Boolean).join(' '));
-    if (!channelText) return isAllocatedAttribution(row) ? null : 'organic';
-    if (/(^| )(meta|facebook ads|instagram ads|fb ads|ig ads|google ads|googleads|adwords|gads|pmax|performance max|demand gen|cpc|ppc|cpm|paid|ads|anuncio|anuncios|patrocinad)( |$)/.test(channelText)) return 'paid';
-    return 'organic';
-  }
+  function orderChannelType(row = {}) { return Rules.channelType(row); }
 
   function attributionQualityMeta(granularPct, allocatedPct = null) {
     const granular = numberOrNull(granularPct);
@@ -287,7 +271,7 @@
   function channelFilterKey(current) {
     const key = filterKey(state.filters.channel || current?.channelFilter, 'all');
     if (key === 'paid') return 'investment';
-    if (key === 'crm') return 'organic';
+    if (key === 'crm') return 'crm';
     return key;
   }
 
@@ -378,43 +362,15 @@
   }
 
   function aggregateSalesRows(rows) {
-    const sum = (field) => sumNullable(rows.map((row) => row[field]));
-    const receita = sum('receita');
-    const orderIds = new Set(rows.map((row) => row.order_sk || row.order_id || row.pedido_id).filter(Boolean));
-    const pedidos = orderIds.size || sumNullable(rows.map((row) => row.pedidos_validos ?? row.pedidos));
-    const pares = sum('pares');
-    const hasOrderAttribution = rows.some((row) => [
-      row.receita_paga,
-      row.pedidos_pagos,
-      row.receita_organica,
-      row.pedidos_organicos,
-      row.receita_sem_match_atribuicao,
-      row.pedidos_sem_match_atribuicao,
-      row.receita_outros_canais,
-      row.pedidos_outros_canais
-    ].some((value) => numberOrNull(value) !== null));
-    const receitaOrganica = hasOrderAttribution
-      ? sumNullable([sum('receita_organica'), sum('receita_crm'), sum('receita_sem_match_atribuicao'), sum('receita_outros_canais')])
-      : null;
-    const pedidosOrganicos = hasOrderAttribution
-      ? sumNullable([sum('pedidos_organicos'), sum('pedidos_crm'), sum('pedidos_sem_match_atribuicao'), sum('pedidos_outros_canais')])
-      : null;
-    return {
-      receita,
-      pedidos,
-      pares,
-      receita_paga: hasOrderAttribution ? sum('receita_paga') : null,
-      receita_organica: receitaOrganica,
-      receita_crm: null,
-      receita_outros_canais: null,
-      pedidos_pagos: hasOrderAttribution ? sum('pedidos_pagos') : null,
-      pedidos_organicos: pedidosOrganicos,
-      pedidos_crm: null,
-      pedidos_outros_canais: null,
-      receita_sem_match_atribuicao: null,
-      pedidos_sem_match_atribuicao: null,
-      ticket: ratioOrNull(receita, pedidos)
-    };
+    const typed = Rules.channels(rows);
+    const receita = rows.length ? rows.reduce((a,r) => a + Number(r.receita_bruta ?? r.receita ?? 0),0) : null;
+    const pedidos = rows.length ? new Set(rows.map(r=>r.order_sk).filter(Boolean)).size : null;
+    const out = { receita, pedidos, pares: rows.length ? rows.reduce((a,r)=>a+Number(r.pares||0),0) : null, ticket: ratioOrNull(receita,pedidos) };
+    for (const [type,key] of Object.entries({paid:'paga',organic:'organica',crm:'crm',other:'outros_canais',unmatched:'sem_match_atribuicao'})) {
+      out['receita_'+key]=rows.length ? typed[type].receita : null;
+      out['pedidos_'+({paid:'pagos',organic:'organicos'}[type] || key)]=rows.length ? typed[type].pedidos : null;
+    }
+    return out;
   }
 
   function applyChannelToWindow(windowData, channelKey) {
@@ -422,7 +378,7 @@
     const channelMap = {
       investment: { receita: ['receita_paga'], pedidos: ['pedidos_pagos'] },
       paid: { receita: ['receita_paga'], pedidos: ['pedidos_pagos'] },
-      crm: { receita: ['receita_organica'], pedidos: ['pedidos_organicos'] },
+      crm: { receita: ['receita_crm'], pedidos: ['pedidos_crm'] },
       organic: { receita: ['receita_organica'], pedidos: ['pedidos_organicos'] },
       other: { receita: ['receita_outros_canais'], pedidos: ['pedidos_outros_canais'] }
     };
@@ -588,33 +544,8 @@
   }
 
   function investmentForLaunch(data, launch, days) {
-    const matchedMediaRows = (data.midia_paga || [])
-      .filter((row) => String(row.modelo_id || '') === String(launch?.modelo_id || ''))
-      .filter((row) => numberOrNull(row.investimento) !== null)
-      .filter((row) => mediaRowMatchesPresentationWindow(row, launch, days));
-    const channelMediaRows = matchedMediaRows.filter((row) => !isTotalMediaRow(row));
-    const mediaRows = channelMediaRows.length ? channelMediaRows : matchedMediaRows;
-    const maxDay = latestSalesDay(data, launch);
-    const endDay = maxDay === null ? days : Math.min(days, maxDay);
-    const referenceDate = manualReferenceDate(data, launch);
-    const crmRows = (data.crm_disparos || [])
-      .filter((row) => String(row.modelo_id || '') === String(launch?.modelo_id || ''))
-      .filter((row) => numberOrNull(row.investimento) !== null)
-      .filter((row) => {
-        const dataDisparo = row.data_disparo || row.data || row.date;
-        const idx = dayIndex(referenceDate, dataDisparo);
-        return idx !== null && idx >= 0 && idx <= endDay;
-      });
-    return {
-      value: sumNullable([...mediaRows, ...crmRows].map((row) => row.investimento)),
-      mediaValue: sumNullable(mediaRows.map((row) => row.investimento)),
-      crmValue: sumNullable(crmRows.map((row) => row.investimento)),
-      hasMedia: mediaRows.length > 0,
-      hasCrm: crmRows.length > 0,
-      mediaRows,
-      crmRows,
-      source: mediaRows.length && crmRows.length ? 'mídia paga + CRM' : mediaRows.length ? 'mídia paga' : crmRows.length ? 'somente CRM' : 'sem base'
-    };
+    const value = Rules.investmentForWindow({...launch, day_zero_base:launchDate(launch)}, days+'d', data.midia_paga || [], data.crm_disparos || []);
+    return {value:value.midia_paga, hasMedia:value.confiabilidade === 'escopo_validado', source:'janela_e_escopo_validados'};
   }
 
   function exportableLaunches(current) {
@@ -649,7 +580,7 @@
         const pedidosInvestimento = numberOrNull(win?.pedidos_pagos);
         const qualityDay = isPartial && availableDay !== null ? Math.min(days, availableDay) : days;
         const attributionQuality = attributionQualityFromRows(salesRowsForLaunchPeriod(data, launch, qualityDay), pedidos);
-        const acquisition = investment.value === null ? null : {
+        const acquisition = {
           investimento: investment.value,
           receitaInvestimento,
           pedidosInvestimento,
@@ -1024,7 +955,7 @@
         <div><span>ROAS midia paga</span><strong>${focusRoas === null ? '—' : `${fmtNum(focusRoas, 2)}x`}</strong></div>
         <div><span>Pedidos organicos</span><strong>${fmtNum(focus.acquisition.pedidosOrganicos)}</strong></div>
       </div>
-      <p class="compact-panel-note">Destaque visual: ${escapeHtml(focus.label)}. Investimento vem da planilha principal; ROAS usa a receita classificada como paga pelo SSOT. Media do grupo: retorno ${avgRoas === null ? '—' : `${fmtNum(avgRoas, 2)}x`}.</p>
+      <p class="compact-panel-note">Destaque visual: ${escapeHtml(focus.label)}. Investimento e ROAS exigem validar datas, sobreposição e escopo do produto. Media do grupo: retorno ${avgRoas === null ? '—' : `${fmtNum(avgRoas, 2)}x`}.</p>
     `;
   }
 
@@ -1561,7 +1492,7 @@
       return;
     }
     refs.page.setAttribute('aria-label', 'Visão geral compacta do modo apresentação');
-    refs.page.innerHTML = overviewHtml(view);
+    refs.page.innerHTML = '<div class="review-notice"><strong>Vendas por idade do lançamento</strong><p>GT e Avant são referências provisórias: D0 deslocado e repetição de pedido + SKU pendente no SSOT. Sem atribuição não é orgânico. ROAS permanece pendente até validar investimento por janela e produto. Dados de vendas: '+escapeHtml(String(snapshot()?.data?.manifest?.generated_at || '').slice(0,10))+'.</p></div>' + overviewHtml(view);
     bindPresentationFilters();
     renderBubbleChart(view.rows);
     refs.page.focus({ preventScroll: true });
