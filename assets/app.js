@@ -11035,15 +11035,168 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     wrap.querySelectorAll('[data-review-jump]').forEach(button => button.addEventListener('click', () => $(button.dataset.reviewJump)?.scrollIntoView({behavior:'smooth'})));
   }
 
+  function rollingContextAverage(maxDay, readValue) {
+    const data = Array(maxDay + 1).fill(null);
+    for (let day = 0; day <= maxDay; day += 1) {
+      let sum = 0;
+      let count = 0;
+      const startDay = Math.max(0, day - RPS_SMOOTHING_WINDOW_DAYS + 1);
+      for (let cursor = startDay; cursor <= day; cursor += 1) {
+        const value = numberOrNull(readValue(cursor));
+        if (value === null) continue;
+        sum += value;
+        count += 1;
+      }
+      if (count) data[day] = sum / count;
+    }
+    return data;
+  }
+
+  function averageKnownValues(values) {
+    const valid = values
+      .map((value) => numberOrNull(value))
+      .filter((value) => value !== null);
+    if (!valid.length) return null;
+    return valid.reduce((acc, value) => acc + value, 0) / valid.length;
+  }
+
+  function rpsStoreSupportSeries(launch, maxDay) {
+    const d0 = analysisDayZero(launch);
+    const dates = Array(maxDay + 1).fill(null).map((_, day) => d0 ? toIsoDate(addDays(d0, day)) : null);
+    const rpsByDay = rpsAggregatePointsByDay(rpsPointsForLaunch(launch, maxDay));
+    const acquisitionByDay = new Map();
+
+    if (d0) {
+      acquisitionDailyRows().forEach((row) => {
+        const idx = dayIndex(d0, row?.data);
+        if (idx === null || idx < 0 || idx > maxDay) return;
+        const investimento = numberOrNull(row.investimento_aquisicao) ?? numberOrNull(row.investimento_realizado);
+        if (investimento === null) return;
+        const current = acquisitionByDay.get(idx) || { investimento: 0 };
+        current.investimento += investimento;
+        acquisitionByDay.set(idx, current);
+      });
+    }
+
+    return {
+      dates,
+      sessions: rollingContextAverage(maxDay, (day) => rpsByDay.get(day)?.sessoes),
+      investment: rollingContextAverage(maxDay, (day) => acquisitionByDay.get(day)?.investimento)
+    };
+  }
+
   function renderStoreRpsContext(selected, canvasId, subTextId) {
     ['launch-health-summary','rps-autosustain-analysis','ramp-health-insight','rps-period-analysis','ramp-quick-controls'].forEach(id => { const el=$(id); if(el){el.innerHTML='';el.hidden=true;} });
     setNormalizedMainChartHidden(false);
     const maxDay = selectedPeriodChartEndDayForLaunch(selected, rpsLatestDataDay(selected));
     const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
-    const title = $('chart-normalized-title'); if(title) title.textContent='RPS da loja — contexto do período';
-    const sub=$(subTextId); if(sub) sub.textContent='Receita total da loja ÷ sessões totais, em média móvel de 7 dias. Não mede eficiência nem independência do produto. Corte: '+fmtDateSlash(state.data?.lancamentos_rps_dia?.modelos?.[selected.modelo_id]?.dado_ate);
-    const help=$('chart-normalized-help'); if(help) help.dataset.tooltip='Mesma série da loja alinhada ao D0 de cada lançamento. Não atribui receita, tráfego ou efeito de mídia ao produto.';
-    createChart(canvasId, { type:'line', data:{labels:series.data.map((v,i)=>i===0?'D0':'D+'+i),datasets:[{label:'Loja no período de '+selected.modelo,data:series.data,borderColor:'#5BB8D4',backgroundColor:'transparent',pointRadius:0,borderWidth:2,spanGaps:false}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true}},scales:{y:{beginAtZero:true,title:{display:true,text:'R$ por sessão da loja'}},x:{ticks:{maxTicksLimit:12}}}} });
+    const support = rpsStoreSupportSeries(selected, maxDay);
+    const rpsAverage = averageKnownValues(series.data);
+    const formatRps = (value) => value === null ? '--' : value.toLocaleString('pt-BR', { style:'currency', currency:'BRL', minimumFractionDigits:2, maximumFractionDigits:2 });
+    const rpsAverageData = series.data.map((value) => numberOrNull(value) !== null && rpsAverage !== null ? rpsAverage : null);
+    const datasets = [
+      {
+        label: 'RPS da loja',
+        data: series.data,
+        borderColor: '#67D7FF',
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        pointHitRadius: 14,
+        pointHoverRadius: 4,
+        pointHoverBorderWidth: 2,
+        borderWidth: 3,
+        hoverBorderWidth: 4,
+        spanGaps: false,
+        yAxisID: 'yRps',
+        order: 0,
+        rpsContextMetric: 'rps'
+      },
+      {
+        label: 'M\u00e9dia RPS ' + formatRps(rpsAverage),
+        data: rpsAverageData,
+        borderColor: 'rgba(235,240,245,0.8)',
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        pointHitRadius: 14,
+        pointHoverRadius: 3,
+        borderWidth: 1.5,
+        hoverBorderWidth: 3,
+        borderDash: [6, 6],
+        spanGaps: false,
+        yAxisID: 'yRps',
+        order: 1,
+        rpsContextMetric: 'rpsAverage'
+      },
+      {
+        label: 'Sess\u00f5es',
+        data: support.sessions,
+        borderColor: '#91BFA7',
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        pointHitRadius: 14,
+        pointHoverRadius: 3,
+        borderWidth: 1.8,
+        hoverBorderWidth: 2.8,
+        spanGaps: true,
+        yAxisID: 'ySessions',
+        order: 2,
+        rpsContextMetric: 'sessions'
+      },
+      {
+        label: 'Investimento',
+        data: support.investment,
+        borderColor: '#D9AD70',
+        backgroundColor: 'transparent',
+        pointRadius: 0,
+        pointHitRadius: 14,
+        pointHoverRadius: 3,
+        borderWidth: 1.8,
+        hoverBorderWidth: 2.8,
+        spanGaps: true,
+        yAxisID: 'yInvestment',
+        order: 3,
+        rpsContextMetric: 'investment'
+      }
+    ].filter((dataset) => dataset.rpsContextMetric === 'rps' || dataset.data.some((value) => numberOrNull(value) !== null));
+    const title = $('chart-normalized-title'); if(title) title.textContent='RPS da loja';
+    const sub=$(subTextId); if(sub) sub.textContent=selected.modelo+' \u00b7 Contexto da loja em m\u00e9dia m\u00f3vel de 7 dias \u00b7 Eixos independentes \u00b7 Corte: '+fmtDateSlash(state.data?.lancamentos_rps_dia?.modelos?.[selected.modelo_id]?.dado_ate);
+    const help=$('chart-normalized-help'); if(help) help.dataset.tooltip='RPS e sess\u00f5es: lancamentos_rps_dia.json. Investimento de aquisi\u00e7\u00e3o: metas_mensais.daily. Curvas alinhadas ao D0, em m\u00e9dia m\u00f3vel de 7 dias. A linha tracejada mostra a m\u00e9dia dos valores de RPS exibidos. Sess\u00f5es e investimento usam escalas pr\u00f3prias: cruzamentos n\u00e3o indicam igualdade de valores. Contexto da loja, sem atribui\u00e7\u00e3o de tr\u00e1fego ou m\u00eddia ao produto.';
+    createChart(canvasId, {
+      type:'line',
+      data:{ labels: series.data.map((v,i)=>i===0?'D0':'D+'+i), datasets },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        elements:{ line:{ tension:0.26, borderCapStyle:'round', borderJoinStyle:'round' } },
+        plugins:{
+          legend:{ display:true, align:'start', labels:{ usePointStyle:false, boxWidth:24, boxHeight:0, padding:22, color:'rgba(255,255,255,0.78)', font:{ size:12, weight:'500' } } },
+          tooltip:{
+            callbacks:{
+              label(ctx){
+                const metric = ctx.dataset?.rpsContextMetric;
+                const value = numberOrNull(ctx.raw);
+                if (metric === 'investment') return ctx.dataset.label + ': ' + fmtBRL(value);
+                if (metric === 'sessions') return ctx.dataset.label + ': ' + fmtNum(value);
+                if (metric === 'rpsAverage') return 'M\u00e9dia RPS: ' + formatRps(value);
+                return ctx.dataset.label + ': ' + formatRps(value);
+              },
+              afterBody(items){
+                const day = items?.[0]?.dataIndex;
+                const date = support.dates?.[day];
+                return date ? ['Calendario: ' + fmtDateSlash(date)] : [];
+              }
+            }
+          }
+        },
+        scales:{
+          yRps:{ beginAtZero:true, position:'left', border:{ display:false }, title:{ display:true, text:'R$ / sess\u00e3o', color:'#67D7FF' }, grid:{ color:'rgba(255,255,255,0.045)', drawTicks:false }, ticks:{ maxTicksLimit:5, padding:10, color:'rgba(255,255,255,0.6)' } },
+          ySessions:{ beginAtZero:true, position:'right', border:{ display:false }, title:{ display:true, text:'Sess\u00f5es', color:'#91BFA7' }, grid:{ drawOnChartArea:false, drawTicks:false }, ticks:{ maxTicksLimit:5, padding:10, color:'#91BFA7', callback:(value)=>fmtNum(value) } },
+          yInvestment:{ beginAtZero:true, position:'right', border:{ display:false }, title:{ display:true, text:'Investimento (R$)', color:'#D9AD70' }, grid:{ drawOnChartArea:false, drawTicks:false }, ticks:{ maxTicksLimit:5, padding:10, color:'#D9AD70', callback:(value)=>fmtNum(value) } },
+          x:{ border:{ display:false }, grid:{ display:false }, ticks:{ maxTicksLimit:8, maxRotation:0, padding:10, color:'rgba(255,255,255,0.5)' } }
+        }
+      }
+    });
   }
 
   function renderStoryBrief(selected) {
