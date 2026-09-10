@@ -10037,3 +10037,23 @@ body .presentation-page {
 
 /* Current selections already appear in the controls and the scorecard. */
 #analysis-context { display:none; }
+
+/* Compact, chart-local RPS launch-window and product filter. */
+#rps-context-filter[hidden] { display: none; }
+#rps-context-filter { margin-top: 9px; }
+.rps-filter-dropdown { position: relative; width: fit-content; max-width: 100%; }
+.rps-filter-dropdown > summary { display: flex; align-items: center; gap: 12px; padding: 6px 10px; border: 1px solid var(--border-2); border-radius: 7px; color: var(--txt-secondary); font-size: 12px; cursor: pointer; list-style: none; }
+.rps-filter-dropdown > summary::-webkit-details-marker { display: none; }
+.rps-filter-dropdown > summary:hover, .rps-filter-dropdown[open] > summary { color: var(--txt-primary); background: rgba(255,255,255,.04); }
+.rps-filter-dropdown.is-filtered > summary { border-color: rgba(103,215,255,.4); color: #a4dced; }
+.rps-filter-dropdown > summary:focus-visible, .rps-filter-menu :focus-visible { outline: 2px solid #67d7ff; outline-offset: 3px; }
+.rps-filter-menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 80; width: 310px; padding: 16px; background: #262829; border: 1px solid var(--border-2); border-radius: 10px; box-shadow: 0 14px 36px rgba(0,0,0,.35); }
+.rps-filter-menu label { display: flex; flex-direction: column; gap: 6px; color: var(--txt-secondary); font-size: 11px; font-weight: 500; }
+.rps-filter-menu select { box-sizing: border-box; width: 100%; min-width: 0; height: 34px; padding: 6px 9px; border: 1px solid var(--border-2); border-radius: 6px; color: var(--txt-primary); background: #303233; color-scheme: dark; font: inherit; font-size: 12px; }
+.rps-filter-hint { margin-top: 12px; font-size: 10px; line-height: 1.5; color: var(--txt-secondary); }
+.rps-filter-actions { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
+.rps-filter-actions button { padding: 7px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--txt-secondary); font-size: 11px; cursor: pointer; }
+.rps-filter-actions button:hover { background: rgba(255,255,255,.06); color: var(--txt-primary); }
+
+.rps-filter-menu > label + label { margin-top: 14px; }
+.rps-filter-status { margin-top: 8px; color: var(--txt-secondary); font-size: 12px; }

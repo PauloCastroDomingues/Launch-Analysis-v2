@@ -131,6 +131,7 @@ Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate
     rpsDetailsOriginScrollY: null,
     rpsDetailsReturnSlot: null,
     rpsShowReferences: false,
+    rpsContextFilter: null,
     rpsAutosustainSelectedWeekIndex: null,
     charts: {},
     zoomChart: null
@@ -11085,12 +11086,63 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     };
   }
 
+  function renderRpsContextFilter(selected, launches, canvasId, subTextId, periodKey, hasRps) {
+    const wrap = $('rps-context-filter');
+    if (!wrap || canvasId !== 'chart-normalized') return;
+    wrap.hidden = false;
+    const wasOpen = Boolean(wrap.querySelector('details')?.open);
+    const periodLabel = ANALYSIS_PERIODS.find(period => period.key === periodKey)?.label || 'Toda a curva';
+    const label = selected.modelo + ' \u00b7 ' + periodLabel;
+    wrap.innerHTML = `<details class="rps-filter-dropdown${state.rpsContextFilter ? ' is-filtered' : ''}"${wasOpen ? ' open' : ''}>
+      <summary aria-label="Filtrar linha de produto e janela do RPS">${escapeHtml(label)}<span aria-hidden="true">\u2304</span></summary>
+      <div class="rps-filter-menu">
+        <label>Linha de produto<select name="model" aria-label="Linha de produto no gr\u00e1fico RPS">${launches.map(launch => `<option value="${escapeHtml(launch.modelo_id)}"${launch.modelo_id === selected.modelo_id ? ' selected' : ''}>${escapeHtml(launch.modelo)}${isPlannedStatus(launch.status) ? ' \u00b7 planejado' : ''}</option>`).join('')}</select></label>
+        <label>Janela<select name="period" aria-label="Janela do gr\u00e1fico RPS">${ANALYSIS_PERIODS.map(period => `<option value="${period.key}"${period.key === periodKey ? ' selected' : ''}>${escapeHtml(period.label)}</option>`).join('')}</select></label>
+        <div class="rps-filter-hint">Todas as linhas. Atualiza ao selecionar, apenas neste gr\u00e1fico.</div>
+        <div class="rps-filter-actions"><button type="button" data-rps-filter-clear>Limpar filtro</button></div>
+      </div>
+    </details>
+    ${hasRps ? '' : '<div class="rps-filter-status" role="status">Sem dados de RPS para esta linha nesta janela.</div>'}`;
+    const details = wrap.querySelector('details');
+    const model = wrap.querySelector('[name="model"]');
+    const period = wrap.querySelector('[name="period"]');
+    const redraw = focusName => {
+      const primary = state.launches.find(launch => launch.modelo_id === state.primaryModelId) || selected;
+      renderNormalizedChart(primary, canvasId, subTextId);
+      wrap.querySelector(focusName ? `[name="${focusName}"]` : 'summary')?.focus({ preventScroll:true });
+    };
+    [model, period].forEach(input => input.addEventListener('change', () => {
+      state.rpsContextFilter = { modelId:model.value, periodKey:period.value };
+      redraw(input.name);
+    }));
+    wrap.querySelector('[data-rps-filter-clear]').addEventListener('click', () => {
+      state.rpsContextFilter = null;
+      details.open = false;
+      redraw();
+    });
+    wrap.onkeydown = event => {
+      if (event.key === 'Escape' && details.open) { event.stopPropagation(); details.open = false; details.querySelector('summary').focus(); }
+    };
+    if (!wrap.dataset.dismissBound) {
+      document.addEventListener('click', event => { if (!wrap.contains(event.target)) wrap.querySelector('details')?.removeAttribute('open'); });
+      wrap.dataset.dismissBound = 'true';
+    }
+  }
+
   function renderStoreRpsContext(selected, canvasId, subTextId) {
     ['launch-health-summary','rps-autosustain-analysis','ramp-health-insight','rps-period-analysis','ramp-quick-controls'].forEach(id => { const el=$(id); if(el){el.innerHTML='';el.hidden=true;} });
     setNormalizedMainChartHidden(false);
-    const maxDay = selectedPeriodChartEndDayForLaunch(selected, rpsLatestDataDay(selected));
+    const launches = [...state.launches];
+    const filter = state.rpsContextFilter;
+    const filteredLaunch = filter && launches.find(launch => launch.modelo_id === filter.modelId);
+    if (filter && !filteredLaunch) state.rpsContextFilter = null;
+    if (filteredLaunch) selected = filteredLaunch;
+    const periodKey = filteredLaunch && ANALYSIS_PERIODS.some(period => period.key === filter.periodKey) ? filter.periodKey : selectedPeriodKey();
+    const latestDay = Math.max(0, rpsLatestDataDay(selected));
+    const maxDay = periodKey === GENERAL_PERIOD_KEY ? latestDay : Math.min(latestDay, WINDOW_DAYS[periodKey]);
     const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
     const support = rpsStoreSupportSeries(selected, maxDay);
+    renderRpsContextFilter(selected, launches, canvasId, subTextId, periodKey, series.data.some(value => numberOrNull(value) !== null));
     const rpsAverage = averageKnownValues(series.data);
     const formatRps = (value) => value === null ? '--' : value.toLocaleString('pt-BR', { style:'currency', currency:'BRL', minimumFractionDigits:2, maximumFractionDigits:2 });
     const rpsAverageData = series.data.map((value) => numberOrNull(value) !== null && rpsAverage !== null ? rpsAverage : null);
@@ -11158,8 +11210,12 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         rpsContextMetric: 'investment'
       }
     ].filter((dataset) => dataset.rpsContextMetric === 'rps' || dataset.data.some((value) => numberOrNull(value) !== null));
+    datasets.forEach(dataset => {
+      if (dataset.data.filter(value => numberOrNull(value) !== null).length === 1) dataset.pointRadius = 3;
+    });
     const title = $('chart-normalized-title'); if(title) title.textContent='RPS da loja';
     const sub=$(subTextId); if(sub) sub.textContent=selected.modelo+' \u00b7 Contexto da loja em m\u00e9dia m\u00f3vel de 7 dias \u00b7 Eixos independentes \u00b7 Corte: '+fmtDateSlash(state.data?.lancamentos_rps_dia?.modelos?.[selected.modelo_id]?.dado_ate);
+    if (sub && filteredLaunch) sub.textContent=selected.modelo+' \u00b7 '+fmtDateSlash(support.dates[0])+' a '+fmtDateSlash(support.dates[support.dates.length - 1])+' \u00b7 MM7 \u00b7 Eixos independentes';
     const help=$('chart-normalized-help'); if(help) help.dataset.tooltip='RPS e sess\u00f5es: lancamentos_rps_dia.json. Investimento de aquisi\u00e7\u00e3o: metas_mensais.daily. Curvas alinhadas ao D0, em m\u00e9dia m\u00f3vel de 7 dias. A linha tracejada mostra a m\u00e9dia dos valores de RPS exibidos. Sess\u00f5es e investimento usam escalas pr\u00f3prias: cruzamentos n\u00e3o indicam igualdade de valores. Contexto da loja, sem atribui\u00e7\u00e3o de tr\u00e1fego ou m\u00eddia ao produto.';
     createChart(canvasId, {
       type:'line',
@@ -12819,6 +12875,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     }
     let rampMetric = rampMetricConfig();
     ['ramp-quick-controls','rps-period-analysis','ramp-health-insight'].forEach(id => {const el=$(id); if(el) el.hidden=false;});
+    if (canvasId === 'chart-normalized' && $('rps-context-filter')) $('rps-context-filter').hidden = !(rampMetric.rps || rampMetric.rpsDecomposition);
     if (rampMetric.rps || rampMetric.rpsDecomposition) { renderStoreRpsContext(selected, canvasId, subTextId); return; }
     if (canvasId === 'chart-normalized') {
       renderRpsAutosustainAnalysis(null);

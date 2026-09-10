@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260909-launch-review-v1" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260909-rps-filter-v2" />
 </head>
 <body>
   <div class="app-shell">
@@ -158,6 +158,7 @@
               <div>
                 <div class="chart-title chart-title--with-tip"><span id="chart-normalized-title">RPS - Visão executiva</span><button id="chart-normalized-help" class="help-button help-button--mini" type="button" data-tooltip="Visão executiva mostra a história em duas curvas: Performance e Suporte. Fórmulas e waterfall ficam em Ver detalhes · 3 análises ↓." aria-label="Ajuda sobre RPS">i</button></div>
                 <div class="chart-sub" id="chart-normalized-sub">Performance, suporte e independência</div>
+                <div id="rps-context-filter" hidden></div>
               </div>
               <div class="chart-mode-controls normalized-chart-controls ramp-analysis-controls">
                 <div class="ramp-control-group">
@@ -438,7 +439,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/launch-metrics.js?v=20260909-launch-review-v1"></script>
-  <script src="assets/app.js?v=20260909-rps-minimal-v2"></script>
+  <script src="assets/app.js?v=20260909-rps-filter-v2"></script>
   <script src="assets/presentation.js?v=20260909-launch-review-v1"></script>
 </body>
 </html>

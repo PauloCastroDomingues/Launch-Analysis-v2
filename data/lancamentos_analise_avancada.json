@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-09-09T12:28:33.878Z",
-  "manifest_generated_at": "2026-08-21T11:45:40-03:00",
+  "generated_at": "2026-09-10T16:37:32.017Z",
+  "manifest_generated_at": "2026-09-10T07:08:49-03:00",
   "rules_version": "20260909-launch-review-v1",
   "source_signatures": {
     "lancamentos_modelos": "2533:8f051c9e",
-    "lancamentos_produtos_dia": "10557233:59ac862b",
-    "lancamentos_rampa_dia": "712846:bb0f8dd",
-    "lancamentos_clientes_janelas": "20872:1d329dba",
+    "lancamentos_produtos_dia": "10900370:5c0fbecf",
+    "lancamentos_rampa_dia": "809990:30fdc475",
+    "lancamentos_clientes_janelas": "20891:aff22e81",
     "midia_paga": "11016:cfb22a0b",
     "crm_disparos": "11783:3a653aa4",
-    "manifest": "6330:c99acd4d"
+    "manifest": "6666:e49cefb2"
   },
   "source_files": [
     "data/lancamentos_modelos.json",
@@ -45,11 +45,11 @@
       "day_zero_base": "2025-12-17",
       "data_oficial": "2024-10-18",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 246,
-        "ultimo_dia_com_venda": 246,
-        "ultimo_dia_exportado": 247,
-        "ultima_data_disponivel": "2026-08-21",
-        "data_fim_exportada": "2026-08-21",
+        "ultimo_dia_disponivel": 266,
+        "ultimo_dia_com_venda": 266,
+        "ultimo_dia_exportado": 267,
+        "ultima_data_disponivel": "2026-09-10",
+        "data_fim_exportada": "2026-09-10",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "estendida_real"
@@ -126,7 +126,7 @@
             },
             "canal_qualidade": "inferido",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 112,
             "pedidos_sem_customer_key": 3,
             "customer_key_coverage_pct": 0.973913,
@@ -225,7 +225,7 @@
             },
             "canal_qualidade": "inferido",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 159,
             "pedidos_sem_customer_key": 8,
             "customer_key_coverage_pct": 0.952096,
@@ -331,7 +331,7 @@
             },
             "canal_qualidade": "misto",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 259,
             "pedidos_sem_customer_key": 13,
             "customer_key_coverage_pct": 0.952206,
@@ -403,11 +403,11 @@
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 9324,
-                "pedidos": 11,
-                "pares": 12,
+                "receita": 7770,
+                "pedidos": 9,
+                "pares": 10,
                 "clientes": null,
-                "ticket_medio": 847.64,
+                "ticket_medio": 863.33,
                 "qualidade": "real"
               },
               "crm": {
@@ -419,11 +419,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 11375,
-                "pedidos": 14,
-                "pares": 15,
+                "receita": 12929,
+                "pedidos": 16,
+                "pares": 17,
                 "clientes": null,
-                "ticket_medio": 812.5,
+                "ticket_medio": 808.06,
                 "qualidade": "real"
               },
               "pending": {
@@ -437,7 +437,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 511,
             "pedidos_sem_customer_key": 14,
             "customer_key_coverage_pct": 0.973333,
@@ -509,11 +509,11 @@
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 71760,
-                "pedidos": 73,
-                "pares": 93,
+                "receita": 65711,
+                "pedidos": 68,
+                "pares": 85,
                 "clientes": null,
-                "ticket_medio": 983.01,
+                "ticket_medio": 966.34,
                 "qualidade": "real"
               },
               "crm": {
@@ -525,11 +525,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 95838,
-                "pedidos": 101,
-                "pares": 125,
+                "receita": 101887,
+                "pedidos": 106,
+                "pares": 133,
                 "clientes": null,
-                "ticket_medio": 948.89,
+                "ticket_medio": 961.2,
                 "qualidade": "real"
               },
               "pending": {
@@ -543,7 +543,7 @@
             },
             "canal_qualidade": "misto",
             "base_total_d0": 94913,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 884,
             "pedidos_sem_customer_key": 19,
             "customer_key_coverage_pct": 0.978959,
@@ -582,29 +582,29 @@
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 247,
+        "end_day": 267,
         "start_date": "2025-12-17",
-        "end_date": "2026-08-21",
+        "end_date": "2026-09-10",
         "vendas": {
-          "receita": 2703938,
-          "receita_liquida": 2252543.09,
-          "desconto": 451394.91,
-          "pedidos": 2749,
-          "pares": 3561,
-          "ticket_medio": 983.61,
-          "preco_medio_par": 759.32,
+          "receita": 2779307,
+          "receita_liquida": 2301572.09,
+          "desconto": 477734.91,
+          "pedidos": 2836,
+          "pares": 3665,
+          "ticket_medio": 980.01,
+          "preco_medio_par": 758.34,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 2513,
-          "novos_clientes": 2194,
-          "recorrentes_clientes": 319,
-          "receita_por_cliente": 1075.98,
-          "pedidos_por_cliente": 1.0939,
-          "pares_por_cliente": 1.417,
-          "unidades_por_cliente": 1.417,
-          "pct_base_ativada": 0.003361,
-          "clientes_base_compraram": 319,
+          "clientes_unicos": 2589,
+          "novos_clientes": 2266,
+          "recorrentes_clientes": 323,
+          "receita_por_cliente": 1073.51,
+          "pedidos_por_cliente": 1.0954,
+          "pares_por_cliente": 1.4156,
+          "unidades_por_cliente": 1.4156,
+          "pct_base_ativada": 0.003403,
+          "clientes_base_compraram": 323,
           "canais": {
             "paid": {
               "receita": null,
@@ -639,20 +639,20 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 2703938,
-              "pedidos": 2749,
-              "pares": 3561,
+              "receita": 2779307,
+              "pedidos": 2836,
+              "pares": 3665,
               "clientes": null,
-              "ticket_medio": 983.61,
+              "ticket_medio": 980.01,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 94913,
-          "base_atual_clientes": 118221,
-          "pedidos_com_customer_key": 2642,
-          "pedidos_sem_customer_key": 107,
-          "customer_key_coverage_pct": 0.961077,
+          "base_atual_clientes": 119832,
+          "pedidos_com_customer_key": 2724,
+          "pedidos_sem_customer_key": 112,
+          "customer_key_coverage_pct": 0.960508,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
@@ -711,13 +711,13 @@
             "metrica": "pares",
             "valor": 54
           },
-          "days_to_50pct_revenue": 119,
-          "days_to_80pct_revenue": 177,
-          "days_to_90pct_revenue": 199,
+          "days_to_50pct_revenue": 123,
+          "days_to_80pct_revenue": 180,
+          "days_to_90pct_revenue": 206,
           "post_peak_decay_pct": -0.1926,
-          "commercial_life_days": 243,
-          "hype_initial_revenue_pct": 0.0382,
-          "sustain_revenue_pct": 0.9454,
+          "commercial_life_days": 265,
+          "hype_initial_revenue_pct": 0.0372,
+          "sustain_revenue_pct": 0.9469,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -2453,6 +2453,146 @@
           {
             "day": 247,
             "data": "2026-08-21",
+            "receita": 3885,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 248,
+            "data": "2026-08-22",
+            "receita": 777,
+            "pedidos": 1,
+            "pares": 1
+          },
+          {
+            "day": 249,
+            "data": "2026-08-23",
+            "receita": 4662,
+            "pedidos": 5,
+            "pares": 6
+          },
+          {
+            "day": 250,
+            "data": "2026-08-24",
+            "receita": 2952.6,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 251,
+            "data": "2026-08-25",
+            "receita": 5594.4,
+            "pedidos": 6,
+            "pares": 8
+          },
+          {
+            "day": 252,
+            "data": "2026-08-26",
+            "receita": 2020.2,
+            "pedidos": 2,
+            "pares": 3
+          },
+          {
+            "day": 253,
+            "data": "2026-08-27",
+            "receita": 6216,
+            "pedidos": 5,
+            "pares": 9
+          },
+          {
+            "day": 254,
+            "data": "2026-08-28",
+            "receita": 5905.2,
+            "pedidos": 7,
+            "pares": 8
+          },
+          {
+            "day": 255,
+            "data": "2026-08-29",
+            "receita": 5594.4,
+            "pedidos": 7,
+            "pares": 8
+          },
+          {
+            "day": 256,
+            "data": "2026-08-30",
+            "receita": 2952.6,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 257,
+            "data": "2026-08-31",
+            "receita": 3574.2,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 258,
+            "data": "2026-09-01",
+            "receita": 2175.6,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 259,
+            "data": "2026-09-02",
+            "receita": 1554,
+            "pedidos": 2,
+            "pares": 2
+          },
+          {
+            "day": 260,
+            "data": "2026-09-03",
+            "receita": 5128.2,
+            "pedidos": 6,
+            "pares": 7
+          },
+          {
+            "day": 261,
+            "data": "2026-09-04",
+            "receita": 3885,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 262,
+            "data": "2026-09-05",
+            "receita": 4351.2,
+            "pedidos": 5,
+            "pares": 6
+          },
+          {
+            "day": 263,
+            "data": "2026-09-06",
+            "receita": 4662,
+            "pedidos": 4,
+            "pares": 6
+          },
+          {
+            "day": 264,
+            "data": "2026-09-07",
+            "receita": 2641.8,
+            "pedidos": 3,
+            "pares": 4
+          },
+          {
+            "day": 265,
+            "data": "2026-09-08",
+            "receita": 4351.2,
+            "pedidos": 6,
+            "pares": 6
+          },
+          {
+            "day": 266,
+            "data": "2026-09-09",
+            "receita": 2486.4,
+            "pedidos": 2,
+            "pares": 4
+          },
+          {
+            "day": 267,
+            "data": "2026-09-10",
             "receita": 0,
             "pedidos": 0,
             "pares": 0
@@ -2469,11 +2609,11 @@
       "day_zero_base": "2025-12-14",
       "data_oficial": "2025-10-02",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 250,
-        "ultimo_dia_com_venda": 250,
-        "ultimo_dia_exportado": 250,
-        "ultima_data_disponivel": "2026-08-21",
-        "data_fim_exportada": "2026-08-21",
+        "ultimo_dia_disponivel": 270,
+        "ultimo_dia_com_venda": 270,
+        "ultimo_dia_exportado": 270,
+        "ultima_data_disponivel": "2026-09-10",
+        "data_fim_exportada": "2026-09-10",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "estendida_real"
@@ -2550,7 +2690,7 @@
             },
             "canal_qualidade": "misto",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 167,
             "pedidos_sem_customer_key": 5,
             "customer_key_coverage_pct": 0.97093,
@@ -2649,7 +2789,7 @@
             },
             "canal_qualidade": "misto",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 304,
             "pedidos_sem_customer_key": 11,
             "customer_key_coverage_pct": 0.965079,
@@ -2755,7 +2895,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 521,
             "pedidos_sem_customer_key": 15,
             "customer_key_coverage_pct": 0.972015,
@@ -2861,7 +3001,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 1441,
             "pedidos_sem_customer_key": 19,
             "customer_key_coverage_pct": 0.986986,
@@ -2933,11 +3073,11 @@
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 185635,
-                "pedidos": 226,
-                "pares": 322,
+                "receita": 180145,
+                "pedidos": 218,
+                "pares": 313,
                 "clientes": null,
-                "ticket_medio": 821.39,
+                "ticket_medio": 826.35,
                 "qualidade": "real"
               },
               "crm": {
@@ -2949,11 +3089,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 190133,
-                "pedidos": 262,
-                "pares": 343,
+                "receita": 195623,
+                "pedidos": 270,
+                "pares": 352,
                 "clientes": null,
-                "ticket_medio": 725.7,
+                "ticket_medio": 724.53,
                 "qualidade": "real"
               },
               "pending": {
@@ -2967,7 +3107,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 94471,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 2761,
             "pedidos_sem_customer_key": 29,
             "customer_key_coverage_pct": 0.989606,
@@ -3006,29 +3146,29 @@
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 250,
+        "end_day": 270,
         "start_date": "2025-12-14",
-        "end_date": "2026-08-21",
+        "end_date": "2026-09-10",
         "vendas": {
-          "receita": 8416113,
-          "receita_liquida": 6342745.37,
-          "desconto": 2073367.63,
-          "pedidos": 10597,
-          "pares": 14907,
-          "ticket_medio": 794.2,
-          "preco_medio_par": 564.57,
+          "receita": 8824328,
+          "receita_liquida": 6626395.49,
+          "desconto": 2197932.51,
+          "pedidos": 11173,
+          "pares": 15709,
+          "ticket_medio": 789.79,
+          "preco_medio_par": 561.74,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 9584,
-          "novos_clientes": 8704,
-          "recorrentes_clientes": 880,
-          "receita_por_cliente": 878.14,
-          "pedidos_por_cliente": 1.1057,
-          "pares_por_cliente": 1.5554,
-          "unidades_por_cliente": 1.5554,
-          "pct_base_ativada": 0.009315,
-          "clientes_base_compraram": 880,
+          "clientes_unicos": 10076,
+          "novos_clientes": 9156,
+          "recorrentes_clientes": 920,
+          "receita_por_cliente": 875.78,
+          "pedidos_por_cliente": 1.1089,
+          "pares_por_cliente": 1.5591,
+          "unidades_por_cliente": 1.5591,
+          "pct_base_ativada": 0.009738,
+          "clientes_base_compraram": 920,
           "canais": {
             "paid": {
               "receita": null,
@@ -3063,20 +3203,20 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 8416113,
-              "pedidos": 10597,
-              "pares": 14907,
+              "receita": 8824328,
+              "pedidos": 11173,
+              "pares": 15709,
               "clientes": null,
-              "ticket_medio": 794.2,
+              "ticket_medio": 789.79,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 94471,
-          "base_atual_clientes": 118221,
-          "pedidos_com_customer_key": 10314,
-          "pedidos_sem_customer_key": 283,
-          "customer_key_coverage_pct": 0.973294,
+          "base_atual_clientes": 119832,
+          "pedidos_com_customer_key": 10853,
+          "pedidos_sem_customer_key": 320,
+          "customer_key_coverage_pct": 0.97136,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
@@ -3135,13 +3275,13 @@
             "metrica": "pares",
             "valor": 141
           },
-          "days_to_50pct_revenue": 148,
-          "days_to_80pct_revenue": 200,
-          "days_to_90pct_revenue": 218,
+          "days_to_50pct_revenue": 152,
+          "days_to_80pct_revenue": 207,
+          "days_to_90pct_revenue": 233,
           "post_peak_decay_pct": -0.0063,
-          "commercial_life_days": 250,
-          "hype_initial_revenue_pct": 0.0131,
-          "sustain_revenue_pct": 0.9763,
+          "commercial_life_days": 269,
+          "hype_initial_revenue_pct": 0.0125,
+          "sustain_revenue_pct": 0.9774,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -4835,9 +4975,9 @@
           {
             "day": 241,
             "data": "2026-08-12",
-            "receita": 26181,
-            "pedidos": 33,
-            "pares": 52
+            "receita": 25343,
+            "pedidos": 32,
+            "pares": 50
           },
           {
             "day": 242,
@@ -4898,9 +5038,149 @@
           {
             "day": 250,
             "data": "2026-08-21",
-            "receita": 9908,
-            "pedidos": 10,
-            "pares": 20
+            "receita": 25035,
+            "pedidos": 31,
+            "pares": 52
+          },
+          {
+            "day": 251,
+            "data": "2026-08-22",
+            "receita": 18214,
+            "pedidos": 27,
+            "pares": 38
+          },
+          {
+            "day": 252,
+            "data": "2026-08-23",
+            "receita": 19970,
+            "pedidos": 26,
+            "pares": 39
+          },
+          {
+            "day": 253,
+            "data": "2026-08-24",
+            "receita": 26282,
+            "pedidos": 36,
+            "pares": 51
+          },
+          {
+            "day": 254,
+            "data": "2026-08-25",
+            "receita": 24155,
+            "pedidos": 33,
+            "pares": 47
+          },
+          {
+            "day": 255,
+            "data": "2026-08-26",
+            "receita": 14788,
+            "pedidos": 21,
+            "pares": 28
+          },
+          {
+            "day": 256,
+            "data": "2026-08-27",
+            "receita": 16008,
+            "pedidos": 26,
+            "pares": 30
+          },
+          {
+            "day": 257,
+            "data": "2026-08-28",
+            "receita": 17604,
+            "pedidos": 23,
+            "pares": 37
+          },
+          {
+            "day": 258,
+            "data": "2026-08-29",
+            "receita": 18448,
+            "pedidos": 25,
+            "pares": 34
+          },
+          {
+            "day": 259,
+            "data": "2026-08-30",
+            "receita": 27136,
+            "pedidos": 38,
+            "pares": 52
+          },
+          {
+            "day": 260,
+            "data": "2026-08-31",
+            "receita": 23895,
+            "pedidos": 34,
+            "pares": 47
+          },
+          {
+            "day": 261,
+            "data": "2026-09-01",
+            "receita": 23020,
+            "pedidos": 30,
+            "pares": 44
+          },
+          {
+            "day": 262,
+            "data": "2026-09-02",
+            "receita": 15122,
+            "pedidos": 26,
+            "pares": 30
+          },
+          {
+            "day": 263,
+            "data": "2026-09-03",
+            "receita": 21418,
+            "pedidos": 32,
+            "pares": 42
+          },
+          {
+            "day": 264,
+            "data": "2026-09-04",
+            "receita": 18066,
+            "pedidos": 24,
+            "pares": 34
+          },
+          {
+            "day": 265,
+            "data": "2026-09-05",
+            "receita": 21858,
+            "pedidos": 28,
+            "pares": 45
+          },
+          {
+            "day": 266,
+            "data": "2026-09-06",
+            "receita": 20914,
+            "pedidos": 28,
+            "pares": 42
+          },
+          {
+            "day": 267,
+            "data": "2026-09-07",
+            "receita": 15435,
+            "pedidos": 24,
+            "pares": 30
+          },
+          {
+            "day": 268,
+            "data": "2026-09-08",
+            "receita": 19885,
+            "pedidos": 30,
+            "pares": 40
+          },
+          {
+            "day": 269,
+            "data": "2026-09-09",
+            "receita": 31289,
+            "pedidos": 44,
+            "pares": 61
+          },
+          {
+            "day": 270,
+            "data": "2026-09-10",
+            "receita": 419,
+            "pedidos": 1,
+            "pares": 1
           }
         ]
       },
@@ -4914,11 +5194,11 @@
       "day_zero_base": "2026-04-16",
       "data_oficial": "2026-04-16",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 127,
-        "ultimo_dia_com_venda": 127,
-        "ultimo_dia_exportado": 127,
-        "ultima_data_disponivel": "2026-08-21",
-        "data_fim_exportada": "2026-08-21",
+        "ultimo_dia_disponivel": 147,
+        "ultimo_dia_com_venda": 147,
+        "ultimo_dia_exportado": 147,
+        "ultima_data_disponivel": "2026-09-10",
+        "data_fim_exportada": "2026-09-10",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "estendida_real"
@@ -4995,7 +5275,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 134,
             "pedidos_sem_customer_key": 10,
             "customer_key_coverage_pct": 0.930556,
@@ -5073,11 +5353,11 @@
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 43859,
-                "pedidos": 52,
-                "pares": 61,
+                "receita": 42421,
+                "pedidos": 50,
+                "pares": 59,
                 "clientes": null,
-                "ticket_medio": 843.44,
+                "ticket_medio": 848.42,
                 "qualidade": "real"
               },
               "crm": {
@@ -5089,11 +5369,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 66867,
-                "pedidos": 75,
-                "pares": 93,
+                "receita": 68305,
+                "pedidos": 77,
+                "pares": 95,
                 "clientes": null,
-                "ticket_medio": 891.56,
+                "ticket_medio": 887.08,
                 "qualidade": "real"
               },
               "pending": {
@@ -5107,7 +5387,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 226,
             "pedidos_sem_customer_key": 18,
             "customer_key_coverage_pct": 0.92623,
@@ -5183,19 +5463,19 @@
             "clientes_base_compraram": 141,
             "canais": {
               "paid": {
-                "receita": 123668,
-                "pedidos": 118,
-                "pares": 172,
+                "receita": 125825,
+                "pedidos": 120,
+                "pares": 175,
                 "clientes": null,
-                "ticket_medio": 1048.03,
+                "ticket_medio": 1048.54,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 119354,
-                "pedidos": 127,
-                "pares": 166,
+                "receita": 99941,
+                "pedidos": 109,
+                "pares": 139,
                 "clientes": null,
-                "ticket_medio": 939.8,
+                "ticket_medio": 916.89,
                 "qualidade": "real"
               },
               "crm": {
@@ -5207,11 +5487,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 127263,
-                "pedidos": 137,
-                "pares": 177,
+                "receita": 144519,
+                "pedidos": 153,
+                "pares": 201,
                 "clientes": null,
-                "ticket_medio": 928.93,
+                "ticket_medio": 944.57,
                 "qualidade": "real"
               },
               "pending": {
@@ -5225,7 +5505,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 407,
             "pedidos_sem_customer_key": 27,
             "customer_key_coverage_pct": 0.937788,
@@ -5295,19 +5575,19 @@
             "clientes_base_compraram": 219,
             "canais": {
               "paid": {
-                "receita": 214262,
-                "pedidos": 222,
-                "pares": 298,
+                "receita": 221452,
+                "pedidos": 228,
+                "pares": 308,
                 "clientes": null,
-                "ticket_medio": 965.14,
+                "ticket_medio": 971.28,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 288319,
-                "pedidos": 303,
-                "pares": 401,
+                "receita": 233675,
+                "pedidos": 246,
+                "pares": 325,
                 "clientes": null,
-                "ticket_medio": 951.55,
+                "ticket_medio": 949.9,
                 "qualidade": "real"
               },
               "crm": {
@@ -5319,11 +5599,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 287600,
-                "pedidos": 310,
-                "pares": 400,
+                "receita": 335054,
+                "pedidos": 361,
+                "pares": 466,
                 "clientes": null,
-                "ticket_medio": 927.74,
+                "ticket_medio": 928.13,
                 "qualidade": "real"
               },
               "pending": {
@@ -5337,7 +5617,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 879,
             "pedidos_sem_customer_key": 53,
             "customer_key_coverage_pct": 0.943133,
@@ -5401,19 +5681,19 @@
             "clientes_base_compraram": 266,
             "canais": {
               "paid": {
-                "receita": 296947,
-                "pedidos": 314,
-                "pares": 413,
+                "receita": 308451,
+                "pedidos": 324,
+                "pares": 429,
                 "clientes": null,
-                "ticket_medio": 945.69,
+                "ticket_medio": 952.01,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 386822,
-                "pedidos": 402,
-                "pares": 538,
+                "receita": 327864,
+                "pedidos": 341,
+                "pares": 456,
                 "clientes": null,
-                "ticket_medio": 962.24,
+                "ticket_medio": 961.48,
                 "qualidade": "real"
               },
               "crm": {
@@ -5425,11 +5705,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 419177,
-                "pedidos": 453,
-                "pares": 583,
+                "receita": 466631,
+                "pedidos": 504,
+                "pares": 649,
                 "clientes": null,
-                "ticket_medio": 925.34,
+                "ticket_medio": 925.86,
                 "qualidade": "real"
               },
               "pending": {
@@ -5443,7 +5723,7 @@
             },
             "canal_qualidade": "real",
             "base_total_d0": 105304,
-            "base_atual_clientes": 118221,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 1224,
             "pedidos_sem_customer_key": 70,
             "customer_key_coverage_pct": 0.945904,
@@ -5482,29 +5762,29 @@
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 127,
+        "end_day": 147,
         "start_date": "2026-04-16",
-        "end_date": "2026-08-21",
+        "end_date": "2026-09-10",
         "vendas": {
-          "receita": 1478983,
-          "receita_liquida": 1144268.25,
-          "desconto": 334714.75,
-          "pedidos": 1558,
-          "pares": 2057,
-          "ticket_medio": 949.28,
+          "receita": 1583238,
+          "receita_liquida": 1214615.04,
+          "desconto": 368622.96,
+          "pedidos": 1675,
+          "pares": 2202,
+          "ticket_medio": 945.22,
           "preco_medio_par": 719,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 1400,
-          "novos_clientes": 1097,
-          "recorrentes_clientes": 303,
-          "receita_por_cliente": 1056.42,
-          "pedidos_por_cliente": 1.1129,
-          "pares_por_cliente": 1.4693,
-          "unidades_por_cliente": 1.4693,
-          "pct_base_ativada": 0.002877,
-          "clientes_base_compraram": 303,
+          "clientes_unicos": 1499,
+          "novos_clientes": 1174,
+          "recorrentes_clientes": 325,
+          "receita_por_cliente": 1056.2,
+          "pedidos_por_cliente": 1.1174,
+          "pares_por_cliente": 1.469,
+          "unidades_por_cliente": 1.469,
+          "pct_base_ativada": 0.003086,
+          "clientes_base_compraram": 325,
           "canais": {
             "paid": {
               "receita": null,
@@ -5539,20 +5819,20 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 1478983,
-              "pedidos": 1558,
-              "pares": 2057,
+              "receita": 1583238,
+              "pedidos": 1675,
+              "pares": 2202,
               "clientes": null,
-              "ticket_medio": 949.28,
+              "ticket_medio": 945.22,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
           "base_total_d0": 105304,
-          "base_atual_clientes": 118221,
-          "pedidos_com_customer_key": 1481,
-          "pedidos_sem_customer_key": 77,
-          "customer_key_coverage_pct": 0.950578,
+          "base_atual_clientes": 119832,
+          "pedidos_com_customer_key": 1593,
+          "pedidos_sem_customer_key": 82,
+          "customer_key_coverage_pct": 0.951045,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
@@ -5611,13 +5891,13 @@
             "metrica": "pares",
             "valor": 33
           },
-          "days_to_50pct_revenue": 51,
-          "days_to_80pct_revenue": 88,
-          "days_to_90pct_revenue": 102,
+          "days_to_50pct_revenue": 54,
+          "days_to_80pct_revenue": 94,
+          "days_to_90pct_revenue": 116,
           "post_peak_decay_pct": 0.1544,
-          "commercial_life_days": 126,
-          "hype_initial_revenue_pct": 0.0885,
-          "sustain_revenue_pct": 0.8464,
+          "commercial_life_days": 146,
+          "hype_initial_revenue_pct": 0.0827,
+          "sustain_revenue_pct": 0.8565,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -6513,9 +6793,149 @@
           {
             "day": 127,
             "data": "2026-08-21",
-            "receita": 719,
+            "receita": 7190,
+            "pedidos": 9,
+            "pares": 10
+          },
+          {
+            "day": 128,
+            "data": "2026-08-22",
+            "receita": 10785,
+            "pedidos": 10,
+            "pares": 15
+          },
+          {
+            "day": 129,
+            "data": "2026-08-23",
+            "receita": 5752,
+            "pedidos": 8,
+            "pares": 8
+          },
+          {
+            "day": 130,
+            "data": "2026-08-24",
+            "receita": 1438,
+            "pedidos": 2,
+            "pares": 2
+          },
+          {
+            "day": 131,
+            "data": "2026-08-25",
+            "receita": 5752,
+            "pedidos": 6,
+            "pares": 8
+          },
+          {
+            "day": 132,
+            "data": "2026-08-26",
+            "receita": 6471,
+            "pedidos": 6,
+            "pares": 9
+          },
+          {
+            "day": 133,
+            "data": "2026-08-27",
+            "receita": 5752,
+            "pedidos": 6,
+            "pares": 8
+          },
+          {
+            "day": 134,
+            "data": "2026-08-28",
+            "receita": 6471,
+            "pedidos": 7,
+            "pares": 9
+          },
+          {
+            "day": 135,
+            "data": "2026-08-29",
+            "receita": 3595,
+            "pedidos": 4,
+            "pares": 5
+          },
+          {
+            "day": 136,
+            "data": "2026-08-30",
+            "receita": 2157,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 137,
+            "data": "2026-08-31",
+            "receita": 5752,
+            "pedidos": 6,
+            "pares": 8
+          },
+          {
+            "day": 138,
+            "data": "2026-09-01",
+            "receita": 2876,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 139,
+            "data": "2026-09-02",
+            "receita": 1438,
+            "pedidos": 2,
+            "pares": 2
+          },
+          {
+            "day": 140,
+            "data": "2026-09-03",
+            "receita": 9347,
+            "pedidos": 10,
+            "pares": 13
+          },
+          {
+            "day": 141,
+            "data": "2026-09-04",
+            "receita": 3595,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 142,
+            "data": "2026-09-05",
+            "receita": 5033,
+            "pedidos": 7,
+            "pares": 7
+          },
+          {
+            "day": 143,
+            "data": "2026-09-06",
+            "receita": 5033,
+            "pedidos": 6,
+            "pares": 7
+          },
+          {
+            "day": 144,
+            "data": "2026-09-07",
+            "receita": 1438,
+            "pedidos": 2,
+            "pares": 2
+          },
+          {
+            "day": 145,
+            "data": "2026-09-08",
+            "receita": 3595,
+            "pedidos": 4,
+            "pares": 5
+          },
+          {
+            "day": 146,
+            "data": "2026-09-09",
+            "receita": 9347,
+            "pedidos": 10,
+            "pares": 13
+          },
+          {
+            "day": 147,
+            "data": "2026-09-10",
+            "receita": 2157,
             "pedidos": 1,
-            "pares": 1
+            "pares": 3
           }
         ]
       },
@@ -6529,14 +6949,14 @@
       "day_zero_base": "2026-06-25",
       "data_oficial": "2026-06-25",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 57,
-        "ultimo_dia_com_venda": 57,
-        "ultimo_dia_exportado": 57,
-        "ultima_data_disponivel": "2026-08-21",
-        "data_fim_exportada": "2026-08-21",
+        "ultimo_dia_disponivel": 76,
+        "ultimo_dia_com_venda": 76,
+        "ultimo_dia_exportado": 77,
+        "ultima_data_disponivel": "2026-09-10",
+        "data_fim_exportada": "2026-09-10",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
-        "janela_estendida_status": "ate_ultimo_dia_no_json"
+        "janela_estendida_status": "ate_data_atual_com_dias_sem_venda_omitidos"
       },
       "janelas": {
         "7d": {
@@ -6568,19 +6988,19 @@
             "clientes_base_compraram": 64,
             "canais": {
               "paid": {
-                "receita": 39545,
-                "pedidos": 41,
-                "pares": 55,
+                "receita": 42421,
+                "pedidos": 44,
+                "pares": 59,
                 "clientes": null,
-                "ticket_medio": 964.51,
+                "ticket_medio": 964.11,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 31636,
-                "pedidos": 36,
-                "pares": 44,
+                "receita": 28760,
+                "pedidos": 33,
+                "pares": 40,
                 "clientes": null,
-                "ticket_medio": 878.78,
+                "ticket_medio": 871.52,
                 "qualidade": "real"
               },
               "crm": {
@@ -6609,8 +7029,8 @@
               }
             },
             "canal_qualidade": "real",
-            "base_total_d0": 112210,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 112209,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 163,
             "pedidos_sem_customer_key": 4,
             "customer_key_coverage_pct": 0.976048,
@@ -6667,19 +7087,19 @@
             "clientes_base_compraram": 93,
             "canais": {
               "paid": {
-                "receita": 70462,
-                "pedidos": 77,
-                "pares": 98,
+                "receita": 74776,
+                "pedidos": 82,
+                "pares": 104,
                 "clientes": null,
-                "ticket_medio": 915.09,
+                "ticket_medio": 911.9,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 72619,
-                "pedidos": 76,
-                "pares": 101,
+                "receita": 67586,
+                "pedidos": 70,
+                "pares": 94,
                 "clientes": null,
-                "ticket_medio": 955.51,
+                "ticket_medio": 965.51,
                 "qualidade": "real"
               },
               "crm": {
@@ -6691,11 +7111,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 94908,
-                "pedidos": 105,
-                "pares": 132,
+                "receita": 95627,
+                "pedidos": 106,
+                "pares": 133,
                 "clientes": null,
-                "ticket_medio": 903.89,
+                "ticket_medio": 902.14,
                 "qualidade": "real"
               },
               "pending": {
@@ -6708,8 +7128,8 @@
               }
             },
             "canal_qualidade": "real",
-            "base_total_d0": 112210,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 112209,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 275,
             "pedidos_sem_customer_key": 14,
             "customer_key_coverage_pct": 0.951557,
@@ -6779,19 +7199,19 @@
             "clientes_base_compraram": 142,
             "canais": {
               "paid": {
-                "receita": 117916,
-                "pedidos": 120,
-                "pares": 164,
-                "clientes": null,
-                "ticket_medio": 982.63,
-                "qualidade": "real"
-              },
-              "organic": {
                 "receita": 122230,
                 "pedidos": 125,
                 "pares": 170,
                 "clientes": null,
                 "ticket_medio": 977.84,
+                "qualidade": "real"
+              },
+              "organic": {
+                "receita": 117197,
+                "pedidos": 119,
+                "pares": 163,
+                "clientes": null,
+                "ticket_medio": 984.85,
                 "qualidade": "real"
               },
               "crm": {
@@ -6803,11 +7223,11 @@
                 "qualidade": "real"
               },
               "other": {
-                "receita": 158899,
-                "pedidos": 172,
-                "pares": 221,
+                "receita": 159618,
+                "pedidos": 173,
+                "pares": 222,
                 "clientes": null,
-                "ticket_medio": 923.83,
+                "ticket_medio": 922.65,
                 "qualidade": "real"
               },
               "pending": {
@@ -6820,8 +7240,8 @@
               }
             },
             "canal_qualidade": "real",
-            "base_total_d0": 112210,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 112209,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 462,
             "pedidos_sem_customer_key": 23,
             "customer_key_coverage_pct": 0.952577,
@@ -6862,77 +7282,77 @@
           "end_day": 60,
           "start_date": "2026-06-25",
           "end_date": "2026-08-24",
-          "status": "janela_aberta",
+          "status": "fechada",
           "vendas": {
-            "receita": null,
-            "receita_liquida": null,
-            "desconto": null,
-            "pedidos": null,
-            "pares": null,
-            "ticket_medio": null,
-            "preco_medio_par": null,
-            "pedidos_classificados_novos": null,
-            "pedidos_classificados_recorrentes": null,
-            "pedidos_classificados_novos_pct": null,
-            "clientes_unicos": null,
-            "novos_clientes": null,
-            "recorrentes_clientes": null,
-            "receita_por_cliente": null,
-            "pedidos_por_cliente": null,
-            "pares_por_cliente": null,
-            "unidades_por_cliente": null,
-            "pct_base_ativada": null,
-            "clientes_base_compraram": null,
+            "receita": 653571,
+            "receita_liquida": 494942.22,
+            "desconto": 158628.78,
+            "pedidos": 685,
+            "pares": 909,
+            "ticket_medio": 954.12,
+            "preco_medio_par": 719,
+            "pedidos_classificados_novos": 464,
+            "pedidos_classificados_recorrentes": 221,
+            "pedidos_classificados_novos_pct": 0.6774,
+            "clientes_unicos": 632,
+            "novos_clientes": 455,
+            "recorrentes_clientes": 177,
+            "receita_por_cliente": 1034.13,
+            "pedidos_por_cliente": 1.0839,
+            "pares_por_cliente": 1.4383,
+            "unidades_por_cliente": 1.4383,
+            "pct_base_ativada": 0.001577,
+            "clientes_base_compraram": 177,
             "canais": {
               "paid": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 123668,
+                "pedidos": 126,
+                "pares": 172,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 981.49,
+                "qualidade": "real"
               },
               "organic": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 118635,
+                "pedidos": 121,
+                "pares": 165,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 980.45,
+                "qualidade": "real"
               },
               "crm": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 24446,
+                "pedidos": 23,
+                "pares": 34,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 1062.87,
+                "qualidade": "real"
               },
               "other": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 163213,
+                "pedidos": 176,
+                "pares": 227,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 927.35,
+                "qualidade": "real"
               },
               "pending": {
-                "receita": null,
-                "pedidos": null,
-                "pares": null,
+                "receita": 223609,
+                "pedidos": 239,
+                "pares": 311,
                 "clientes": null,
-                "ticket_medio": null,
-                "qualidade": "pendente"
+                "ticket_medio": 935.6,
+                "qualidade": "real"
               }
             },
-            "canal_qualidade": "pendente",
-            "base_total_d0": 112210,
-            "base_atual_clientes": 118221,
-            "pedidos_com_customer_key": null,
-            "pedidos_sem_customer_key": null,
-            "customer_key_coverage_pct": null,
-            "clientes_status": "janela_aberta",
-            "clientes_qualidade": "janela_aberta",
+            "canal_qualidade": "real",
+            "base_total_d0": 112209,
+            "base_atual_clientes": 119832,
+            "pedidos_com_customer_key": 656,
+            "pedidos_sem_customer_key": 29,
+            "customer_key_coverage_pct": 0.957664,
+            "clientes_status": "fechada",
+            "clientes_qualidade": "parcial_customer_key",
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
           },
           "investimento": {
@@ -6951,7 +7371,7 @@
           "roas": {
             "midia_paga": null,
             "status": "pendente_validacao_janela_e_escopo",
-            "qualidade_receita": "pendente",
+            "qualidade_receita": "real",
             "observacao": "ROAS pendente: validar datas, sobreposi??o e investimento exclusivo do produto antes de dividir pela receita paga."
           }
         },
@@ -7025,8 +7445,8 @@
               }
             },
             "canal_qualidade": "pendente",
-            "base_total_d0": 112210,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 112209,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -7058,29 +7478,29 @@
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 57,
+        "end_day": 77,
         "start_date": "2026-06-25",
-        "end_date": "2026-08-21",
+        "end_date": "2026-09-10",
         "vendas": {
-          "receita": 629125,
-          "receita_liquida": 479231.51,
-          "desconto": 149893.49,
-          "pedidos": 657,
-          "pares": 875,
-          "ticket_medio": 957.57,
+          "receita": 741289,
+          "receita_liquida": 555371.79,
+          "desconto": 185917.21,
+          "pedidos": 773,
+          "pares": 1031,
+          "ticket_medio": 958.98,
           "preco_medio_par": 719,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 611,
-          "novos_clientes": 439,
-          "recorrentes_clientes": 172,
-          "receita_por_cliente": 1029.66,
-          "pedidos_por_cliente": 1.0753,
-          "pares_por_cliente": 1.4321,
-          "unidades_por_cliente": 1.4321,
-          "pct_base_ativada": 0.001533,
-          "clientes_base_compraram": 172,
+          "clientes_unicos": 716,
+          "novos_clientes": 523,
+          "recorrentes_clientes": 193,
+          "receita_por_cliente": 1035.32,
+          "pedidos_por_cliente": 1.0796,
+          "pares_por_cliente": 1.4399,
+          "unidades_por_cliente": 1.4399,
+          "pct_base_ativada": 0.00172,
+          "clientes_base_compraram": 193,
           "canais": {
             "paid": {
               "receita": null,
@@ -7115,20 +7535,20 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 629125,
-              "pedidos": 657,
-              "pares": 875,
+              "receita": 741289,
+              "pedidos": 773,
+              "pares": 1031,
               "clientes": null,
-              "ticket_medio": 957.57,
+              "ticket_medio": 958.98,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
-          "base_total_d0": 112210,
-          "base_atual_clientes": 118221,
-          "pedidos_com_customer_key": 632,
-          "pedidos_sem_customer_key": 25,
-          "customer_key_coverage_pct": 0.961948,
+          "base_total_d0": 112209,
+          "base_atual_clientes": 119832,
+          "pedidos_com_customer_key": 744,
+          "pedidos_sem_customer_key": 29,
+          "customer_key_coverage_pct": 0.962484,
           "clientes_status": "estendida",
           "clientes_qualidade": "parcial_customer_key",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
@@ -7138,20 +7558,13 @@
           "crm": 2110.8599999999997,
           "total": null,
           "outros": null,
-          "linhas_midia_paga": 3,
+          "linhas_midia_paga": 2,
           "linhas_crm": 3,
           "investimento_com_data_e_canal": null,
           "investimento_sem_data_confiavel": null,
           "confiabilidade": "pendente_validacao_janela_e_escopo",
-          "observacao": "Janela inclusiva D0 a D+30. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
-          "valores_declarados": [
-            {
-              "campanha": "Investimento Monochrome 30d",
-              "investimento": 41821.99,
-              "data_inicio": null,
-              "data_fim": null
-            }
-          ]
+          "observacao": "Janela inclusiva D0 a D+60. Totais acumulados, campanhas sobrepostas e escopo sem valida??o n?o s?o somados. CRM mostra apenas a??es registradas.",
+          "valores_declarados": []
         },
         "roas": {
           "midia_paga": null,
@@ -7187,13 +7600,13 @@
             "metrica": "pares",
             "valor": 44
           },
-          "days_to_50pct_revenue": 18,
-          "days_to_80pct_revenue": 37,
-          "days_to_90pct_revenue": 47,
+          "days_to_50pct_revenue": 21,
+          "days_to_80pct_revenue": 52,
+          "days_to_90pct_revenue": 63,
           "post_peak_decay_pct": -0.4545,
-          "commercial_life_days": 57,
-          "hype_initial_revenue_pct": 0.2423,
-          "sustain_revenue_pct": 0.576,
+          "commercial_life_days": 76,
+          "hype_initial_revenue_pct": 0.2056,
+          "sustain_revenue_pct": 0.6402,
           "leitura": "sustentacao_relevante"
         },
         "daily_points": [
@@ -7599,9 +8012,149 @@
           {
             "day": 57,
             "data": "2026-08-21",
+            "receita": 10066,
+            "pedidos": 12,
+            "pares": 14
+          },
+          {
+            "day": 58,
+            "data": "2026-08-22",
+            "receita": 2157,
+            "pedidos": 2,
+            "pares": 3
+          },
+          {
+            "day": 59,
+            "data": "2026-08-23",
+            "receita": 9347,
+            "pedidos": 9,
+            "pares": 13
+          },
+          {
+            "day": 60,
+            "data": "2026-08-24",
+            "receita": 6471,
+            "pedidos": 9,
+            "pares": 9
+          },
+          {
+            "day": 61,
+            "data": "2026-08-25",
+            "receita": 7909,
+            "pedidos": 8,
+            "pares": 11
+          },
+          {
+            "day": 62,
+            "data": "2026-08-26",
+            "receita": 5033,
+            "pedidos": 4,
+            "pares": 7
+          },
+          {
+            "day": 63,
+            "data": "2026-08-27",
+            "receita": 3595,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 64,
+            "data": "2026-08-28",
+            "receita": 5033,
+            "pedidos": 3,
+            "pares": 7
+          },
+          {
+            "day": 65,
+            "data": "2026-08-29",
             "receita": 3595,
             "pedidos": 4,
             "pares": 5
+          },
+          {
+            "day": 66,
+            "data": "2026-08-30",
+            "receita": 8628,
+            "pedidos": 8,
+            "pares": 12
+          },
+          {
+            "day": 67,
+            "data": "2026-08-31",
+            "receita": 3595,
+            "pedidos": 4,
+            "pares": 5
+          },
+          {
+            "day": 68,
+            "data": "2026-09-01",
+            "receita": 2157,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 69,
+            "data": "2026-09-02",
+            "receita": 5752,
+            "pedidos": 6,
+            "pares": 8
+          },
+          {
+            "day": 70,
+            "data": "2026-09-03",
+            "receita": 4314,
+            "pedidos": 6,
+            "pares": 6
+          },
+          {
+            "day": 71,
+            "data": "2026-09-04",
+            "receita": 9347,
+            "pedidos": 8,
+            "pares": 13
+          },
+          {
+            "day": 72,
+            "data": "2026-09-05",
+            "receita": 7190,
+            "pedidos": 8,
+            "pares": 10
+          },
+          {
+            "day": 73,
+            "data": "2026-09-06",
+            "receita": 4314,
+            "pedidos": 4,
+            "pares": 6
+          },
+          {
+            "day": 74,
+            "data": "2026-09-07",
+            "receita": 4314,
+            "pedidos": 5,
+            "pares": 6
+          },
+          {
+            "day": 75,
+            "data": "2026-09-08",
+            "receita": 2876,
+            "pedidos": 3,
+            "pares": 4
+          },
+          {
+            "day": 76,
+            "data": "2026-09-09",
+            "receita": 10066,
+            "pedidos": 9,
+            "pares": 14
+          },
+          {
+            "day": 77,
+            "data": "2026-09-10",
+            "receita": 0,
+            "pedidos": 0,
+            "pares": 0
           }
         ]
       },
@@ -7617,11 +8170,11 @@
       "day_zero_base": "2026-07-16",
       "data_oficial": "2026-07-16",
       "disponibilidade": {
-        "ultimo_dia_disponivel": 36,
-        "ultimo_dia_com_venda": 36,
-        "ultimo_dia_exportado": 36,
-        "ultima_data_disponivel": "2026-08-21",
-        "data_fim_exportada": "2026-08-21",
+        "ultimo_dia_disponivel": 56,
+        "ultimo_dia_com_venda": 56,
+        "ultimo_dia_exportado": 56,
+        "ultima_data_disponivel": "2026-09-10",
+        "data_fim_exportada": "2026-09-10",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "ate_ultimo_dia_no_json"
@@ -7656,19 +8209,19 @@
             "clientes_base_compraram": 41,
             "canais": {
               "paid": {
-                "receita": 14640,
-                "pedidos": 21,
-                "pares": 24,
+                "receita": 15250,
+                "pedidos": 22,
+                "pares": 25,
                 "clientes": null,
-                "ticket_medio": 697.14,
+                "ticket_medio": 693.18,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 17690,
-                "pedidos": 27,
-                "pares": 29,
+                "receita": 17080,
+                "pedidos": 26,
+                "pares": 28,
                 "clientes": null,
-                "ticket_medio": 655.19,
+                "ticket_medio": 656.92,
                 "qualidade": "real"
               },
               "crm": {
@@ -7697,8 +8250,8 @@
               }
             },
             "canal_qualidade": "real",
-            "base_total_d0": 114292,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 114289,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 102,
             "pedidos_sem_customer_key": 0,
             "customer_key_coverage_pct": 1,
@@ -7762,19 +8315,19 @@
             "clientes_base_compraram": 48,
             "canais": {
               "paid": {
-                "receita": 14640,
-                "pedidos": 21,
-                "pares": 24,
+                "receita": 15250,
+                "pedidos": 22,
+                "pares": 25,
                 "clientes": null,
-                "ticket_medio": 697.14,
+                "ticket_medio": 693.18,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 18300,
-                "pedidos": 28,
-                "pares": 30,
+                "receita": 17690,
+                "pedidos": 27,
+                "pares": 29,
                 "clientes": null,
-                "ticket_medio": 653.57,
+                "ticket_medio": 655.19,
                 "qualidade": "real"
               },
               "crm": {
@@ -7803,8 +8356,8 @@
               }
             },
             "canal_qualidade": "real",
-            "base_total_d0": 114292,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 114289,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": 133,
             "pedidos_sem_customer_key": 0,
             "customer_key_coverage_pct": 1,
@@ -7857,30 +8410,30 @@
             "pedidos_classificados_novos": 139,
             "pedidos_classificados_recorrentes": 69,
             "pedidos_classificados_novos_pct": 0.6683,
-            "clientes_unicos": 205,
-            "novos_clientes": 142,
+            "clientes_unicos": 203,
+            "novos_clientes": 140,
             "recorrentes_clientes": 63,
-            "receita_por_cliente": 687.37,
-            "pedidos_por_cliente": 1.0146,
-            "pares_por_cliente": 1.1268,
-            "unidades_por_cliente": 1.1268,
+            "receita_por_cliente": 694.14,
+            "pedidos_por_cliente": 1.0246,
+            "pares_por_cliente": 1.1379,
+            "unidades_por_cliente": 1.1379,
             "pct_base_ativada": 0.000551,
             "clientes_base_compraram": 63,
             "canais": {
               "paid": {
-                "receita": 14640,
-                "pedidos": 21,
-                "pares": 24,
+                "receita": 15250,
+                "pedidos": 22,
+                "pares": 25,
                 "clientes": null,
-                "ticket_medio": 697.14,
+                "ticket_medio": 693.18,
                 "qualidade": "real"
               },
               "organic": {
-                "receita": 18910,
-                "pedidos": 29,
-                "pares": 31,
+                "receita": 18300,
+                "pedidos": 28,
+                "pares": 30,
                 "clientes": null,
-                "ticket_medio": 652.07,
+                "ticket_medio": 653.57,
                 "qualidade": "real"
               },
               "crm": {
@@ -7909,11 +8462,11 @@
               }
             },
             "canal_qualidade": "real",
-            "base_total_d0": 114292,
-            "base_atual_clientes": 118221,
-            "pedidos_com_customer_key": 208,
-            "pedidos_sem_customer_key": 0,
-            "customer_key_coverage_pct": 1,
+            "base_total_d0": 114289,
+            "base_atual_clientes": 119832,
+            "pedidos_com_customer_key": 206,
+            "pedidos_sem_customer_key": 2,
+            "customer_key_coverage_pct": 0.990385,
             "clientes_status": "fechada",
             "clientes_qualidade": "ssot_agregado",
             "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
@@ -8008,8 +8561,8 @@
               }
             },
             "canal_qualidade": "pendente",
-            "base_total_d0": 114292,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 114289,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -8107,8 +8660,8 @@
               }
             },
             "canal_qualidade": "pendente",
-            "base_total_d0": 114292,
-            "base_atual_clientes": 118221,
+            "base_total_d0": 114289,
+            "base_atual_clientes": 119832,
             "pedidos_com_customer_key": null,
             "pedidos_sem_customer_key": null,
             "customer_key_coverage_pct": null,
@@ -8140,29 +8693,29 @@
       "rampa_estendida": {
         "label": "Ate ultimo dia disponivel no JSON",
         "start_day": 0,
-        "end_day": 36,
+        "end_day": 56,
         "start_date": "2026-07-16",
-        "end_date": "2026-08-21",
+        "end_date": "2026-09-10",
         "vendas": {
-          "receita": 157990,
-          "receita_liquida": 105666.92,
-          "desconto": 52323.08,
-          "pedidos": 235,
-          "pares": 259,
-          "ticket_medio": 672.3,
+          "receita": 209230,
+          "receita_liquida": 138637.76,
+          "desconto": 70592.24,
+          "pedidos": 312,
+          "pares": 343,
+          "ticket_medio": 670.61,
           "preco_medio_par": 610,
           "pedidos_classificados_novos": null,
           "pedidos_classificados_recorrentes": null,
           "pedidos_classificados_novos_pct": null,
-          "clientes_unicos": 232,
-          "novos_clientes": 163,
-          "recorrentes_clientes": 69,
-          "receita_por_cliente": 680.99,
-          "pedidos_por_cliente": 1.0129,
-          "pares_por_cliente": 1.1164,
-          "unidades_por_cliente": 1.1164,
-          "pct_base_ativada": 0.000604,
-          "clientes_base_compraram": 69,
+          "clientes_unicos": 305,
+          "novos_clientes": 219,
+          "recorrentes_clientes": 86,
+          "receita_por_cliente": 686,
+          "pedidos_por_cliente": 1.023,
+          "pares_por_cliente": 1.1246,
+          "unidades_por_cliente": 1.1246,
+          "pct_base_ativada": 0.000752,
+          "clientes_base_compraram": 86,
           "canais": {
             "paid": {
               "receita": null,
@@ -8197,20 +8750,20 @@
               "qualidade": "pendente"
             },
             "pending": {
-              "receita": 157990,
-              "pedidos": 235,
-              "pares": 259,
+              "receita": 209230,
+              "pedidos": 312,
+              "pares": 343,
               "clientes": null,
-              "ticket_medio": 672.3,
+              "ticket_medio": 670.61,
               "qualidade": "pendente"
             }
           },
           "canal_qualidade": "pendente",
-          "base_total_d0": 114292,
-          "base_atual_clientes": 118221,
-          "pedidos_com_customer_key": 235,
-          "pedidos_sem_customer_key": 0,
-          "customer_key_coverage_pct": 1,
+          "base_total_d0": 114289,
+          "base_atual_clientes": 119832,
+          "pedidos_com_customer_key": 310,
+          "pedidos_sem_customer_key": 2,
+          "customer_key_coverage_pct": 0.99359,
           "clientes_status": "estendida",
           "clientes_qualidade": "ssot_agregado",
           "clientes_fonte": "fct_order_item + orders_all_valid_no_migracao"
@@ -8262,14 +8815,14 @@
             "metrica": "pares",
             "valor": 31
           },
-          "days_to_50pct_revenue": 11,
-          "days_to_80pct_revenue": 26,
-          "days_to_90pct_revenue": 31,
+          "days_to_50pct_revenue": 20,
+          "days_to_80pct_revenue": 40,
+          "days_to_90pct_revenue": 47,
           "post_peak_decay_pct": -0.5833,
-          "commercial_life_days": 35,
-          "hype_initial_revenue_pct": 0.444,
-          "sustain_revenue_pct": 0.4247,
-          "leitura": "misto"
+          "commercial_life_days": 55,
+          "hype_initial_revenue_pct": 0.3353,
+          "sustain_revenue_pct": 0.5656,
+          "leitura": "sustentacao_relevante"
         },
         "daily_points": [
           {
@@ -8527,6 +9080,146 @@
           {
             "day": 36,
             "data": "2026-08-21",
+            "receita": 2440,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 37,
+            "data": "2026-08-22",
+            "receita": 610,
+            "pedidos": 1,
+            "pares": 1
+          },
+          {
+            "day": 38,
+            "data": "2026-08-23",
+            "receita": 2440,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 39,
+            "data": "2026-08-24",
+            "receita": 4270,
+            "pedidos": 7,
+            "pares": 7
+          },
+          {
+            "day": 40,
+            "data": "2026-08-25",
+            "receita": 1830,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 41,
+            "data": "2026-08-26",
+            "receita": 2440,
+            "pedidos": 3,
+            "pares": 4
+          },
+          {
+            "day": 42,
+            "data": "2026-08-27",
+            "receita": 3660,
+            "pedidos": 5,
+            "pares": 6
+          },
+          {
+            "day": 43,
+            "data": "2026-08-28",
+            "receita": 2440,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 44,
+            "data": "2026-08-29",
+            "receita": 1830,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 45,
+            "data": "2026-08-30",
+            "receita": 3660,
+            "pedidos": 6,
+            "pares": 6
+          },
+          {
+            "day": 46,
+            "data": "2026-08-31",
+            "receita": 1830,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 47,
+            "data": "2026-09-01",
+            "receita": 4880,
+            "pedidos": 6,
+            "pares": 8
+          },
+          {
+            "day": 48,
+            "data": "2026-09-02",
+            "receita": 0,
+            "pedidos": 0,
+            "pares": 0
+          },
+          {
+            "day": 49,
+            "data": "2026-09-03",
+            "receita": 5490,
+            "pedidos": 7,
+            "pares": 9
+          },
+          {
+            "day": 50,
+            "data": "2026-09-04",
+            "receita": 2440,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 51,
+            "data": "2026-09-05",
+            "receita": 2440,
+            "pedidos": 4,
+            "pares": 4
+          },
+          {
+            "day": 52,
+            "data": "2026-09-06",
+            "receita": 3050,
+            "pedidos": 5,
+            "pares": 5
+          },
+          {
+            "day": 53,
+            "data": "2026-09-07",
+            "receita": 1830,
+            "pedidos": 3,
+            "pares": 3
+          },
+          {
+            "day": 54,
+            "data": "2026-09-08",
+            "receita": 1220,
+            "pedidos": 2,
+            "pares": 2
+          },
+          {
+            "day": 55,
+            "data": "2026-09-09",
+            "receita": 2440,
+            "pedidos": 3,
+            "pares": 4
+          },
+          {
+            "day": 56,
+            "data": "2026-09-10",
             "receita": 610,
             "pedidos": 1,
             "pares": 1
@@ -8549,7 +9242,7 @@
         "ultimo_dia_com_venda": null,
         "ultimo_dia_exportado": null,
         "ultima_data_disponivel": null,
-        "data_fim_exportada": "2026-08-21",
+        "data_fim_exportada": "2026-09-10",
         "cobertura_export": "d0_ate_data_atual",
         "export_atual_limitado_a_d90": false,
         "janela_estendida_status": "sem_dados"
@@ -8743,14 +9436,14 @@
     }
   },
   "proximos_lancamentos": {
-    "base_atual_clientes": 118221,
+    "base_atual_clientes": 119832,
     "base_atual_fonte": "orders_all_valid_no_migracao_customer_key_distinct",
     "janelas": {
       "7d": {
-        "clientes_esperados": 149,
-        "pedidos_esperados": 154,
-        "pares_esperados": 186,
-        "receita_esperada": 138719,
+        "clientes_esperados": 151,
+        "pedidos_esperados": 156,
+        "pares_esperados": 189,
+        "receita_esperada": 140581,
         "taxa_clientes_sobre_base_mediana": 0.001263,
         "pedidos_por_cliente_mediana": 1.036,
         "pares_por_cliente_mediana": 1.2515,
@@ -8759,10 +9452,10 @@
         "observacao": "Estimativa usa base atual e comportamento historico das janelas fechadas; nao e forecast causal."
       },
       "15d": {
-        "clientes_esperados": 249,
-        "pedidos_esperados": 263,
-        "pares_esperados": 309,
-        "receita_esperada": 232568.49,
+        "clientes_esperados": 253,
+        "pedidos_esperados": 267,
+        "pares_esperados": 314,
+        "receita_esperada": 236304.53,
         "taxa_clientes_sobre_base_mediana": 0.002108,
         "pedidos_por_cliente_mediana": 1.057,
         "pares_por_cliente_mediana": 1.2417,
@@ -8771,10 +9464,10 @@
         "observacao": "Estimativa usa base atual e comportamento historico das janelas fechadas; nao e forecast causal."
       },
       "30d": {
-        "clientes_esperados": 446,
-        "pedidos_esperados": 476,
-        "pares_esperados": 630,
-        "receita_esperada": 457903.74,
+        "clientes_esperados": 452,
+        "pedidos_esperados": 482,
+        "pares_esperados": 638,
+        "receita_esperada": 464063.88,
         "taxa_clientes_sobre_base_mediana": 0.00377,
         "pedidos_por_cliente_mediana": 1.0667,
         "pares_por_cliente_mediana": 1.4118,
@@ -8783,22 +9476,22 @@
         "observacao": "Estimativa usa base atual e comportamento historico das janelas fechadas; nao e forecast causal."
       },
       "60d": {
-        "clientes_esperados": 943,
-        "pedidos_esperados": 1000,
-        "pares_esperados": 1292,
-        "receita_esperada": 987160.69,
-        "taxa_clientes_sobre_base_mediana": 0.007977,
-        "pedidos_por_cliente_mediana": 1.0606,
-        "pares_por_cliente_mediana": 1.3697,
-        "receita_por_cliente_mediana": 1046.83,
+        "clientes_esperados": 815,
+        "pedidos_esperados": 874,
+        "pares_esperados": 1144,
+        "receita_esperada": 847991.2,
+        "taxa_clientes_sobre_base_mediana": 0.006805,
+        "pedidos_por_cliente_mediana": 1.0723,
+        "pares_por_cliente_mediana": 1.404,
+        "receita_por_cliente_mediana": 1040.48,
         "metodo": "base_atual_clientes_x_mediana_historica_de_clientes_sobre_base",
         "observacao": "Estimativa usa base atual e comportamento historico das janelas fechadas; nao e forecast causal."
       },
       "90d": {
-        "clientes_esperados": 1303,
-        "pedidos_esperados": 1388,
-        "pares_esperados": 1835,
-        "receita_esperada": 1364736.14,
+        "clientes_esperados": 1321,
+        "pedidos_esperados": 1407,
+        "pares_esperados": 1861,
+        "receita_esperada": 1383588.98,
         "taxa_clientes_sobre_base_mediana": 0.011025,
         "pedidos_por_cliente_mediana": 1.0649,
         "pares_por_cliente_mediana": 1.4086,
