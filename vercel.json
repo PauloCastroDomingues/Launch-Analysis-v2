@@ -1,6 +1,10 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "trailingSlash": false,
+  "git": {
+    "deploymentEnabled": false
+  },
   "headers": [
     {
       "source": "/data/(.*)",
