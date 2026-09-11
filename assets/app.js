@@ -11015,6 +11015,468 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
       <details><summary>Fontes e limites da comparação</summary><p>${dates.map(([label,date]) => `${label}: ${date ? fmtDateSlash(String(date).slice(0,10)) : 'pendente'}`).join(' · ')}. Análise derivada: ${state.data?.review_derived_valid ? 'recalculada com os arquivos carregados' : 'pendente — fontes diferentes ou arquivo indisponível'}.</p><p>D0 até D+7 inclui 8 datas. D0 até D+30 inclui 31 datas. Toda a curva acompanha cada linha até seu último corte e não é um ranking de idades iguais.</p></details>`;
   }
 
+
+  function phaseRangeLabel(startDay, endDay) {
+    const start = Math.max(0, Number(startDay) || 0);
+    const end = Math.max(start, Number(endDay) || start);
+    return start === 0 ? `D0 a D+${fmtNum(end)}` : `D+${fmtNum(start)} a D+${fmtNum(end)}`;
+  }
+
+  function diagnosisPhaseBounds(launch) {
+    const observedEnd = selectedPeriodChartEndDayForLaunch(launch, launchCurrentRampDay(launch));
+    const safeEnd = Math.max(0, numberOrNull(observedEnd) ?? 0);
+    const baseEnd = Math.min(30, safeEnd);
+    if (safeEnd <= 30) {
+      return {
+        base: { start: 0, end: baseEnd, label: `Base em formação · ${phaseRangeLabel(0, baseEnd)}` },
+        current: { start: 0, end: baseEnd, label: `Janela atual · ${phaseRangeLabel(0, baseEnd)}` },
+        comparable: false,
+        observedEnd: safeEnd
+      };
+    }
+    const recentDays = Math.min(14, Math.max(7, safeEnd - 30));
+    const currentStart = Math.max(31, safeEnd - recentDays + 1);
+    return {
+      base: { start: 0, end: 30, label: 'Base · D0 a D+30' },
+      current: { start: currentStart, end: safeEnd, label: `Recente · ${phaseRangeLabel(currentStart, safeEnd)}` },
+      comparable: true,
+      observedEnd: safeEnd
+    };
+  }
+
+  function rpsSummaryForPhase(launch, phase) {
+    if (!phase) return null;
+    return rpsSummaryForRange(launch, phase.start, phase.end);
+  }
+
+  function shareSummaryForPhase(launch, phase) {
+    const points = sharePointsForLine(launch?.modelo_id)
+      .filter((point) => {
+        const day = numberOrNull(point.dias_desde_lancamento) ?? dayIndex(analysisDayZero(launch), point.data_calendario || point.data);
+        return day !== null && day >= phase.start && day <= phase.end;
+      });
+    if (!points.length) return null;
+    const receitaProduto = sumKnown(points, 'receita_produto');
+    const receitaEmpresa = sumKnown(points, 'receita_empresa');
+    const share = ratioOrNull(receitaProduto, receitaEmpresa);
+    return {
+      receitaProduto,
+      receitaEmpresa,
+      share: share ?? ratioOrNull(sumKnown(points, 'share_do_dia'), points.length),
+      points
+    };
+  }
+
+  function investmentRowsForLaunchDateRange(launch, startIso, endIso) {
+    const startDate = toDate(startIso);
+    const endDate = toDate(endIso);
+    if (!launch || !startDate || !endDate) return { value: null, rows: [], missingDateRows: 0 };
+    const rows = [];
+    let missingDateRows = 0;
+    optionalRows('midia_paga')
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .filter((row) => midiaValidaParaGraficoComercial(row))
+      .forEach((row) => {
+        const rowStartIso = String(row.data_inicio || '').slice(0, 10);
+        const rowEndIso = String(row.data_fim || row.data_inicio || '').slice(0, 10);
+        const rowStart = toDate(rowStartIso);
+        const rowEnd = toDate(rowEndIso);
+        const investimento = numberOrNull(row.investimento);
+        if (!rowStart || !rowEnd || investimento === null) {
+          if (investimento !== null) missingDateRows += 1;
+          return;
+        }
+        const overlapStart = rowStart > startDate ? rowStart : startDate;
+        const overlapEnd = rowEnd < endDate ? rowEnd : endDate;
+        if (overlapEnd < overlapStart) return;
+        const rowDays = inclusiveDays(rowStart, rowEnd) || 1;
+        const overlapDays = inclusiveDays(overlapStart, overlapEnd);
+        rows.push({
+          source: 'midia_paga',
+          label: row.campanha || row.canal || 'Mídia paga',
+          investimento: investimento * (overlapDays / rowDays),
+          original: investimento,
+          startIso: rowStartIso,
+          endIso: rowEndIso,
+          overlapDays
+        });
+      });
+    optionalRows('crm_disparos')
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .forEach((row) => {
+        const iso = String(row.data_disparo || row.data || row.date || '').slice(0, 10);
+        const date = toDate(iso);
+        const investimento = numberOrNull(row.investimento);
+        if (!date || investimento === null) {
+          if (investimento !== null) missingDateRows += 1;
+          return;
+        }
+        if (date >= startDate && date <= endDate) {
+          rows.push({
+            source: 'crm_disparos',
+            label: row.campanha || row.canal || 'CRM',
+            investimento,
+            original: investimento,
+            startIso: iso,
+            endIso: iso,
+            overlapDays: 1
+          });
+        }
+      });
+    const value = rows.length ? rows.reduce((acc, row) => acc + Number(row.investimento || 0), 0) : null;
+    return { value, rows, missingDateRows };
+  }
+
+  function investmentSummaryForPhase(launch, phase) {
+    const d0 = analysisDayZero(launch);
+    if (!d0 || !phase) return { value: null, rows: [], missingDateRows: 0 };
+    const startIso = toIsoDate(addDays(d0, phase.start));
+    const endIso = toIsoDate(addDays(d0, phase.end));
+    return investmentRowsForLaunchDateRange(launch, startIso, endIso);
+  }
+
+  function phaseSalesSummary(launch, phase) {
+    const days = Math.max(1, phase.end - phase.start + 1);
+    const sales = launchRevenueForDayRange(launch, phase.start, phase.end);
+    const rps = rpsSummaryForPhase(launch, phase);
+    const share = shareSummaryForPhase(launch, phase);
+    const investment = investmentSummaryForPhase(launch, phase);
+    const receita = numberOrNull(sales?.receita);
+    const pedidos = numberOrNull(sales?.pedidos);
+    const pares = numberOrNull(sales?.pares);
+    return {
+      phase,
+      days,
+      sales,
+      receita,
+      pedidos,
+      pares,
+      receitaDia: receita !== null ? receita / days : null,
+      pedidosDia: pedidos !== null ? pedidos / days : null,
+      ticket: receita !== null && pedidos ? receita / pedidos : null,
+      rps: rps?.rps ?? null,
+      sessoes: rps?.sessoes ?? null,
+      sessoesDia: rps?.sessoes !== null && rps?.sessoes !== undefined ? rps.sessoes / days : null,
+      share: share?.share ?? null,
+      investimento: investment.value,
+      investimentoDia: investment.value !== null ? investment.value / days : null,
+      investmentRows: investment.rows,
+      missingInvestmentDateRows: investment.missingDateRows
+    };
+  }
+
+  function diagnosisDelta(current, base, field) {
+    const value = numberOrNull(current?.[field]);
+    const reference = numberOrNull(base?.[field]);
+    if (value === null || reference === null || reference === 0) return null;
+    return (value / reference) - 1;
+  }
+
+  function diagnosisDirection(delta) {
+    if (delta === null) return { label: 'Não mensurado', tone: 'missing' };
+    if (delta <= -0.15) return { label: 'Caiu', tone: 'down' };
+    if (delta >= 0.15) return { label: 'Subiu', tone: 'up' };
+    return { label: 'Estável', tone: 'flat' };
+  }
+
+  function diagnosisMetricRows(current, base, comparable = true) {
+    const metrics = [
+      { key: 'receitaDia', label: 'Receita/dia', formatter: (value) => fmtBRL(value, true), question: 'O tamanho diário do resultado mudou?' },
+      { key: 'pedidosDia', label: 'Pedidos/dia', formatter: (value) => fmtNum(value, 1), question: 'A mudança veio de volume?' },
+      { key: 'ticket', label: 'Ticket', formatter: (value) => fmtBRL(value), question: 'O preço médio compensou ou pressionou?' },
+      { key: 'sessoesDia', label: 'Sessões/dia', formatter: (value) => fmtNum(value), question: 'A loja recebeu menos tráfego?' },
+      { key: 'rps', label: 'RPS da loja', formatter: (value) => fmtBRL(value), question: 'A eficiência da loja mudou?' },
+      { key: 'investimentoDia', label: 'Invest./dia', formatter: (value) => fmtBRL(value, true), question: 'O suporte declarado mudou?' },
+      { key: 'share', label: 'Share produto', formatter: (value) => fmtPct(value, 1), question: 'O produto ganhou ou perdeu participação?' }
+    ];
+    return metrics.map((metric) => {
+      const value = numberOrNull(current?.[metric.key]);
+      const baseValue = numberOrNull(base?.[metric.key]);
+      const delta = comparable ? diagnosisDelta(current, base, metric.key) : null;
+      const direction = comparable ? diagnosisDirection(delta) : { label: 'Base em formação', tone: 'missing' };
+      return { ...metric, value, baseValue, delta, direction };
+    });
+  }
+
+  function diagnosisPrimaryDriver(rows) {
+    const candidates = rows
+      .filter((row) => ['pedidosDia', 'ticket', 'sessoesDia', 'rps', 'investimentoDia', 'share'].includes(row.key))
+      .filter((row) => row.delta !== null)
+      .map((row) => ({ ...row, abs: Math.abs(row.delta) }))
+      .sort((a, b) => b.abs - a.abs);
+    return candidates[0] || null;
+  }
+
+  function diagnosisConclusion(selected, current, base, rows, comparable) {
+    if (!comparable) return `${selected.modelo} ainda está na fase base do lançamento. A leitura atual mostra o estado de D0 até o corte disponível, sem comparar contra uma fase posterior.`;
+    const revenueDelta = diagnosisDelta(current, base, 'receitaDia');
+    const ordersDelta = diagnosisDelta(current, base, 'pedidosDia');
+    const ticketDelta = diagnosisDelta(current, base, 'ticket');
+    const driver = diagnosisPrimaryDriver(rows);
+    if (revenueDelta === null) return `Ainda não há base suficiente para decompor a mudança de ${selected.modelo}. A próxima decisão é validar vendas diárias e sessões para a linha.`;
+    const revenueCopy = `Receita/dia ${revenueDelta < 0 ? 'caiu' : revenueDelta > 0 ? 'subiu' : 'ficou estável'} ${fmtSignedPct(revenueDelta, 0)} vs D0-D30.`;
+    const driverCopy = driver ? `O maior movimento observado está em ${driver.label}: ${fmtSignedPct(driver.delta, 0)}.` : 'Sem driver mensurado com variação suficiente.';
+    const volumeTicket = ordersDelta !== null && ticketDelta !== null
+      ? `Matematicamente, pedidos/dia ${fmtSignedPct(ordersDelta, 0)} e ticket ${fmtSignedPct(ticketDelta, 0)} explicam a ponte de receita.`
+      : 'A ponte volume x ticket ainda está parcial.';
+    return `${revenueCopy} ${volumeTicket} ${driverCopy} Leia como evidência temporal; não como causalidade automática.`;
+  }
+
+  function stockDecisionSummary(launch) {
+    const stats = stockStatsForLaunch(launch);
+    if (!stats.totalRows) return { label: 'Disponibilidade', value: 'Não mensurado', detail: 'Sem estoque para esta linha no JSON atual', tone: 'missing' };
+    if (stats.zeroOrNegativeCount) return { label: 'Disponibilidade', value: `${fmtNum(stats.zeroOrNegativeCount)} SKU(s) sem saldo`, detail: `${fmtNum(stats.lowCoverageCount)} com baixa cobertura`, tone: 'down' };
+    if (stats.lowCoverageCount) return { label: 'Disponibilidade', value: `${fmtNum(stats.lowCoverageCount)} SKU(s) baixo(s)`, detail: `${fmtNum(stats.availableUnits)} unidades em estoque atual`, tone: 'flat' };
+    return { label: 'Disponibilidade', value: 'Sem ruptura atual', detail: `${fmtNum(stats.availableUnits)} unidades em ${fmtNum(stats.totalRows)} SKU(s)`, tone: 'up' };
+  }
+
+  function diagnosisCardHtml(row) {
+    const value = row.value === null || row.value === undefined ? 'Não mensurado' : row.formatter(row.value);
+    const delta = row.delta === null ? 'sem base comparável' : fmtSignedPct(row.delta, 0);
+    return `
+      <div class="diagnosis-metric-card diagnosis-metric-card--${row.direction.tone}">
+        <span>${escapeHtml(row.label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        <small>${escapeHtml(delta)} vs base</small>
+      </div>
+    `;
+  }
+
+  function renderCommercialDiagnosis(selected) {
+    const wrap = $('commercial-diagnosis-summary');
+    if (!wrap || !selected) return;
+    const bounds = diagnosisPhaseBounds(selected);
+    const base = phaseSalesSummary(selected, bounds.base);
+    const current = phaseSalesSummary(selected, bounds.current);
+    const rows = diagnosisMetricRows(current, base, bounds.comparable);
+    const driver = bounds.comparable ? diagnosisPrimaryDriver(rows) : null;
+    const stock = stockDecisionSummary(selected);
+    const conclusion = diagnosisConclusion(selected, current, base, rows, bounds.comparable);
+    const dataGaps = [
+      { label: 'Funil do produto', detail: 'Falta JSON com view_item, add_to_cart e begin_checkout por produto/data.' },
+      { label: 'Contribuição', detail: 'Faltam CMV, taxas, impostos, frete subsidiado e devoluções.' },
+      { label: 'Estoque histórico', detail: 'O dashboard tem estoque atual; heatmap de ruptura precisa snapshot diário por SKU.' }
+    ];
+
+    wrap.innerHTML = `
+      <div class="diagnosis-hero-card">
+        <div class="diagnosis-hero-copy">
+          <span class="diagnosis-kicker">${escapeHtml(selected.modelo)} · ${escapeHtml(selectedPeriodLabel())}</span>
+          <h3>${escapeHtml(conclusion)}</h3>
+          <p>Comparação: ${escapeHtml(base.phase.label)} → ${escapeHtml(current.phase.label)}. Quando um dado não existe, ele aparece como não mensurado.</p>
+        </div>
+        <div class="diagnosis-decision-box">
+          <span>Principal sinal</span>
+          <strong>${driver ? escapeHtml(driver.label) : 'Sem driver isolado'}</strong>
+          <small>${driver?.delta !== null && driver ? `${fmtSignedPct(driver.delta, 0)} vs D0-D30` : bounds.comparable ? 'Precisa de mais dados fechados' : 'Ainda dentro da fase base'}</small>
+        </div>
+      </div>
+      <div class="diagnosis-metric-grid">
+        ${rows.map(diagnosisCardHtml).join('')}
+        <div class="diagnosis-metric-card diagnosis-metric-card--${stock.tone}">
+          <span>${escapeHtml(stock.label)}</span>
+          <strong>${escapeHtml(stock.value)}</strong>
+          <small>${escapeHtml(stock.detail)}</small>
+        </div>
+      </div>
+      <div class="diagnosis-evidence-grid">
+        <div>
+          <span>Base</span>
+          <strong>${fmtBRL(base.receitaDia, true)} / dia</strong>
+          <small>${fmtNum(base.pedidosDia, 1)} pedidos/dia · ${fmtBRL(base.ticket)} ticket</small>
+        </div>
+        <div>
+          <span>Atual</span>
+          <strong>${fmtBRL(current.receitaDia, true)} / dia</strong>
+          <small>${fmtNum(current.pedidosDia, 1)} pedidos/dia · ${fmtBRL(current.ticket)} ticket</small>
+        </div>
+        <div>
+          <span>Próxima decisão</span>
+          <strong>${driver ? `Investigar ${escapeHtml(driver.label)}` : bounds.comparable ? 'Aguardar janela fechada' : 'Aguardar fase pós D+30'}</strong>
+          <small>Usar funil, estoque histórico ou margem quando estiverem instrumentados.</small>
+        </div>
+      </div>
+      <details class="diagnosis-data-gaps">
+        <summary>Dados ainda não mensurados</summary>
+        <div class="diagnosis-gap-list">
+          ${dataGaps.map((gap) => `<div><strong>${escapeHtml(gap.label)}</strong><span>${escapeHtml(gap.detail)}</span></div>`).join('')}
+        </div>
+      </details>
+    `;
+    renderCommercialTimeline(selected, bounds);
+  }
+
+  function lineInvestmentForIsoDate(launch, iso) {
+    const result = investmentRowsForLaunchDateRange(launch, iso, iso);
+    return result.value;
+  }
+
+  function timelinePointForDay(launch, day) {
+    const d0 = analysisDayZero(launch);
+    const iso = d0 ? toIsoDate(addDays(d0, day)) : null;
+    const sales = launchRevenueForDayRange(launch, day, day);
+    const share = sharePointsForLine(launch.modelo_id).find((point) => {
+      const pointDay = numberOrNull(point.dias_desde_lancamento) ?? dayIndex(d0, point.data_calendario || point.data);
+      return pointDay === day;
+    });
+    const rpsPoint = rpsPointsForLaunch(launch, day).find((point) => point.day === day) || null;
+    return {
+      day,
+      iso,
+      receitaProduto: numberOrNull(sales?.receita),
+      pedidosProduto: numberOrNull(sales?.pedidos),
+      receitaEmpresa: numberOrNull(share?.receita_empresa),
+      share: numberOrNull(share?.share_do_dia),
+      investimento: iso ? lineInvestmentForIsoDate(launch, iso) : null,
+      sessoes: numberOrNull(rpsPoint?.sessoes),
+      rps: numberOrNull(rpsPoint?.rps)
+    };
+  }
+
+  function timelineEventsForRange(launch, startIso, endIso) {
+    const events = [];
+    const pushEvent = (date, type, label) => {
+      if (!date || date < startIso || date > endIso) return;
+      events.push({ date, type, label });
+    };
+    pushEvent(analysisDayZero(launch), 'Lançamento', `D0 de ${launch.modelo}`);
+    optionalRows('midia_paga')
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .forEach((row) => {
+        pushEvent(String(row.data_inicio || '').slice(0, 10), 'Mídia', row.campanha || row.canal || 'Início de mídia');
+        pushEvent(String(row.data_fim || '').slice(0, 10), 'Mídia', row.campanha ? `Fim · ${row.campanha}` : 'Fim de mídia');
+      });
+    optionalRows('crm_disparos')
+      .filter((row) => row.modelo_id === launch.modelo_id)
+      .forEach((row) => pushEvent(String(row.data_disparo || '').slice(0, 10), 'CRM', row.campanha || row.canal || 'Disparo de CRM'));
+    sharePointsForLine(launch.modelo_id).forEach((point) => {
+      const date = String(point.data_calendario || '').slice(0, 10);
+      if (point.evento_comercial_descricao) pushEvent(date, commercialEventTypeLabel(point.evento_comercial_tipo), point.evento_comercial_descricao);
+      if (point.evento_sazonal) pushEvent(date, 'Calendário', point.evento_sazonal);
+    });
+    return events
+      .filter((event, index, list) => list.findIndex((item) => item.date === event.date && item.type === event.type && item.label === event.label) === index)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 8);
+  }
+
+  function renderCommercialTimeline(selected, bounds = diagnosisPhaseBounds(selected)) {
+    const canvasId = 'chart-commercial-timeline';
+    const canvas = $(canvasId);
+    const sub = $('commercial-timeline-sub');
+    const notes = $('commercial-timeline-notes');
+    if (!canvas || !window.Chart || !selected) return;
+    state.charts[canvasId]?.destroy?.();
+    delete state.charts[canvasId];
+
+    const observedEnd = Math.max(0, numberOrNull(bounds?.observedEnd) ?? selectedPeriodChartEndDayForLaunch(selected, launchCurrentRampDay(selected)));
+    const startDay = Math.max(0, observedEnd - 45);
+    const points = [];
+    for (let day = startDay; day <= observedEnd; day += 1) points.push(timelinePointForDay(selected, day));
+    const hasProductRevenue = points.some((point) => point.receitaProduto !== null);
+    if (!hasProductRevenue) {
+      if (sub) sub.textContent = 'Sem receita diária para montar a timeline no recorte atual.';
+      if (notes) notes.innerHTML = '<div class="empty-state empty-state--compact"><div><strong>Timeline indisponível.</strong> A base de vendas diária não trouxe pontos para esta linha.</div></div>';
+      return;
+    }
+    const labels = points.map((point) => point.iso ? `${fmtDateSlash(point.iso).slice(0, 5)} · D+${fmtNum(point.day)}` : `D+${fmtNum(point.day)}`);
+    const startIso = points[0]?.iso;
+    const endIso = points[points.length - 1]?.iso;
+    const events = startIso && endIso ? timelineEventsForRange(selected, startIso, endIso) : [];
+    if (sub) sub.textContent = `${selected.modelo}: ${fmtDateSlash(startIso)} a ${fmtDateSlash(endIso)}. Use para ver coincidências entre resultado, suporte e contexto.`;
+    createChart(canvasId, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'line',
+            label: 'Receita do produto',
+            data: points.map((point) => point.receitaProduto),
+            borderColor: colorFor(selected.modelo_id, 0),
+            backgroundColor: colorFor(selected.modelo_id, 0),
+            borderWidth: 2,
+            tension: 0.28,
+            pointRadius: 0,
+            yAxisID: 'y'
+          },
+          {
+            type: 'bar',
+            label: 'Investimento declarado',
+            data: points.map((point) => point.investimento),
+            backgroundColor: 'rgba(91,184,212,0.22)',
+            borderColor: 'rgba(91,184,212,0.8)',
+            borderWidth: 1,
+            borderRadius: 5,
+            yAxisID: 'y'
+          },
+          {
+            type: 'line',
+            label: 'Share do produto',
+            data: points.map((point) => point.share),
+            borderColor: 'rgba(242,240,234,0.78)',
+            backgroundColor: 'rgba(242,240,234,0.16)',
+            borderWidth: 1.5,
+            tension: 0.25,
+            pointRadius: 0,
+            yAxisID: 'yShare'
+          }
+        ]
+      },
+      options: chartOptions({
+        interaction: { mode: 'index', intersect: false },
+        layout: { padding: { top: 8, right: 8, bottom: 0, left: 2 } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
+          y: {
+            beginAtZero: true,
+            grace: '12%',
+            ticks: { maxTicksLimit: 4, callback: (value) => fmtBRL(value, true) },
+            grid: { color: 'rgba(255,255,255,0.05)' }
+          },
+          yShare: {
+            position: 'right',
+            beginAtZero: true,
+            grace: '18%',
+            ticks: { maxTicksLimit: 4, callback: (value) => fmtPct(value, 0) },
+            grid: { drawOnChartArea: false }
+          }
+        },
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              title: (items) => items[0]?.label || '',
+              label: (ctx) => {
+                const point = points[ctx.dataIndex] || {};
+                if (ctx.dataset.label === 'Share do produto') return `Share: ${fmtPct(point.share, 1)}`;
+                if (ctx.dataset.label === 'Investimento declarado') return `Investimento: ${fmtBRL(point.investimento)}`;
+                return `Receita produto: ${fmtBRL(point.receitaProduto)}`;
+              },
+              afterBody: (items) => {
+                const point = points[items[0]?.dataIndex] || {};
+                const lines = [];
+                if (point.pedidosProduto !== null) lines.push(`Pedidos produto: ${fmtNum(point.pedidosProduto)}`);
+                if (point.receitaEmpresa !== null) lines.push(`Receita empresa: ${fmtBRL(point.receitaEmpresa)}`);
+                if (point.sessoes !== null) lines.push(`Sessões loja: ${fmtNum(point.sessoes)}`);
+                if (point.rps !== null) lines.push(`RPS loja: ${fmtBRL(point.rps)}`);
+                return lines;
+              }
+            }
+          }
+        }
+      })
+    });
+    if (notes) {
+      notes.innerHTML = `
+        <div class="timeline-note-main">A timeline mostra coincidências temporais. Para afirmar causa, ainda precisamos de funil por produto, estoque histórico ou margem conforme o caso.</div>
+        <div class="timeline-event-list">
+          ${events.length ? events.map((event) => `<span><b>${escapeHtml(event.type)}</b> ${fmtDateSlash(event.date)} · ${escapeHtml(event.label)}</span>`).join('') : '<span><b>Eventos</b> Sem eventos comerciais cadastrados nesta janela.</span>'}
+        </div>
+      `;
+    }
+  }
+
   function renderLaunchReview(wrap, selected) {
     const launches = selectedCompareLaunches();
     const key = selectedPeriodKey();
@@ -16866,6 +17328,7 @@ ${fmtBRL(baseRevenue)} × ${fmtNum(growthTimes, 2)} = ${fmtBRL(result)}${pending
     renderReadingSupport(selected);
     renderReviewNotice();
     renderStoryBrief(selected);
+    renderCommercialDiagnosis(selected);
     renderCharts(selected);
     renderAdvancedClients();
     renderAdvancedLifecycle();

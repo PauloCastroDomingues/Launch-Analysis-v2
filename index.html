@@ -24,9 +24,10 @@
       <div class="nav-label">Navegação</div>
       <nav class="nav-list">
         <a href="#story-brief"><span>Visão geral</span><span>01</span></a>
-        <a href="#curvas"><span>Evolução</span><span>02</span></a>
-        <a href="#cores"><span>Mix</span><span>03</span></a>
-        <a href="#acoes"><span>Investimento</span><span>04</span></a>
+        <a href="#commercial-diagnosis"><span>Diagnóstico</span><span>02</span></a>
+        <a href="#curvas"><span>Evolução</span><span>03</span></a>
+        <a href="#cores"><span>Mix</span><span>04</span></a>
+        <a href="#acoes"><span>Investimento</span><span>05</span></a>
       </nav>
 
       <div class="sidebar-note">
@@ -119,6 +120,30 @@
       </div>
       <div id="review-notice" class="review-notice" role="status"></div>
       <div id="story-brief" class="story-brief" aria-live="polite"></div>
+
+      <section id="commercial-diagnosis" class="commercial-diagnosis" aria-live="polite">
+        <div class="section-head section-head--compact">
+          <div>
+            <div class="section-kicker">02 · Diagnóstico comercial</div>
+            <div class="section-title-row">
+              <h2>O que explica a mudança?</h2>
+              <button class="help-button" type="button" data-tooltip="Compara a fase base D0-D30 com a janela recente observada. Mostra decomposição matemática e contexto comercial; não afirma causalidade sem dado suficiente." aria-label="Ajuda sobre diagnóstico comercial">?</button>
+            </div>
+            <p class="section-desc">Receita, pedidos, ticket, sessões, RPS, investimento, share e disponibilidade em uma leitura única.</p>
+          </div>
+        </div>
+        <div id="commercial-diagnosis-summary"></div>
+        <div class="commercial-timeline-card chart-card wide">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title chart-title--with-tip"><span>Timeline comercial</span><button class="help-button help-button--mini" type="button" data-tooltip="Linha por data real. Receita do produto, investimento declarado e share aparecem juntos para identificar coincidências temporais, não causalidade automática." aria-label="Ajuda sobre timeline comercial">i</button></div>
+              <div class="chart-sub" id="commercial-timeline-sub">Receita, investimento e share por data real</div>
+            </div>
+          </div>
+          <div class="chart-canvas commercial-timeline-canvas"><canvas id="chart-commercial-timeline"></canvas></div>
+          <div id="commercial-timeline-notes" class="commercial-timeline-notes"></div>
+        </div>
+      </section>
 
       <p class="section-transition-label">Análises de apoio ao diagnóstico</p>
 
