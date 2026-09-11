@@ -11329,6 +11329,43 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     return valid.reduce((acc, value) => acc + value, 0) / valid.length;
   }
 
+  function rpsAverageRecorteLabel(startDay, endDay) {
+    const start = Math.max(0, Number(startDay) || 0);
+    const end = Math.max(start, Number(endDay) || start);
+    return start === 0 ? `D0-D+${fmtNum(end)}` : `D+${fmtNum(start)}-D+${fmtNum(end)}`;
+  }
+
+  function rpsAverageRecortes(maxDay) {
+    const last = Math.max(0, Number(maxDay) || 0);
+    const ranges = [
+      { start: 0, end: 30 },
+      { start: 31, end: 60 },
+      { start: 61, end: 90 },
+      { start: 91, end: 180 },
+      { start: 181, end: last }
+    ];
+    return ranges
+      .map((range) => ({ start: range.start, end: Math.min(range.end, last) }))
+      .filter((range) => range.start <= range.end)
+      .map((range) => ({ ...range, label: rpsAverageRecorteLabel(range.start, range.end) }));
+  }
+
+  function rpsAverageByRecorteData(values, maxDay) {
+    const data = Array(maxDay + 1).fill(null);
+    const meta = Array(maxDay + 1).fill(null);
+    const recortes = rpsAverageRecortes(maxDay).map((range) => {
+      const average = averageKnownValues(values.slice(range.start, range.end + 1));
+      if (average === null) return { ...range, average };
+      for (let day = range.start; day <= range.end; day += 1) {
+        if (numberOrNull(values[day]) === null) continue;
+        data[day] = average;
+        meta[day] = { label: range.label, average };
+      }
+      return { ...range, average };
+    }).filter((range) => range.average !== null);
+    return { data, meta, recortes };
+  }
+
   function rpsStoreSupportSeries(launch, maxDay) {
     const d0 = analysisDayZero(launch);
     const dates = Array(maxDay + 1).fill(null).map((_, day) => d0 ? toIsoDate(addDays(d0, day)) : null);
@@ -11411,9 +11448,11 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     const series = rpsRampDatasetData(selected, rampMetricConfig('rps_diario'), maxDay);
     const support = rpsStoreSupportSeries(selected, maxDay);
     renderRpsContextFilter(selected, launches, canvasId, subTextId, periodKey, series.data.some(value => numberOrNull(value) !== null));
-    const rpsAverage = averageKnownValues(series.data);
     const formatRps = (value) => value === null ? '--' : value.toLocaleString('pt-BR', { style:'currency', currency:'BRL', minimumFractionDigits:2, maximumFractionDigits:2 });
-    const rpsAverageData = series.data.map((value) => numberOrNull(value) !== null && rpsAverage !== null ? rpsAverage : null);
+    const rpsAverageRecorte = rpsAverageByRecorteData(series.data, maxDay);
+    const rpsAverageLabel = rpsAverageRecorte.recortes.length === 1
+      ? `Média RPS ${rpsAverageRecorte.recortes[0].label} ${formatRps(rpsAverageRecorte.recortes[0].average)}`
+      : 'Média RPS por recorte';
     const datasets = [
       {
         label: 'RPS da loja',
@@ -11432,8 +11471,8 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         rpsContextMetric: 'rps'
       },
       {
-        label: 'M\u00e9dia RPS ' + formatRps(rpsAverage),
-        data: rpsAverageData,
+        label: rpsAverageLabel,
+        data: rpsAverageRecorte.data,
         borderColor: 'rgba(235,240,245,0.8)',
         backgroundColor: 'transparent',
         pointRadius: 0,
@@ -11442,10 +11481,12 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         borderWidth: 1.5,
         hoverBorderWidth: 3,
         borderDash: [6, 6],
+        stepped: 'before',
         spanGaps: false,
         yAxisID: 'yRps',
         order: 1,
-        rpsContextMetric: 'rpsAverage'
+        rpsContextMetric: 'rpsAverage',
+        rpsAverageMeta: rpsAverageRecorte.meta
       },
       {
         label: 'Sess\u00f5es',
@@ -11484,7 +11525,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     const title = $('chart-normalized-title'); if(title) title.textContent='RPS da loja';
     const sub=$(subTextId); if(sub) sub.textContent=selected.modelo+' \u00b7 Contexto da loja em m\u00e9dia m\u00f3vel de 7 dias \u00b7 Eixos independentes \u00b7 Corte: '+fmtDateSlash(state.data?.lancamentos_rps_dia?.modelos?.[selected.modelo_id]?.dado_ate);
     if (sub && filteredLaunch) sub.textContent=selected.modelo+' \u00b7 '+fmtDateSlash(support.dates[0])+' a '+fmtDateSlash(support.dates[support.dates.length - 1])+' \u00b7 MM7 \u00b7 Eixos independentes';
-    const help=$('chart-normalized-help'); if(help) help.dataset.tooltip='RPS e sess\u00f5es: lancamentos_rps_dia.json. Investimento de aquisi\u00e7\u00e3o: metas_mensais.daily. Curvas alinhadas ao D0, em m\u00e9dia m\u00f3vel de 7 dias. A linha tracejada mostra a m\u00e9dia dos valores de RPS exibidos. Sess\u00f5es e investimento usam escalas pr\u00f3prias: cruzamentos n\u00e3o indicam igualdade de valores. Contexto da loja, sem atribui\u00e7\u00e3o de tr\u00e1fego ou m\u00eddia ao produto.';
+    const help=$('chart-normalized-help'); if(help) help.dataset.tooltip='RPS e sess\u00f5es: lancamentos_rps_dia.json. Investimento de aquisi\u00e7\u00e3o: metas_mensais.daily. Curvas alinhadas ao D0, em m\u00e9dia m\u00f3vel de 7 dias. A linha tracejada mostra a m\u00e9dia de RPS por recorte de vida comercial; em Toda a curva, muda de patamar entre D0-D30, D31-D60, D61-D90 e cauda. Sess\u00f5es e investimento usam escalas pr\u00f3prias.';
     createChart(canvasId, {
       type:'line',
       data:{ labels: series.data.map((v,i)=>i===0?'D0':'D+'+i), datasets },
@@ -11502,7 +11543,10 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
                 const value = numberOrNull(ctx.raw);
                 if (metric === 'investment') return ctx.dataset.label + ': ' + fmtBRL(value);
                 if (metric === 'sessions') return ctx.dataset.label + ': ' + fmtNum(value);
-                if (metric === 'rpsAverage') return 'M\u00e9dia RPS: ' + formatRps(value);
+                if (metric === 'rpsAverage') {
+                  const meta = ctx.dataset?.rpsAverageMeta?.[ctx.dataIndex];
+                  return (meta?.label ? `Média ${meta.label}: ` : 'Média RPS: ') + formatRps(value);
+                }
                 return ctx.dataset.label + ': ' + formatRps(value);
               },
               afterBody(items){
