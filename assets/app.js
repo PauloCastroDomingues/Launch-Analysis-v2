@@ -20,13 +20,13 @@
   const NO_EMBEDDED_FALLBACK = new Set(DATA_FILES);
 
   const CORES_MODELO = {
-    gt: { line: '#F07800', fill: 'rgba(240,120,0,0.12)' },
+    gt: { line: '#FB5D06', fill: 'rgba(251,93,6,0.12)' },
     avant: { line: '#4C9F6A', fill: 'rgba(76,159,106,0.12)' },
-    phantom: { line: '#7B8FE0', fill: 'rgba(123,143,224,0.12)' },
-    rs8_monochrome: { line: '#E0B84C', fill: 'rgba(224,184,76,0.12)' },
+    phantom: { line: '#F4F4F4', fill: 'rgba(244,244,244,0.10)' },
+    rs8_monochrome: { line: '#B8A06A', fill: 'rgba(184,160,106,0.12)' },
     series_2: { line: '#E05252', fill: 'rgba(224,82,82,0.12)' },
-    pais_2026: { line: '#5BB8D4', fill: 'rgba(91,184,212,0.12)' },
-    _fallback: ['#E05252', '#5BB8D4', '#A87FD4', '#8FBD56']
+    pais_2026: { line: '#3F3A38', fill: 'rgba(63,58,56,0.20)' },
+    _fallback: ['#FB5D06', '#F4F4F4', '#4C9F6A', '#E05252']
   };
 
   const GENERAL_PERIOD_KEY = 'all';
@@ -76,7 +76,7 @@
   const AUTOSUSTAIN_BASE_PHASE_KEY = 'd0_30';
   const RPS_DRIVER_SHIFT_MIN_WEEKS = 3;
   const RPS_EXECUTIVE_PERFORMANCE_COLOR = '#F2F0EA';
-  const RPS_EXECUTIVE_SUPPORT_COLOR = '#5BB8D4';
+  const RPS_EXECUTIVE_SUPPORT_COLOR = '#F4F4F4';
   const RPS_EXECUTIVE_TRAFFIC_COLOR = '#7DB4E6';
   const RPS_EXECUTIVE_EFFICIENCY_COLOR = '#4CAF7D';
   const RAMP_RHYTHM_TREND_LIMIT = 0.10;
@@ -11208,18 +11208,18 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
   }
 
   function diagnosisConclusion(selected, current, base, rows, comparable) {
-    if (!comparable) return `${selected.modelo} ainda está na fase base do lançamento. A leitura atual mostra o estado de D0 até o corte disponível, sem comparar contra uma fase posterior.`;
+    if (!comparable) return `${selected.modelo} segue em largada. Ritmo acumulado até o corte disponível.`;
     const revenueDelta = diagnosisDelta(current, base, 'receitaDia');
     const ordersDelta = diagnosisDelta(current, base, 'pedidosDia');
     const ticketDelta = diagnosisDelta(current, base, 'ticket');
     const driver = diagnosisPrimaryDriver(rows);
-    if (revenueDelta === null) return `Ainda não há base suficiente para decompor a mudança de ${selected.modelo}. A próxima decisão é validar vendas diárias e sessões para a linha.`;
-    const revenueCopy = `Receita/dia ${revenueDelta < 0 ? 'caiu' : revenueDelta > 0 ? 'subiu' : 'ficou estável'} ${fmtSignedPct(revenueDelta, 0)} vs P0.`;
-    const driverCopy = driver ? `O maior movimento observado está em ${driver.label}: ${fmtSignedPct(driver.delta, 0)}.` : 'Sem driver mensurado com variação suficiente.';
+    if (revenueDelta === null) return `${selected.modelo}: leitura comercial ainda parcial.`;
+    const revenueCopy = `Receita/dia ${revenueDelta < 0 ? 'perdeu' : revenueDelta > 0 ? 'ganhou' : 'manteve'} força: ${fmtSignedPct(revenueDelta, 0)}.`;
+    const driverCopy = driver ? `Atenção em ${driver.label}: ${fmtSignedPct(driver.delta, 0)}.` : 'Sem sinal isolado.';
     const volumeTicket = ordersDelta !== null && ticketDelta !== null
-      ? `Matematicamente, pedidos/dia ${fmtSignedPct(ordersDelta, 0)} e ticket ${fmtSignedPct(ticketDelta, 0)} explicam a ponte de receita.`
-      : 'A ponte volume x ticket ainda está parcial.';
-    return `${revenueCopy} ${volumeTicket} ${driverCopy} Leia como evidência temporal: usa “coincide com” ou “vale investigar”, não como causalidade automática.`;
+      ? `Volume ${fmtSignedPct(ordersDelta, 0)} e ticket ${fmtSignedPct(ticketDelta, 0)}.`
+      : '';
+    return `${revenueCopy} ${volumeTicket} ${driverCopy}`;
   }
 
   function stockDecisionSummary(launch) {
@@ -11250,7 +11250,6 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     const current = phaseSalesSummary(selected, bounds.current);
     const rows = diagnosisMetricRows(current, base, bounds.comparable);
     const driver = bounds.comparable ? diagnosisPrimaryDriver(rows) : null;
-    const stock = stockDecisionSummary(selected);
     const conclusion = diagnosisConclusion(selected, current, base, rows, bounds.comparable);
 
     wrap.innerHTML = `
@@ -11258,16 +11257,11 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         <div class="diagnosis-hero-copy">
           <span class="diagnosis-kicker">${escapeHtml(selected.modelo)} · ${escapeHtml(selectedPeriodLabel())}</span>
           <h3>${escapeHtml(conclusion)}</h3>
-          <p>Comparação: base D0-D30 → janela observada. Campos sem dado aparecem como não mensurados.</p>
+          <p>Largada D0-D30 vs janela observada.</p>
         </div>
       </div>
       <div class="diagnosis-metric-grid">
         ${rows.map(diagnosisCardHtml).join('')}
-        <div class="diagnosis-metric-card diagnosis-metric-card--${stock.tone}">
-          <span>${escapeHtml(stock.label)}</span>
-          <strong>${escapeHtml(stock.value)}</strong>
-          <small>${escapeHtml(stock.detail)}</small>
-        </div>
       </div>
       <div class="diagnosis-evidence-grid">
         <div>
@@ -11287,168 +11281,6 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         </div>
       </div>
     `;
-    renderCommercialTimeline(selected, bounds);
-  }
-
-  function lineInvestmentForIsoDate(launch, iso) {
-    const result = investmentRowsForLaunchDateRange(launch, iso, iso);
-    return result.value;
-  }
-
-  function timelinePointForDay(launch, day) {
-    const d0 = analysisDayZero(launch);
-    const iso = d0 ? toIsoDate(addDays(d0, day)) : null;
-    const sales = launchRevenueForDayRange(launch, day, day);
-    const share = sharePointsForLine(launch.modelo_id).find((point) => {
-      const pointDay = numberOrNull(point.dias_desde_lancamento) ?? dayIndex(d0, point.data_calendario || point.data);
-      return pointDay === day;
-    });
-    const rpsPoint = rpsPointsForLaunch(launch, day).find((point) => point.day === day) || null;
-    return {
-      day,
-      iso,
-      receitaProduto: numberOrNull(sales?.receita),
-      pedidosProduto: numberOrNull(sales?.pedidos),
-      receitaEmpresa: numberOrNull(share?.receita_empresa),
-      share: numberOrNull(share?.share_do_dia),
-      investimento: iso ? lineInvestmentForIsoDate(launch, iso) : null,
-      sessoes: numberOrNull(rpsPoint?.sessoes),
-      rps: numberOrNull(rpsPoint?.rps)
-    };
-  }
-
-  function timelineEventsForRange(launch, startIso, endIso) {
-    const events = [];
-    const pushEvent = (date, type, label) => {
-      if (!date || date < startIso || date > endIso) return;
-      events.push({ date, type, label });
-    };
-    pushEvent(analysisDayZero(launch), 'Lançamento', `D0 de ${launch.modelo}`);
-    optionalRows('midia_paga')
-      .filter((row) => row.modelo_id === launch.modelo_id)
-      .forEach((row) => {
-        pushEvent(String(row.data_inicio || '').slice(0, 10), 'Mídia', row.campanha || row.canal || 'Início de mídia');
-        pushEvent(String(row.data_fim || '').slice(0, 10), 'Mídia', row.campanha ? `Fim · ${row.campanha}` : 'Fim de mídia');
-      });
-    optionalRows('crm_disparos')
-      .filter((row) => row.modelo_id === launch.modelo_id)
-      .forEach((row) => pushEvent(String(row.data_disparo || '').slice(0, 10), 'CRM', row.campanha || row.canal || 'Disparo de CRM'));
-    sharePointsForLine(launch.modelo_id).forEach((point) => {
-      const date = String(point.data_calendario || '').slice(0, 10);
-      if (point.evento_comercial_descricao) pushEvent(date, commercialEventTypeLabel(point.evento_comercial_tipo), point.evento_comercial_descricao);
-      if (point.evento_sazonal) pushEvent(date, 'Calendário', point.evento_sazonal);
-    });
-    return events
-      .filter((event, index, list) => list.findIndex((item) => item.date === event.date && item.type === event.type && item.label === event.label) === index)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 8);
-  }
-
-  function renderCommercialTimeline(selected, bounds = diagnosisPhaseBounds(selected)) {
-    const canvasId = 'chart-commercial-timeline';
-    const sub = $('commercial-timeline-sub');
-    const canvas = $(canvasId);
-    if (!canvas || !window.Chart || !selected) return;
-    state.charts[canvasId]?.destroy?.();
-    delete state.charts[canvasId];
-
-    const observedEnd = Math.max(0, numberOrNull(bounds?.observedEnd) ?? selectedPeriodChartEndDayForLaunch(selected, launchCurrentRampDay(selected)));
-    const windowStart = numberOrNull(bounds?.current?.start);
-    const startDay = Number.isFinite(windowStart) ? Math.max(0, windowStart) : Math.max(0, observedEnd - 45);
-    const points = [];
-    for (let day = startDay; day <= observedEnd; day += 1) points.push(timelinePointForDay(selected, day));
-    const hasProductRevenue = points.some((point) => point.receitaProduto !== null);
-    if (!hasProductRevenue) {
-      if (sub) sub.textContent = 'Sem receita diária para montar a timeline no recorte atual.';
-      return;
-    }
-    const labels = points.map((point) => point.iso ? `${fmtDateSlash(point.iso).slice(0, 5)} · D+${fmtNum(point.day)}` : `D+${fmtNum(point.day)}`);
-    const startIso = points[0]?.iso;
-    const endIso = points[points.length - 1]?.iso;
-    if (sub) sub.textContent = `${selected.modelo}: ${fmtDateSlash(startIso)} a ${fmtDateSlash(endIso)}. Resultado, suporte e contexto por data real.`;
-    createChart(canvasId, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          {
-            type: 'line',
-            label: 'Receita do produto',
-            data: points.map((point) => point.receitaProduto),
-            borderColor: colorFor(selected.modelo_id, 0),
-            backgroundColor: colorFor(selected.modelo_id, 0),
-            borderWidth: 2,
-            tension: 0.28,
-            pointRadius: 0,
-            yAxisID: 'y'
-          },
-          {
-            type: 'bar',
-            label: 'Investimento/CRM',
-            data: points.map((point) => point.investimento),
-            backgroundColor: 'rgba(91,184,212,0.22)',
-            borderColor: 'rgba(91,184,212,0.8)',
-            borderWidth: 1,
-            borderRadius: 5,
-            yAxisID: 'y'
-          },
-          {
-            type: 'line',
-            label: 'Share do produto',
-            data: points.map((point) => point.share),
-            borderColor: 'rgba(242,240,234,0.78)',
-            backgroundColor: 'rgba(242,240,234,0.16)',
-            borderWidth: 1.5,
-            tension: 0.25,
-            pointRadius: 0,
-            yAxisID: 'yShare'
-          }
-        ]
-      },
-      options: chartOptions({
-        interaction: { mode: 'index', intersect: false },
-        layout: { padding: { top: 8, right: 8, bottom: 0, left: 2 } },
-        scales: {
-          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } },
-          y: {
-            beginAtZero: true,
-            grace: '12%',
-            ticks: { maxTicksLimit: 4, callback: (value) => fmtBRL(value, true) },
-            grid: { color: 'rgba(255,255,255,0.05)' }
-          },
-          yShare: {
-            position: 'right',
-            beginAtZero: true,
-            grace: '18%',
-            ticks: { maxTicksLimit: 4, callback: (value) => fmtPct(value, 0) },
-            grid: { drawOnChartArea: false }
-          }
-        },
-        plugins: {
-          legend: { position: 'bottom' },
-          tooltip: {
-            callbacks: {
-              title: (items) => items[0]?.label || '',
-              label: (ctx) => {
-                const point = points[ctx.dataIndex] || {};
-                if (ctx.dataset.label === 'Share do produto') return `Share: ${fmtPct(point.share, 1)}`;
-                if (ctx.dataset.label === 'Investimento/CRM') return `Investimento/CRM: ${fmtBRL(point.investimento)}`;
-                return `Receita produto: ${fmtBRL(point.receitaProduto)}`;
-              },
-              afterBody: (items) => {
-                const point = points[items[0]?.dataIndex] || {};
-                const lines = [];
-                if (point.pedidosProduto !== null) lines.push(`Pedidos produto: ${fmtNum(point.pedidosProduto)}`);
-                if (point.receitaEmpresa !== null) lines.push(`Receita empresa: ${fmtBRL(point.receitaEmpresa)}`);
-                if (point.sessoes !== null) lines.push(`Sessões loja: ${fmtNum(point.sessoes)}`);
-                if (point.rps !== null) lines.push(`RPS loja: ${fmtBRL(point.rps)}`);
-                return lines;
-              }
-            }
-          }
-        }
-      })
-    });
   }
 
   function renderLaunchReview(wrap, selected) {

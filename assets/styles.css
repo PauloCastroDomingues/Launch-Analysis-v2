@@ -1,13 +1,56 @@
+@font-face {
+  font-family: "Formula1";
+  src: url("brand/fonts/Formula1-Regular_web.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Formula1";
+  src: url("brand/fonts/Formula1-Bold_web.ttf") format("truetype");
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aalto";
+  src: url("brand/fonts/aalto-sans-essential-light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aalto";
+  src: url("brand/fonts/aalto-sans-pro-regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aalto";
+  src: url("brand/fonts/aalto-sans-essential-bold.otf") format("opentype");
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --bg-page: #161616;
-  --bg-card: #242424;
-  --bg-card-2: #2C2C2C;
-  --bg-sidebar: #1A1A1A;
-  --txt-primary: #FFFFFF;
-  --txt-secondary: rgba(255,255,255,0.55);
-  --txt-muted: rgba(255,255,255,0.50);
-  --orange: #F07800;
-  --orange-dim: rgba(240,120,0,0.15);
+  --bg-page: #1D1D1B;
+  --bg-card: #262321;
+  --bg-card-2: #3F3A38;
+  --bg-sidebar: #171715;
+  --txt-primary: #F4F4F4;
+  --txt-secondary: rgba(244,244,244,0.64);
+  --txt-muted: rgba(244,244,244,0.50);
+  --text: var(--txt-primary);
+  --muted: var(--txt-secondary);
+  --orange: #FB5D06;
+  --accent: #FB5D06;
+  --orange-dim: rgba(251,93,6,0.15);
   --positive: #4CAF7D;
   --negative: #E05252;
   --warning: #E8A020;
@@ -17,8 +60,9 @@
   --shadow: 0 4px 24px rgba(0,0,0,0.40);
   --shadow-soft: 0 10px 28px rgba(0,0,0,0.20);
   --surface-polish: linear-gradient(180deg, rgba(255,255,255,.038), rgba(255,255,255,.018));
-  --surface-active: linear-gradient(135deg, rgba(240,120,0,.105), rgba(255,255,255,.028) 48%, rgba(76,159,106,.048));
-  --font-sans: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  --surface-active: linear-gradient(135deg, rgba(251,93,6,.105), rgba(244,244,244,.028) 48%, rgba(76,159,106,.048));
+  --font-sans: Aalto, "Segoe UI", Arial, sans-serif;
+  --font-display: Formula1, Aalto, "Segoe UI", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
   --negative-text: #EF8080;
   --layer-1: rgba(255,255,255,0.025);
@@ -27,16 +71,16 @@
   --hairline-strong: rgba(255,255,255,0.13);
   --bg-menu: #202020;
   --bg-overlay: #111111;
-  --rgb-white: 255 255 255;
+  --rgb-white: 244 244 244;
   --rgb-black: 0 0 0;
-  --rgb-orange: 240 120 0;
+  --rgb-orange: 251 93 6;
   --rgb-negative: 224 82 82;
   --rgb-warning: 232 160 32;
   --rgb-positive: 76 175 125;
-  --rgb-info: 91 184 212;
-  --info: #5BB8D4;
-  --model-phantom: #7B8FE0;
-  --model-phantom-soft: #9FAEF0;
+  --rgb-info: 244 244 244;
+  --info: #F4F4F4;
+  --model-phantom: #F4F4F4;
+  --model-phantom-soft: rgba(244,244,244,0.82);
 }
 
 * { box-sizing: border-box; }
@@ -44,7 +88,12 @@ html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--bg-page);
+  background:
+    linear-gradient(180deg, rgba(29,29,27,.96), rgba(29,29,27,.985)),
+    url("brand/patterns/pattern-reise-cult-linhas.png"),
+    var(--bg-page);
+  background-size: auto, 760px auto, auto;
+  background-attachment: fixed;
   color: var(--txt-primary);
   font-size: 14px;
   line-height: 1.45;
@@ -54,6 +103,23 @@ body {
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; }
+
+h1,
+h2,
+h3,
+.brand-title,
+.section-kicker,
+.chart-title,
+.metric-value,
+.compact-kpi strong,
+.launch-kpi strong,
+.paid-media-kpi strong,
+.story-hero-signal strong,
+.diagnosis-metric-card strong,
+.diagnosis-evidence-grid strong {
+  font-family: var(--font-display);
+  letter-spacing: 0;
+}
 
 .app-shell {
   display: block;
@@ -840,17 +906,21 @@ body.drawer-open .nav-drawer {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: var(--orange);
+  background:
+    center / 24px 24px no-repeat url("brand/logo-reise-cult-emblema-branco.png"),
+    #1D1D1B;
+  border: 1px solid rgb(var(--rgb-orange) / .55);
   display: grid;
   place-items: center;
-  color: var(--txt-primary);
+  color: transparent;
   font-weight: 800;
   letter-spacing: 0;
 }
 .brand-title {
+  font-family: var(--font-display);
   font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 .brand-sub {
@@ -10060,30 +10130,26 @@ body .presentation-page {
 
 
 .commercial-diagnosis {
-  margin: 18px 0 28px;
+  margin: 16px 0 24px;
 }
 
 .section-head--compact {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .diagnosis-hero-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(210px, .28fr);
-  gap: 14px;
-  align-items: stretch;
-  padding: 18px;
-  border: 1px solid rgba(255,255,255,0.09);
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0.025));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.018));
 }
 
 .diagnosis-kicker {
   display: inline-block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   color: var(--muted);
-  font-size: .72rem;
+  font-size: .68rem;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -10093,14 +10159,14 @@ body .presentation-page {
   max-width: 1020px;
   margin: 0;
   color: var(--text);
-  font-size: clamp(1.02rem, 1.7vw, 1.34rem);
-  line-height: 1.42;
+  font-size: clamp(.98rem, 1.25vw, 1.12rem);
+  line-height: 1.35;
 }
 
 .diagnosis-hero-copy p {
-  margin: 10px 0 0;
+  margin: 7px 0 0;
   color: var(--muted);
-  font-size: .9rem;
+  font-size: .82rem;
   line-height: 1.45;
 }
 
@@ -10121,24 +10187,25 @@ body .presentation-page {
 
 .diagnosis-metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .diagnosis-metric-card {
-  min-height: 108px;
-  padding: 14px;
+  min-height: 82px;
+  padding: 10px;
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
+  border-radius: 10px;
   background: rgba(255,255,255,0.035);
 }
 
 .diagnosis-metric-card strong {
   display: block;
-  margin: 8px 0 5px;
+  margin: 6px 0 3px;
   color: var(--text);
-  font-size: 1.22rem;
+  font-size: .95rem;
+  line-height: 1.1;
 }
 
 .diagnosis-metric-card--down {
@@ -10162,30 +10229,22 @@ body .presentation-page {
 .diagnosis-evidence-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .diagnosis-evidence-grid > div {
-  padding: 14px;
+  padding: 10px 12px;
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 15px;
+  border-radius: 10px;
   background: rgba(0,0,0,0.16);
 }
 
 .diagnosis-evidence-grid strong {
   display: block;
-  margin: 6px 0 4px;
+  margin: 5px 0 3px;
   color: var(--text);
-  font-size: 1.02rem;
-}
-
-.commercial-timeline-card {
-  margin-top: 14px;
-}
-
-.commercial-timeline-canvas {
-  height: 320px;
+  font-size: .96rem;
 }
 
 @media (max-width: 980px) {
@@ -10194,7 +10253,7 @@ body .presentation-page {
     grid-template-columns: 1fr;
   }
   .diagnosis-metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

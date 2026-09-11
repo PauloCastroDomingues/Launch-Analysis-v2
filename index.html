@@ -4,10 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Reise — Launch Analysis v2</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..900&display=swap" />
-  <link rel="stylesheet" href="assets/styles.css?v=20260909-rps-filter-v2" />
+  <link rel="stylesheet" href="assets/styles.css?v=20260911-reise-cult-v1" />
 </head>
 <body>
   <div class="app-shell">
@@ -124,24 +121,15 @@
       <section id="commercial-diagnosis" class="commercial-diagnosis" aria-live="polite">
         <div class="section-head section-head--compact">
           <div>
-            <div class="section-kicker">02 · Diagnóstico comercial</div>
+            <div class="section-kicker">02 · Pulso comercial</div>
             <div class="section-title-row">
-              <h2>O que explica a mudança?</h2>
-              <button class="help-button" type="button" data-tooltip="Compara P0 (D0-D30) com P1 (janela recente observada). Mostra decomposição matemática e contexto comercial; não afirma causalidade sem dado suficiente." aria-label="Ajuda sobre diagnóstico comercial">?</button>
+              <h2>Pulso do lançamento</h2>
+              <button class="help-button" type="button" data-tooltip="Compara largada D0-D30 com a janela observada: receita, demanda, tráfego, RPS, investimento e share." aria-label="Ajuda sobre diagnóstico comercial">?</button>
             </div>
-            <p class="section-desc">P0: D0-D30 • P1: janela recente • Receita, pedidos, ticket, sessões, RPS, investimento, share, disponibilidade.</p>
+            <p class="section-desc">Receita, demanda, tráfego, eficiência e share em uma leitura só.</p>
           </div>
         </div>
         <div id="commercial-diagnosis-summary"></div>
-        <div class="commercial-timeline-card chart-card wide">
-          <div class="chart-head">
-            <div>
-              <div class="chart-title chart-title--with-tip"><span>Timeline comercial</span><button class="help-button help-button--mini" type="button" data-tooltip="Linha por data real. Receita do produto, receita da empresa, share, sessões/RPS e investimento + CRM aparecem para leitura temporal." aria-label="Ajuda sobre timeline comercial">i</button></div>
-              <div class="chart-sub" id="commercial-timeline-sub">Receita, investimento e share por data real</div>
-            </div>
-          </div>
-          <div class="chart-canvas commercial-timeline-canvas"><canvas id="chart-commercial-timeline"></canvas></div>
-        </div>
       </section>
 
       <p class="section-transition-label">Análises de apoio ao diagnóstico</p>
@@ -463,7 +451,7 @@
 
   <script src="assets/vendor/chart.umd.min.js?v=4.4.9"></script>
   <script src="assets/launch-metrics.js?v=20260909-launch-review-v1"></script>
-  <script src="assets/app.js?v=20260909-rps-filter-v2"></script>
+  <script src="assets/app.js?v=20260911-reise-cult-v1"></script>
   <script src="assets/presentation.js?v=20260909-launch-review-v1"></script>
 </body>
 </html>
