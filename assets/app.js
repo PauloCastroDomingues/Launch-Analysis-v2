@@ -11237,7 +11237,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
       <div class="diagnosis-metric-card diagnosis-metric-card--${row.direction.tone}">
         <span>${escapeHtml(row.label)}</span>
         <strong>${escapeHtml(value)}</strong>
-        <small>${escapeHtml(delta)} vs P0</small>
+        <small>${escapeHtml(delta)} vs base D0-D30</small>
       </div>
     `;
   }
@@ -11252,23 +11252,13 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     const driver = bounds.comparable ? diagnosisPrimaryDriver(rows) : null;
     const stock = stockDecisionSummary(selected);
     const conclusion = diagnosisConclusion(selected, current, base, rows, bounds.comparable);
-    const dataGaps = [
-      { label: 'Funil do produto', detail: 'Falta JSON com view_item, add_to_cart e begin_checkout por produto/data.' },
-      { label: 'Contribuição', detail: 'Faltam CMV, taxas, impostos, frete subsidiado e devoluções.' },
-      { label: 'Estoque histórico', detail: 'O dashboard tem estoque atual; heatmap de ruptura precisa snapshot diário por SKU.' }
-    ];
 
     wrap.innerHTML = `
       <div class="diagnosis-hero-card">
         <div class="diagnosis-hero-copy">
           <span class="diagnosis-kicker">${escapeHtml(selected.modelo)} · ${escapeHtml(selectedPeriodLabel())}</span>
           <h3>${escapeHtml(conclusion)}</h3>
-          <p>Comparação: ${escapeHtml(base.phase.label)} → ${escapeHtml(current.phase.label)}. Quando um dado não existe, ele aparece como não mensurado.</p>
-        </div>
-        <div class="diagnosis-decision-box">
-          <span>Principal sinal</span>
-          <strong>${driver ? escapeHtml(driver.label) : 'Sem driver isolado'}</strong>
-          <small>${driver?.delta !== null && driver ? `${fmtSignedPct(driver.delta, 0)} vs P0` : bounds.comparable ? 'Precisa de mais dados fechados' : 'Ainda dentro do P0'}</small>
+          <p>Comparação: base D0-D30 → janela observada. Campos sem dado aparecem como não mensurados.</p>
         </div>
       </div>
       <div class="diagnosis-metric-grid">
@@ -11281,27 +11271,21 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
       </div>
       <div class="diagnosis-evidence-grid">
         <div>
-          <span>P0</span>
+          <span>Base D0-D30</span>
           <strong>${fmtBRL(base.receitaDia, true)} / dia</strong>
           <small>${fmtNum(base.pedidosDia, 1)} pedidos/dia · ${fmtBRL(base.ticket)} ticket</small>
         </div>
         <div>
-          <span>P1</span>
+          <span>Janela observada</span>
           <strong>${fmtBRL(current.receitaDia, true)} / dia</strong>
           <small>${fmtNum(current.pedidosDia, 1)} pedidos/dia · ${fmtBRL(current.ticket)} ticket</small>
         </div>
         <div>
           <span>Próxima decisão</span>
-          <strong>${driver ? `Vale investigar ${escapeHtml(driver.label)}` : bounds.comparable ? 'Aguardar janela fechada' : 'Aguardar fase pós P0'}</strong>
+          <strong>${driver ? `Vale investigar ${escapeHtml(driver.label)}` : bounds.comparable ? 'Aguardar janela fechada' : 'Aguardar fase pós D+30'}</strong>
           <small>Usar funil, estoque histórico ou margem quando estiverem instrumentados.</small>
         </div>
       </div>
-      <details class="diagnosis-data-gaps">
-        <summary>Dados ainda não mensurados</summary>
-        <div class="diagnosis-gap-list">
-          ${dataGaps.map((gap) => `<div><strong>${escapeHtml(gap.label)}</strong><span>${escapeHtml(gap.detail)}</span></div>`).join('')}
-        </div>
-      </details>
     `;
     renderCommercialTimeline(selected, bounds);
   }
@@ -11362,9 +11346,8 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
 
   function renderCommercialTimeline(selected, bounds = diagnosisPhaseBounds(selected)) {
     const canvasId = 'chart-commercial-timeline';
-    const canvas = $(canvasId);
     const sub = $('commercial-timeline-sub');
-    const notes = $('commercial-timeline-notes');
+    const canvas = $(canvasId);
     if (!canvas || !window.Chart || !selected) return;
     state.charts[canvasId]?.destroy?.();
     delete state.charts[canvasId];
@@ -11376,16 +11359,13 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
     for (let day = startDay; day <= observedEnd; day += 1) points.push(timelinePointForDay(selected, day));
     const hasProductRevenue = points.some((point) => point.receitaProduto !== null);
     if (!hasProductRevenue) {
-      if (sub) sub.textContent = 'Sem receita diária para montar P1 no recorte atual.';
-      if (notes) notes.innerHTML = '<div class="empty-state empty-state--compact"><div><strong>Timeline indisponível.</strong> A base de vendas diária não trouxe pontos para esta linha.</div></div>';
+      if (sub) sub.textContent = 'Sem receita diária para montar a timeline no recorte atual.';
       return;
     }
     const labels = points.map((point) => point.iso ? `${fmtDateSlash(point.iso).slice(0, 5)} · D+${fmtNum(point.day)}` : `D+${fmtNum(point.day)}`);
     const startIso = points[0]?.iso;
     const endIso = points[points.length - 1]?.iso;
-    const events = startIso && endIso ? timelineEventsForRange(selected, startIso, endIso) : [];
-    const phaseLabel = windowStart !== null ? escapeHtml(bounds?.current?.label || 'P1') : 'P1';
-    if (sub) sub.textContent = `${selected.modelo}: ${phaseLabel} de ${fmtDateSlash(startIso)} a ${fmtDateSlash(endIso)}. Use para ler como “coincide com” e “vale investigar”.`;
+    if (sub) sub.textContent = `${selected.modelo}: ${fmtDateSlash(startIso)} a ${fmtDateSlash(endIso)}. Resultado, suporte e contexto por data real.`;
     createChart(canvasId, {
       type: 'bar',
       data: {
@@ -11393,7 +11373,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         datasets: [
           {
             type: 'line',
-            label: 'P1 receita do produto',
+            label: 'Receita do produto',
             data: points.map((point) => point.receitaProduto),
             borderColor: colorFor(selected.modelo_id, 0),
             backgroundColor: colorFor(selected.modelo_id, 0),
@@ -11404,7 +11384,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
           },
           {
             type: 'bar',
-            label: 'P1 investimento/CRM',
+            label: 'Investimento/CRM',
             data: points.map((point) => point.investimento),
             backgroundColor: 'rgba(91,184,212,0.22)',
             borderColor: 'rgba(91,184,212,0.8)',
@@ -11414,7 +11394,7 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
           },
           {
             type: 'line',
-            label: 'P1 share',
+            label: 'Share do produto',
             data: points.map((point) => point.share),
             borderColor: 'rgba(242,240,234,0.78)',
             backgroundColor: 'rgba(242,240,234,0.16)',
@@ -11451,8 +11431,8 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
               title: (items) => items[0]?.label || '',
               label: (ctx) => {
                 const point = points[ctx.dataIndex] || {};
-                if (ctx.dataset.label === 'P1 share') return `Share: ${fmtPct(point.share, 1)}`;
-                if (ctx.dataset.label === 'P1 investimento/CRM') return `Investimento/CRM: ${fmtBRL(point.investimento)}`;
+                if (ctx.dataset.label === 'Share do produto') return `Share: ${fmtPct(point.share, 1)}`;
+                if (ctx.dataset.label === 'Investimento/CRM') return `Investimento/CRM: ${fmtBRL(point.investimento)}`;
                 return `Receita produto: ${fmtBRL(point.receitaProduto)}`;
               },
               afterBody: (items) => {
@@ -11462,7 +11442,6 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
                 if (point.receitaEmpresa !== null) lines.push(`Receita empresa: ${fmtBRL(point.receitaEmpresa)}`);
                 if (point.sessoes !== null) lines.push(`Sessões loja: ${fmtNum(point.sessoes)}`);
                 if (point.rps !== null) lines.push(`RPS loja: ${fmtBRL(point.rps)}`);
-                lines.push(`Leitura: ${points[items[0]?.dataIndex]?.day < 31 ? 'ainda em P0' : 'coincide com P1'}`);
                 return lines;
               }
             }
@@ -11470,14 +11449,6 @@ mostra se o produto depende de tráfego ou se a eficiência compensa a queda de 
         }
       })
     });
-    if (notes) {
-      notes.innerHTML = `
-        <div class="timeline-note-main">A timeline P1 mostra coincidências temporais. Linguagem de leitura: “coincide com” ou “vale investigar”. Para afirmar causa, ainda precisamos de funil por produto, estoque histórico ou margem conforme o caso.</div>
-        <div class="timeline-event-list">
-          ${events.length ? events.map((event) => `<span><b>${escapeHtml(event.type)}</b> ${fmtDateSlash(event.date)} · ${escapeHtml(event.label)}</span>`).join('') : '<span><b>Eventos</b> Sem eventos comerciais cadastrados nesta janela.</span>'}
-        </div>
-      `;
-    }
   }
 
   function renderLaunchReview(wrap, selected) {

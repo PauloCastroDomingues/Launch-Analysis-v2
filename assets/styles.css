@@ -10104,18 +10104,6 @@ body .presentation-page {
   line-height: 1.45;
 }
 
-.diagnosis-decision-box {
-  display: grid;
-  align-content: center;
-  gap: 5px;
-  min-height: 116px;
-  padding: 16px;
-  border: 1px solid rgba(91,184,212,0.28);
-  border-radius: 16px;
-  background: rgba(91,184,212,0.08);
-}
-
-.diagnosis-decision-box span,
 .diagnosis-metric-card span,
 .diagnosis-evidence-grid span {
   color: var(--muted);
@@ -10125,13 +10113,6 @@ body .presentation-page {
   text-transform: uppercase;
 }
 
-.diagnosis-decision-box strong {
-  color: var(--text);
-  font-size: 1.35rem;
-  line-height: 1.1;
-}
-
-.diagnosis-decision-box small,
 .diagnosis-metric-card small,
 .diagnosis-evidence-grid small {
   color: var(--muted);
@@ -10199,49 +10180,6 @@ body .presentation-page {
   font-size: 1.02rem;
 }
 
-.diagnosis-data-gaps {
-  margin-top: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 15px;
-  background: rgba(255,255,255,0.025);
-}
-
-.diagnosis-data-gaps summary {
-  cursor: pointer;
-  padding: 12px 14px;
-  color: var(--muted);
-  font-weight: 800;
-}
-
-.diagnosis-gap-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 0 14px 14px;
-}
-
-.diagnosis-gap-list div {
-  padding: 12px;
-  border-radius: 13px;
-  background: rgba(255,255,255,0.035);
-}
-
-.diagnosis-gap-list strong,
-.diagnosis-gap-list span {
-  display: block;
-}
-
-.diagnosis-gap-list strong {
-  color: var(--text);
-  margin-bottom: 4px;
-}
-
-.diagnosis-gap-list span {
-  color: var(--muted);
-  font-size: .86rem;
-  line-height: 1.4;
-}
-
 .commercial-timeline-card {
   margin-top: 14px;
 }
@@ -10250,40 +10188,9 @@ body .presentation-page {
   height: 320px;
 }
 
-.commercial-timeline-notes {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.timeline-note-main {
-  color: var(--muted);
-  font-size: .9rem;
-}
-
-.timeline-event-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.timeline-event-list span {
-  padding: 7px 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.035);
-  color: var(--muted);
-  font-size: .78rem;
-}
-
-.timeline-event-list b {
-  color: var(--text);
-}
-
 @media (max-width: 980px) {
   .diagnosis-hero-card,
-  .diagnosis-evidence-grid,
-  .diagnosis-gap-list {
+  .diagnosis-evidence-grid {
     grid-template-columns: 1fr;
   }
   .diagnosis-metric-grid {
