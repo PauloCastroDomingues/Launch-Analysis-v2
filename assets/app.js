@@ -90,13 +90,21 @@
     { key: 'maturity', label: 'D91-D180', shortLabel: 'Maturidade', start: 91, end: 180 },
     { key: 'tail', label: 'D181+', shortLabel: 'Cauda', start: 181, end: null }
   ];
-  const RAMP_HEALTH_TOOLTIP = `Ritmo de venda:
-1. Agrupa as vendas em semanas fechadas desde o D0: S1 = D0 a D+6, S2 = D+7 a D+13 e assim por diante.
-2. O melhor ritmo semanal da propria linha vira 100%.
-3. Cada ponto mostra quanto do pico a linha ainda vende em uma semana completa.
-4. O lancamento estabiliza quando duas comparacoes semanais seguidas variam no maximo 10%, depois do pico.
-Acima de 50% = forte; 35% a 50% = sustentacao; 25% a 35% = baixo; abaixo de 25% = cauda.
-Dias sem venda entram como zero apenas quando o manifesto confirma cobertura ate a data atual; dado ausente fica pendente.`;
+  const RAMP_HEALTH_TOOLTIP = `RITMO DE VENDA — leitura Feynman
+
+O que mede:
+a velocidade média de venda em cada semana desde o lançamento.
+
+Como calcula:
+receita da semana ÷ 7 = ritmo diário da semana.
+Depois, divide esse ritmo pelo melhor ritmo semanal da própria linha. O melhor vira 100%.
+
+Como ler:
+100% = melhor semana da linha; 50% = metade do melhor ritmo; abaixo de 25% = cauda.
+O losango marca a primeira estabilização: duas semanas seguidas variando no máximo 10% depois do pico.
+
+Limite:
+isso mostra sustentação, não prova a causa da venda. Dado ausente fica pendente.`;
   const COLLAPSIBLE_LIST_LIMIT = 5;
   const COLLAPSIBLE_LIST_SELECTORS = [
     '.table-wrap tbody',
