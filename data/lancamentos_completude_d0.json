@@ -1,0 +1,104 @@
+{
+  "generated_at": "2026-09-25T13:37:33-03:00",
+  "snapshot": "2026-09-25",
+  "status": "incompleto",
+  "launches": [
+    {
+      "modelo_id": "gt",
+      "modelo": "GT Collection",
+      "data_oficial": "2024-10-18",
+      "d0_analitico_atual": "2025-12-17",
+      "primeiro_dia_coberto": "2025-12-17",
+      "ultimo_dia_coberto": "2026-09-25",
+      "dias_esperados": 708,
+      "dias_cobertos": 283,
+      "dias_em_gap": 425,
+      "cobertura_pct": 0.399718,
+      "status": "gap_historico",
+      "intervalos_sem_cobertura": [
+        {
+          "start": "2024-10-18",
+          "end": "2025-12-16",
+          "days": 425
+        }
+      ],
+      "fonte_coberta_atual": "reise-ssot.mart_shared.fct_order_item",
+      "fonte_backfill_planejada": "reise-ssot.stg.shoppub_orders_tbl + fct_order_item",
+      "regra_zero": "zero somente dentro de periodo com fonte confirmada"
+    },
+    {
+      "modelo_id": "avant",
+      "modelo": "Avant",
+      "data_oficial": "2025-10-02",
+      "d0_analitico_atual": "2025-12-14",
+      "primeiro_dia_coberto": "2025-12-14",
+      "ultimo_dia_coberto": "2026-09-25",
+      "dias_esperados": 359,
+      "dias_cobertos": 286,
+      "dias_em_gap": 73,
+      "cobertura_pct": 0.796657,
+      "status": "gap_historico",
+      "intervalos_sem_cobertura": [
+        {
+          "start": "2025-10-02",
+          "end": "2025-12-13",
+          "days": 73
+        }
+      ],
+      "fonte_coberta_atual": "reise-ssot.mart_shared.fct_order_item",
+      "fonte_backfill_planejada": "reise-ssot.stg.shoppub_orders_tbl + fct_order_item",
+      "regra_zero": "zero somente dentro de periodo com fonte confirmada"
+    },
+    {
+      "modelo_id": "phantom",
+      "modelo": "Phantom",
+      "data_oficial": "2026-04-16",
+      "d0_analitico_atual": "2026-04-16",
+      "primeiro_dia_coberto": "2026-04-16",
+      "ultimo_dia_coberto": "2026-09-25",
+      "dias_esperados": 163,
+      "dias_cobertos": 163,
+      "dias_em_gap": 0,
+      "cobertura_pct": 1,
+      "status": "completo",
+      "intervalos_sem_cobertura": [],
+      "fonte_coberta_atual": "reise-ssot.mart_shared.fct_order_item",
+      "fonte_backfill_planejada": "reise-ssot.stg.shoppub_orders_tbl + fct_order_item",
+      "regra_zero": "zero somente dentro de periodo com fonte confirmada"
+    },
+    {
+      "modelo_id": "rs8_monochrome",
+      "modelo": "RS8 Avant Monochrome",
+      "data_oficial": "2026-06-25",
+      "d0_analitico_atual": "2026-06-25",
+      "primeiro_dia_coberto": "2026-06-25",
+      "ultimo_dia_coberto": "2026-09-25",
+      "dias_esperados": 93,
+      "dias_cobertos": 93,
+      "dias_em_gap": 0,
+      "cobertura_pct": 1,
+      "status": "completo",
+      "intervalos_sem_cobertura": [],
+      "fonte_coberta_atual": "reise-ssot.mart_shared.fct_order_item",
+      "fonte_backfill_planejada": "reise-ssot.stg.shoppub_orders_tbl + fct_order_item",
+      "regra_zero": "zero somente dentro de periodo com fonte confirmada"
+    },
+    {
+      "modelo_id": "series_2",
+      "modelo": "Series 2",
+      "data_oficial": "2026-07-16",
+      "d0_analitico_atual": "2026-07-16",
+      "primeiro_dia_coberto": "2026-07-16",
+      "ultimo_dia_coberto": "2026-09-25",
+      "dias_esperados": 72,
+      "dias_cobertos": 72,
+      "dias_em_gap": 0,
+      "cobertura_pct": 1,
+      "status": "completo",
+      "intervalos_sem_cobertura": [],
+      "fonte_coberta_atual": "reise-ssot.mart_shared.fct_order_item",
+      "fonte_backfill_planejada": "reise-ssot.stg.shoppub_orders_tbl + fct_order_item",
+      "regra_zero": "zero somente dentro de periodo com fonte confirmada"
+    }
+  ]
+}
