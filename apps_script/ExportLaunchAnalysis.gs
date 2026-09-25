@@ -11,6 +11,7 @@
  * - INVESTMENT_SPREADSHEET_ID ou MIDIA_SPREADSHEET_ID (opcional, usado para midia_paga e crm_disparos)
  * - ORDER_ATTRIBUTION_SPREADSHEET_ID (opcional; se ausente usa a planilha de investimento)
  * - ATRIBUICAO_REAL_CANAL_ENABLED = true|false (opcional; false volta ao estado atual sem canal real)
+ * - ATRIBUICAO_REAL_CANAL_LOOKBACK_DAYS = 14 (opcional; atualizacao incremental do mirror)
  *
  * Serviços avançados necessários:
  * - BigQuery API
@@ -18,7 +19,7 @@
 
 const DEFAULT_INVESTMENT_SPREADSHEET_ID = '1dlCRxvViAL1gG4Y4pBfhnH_EK-HQdcyGBAwd0vTfV68';
 
-const EXPORT_SCRIPT_VERSION = '20260828-rps-receita-por-sessao-v42';
+const EXPORT_SCRIPT_VERSION = '20260925-d0-completeness-memory-safe-v44';
 
 const CONFIG = {
   bqProjectId: getProp_('BQ_PROJECT_ID', 'reise-ssot'),
@@ -28,7 +29,8 @@ const CONFIG = {
   githubBranch: getProp_('GITHUB_BRANCH', 'main'),
   dataPath: getProp_('DATA_PATH', 'data'),
   timeZone: 'America/Sao_Paulo',
-  canalAttributionEnabled: getBoolProp_('ATRIBUICAO_REAL_CANAL_ENABLED', true)
+  canalAttributionEnabled: getBoolProp_('ATRIBUICAO_REAL_CANAL_ENABLED', true),
+  canalAttributionLookbackDays: Math.max(1, Math.floor(Number(getProp_('ATRIBUICAO_REAL_CANAL_LOOKBACK_DAYS', '14')) || 14))
 };
 
 function investmentSpreadsheetId_() {
@@ -69,6 +71,7 @@ function exportarTudo() {
   const eventoComercialStatus = garantirEventosComerciaisProdutoSeDisponivel_();
   const canalMirrorStatus = sincronizarCanalAtribuicaoMirrorSePossivel_(exportaveis);
   const rampaDia = exportaveis.length ? consultarRampaDia_(exportaveis) : [];
+  const completudeD0 = construirCompletudeD0Atual_(exportaveis, rampaDia, generatedAt, exportDate);
   const clientesJanelasStatus = consultarClientesJanelasSeDisponivel_(exportaveis, generatedAt, exportDate);
   const produtosDia = exportaveis.length ? consultarProdutosDia_(exportaveis) : [];
   const rpsDiaStatus = exportarRpsDiaSeDisponivel_(exportaveis, generatedAt);
@@ -98,6 +101,13 @@ function exportarTudo() {
     data_fim_exportada: exportDate,
     fonte: 'lancamentos_rampa_dia.json',
     observacao: 'Arquivo agregado por modelo/dia para rampa estendida. Dias sem venda nao geram linha no JSON; o dashboard preenche a linha acumulada quando o manifesto confirma cobertura ate a data atual.'
+  };
+  dataQuality.completude_d0 = {
+    status: completudeD0.status,
+    fonte: 'lancamentos_completude_d0.json',
+    modelos_completos: completudeD0.launches.filter(item => item.status === 'completo').length,
+    modelos_com_gap: completudeD0.launches.filter(item => item.status !== 'completo').length,
+    observacao: 'Cobertura conhecida entre o D0 oficial e o corte. Periodos sem fonte confirmada permanecem gap, nunca zero.'
   };
   dataQuality.clientes_base = {
     status: clientesJanelasStatus.status,
@@ -137,9 +147,14 @@ function exportarTudo() {
   if (rpsDiaStatus.status === 'failed') {
     warnings.push(`lancamentos_rps_dia.json nao exportado: ${rpsDiaStatus.error_summary || 'erro desconhecido'}.`);
   }
+  const gapsD0 = completudeD0.launches.filter(item => item.status !== 'completo');
+  if (gapsD0.length) {
+    warnings.push(`Completude D0 pendente em ${gapsD0.map(item => `${item.modelo_id}:${item.dias_em_gap}d`).join(', ')}.`);
+  }
 
   logProdutosDiaExport_(exportaveis, produtosDia);
   escreverJsonGitHub_('lancamentos_rampa_dia.json', rampaDia);
+  escreverJsonGitHub_('lancamentos_completude_d0.json', completudeD0);
   if (clientesJanelasStatus.payload) escreverJsonGitHub_('lancamentos_clientes_janelas.json', clientesJanelasStatus.payload);
   escreverJsonGitHub_('lancamentos_produtos_dia.json', produtosDia);
   if (rpsDiaStatus.payload) escreverJsonGitHub_('lancamentos_rps_dia.json', rpsDiaStatus.payload);
@@ -194,6 +209,7 @@ function exportarTudo() {
       eventos_comerciais_produto: eventoComercialStatus.rows,
       canal_atribuicao_pedido_mirror: canalMirrorStatus.rows,
       lancamentos_rampa_dia: rampaDia.length,
+      lancamentos_completude_d0: completudeD0.launches.length,
       lancamentos_clientes_janelas: clientesJanelasStatus.rows,
       lancamentos_produtos_dia: produtosDia.length,
       lancamentos_rps_dia: rpsDiaStatus.rows,
@@ -215,6 +231,7 @@ function exportarTudo() {
       eventos_comerciais_produto: eventoComercialStatus.status,
       canal_atribuicao_pedido_mirror: canalMirrorStatus.status,
       lancamentos_clientes_janelas: clientesJanelasStatus.status,
+      lancamentos_completude_d0: 'derived',
       lancamentos_rps_dia: rpsDiaStatus.status,
       investigacao_linhas_suspeitas: investigacaoMonochromeStatus.status,
       sub_modelos_dia: subModelosStatus.status,
@@ -229,6 +246,7 @@ function exportarTudo() {
     files: [
       'lancamentos_modelos.json',
       'lancamentos_rampa_dia.json',
+      'lancamentos_completude_d0.json',
       'lancamentos_clientes_janelas.json',
       'lancamentos_produtos_dia.json',
       'lancamentos_rps_dia.json',
@@ -247,6 +265,62 @@ function exportarTudo() {
   };
 
   escreverJsonGitHub_('manifest.json', manifest);
+}
+
+function construirCompletudeD0Atual_(modelos, rampaDia, generatedAt, exportDate) {
+  const primeiroDiaPorModelo = {};
+  (rampaDia || []).forEach(row => {
+    const modeloId = String(row.modelo_id || '').trim();
+    const data = dateIsoKey_(row.data || row.data_venda);
+    if (!modeloId || !data) return;
+    if (!primeiroDiaPorModelo[modeloId] || data < primeiroDiaPorModelo[modeloId]) {
+      primeiroDiaPorModelo[modeloId] = data;
+    }
+  });
+
+  const launches = (modelos || []).map(modelo => {
+    const dataOficial = dateIsoKey_(modelo.data_oficial || modelo.data_lancamento);
+    const d0Analitico = dateIsoKey_(modelo.day_zero_base);
+    const primeiroCoberto = primeiroDiaPorModelo[modelo.modelo_id] || d0Analitico;
+    const diasEsperados = diasInclusivos_(dataOficial, exportDate);
+    const diasCobertos = diasInclusivos_(primeiroCoberto, exportDate) || 0;
+    const diasGap = diasEsperados === null ? null : Math.max(0, diasEsperados - diasCobertos);
+    const status = diasGap === 0 ? 'completo' : (diasCobertos > 0 ? 'gap_historico' : 'sem_cobertura');
+
+    return {
+      modelo_id: modelo.modelo_id,
+      modelo: modelo.modelo,
+      data_oficial: dataOficial,
+      d0_analitico_atual: d0Analitico,
+      primeiro_dia_coberto: primeiroCoberto,
+      ultimo_dia_coberto: diasCobertos ? exportDate : null,
+      dias_esperados: diasEsperados,
+      dias_cobertos: diasCobertos,
+      dias_em_gap: diasGap,
+      cobertura_pct: diasEsperados ? round6_(diasCobertos / diasEsperados) : null,
+      status,
+      intervalos_sem_cobertura: diasGap > 0 && dataOficial && primeiroCoberto
+        ? [{ start: dataOficial, end: addDaysIso_(primeiroCoberto, -1), days: diasGap }]
+        : [],
+      fonte_coberta_atual: 'reise-ssot.mart_shared.fct_order_item',
+      fonte_backfill_planejada: 'reise-ssot.stg.shoppub_orders_tbl + fct_order_item',
+      regra_zero: 'zero somente dentro de periodo com fonte confirmada'
+    };
+  });
+
+  return {
+    generated_at: generatedAt,
+    snapshot: exportDate,
+    status: launches.every(item => item.status === 'completo') ? 'completo' : 'incompleto',
+    launches
+  };
+}
+
+function diasInclusivos_(inicio, fim) {
+  const start = dateOnly_(inicio);
+  const end = dateOnly_(fim);
+  if (!start || !end || start > end) return null;
+  return Math.round((end - start) / 86400000) + 1;
 }
 
 function instalarTrigger() {
@@ -3431,6 +3505,25 @@ function canalAtribuicaoMirrorBounds_(modelos) {
   };
 }
 
+function canalAtribuicaoMirrorRefreshBounds_(bounds) {
+  const lookbackDays = CONFIG.canalAttributionLookbackDays;
+  const lookbackStart = addDaysIso_(bounds.maxDate, -(lookbackDays - 1));
+  const minDate = bounds.minDate > lookbackStart ? bounds.minDate : lookbackStart;
+  const windows = (bounds.windows || [{ minDate: bounds.minDate, maxDate: bounds.maxDate }])
+    .map(window => ({
+      modeloId: window.modeloId || null,
+      minDate: window.minDate > minDate ? window.minDate : minDate,
+      maxDate: window.maxDate < bounds.maxDate ? window.maxDate : bounds.maxDate
+    }))
+    .filter(window => window.minDate && window.maxDate && window.minDate <= window.maxDate);
+  return {
+    minDate,
+    maxDate: bounds.maxDate,
+    windows,
+    lookbackDays
+  };
+}
+
 function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
   if (!CONFIG.canalAttributionEnabled) {
     return { status: 'disabled', rows: 'skipped' };
@@ -3444,11 +3537,12 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
       rule: 'shopify_paid_signal_parity_v41'
     };
   }
-  const bounds = canalAtribuicaoMirrorBounds_(modelos);
-  if (!bounds) {
+  const fullBounds = canalAtribuicaoMirrorBounds_(modelos);
+  if (!fullBounds) {
     Logger.log('canal_atribuicao_pedido_mirror: sem modelos exportaveis para sincronizar.');
     return { status: 'skipped', rows: 'skipped' };
   }
+  const bounds = canalAtribuicaoMirrorRefreshBounds_(fullBounds);
 
   try {
     garantirTabelaCanalAtribuicaoMirror_();
@@ -3458,7 +3552,7 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
       rule: 'pedido_real_shopify_journey_latest_v; match source_order_id/order_name; shopify_paid_signal_parity_v41'
     };
     if (tabelaMartSharedTemStreamingBuffer_('canal_atribuicao_pedido_mirror')) {
-      const resumoExistente = resumoCanalAtribuicaoMirrorExistente_(bounds);
+      const resumoExistente = resumoCanalAtribuicaoMirrorExistente_(fullBounds);
       Logger.log(`canal_atribuicao_pedido_mirror: streaming buffer ativo; reutilizando cache existente (${resumoExistente.rows} pedidos).`);
       return {
         status: 'cached_streaming_buffer',
@@ -3472,9 +3566,11 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
         bq_status: 'skipped_streaming_buffer',
         bq_error: null,
         daily_share: dailyStatus,
-        range: `${bounds.minDate}..${bounds.maxDate}`
+        range: `${fullBounds.minDate}..${fullBounds.maxDate}`,
+        refresh_range: `${bounds.minDate}..${bounds.maxDate}`
       };
     }
+    Logger.log(`canal_atribuicao_pedido_mirror: atualizacao incremental ${bounds.minDate}..${bounds.maxDate} (${bounds.lookbackDays} dias).`);
     const sheetStatus = consultarCanalAtribuicaoPlanilhaSeConfigurada_(bounds);
     let bqRows = [];
     let bqError = null;
@@ -3484,12 +3580,31 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
       bqError = error;
       Logger.log(`canal_atribuicao_pedido_mirror: fonte BigQuery/Shopify existente indisponivel; tentando seguir com planilha. Erro: ${error.message}`);
     }
+    if (bqError && !bqRows.length && !(sheetStatus.rows_data || []).length) {
+      const resumoExistente = resumoCanalAtribuicaoMirrorExistente_(fullBounds);
+      Logger.log(`canal_atribuicao_pedido_mirror: fontes indisponiveis; cache existente preservado (${resumoExistente.rows} pedidos).`);
+      return {
+        status: 'cached_source_unavailable',
+        rows: resumoExistente.rows,
+        paid_rows: resumoExistente.paid_rows,
+        organic_rows: resumoExistente.organic_rows,
+        source_counts: resumoExistente.source_counts,
+        sheet_rows: sheetStatus.rows,
+        sheet_status: sheetStatus.status,
+        bq_rows: 0,
+        bq_status: 'failed',
+        bq_error: resumirErro_(bqError),
+        daily_share: dailyStatus,
+        range: `${fullBounds.minDate}..${fullBounds.maxDate}`,
+        refresh_range: `${bounds.minDate}..${bounds.maxDate}`
+      };
+    }
     const rows = deduplicarCanalAtribuicaoRows_([...bqRows, ...(sheetStatus.rows_data || [])]);
     try {
       limparCanalAtribuicaoMirror_(bounds);
     } catch (error) {
       if (isStreamingBufferError_(error)) {
-        const resumoExistente = resumoCanalAtribuicaoMirrorExistente_(bounds);
+        const resumoExistente = resumoCanalAtribuicaoMirrorExistente_(fullBounds);
         Logger.log(`canal_atribuicao_pedido_mirror: DELETE bloqueado por streaming buffer; reutilizando cache existente (${resumoExistente.rows} pedidos).`);
         return {
           status: 'cached_streaming_buffer',
@@ -3503,39 +3618,104 @@ function sincronizarCanalAtribuicaoMirrorSePossivel_(modelos) {
           bq_status: bqError ? 'failed' : 'loaded_not_rewritten',
           bq_error: bqError ? resumirErro_(bqError) : null,
           daily_share: dailyStatus,
-          range: `${bounds.minDate}..${bounds.maxDate}`
+          range: `${fullBounds.minDate}..${fullBounds.maxDate}`,
+          refresh_range: `${bounds.minDate}..${bounds.maxDate}`
         };
       }
       throw error;
     }
     if (rows.length) inserirCanalAtribuicaoMirror_(rows);
-    const sourceCounts = rows.reduce((acc, row) => {
-      const key = row.regra_atribuicao_real || 'sem_regra';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    const paidRows = rows.filter(row => row.tipo === 'paid').length;
-    const organicRows = rows.filter(row => row.tipo === 'organic').length;
+    const resumoAtual = resumoCanalAtribuicaoMirrorExistente_(fullBounds);
     const status = bqError && !bqRows.length ? 'synced_sheet_only' : (bqError ? 'synced_partial' : 'synced');
-    Logger.log(`canal_atribuicao_pedido_mirror sincronizada: ${rows.length} pedidos; paid=${paidRows}; organic=${organicRows}; fontes=${JSON.stringify(sourceCounts)}; planilha=${sheetStatus.rows}; bq=${bqRows.length}.`);
+    Logger.log(`canal_atribuicao_pedido_mirror atualizada: ${rows.length} pedidos no intervalo; ${resumoAtual.rows} pedidos no cache total; paid=${resumoAtual.paid_rows}; organic=${resumoAtual.organic_rows}; planilha=${sheetStatus.rows}; bq=${bqRows.length}.`);
     return {
       status,
-      rows: rows.length,
-      paid_rows: paidRows,
-      organic_rows: organicRows,
-      source_counts: sourceCounts,
+      rows: resumoAtual.rows,
+      refreshed_rows: rows.length,
+      paid_rows: resumoAtual.paid_rows,
+      organic_rows: resumoAtual.organic_rows,
+      source_counts: resumoAtual.source_counts,
       sheet_rows: sheetStatus.rows,
       sheet_status: sheetStatus.status,
       bq_rows: bqRows.length,
       bq_status: bqError ? 'failed' : 'synced',
       bq_error: bqError ? resumirErro_(bqError) : null,
       daily_share: dailyStatus,
-      range: `${bounds.minDate}..${bounds.maxDate}`
+      range: `${fullBounds.minDate}..${fullBounds.maxDate}`,
+      refresh_range: `${bounds.minDate}..${bounds.maxDate}`
     };
   } catch (error) {
     Logger.log(`canal_atribuicao_pedido_mirror nao sincronizada; export segue com tabela existente/fallback. Erro: ${error.message}`);
     return { status: 'failed', rows: 'skipped', error: error.message, error_summary: error.message };
   }
+}
+
+function recomporProximoBlocoCanalAtribuicaoMirror() {
+  validarGithubConfig_();
+  if (!CONFIG.canalAttributionEnabled) {
+    throw new Error('ATRIBUICAO_REAL_CANAL_ENABLED=false; recomposicao nao executada.');
+  }
+
+  const modelos = carregarModelos_().filter(ehModeloExportavel_);
+  const fullBounds = canalAtribuicaoMirrorBounds_(modelos);
+  if (!fullBounds) throw new Error('Sem modelos exportaveis para recompor o mirror de atribuicao.');
+
+  garantirTabelaCanalAtribuicaoMirror_();
+  if (tabelaMartSharedTemStreamingBuffer_('canal_atribuicao_pedido_mirror')) {
+    Logger.log('recomporProximoBlocoCanalAtribuicaoMirror: streaming buffer ativo; aguarde e execute novamente.');
+    return { status: 'waiting_streaming_buffer', rows: 'skipped' };
+  }
+
+  const cursorKey = 'ATRIBUICAO_MIRROR_BACKFILL_CURSOR';
+  const props = PropertiesService.getScriptProperties();
+  const cursorSalvo = dateIsoKey_(props.getProperty(cursorKey));
+  const minDate = cursorSalvo && cursorSalvo >= fullBounds.minDate && cursorSalvo <= fullBounds.maxDate
+    ? cursorSalvo
+    : fullBounds.minDate;
+  const candidateMax = addDaysIso_(minDate, 30);
+  const maxDate = candidateMax < fullBounds.maxDate ? candidateMax : fullBounds.maxDate;
+  const windows = (fullBounds.windows || [])
+    .map(window => ({
+      modeloId: window.modeloId || null,
+      minDate: window.minDate > minDate ? window.minDate : minDate,
+      maxDate: window.maxDate < maxDate ? window.maxDate : maxDate
+    }))
+    .filter(window => window.minDate && window.maxDate && window.minDate <= window.maxDate);
+  const bounds = { minDate, maxDate, windows };
+
+  Logger.log(`recomporProximoBlocoCanalAtribuicaoMirror: bloco ${minDate}..${maxDate}.`);
+  const sheetStatus = consultarCanalAtribuicaoPlanilhaSeConfigurada_(bounds);
+  let bqRows = [];
+  let bqError = null;
+  try {
+    bqRows = consultarCanalAtribuicaoMirrorUs_(bounds);
+  } catch (error) {
+    bqError = error;
+  }
+  if (bqError && !bqRows.length && !(sheetStatus.rows_data || []).length) {
+    throw new Error(`Fonte de atribuicao indisponivel; bloco preservado. ${resumirErro_(bqError)}`);
+  }
+
+  const rows = deduplicarCanalAtribuicaoRows_([...bqRows, ...(sheetStatus.rows_data || [])]);
+  limparCanalAtribuicaoMirror_(bounds);
+  if (rows.length) inserirCanalAtribuicaoMirror_(rows);
+
+  const nextDate = addDaysIso_(maxDate, 1);
+  const concluido = nextDate > fullBounds.maxDate;
+  if (concluido) {
+    props.deleteProperty(cursorKey);
+  } else {
+    props.setProperty(cursorKey, nextDate);
+  }
+  Logger.log(`recomporProximoBlocoCanalAtribuicaoMirror: ${rows.length} pedidos; proximo=${concluido ? 'concluido' : nextDate}.`);
+  return {
+    status: concluido ? 'complete' : 'partial',
+    rows: rows.length,
+    bq_rows: bqRows.length,
+    sheet_rows: sheetStatus.rows,
+    range: `${minDate}..${maxDate}`,
+    next_date: concluido ? null : nextDate
+  };
 }
 
 function consultarCanalAtribuicaoPlanilhaSeConfigurada_(bounds) {
@@ -4381,8 +4561,7 @@ function limparCanalAtribuicaoMirror_(bounds) {
   )).join('\n  OR ');
   const query = `
 DELETE FROM \`${CONFIG.bqProjectId}.mart_shared.canal_atribuicao_pedido_mirror\`
-WHERE ${predicate}
-   OR regra_atribuicao_real = 'planilha_atribuicao_pedido'`;
+WHERE ${predicate}`;
   runBq_(query);
 }
 
