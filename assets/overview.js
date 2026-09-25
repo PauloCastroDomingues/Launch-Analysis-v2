@@ -324,6 +324,87 @@
     window.addEventListener('scroll', close, true);
   }
 
+  const contextLegendHtml = () => `<div class="context-legend" aria-label="Legenda dos gráficos"><span><i class="rps"></i>RPS</span><span><i class="sessions"></i>Sessões</span><span><i class="investment"></i>Investimento</span><span><i class="baseline"></i>Base 100</span></div>`;
+
+  function contextChartConfiguration(series, expanded = false) {
+    const makeDataset = (label, color, key, rawKey) => ({
+        label,
+        borderColor: color,
+        backgroundColor: color,
+        data: series.points.map((point) => ({ x: point.day, y: point[key] })),
+        rawValues: series.points.map((point) => point[rawKey]),
+        rawKey,
+        borderWidth: expanded ? 2.2 : 1.7,
+        pointRadius: 0,
+        pointHitRadius: expanded ? 12 : 8,
+        tension: .18,
+        spanGaps: false
+      });
+    const lastDay = series.points.at(-1).day;
+    return {
+      type: 'line',
+      data: { datasets: [
+        makeDataset('RPS', '#ff5a1f', 'rps_index', 'rps'),
+        makeDataset('Sessões', '#65a8ff', 'sessions_index', 'sessions'),
+        makeDataset('Investimento', '#e8ba43', 'investment_index', 'investment'),
+        { label: 'Base 100', borderColor: '#6f6f75', data: [{ x: 0, y: 100 }, { x: lastDay, y: 100 }], borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }
+      ] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: {
+            title: (items) => items.length ? `D+${items[0].parsed.x}` : '',
+            label: (context) => {
+              if (context.dataset.label === 'Base 100') return 'Base D0-D30: 100';
+              const raw = context.dataset.rawValues?.[context.dataIndex];
+              const actual = context.dataset.rawKey === 'sessions' ? `${fmtNumber(raw)} sessões/dia` : context.dataset.rawKey === 'rps' ? moneyPrecise.format(raw) : `${fmtMoney(raw)}/dia`;
+              return `${context.dataset.label}: ${fmtNumber(context.parsed.y)} · ${actual}`;
+            }
+          } }
+        },
+        scales: {
+          x: { type: 'linear', beginAtZero: true, grid: { color: '#242427' }, ticks: { color: '#777673', maxTicksLimit: expanded ? 10 : 6, font: { size: expanded ? 10 : 8 }, callback: (value) => `D+${value}` } },
+          y: { beginAtZero: false, suggestedMin: 60, grid: { color: '#2a2a2d' }, ticks: { color: '#777673', maxTicksLimit: expanded ? 7 : 5, font: { size: expanded ? 10 : 8 } } }
+        }
+      }
+    };
+  }
+
+  function openContextChartDialog(launch, series, sourceLabel, trigger) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'chart-dialog-backdrop';
+    backdrop.innerHTML = `<section class="chart-dialog" role="dialog" aria-modal="true" aria-labelledby="chart-dialog-title" tabindex="-1">
+      <header class="chart-dialog-heading">
+        <div><h2 id="chart-dialog-title">${esc(launch.name)}</h2><span>${esc(sourceLabel)}</span></div>
+        <button class="chart-dialog-close" type="button" aria-label="Fechar gráfico ampliado" title="Fechar">×</button>
+      </header>
+      ${contextLegendHtml()}
+      <div class="chart-dialog-frame"><canvas aria-label="Gráfico ampliado de ${esc(launch.name)}"></canvas></div>
+    </section>`;
+    document.body.appendChild(backdrop);
+    document.body.classList.add('dialog-open');
+    const dialog = backdrop.querySelector('.chart-dialog');
+    const chart = new Chart(backdrop.querySelector('canvas'), contextChartConfiguration(series, true));
+    const close = () => {
+      chart.destroy();
+      document.removeEventListener('keydown', onKeydown);
+      document.body.classList.remove('dialog-open');
+      backdrop.remove();
+      trigger.focus({ preventScroll: true });
+    };
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') close();
+    };
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) close();
+    });
+    backdrop.querySelector('.chart-dialog-close').addEventListener('click', close);
+    document.addEventListener('keydown', onKeydown);
+    dialog.focus({ preventScroll: true });
+  }
+
   function renderRpsContext(rpsData, targets, launches) {
     const grid = $('rps-context-grid');
     const sourceLabels = {
@@ -336,57 +417,24 @@
       launch,
       series: Rules.rpsContextSeries(launch, rpsData?.modelos?.[launch.launch_id], targets?.rows || [])
     }));
-    grid.innerHTML = `<div class="context-legend" aria-label="Legenda dos gráficos"><span><i class="rps"></i>RPS</span><span><i class="sessions"></i>Sessões</span><span><i class="investment"></i>Investimento</span><span><i class="baseline"></i>Base 100</span></div>${prepared.map(({ launch, series }) => `
-      <article class="panel context-chart">
+    grid.innerHTML = `${contextLegendHtml()}${prepared.map(({ launch, series }) => `
+      <article class="panel context-chart" role="button" tabindex="0" aria-label="Ampliar gráfico de ${esc(launch.name)}">
         <div class="panel-heading"><h3>${esc(launch.name)}</h3><span>${esc(sourceLabels[series.investment_source])}</span></div>
         <div class="context-chart-frame"><canvas id="rps-context-${esc(launch.launch_id)}"></canvas></div>
       </article>`).join('')}`;
 
     prepared.forEach(({ launch, series }) => {
       if (!series.points.length) return;
-      const makeDataset = (label, color, key, rawKey) => ({
-        label,
-        borderColor: color,
-        backgroundColor: color,
-        data: series.points.map((point) => ({ x: point.day, y: point[key] })),
-        rawValues: series.points.map((point) => point[rawKey]),
-        rawKey,
-        borderWidth: 1.7,
-        pointRadius: 0,
-        pointHitRadius: 8,
-        tension: .18,
-        spanGaps: false
+      const canvas = $(`rps-context-${launch.launch_id}`);
+      const card = canvas.closest('.context-chart');
+      const open = () => openContextChartDialog(launch, series, sourceLabels[series.investment_source], card);
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
       });
-      const lastDay = series.points.at(-1).day;
-      new Chart($(`rps-context-${launch.launch_id}`), {
-        type: 'line',
-        data: { datasets: [
-          makeDataset('RPS', '#ff5a1f', 'rps_index', 'rps'),
-          makeDataset('Sessões', '#65a8ff', 'sessions_index', 'sessions'),
-          makeDataset('Investimento', '#e8ba43', 'investment_index', 'investment'),
-          { label: 'Base 100', borderColor: '#6f6f75', data: [{ x: 0, y: 100 }, { x: lastDay, y: 100 }], borderWidth: 1, borderDash: [4, 4], pointRadius: 0 }
-        ] },
-        options: {
-          responsive: true, maintainAspectRatio: false, animation: false,
-          interaction: { mode: 'nearest', intersect: false },
-          plugins: {
-            legend: { display: false },
-            tooltip: { callbacks: {
-              title: (items) => items.length ? `D+${items[0].parsed.x}` : '',
-              label: (context) => {
-                if (context.dataset.label === 'Base 100') return 'Base D0-D30: 100';
-                const raw = context.dataset.rawValues?.[context.dataIndex];
-                const actual = context.dataset.rawKey === 'sessions' ? `${fmtNumber(raw)} sessões/dia` : context.dataset.rawKey === 'rps' ? moneyPrecise.format(raw) : `${fmtMoney(raw)}/dia`;
-                return `${context.dataset.label}: ${fmtNumber(context.parsed.y)} · ${actual}`;
-              }
-            } }
-          },
-          scales: {
-            x: { type: 'linear', beginAtZero: true, grid: { color: '#242427' }, ticks: { color: '#777673', maxTicksLimit: 6, font: { size: 8 }, callback: (value) => `D+${value}` } },
-            y: { beginAtZero: false, suggestedMin: 60, grid: { color: '#2a2a2d' }, ticks: { color: '#777673', maxTicksLimit: 5, font: { size: 8 } } }
-          }
-        }
-      });
+      new Chart(canvas, contextChartConfiguration(series));
     });
   }
 
@@ -421,7 +469,7 @@
   }
 
   async function fetchJson(url) {
-    const response = await fetch(`${url}?v=20260925-ramp-rps-v18`, { cache: 'no-store' });
+    const response = await fetch(`${url}?v=20260925-chart-dialog-v19`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`${url} indisponível (${response.status}).`);
     return response.json();
   }

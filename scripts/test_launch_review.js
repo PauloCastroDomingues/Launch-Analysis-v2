@@ -103,3 +103,9 @@ test('simplified dashboard includes full revenue ramp and all-launch RPS context
  assert.ok(script.includes("fetchJson('data/lancamentos_rps_dia.json')"));assert.ok(script.includes("fetchJson('data/metas_mensais.json')"));
  assert.ok(script.includes('Rules.cumulativeRevenueSeries'));assert.ok(script.includes('Rules.rpsContextSeries'));
 });
+test('RPS context charts open an accessible dialog and close reversibly',()=>{
+ const script=fs.readFileSync(require('path').join(__dirname,'..','assets','overview.js'),'utf8');
+ assert.ok(script.includes('role="dialog"'));assert.ok(script.includes('aria-modal="true"'));
+ assert.ok(script.includes('event.target === backdrop'));assert.ok(script.includes("event.key === 'Escape'"));
+ assert.ok(script.includes('trigger.focus({ preventScroll: true })'));assert.ok(script.includes('role="button" tabindex="0"'));
+});
