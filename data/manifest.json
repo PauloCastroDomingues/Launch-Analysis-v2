@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-25T13:37:33-03:00",
+  "generated_at": "2026-09-26T07:08:49-03:00",
   "script_version": "20260925-d0-completeness-memory-safe-v44",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
@@ -19,17 +19,17 @@
     "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "canal_atribuicao_pedido_mirror": 34846,
-    "lancamentos_rampa_dia": 897,
+    "canal_atribuicao_pedido_mirror": 34906,
+    "lancamentos_rampa_dia": 900,
     "lancamentos_completude_d0": 5,
     "lancamentos_clientes_janelas": 30,
-    "lancamentos_produtos_dia": 9055,
-    "lancamentos_rps_dia": 897,
+    "lancamentos_produtos_dia": 9060,
+    "lancamentos_rps_dia": 902,
     "auditoria_monochrome": 1,
     "investigacao_linhas_suspeitas": "skipped",
-    "sub_modelos_dia": 2554,
+    "sub_modelos_dia": 2563,
     "estoque": 443,
-    "share_trajetoria": 892,
+    "share_trajetoria": 897,
     "midia_paga": 22,
     "crm_disparos": 25,
     "metas_mensais": 21,
@@ -56,18 +56,18 @@
       "enabled": true,
       "status": "cobertura_baixa",
       "mensagem": "Menos de 80% dos pedidos exportados receberam canal_real/channel/tipo_real; trate canal atribuido como parcial.",
-      "pedidos_total": 6627,
+      "pedidos_total": 6632,
       "pedidos_classificados": 2739,
-      "pedidos_sem_match_atribuicao": 4118,
-      "cobertura_pedidos_pct": 0.413309,
-      "receita_total": 5895806,
+      "pedidos_sem_match_atribuicao": 4123,
+      "cobertura_pedidos_pct": 0.412998,
+      "receita_total": 5898856,
       "receita_classificada": 2530267,
-      "cobertura_receita_pct": 0.429164,
+      "cobertura_receita_pct": 0.428942,
       "receita_paga": 732482,
       "receita_organica": 713980,
       "receita_crm": 123959,
       "receita_outros_canais": 959846,
-      "receita_sem_match_atribuicao": 3365539,
+      "receita_sem_match_atribuicao": 3368589,
       "por_modelo": [
         {
           "modelo_id": "avant",
@@ -147,37 +147,37 @@
         },
         {
           "modelo_id": "series_2",
-          "pedidos_total": 676,
+          "pedidos_total": 681,
           "pedidos_classificados": 98,
-          "cobertura_pedidos_pct": 0.14497,
+          "cobertura_pedidos_pct": 0.143906,
           "pedidos_pagos": 22,
           "pedidos_organicos": 28,
           "pedidos_crm": 8,
           "pedidos_outros_canais": 40,
-          "pedidos_sem_match_atribuicao": 578,
-          "receita_total": 453840,
+          "pedidos_sem_match_atribuicao": 583,
+          "receita_total": 456890,
           "receita_classificada": 67710,
-          "cobertura_receita_pct": 0.149194,
+          "cobertura_receita_pct": 0.148198,
           "receita_paga": 15250,
           "receita_organica": 18300,
           "receita_crm": 6100,
           "receita_outros_canais": 28060,
-          "receita_sem_match_atribuicao": 386130
+          "receita_sem_match_atribuicao": 389180
         }
       ],
       "mirror_sync": {
         "status": "synced",
-        "rows": 34846,
-        "refreshed_rows": 1648,
+        "rows": 34906,
+        "refreshed_rows": 1601,
         "paid_rows": 6866,
         "organic_rows": 4682,
         "source_counts": {
-          "sem_journey_regra_usuario": 7384,
-          "shopify_journey_latest_v": 673
+          "sem_journey_regra_usuario": 7382,
+          "shopify_journey_latest_v": 8564
         },
         "sheet_rows": 0,
         "sheet_status": "loaded",
-        "bq_rows": 1648,
+        "bq_rows": 1601,
         "bq_status": "synced",
         "bq_error": null,
         "daily_share": {
@@ -185,13 +185,13 @@
           "rows": "skipped",
           "rule": "pedido_real_shopify_journey_latest_v; match source_order_id/order_name; shopify_paid_signal_parity_v41"
         },
-        "range": "2025-12-14..2026-09-25",
-        "refresh_range": "2026-09-12..2026-09-25"
+        "range": "2025-12-14..2026-09-26",
+        "refresh_range": "2026-09-13..2026-09-26"
       }
     },
     "rampa_produtos_dia": {
       "status": "d0_ate_data_atual",
-      "data_fim_exportada": "2026-09-25",
+      "data_fim_exportada": "2026-09-26",
       "fonte": "lancamentos_rampa_dia.json",
       "observacao": "Arquivo agregado por modelo/dia para rampa estendida. Dias sem venda nao geram linha no JSON; o dashboard preenche a linha acumulada quando o manifesto confirma cobertura ate a data atual."
     },
@@ -206,7 +206,7 @@
       "status": "synced",
       "fonte": "lancamentos_clientes_janelas.json",
       "rows": 30,
-      "base_atual_clientes": 121203,
+      "base_atual_clientes": 121252,
       "observacao": "Clientes unicos, novos/recorrentes e base ativada exportados de forma agregada pelo SSOT, sem PII."
     },
     "rps": {
@@ -214,7 +214,7 @@
       "fonte_receita": "reise-ssot.mart_growth_us.bridge_orders_customers",
       "fonte_sessoes": "reise-ssot.mart_growth_us.shopify_sessions_daily",
       "formula": "receita_total / sessoes",
-      "rows": 897,
+      "rows": 902,
       "observacao": "RPS exportado por data calendario e alinhado ao D0 de cada lancamento. Nao usa GA4, marketing, campanhas ou atribuicao."
     }
   },
