@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T07:22:18-03:00",
+  "generated_at": "2026-09-28T07:16:07-03:00",
   "script_version": "20260925-d0-completeness-memory-safe-v44",
   "source": "bigquery:mart_growth_us.dashboard_targets_header_raw,dashboard_targets_daily_raw,dashboard_targets_actual_daily_v,aquisicao_por_canal,sales_attributed_to_marketing_v",
   "rows": [
@@ -3598,43 +3598,43 @@
       "realizado_ate": "2026-05-31",
       "meta_investimento": 825000,
       "investimento_realizado": 673744.95,
-      "investimento_aquisicao": 80916.29,
-      "sessoes_aquisicao": 38002,
-      "pedidos_aquisicao": 415,
-      "receita_aquisicao": 315871.26,
-      "novos_clientes_aquisicao": 282,
-      "cps_aquisicao": 2.129263986,
-      "roas_aquisicao": 3.903679469,
+      "investimento_aquisicao": 55278.8675,
+      "sessoes_aquisicao": 26478,
+      "pedidos_aquisicao": 282,
+      "receita_aquisicao": 221024.71,
+      "novos_clientes_aquisicao": 201,
+      "cps_aquisicao": 2.087728208,
+      "roas_aquisicao": 3.998358143,
       "canais_aquisicao": [
         {
           "canal": "Meta Ads 1",
-          "investimento": 67517.28,
-          "sessoes": 22697,
-          "pedidos": 130,
-          "receita": 101586.67,
-          "novos_clientes": 80,
-          "cps": 2.974722651,
-          "roas": 1.504602525
+          "investimento": 46362.4875,
+          "sessoes": 16335,
+          "pedidos": 98,
+          "receita": 76644.58,
+          "novos_clientes": 59,
+          "cps": 2.838230028,
+          "roas": 1.653159356
         },
         {
           "canal": "Google Ads",
-          "investimento": 12902.67,
-          "sessoes": 5114,
-          "pedidos": 28,
-          "receita": 17607.83,
-          "novos_clientes": 13,
-          "cps": 2.523009386,
-          "roas": 1.364665608
+          "investimento": 8730.74,
+          "sessoes": 3557,
+          "pedidos": 21,
+          "receita": 11497.39,
+          "novos_clientes": 12,
+          "cps": 2.454523475,
+          "roas": 1.316886083
         },
         {
           "canal": "Outros",
-          "investimento": 496.34,
-          "sessoes": 10191,
-          "pedidos": 257,
-          "receita": 196676.76,
-          "novos_clientes": 189,
-          "cps": 0.048703758,
-          "roas": 3.962541
+          "investimento": 185.64,
+          "sessoes": 6586,
+          "pedidos": 163,
+          "receita": 132882.74,
+          "novos_clientes": 130,
+          "cps": 0.028187063,
+          "roas": 7.158088
         }
       ],
       "daily": [
@@ -5466,49 +5466,18 @@
           "realizado_pedidos": 133,
           "meta_investimento": 27342.98,
           "investimento_realizado": 23286.89,
-          "investimento_aquisicao": 25637.4225,
-          "sessoes_aquisicao": 11524,
-          "pedidos_aquisicao": 133,
-          "receita_aquisicao": 94846.55,
-          "novos_clientes_aquisicao": 81,
+          "investimento_aquisicao": null,
+          "sessoes_aquisicao": null,
+          "pedidos_aquisicao": null,
+          "receita_aquisicao": null,
+          "novos_clientes_aquisicao": null,
           "roas_meta": 4,
           "roas_realizado": 4.072959077,
-          "cps_aquisicao": 2.224698238,
-          "roas_aquisicao": 3.699535318,
+          "cps_aquisicao": null,
+          "roas_aquisicao": null,
           "receita_venda_canal": 187513.06,
           "pedidos_venda_canal": 274,
-          "canais_aquisicao": [
-            {
-              "canal": "Meta Ads 1",
-              "investimento": 21154.7925,
-              "sessoes": 6362,
-              "pedidos": 32,
-              "receita": 24942.09,
-              "novos_clientes": 21,
-              "cps": 3.325179582,
-              "roas": 1.179027873
-            },
-            {
-              "canal": "Google Ads",
-              "investimento": 4171.93,
-              "sessoes": 1557,
-              "pedidos": 7,
-              "receita": 6110.44,
-              "novos_clientes": 1,
-              "cps": 2.679466924,
-              "roas": 1.464655447
-            },
-            {
-              "canal": "Outros",
-              "investimento": 310.7,
-              "sessoes": 3605,
-              "pedidos": 94,
-              "receita": 63794.02,
-              "novos_clientes": 59,
-              "cps": 0.086185853,
-              "roas": 2.053235
-            }
-          ],
+          "canais_aquisicao": [],
           "canais_venda": [
             {
               "canal": "Nao atribuido",
@@ -11179,6 +11148,12 @@
               "receita": 505.31
             },
             {
+              "canal": "E-mail/CRM",
+              "tipo": "crm",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
               "canal": "WhatsApp",
               "tipo": "other",
               "pedidos": 0,
@@ -11187,12 +11162,6 @@
             {
               "canal": "Outro atribuido",
               "tipo": "other",
-              "pedidos": 0,
-              "receita": 0
-            },
-            {
-              "canal": "E-mail/CRM",
-              "tipo": "crm",
               "pedidos": 0,
               "receita": 0
             },
@@ -11709,14 +11678,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 549
             },
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 549
             },
@@ -11871,14 +11840,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 1,
               "receita": 146.43
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 146.43
             },
@@ -12105,12 +12074,6 @@
           ],
           "canais_venda": [
             {
-              "canal": "WhatsApp",
-              "tipo": "other",
-              "pedidos": 0,
-              "receita": 0
-            },
-            {
               "canal": "Midia paga",
               "tipo": "paid",
               "pedidos": 0,
@@ -12129,15 +12092,21 @@
               "receita": 0
             },
             {
-              "canal": "Direto",
+              "canal": "WhatsApp",
               "tipo": "other",
-              "pedidos": 1,
-              "receita": -1255.18
+              "pedidos": 0,
+              "receita": 0
             },
             {
               "canal": "Nao atribuido",
               "tipo": "unmatched",
               "pedidos": 2,
+              "receita": -1255.18
+            },
+            {
+              "canal": "Direto",
+              "tipo": "other",
+              "pedidos": 1,
               "receita": -1255.18
             }
           ]
@@ -12248,14 +12217,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 2294.1
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 2294.1
             }
@@ -12554,12 +12523,6 @@
           ],
           "canais_venda": [
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
-              "pedidos": 0,
-              "receita": 0
-            },
-            {
               "canal": "Organico",
               "tipo": "organic",
               "pedidos": 0,
@@ -12568,6 +12531,12 @@
             {
               "canal": "E-mail/CRM",
               "tipo": "crm",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
@@ -12638,14 +12607,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 0,
               "receita": -579.96
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 0,
               "receita": -579.96
             }
@@ -12704,14 +12673,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 2045.7
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 2045.7
             },
@@ -12776,14 +12745,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 994
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 1,
               "receita": 994
             },
@@ -12997,14 +12966,14 @@
               "receita": 582.39
             },
             {
-              "canal": "Outro atribuido",
-              "tipo": "other",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
+              "canal": "Outro atribuido",
+              "tipo": "other",
               "pedidos": 0,
               "receita": 0
             }
@@ -13378,14 +13347,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Direto",
-              "tipo": "other",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 0
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Direto",
+              "tipo": "other",
               "pedidos": 1,
               "receita": 0
             }
@@ -13569,26 +13538,26 @@
           ],
           "canais_venda": [
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
-              "pedidos": 0,
-              "receita": 0
-            },
-            {
               "canal": "Outro atribuido",
               "tipo": "other",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 0,
-              "receita": -320.54
+              "receita": 0
             },
             {
               "canal": "Organico",
               "tipo": "organic",
+              "pedidos": 0,
+              "receita": -320.54
+            },
+            {
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 0,
               "receita": -320.54
             }
@@ -13725,14 +13694,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 560
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 1,
               "receita": 560
             },
@@ -13797,7 +13766,7 @@
           ],
           "canais_venda": [
             {
-              "canal": "Outro atribuido",
+              "canal": "WhatsApp",
               "tipo": "other",
               "pedidos": 0,
               "receita": 0
@@ -13809,7 +13778,7 @@
               "receita": 0
             },
             {
-              "canal": "WhatsApp",
+              "canal": "Outro atribuido",
               "tipo": "other",
               "pedidos": 0,
               "receita": 0
@@ -13837,67 +13806,67 @@
       "modelo_id": null,
       "linha": null,
       "meta_receita": 3398158.6,
-      "realizado_receita": 2279954.98,
+      "realizado_receita": 2367791.99,
       "meta_pedidos": 4718,
-      "realizado_pedidos": 3097,
+      "realizado_pedidos": 3207,
       "meta_pares": null,
       "realizado_pares": null,
-      "atingimento": 0.670938,
+      "atingimento": 0.696787,
       "goal_scope": "shopify_geral",
       "version_id": "2026-09_shopify_geral_published_20260902190814",
       "month_label": "Setembro 2026",
       "dias_meta_receita": 30,
-      "dias_realizado_receita": 27,
-      "realizado_ate": "2026-09-27",
+      "dias_realizado_receita": 28,
+      "realizado_ate": "2026-09-28",
       "meta_investimento": 783750,
-      "investimento_realizado": 633142.63,
-      "investimento_aquisicao": 682779.05875,
-      "sessoes_aquisicao": 294331,
-      "pedidos_aquisicao": 3097,
-      "receita_aquisicao": 2279954.98,
-      "novos_clientes_aquisicao": 2115,
-      "cps_aquisicao": 2.319766041,
-      "roas_aquisicao": 3.339228043,
+      "investimento_realizado": 659639.44,
+      "investimento_aquisicao": 711390.735,
+      "sessoes_aquisicao": 304839,
+      "pedidos_aquisicao": 3207,
+      "receita_aquisicao": 2367791.99,
+      "novos_clientes_aquisicao": 2196,
+      "cps_aquisicao": 2.333660506,
+      "roas_aquisicao": 3.328398689,
       "canais_aquisicao": [
         {
           "canal": "Meta Ads 1",
-          "investimento": 430313.16375,
-          "sessoes": 129943,
-          "pedidos": 725,
-          "receita": 601989.79,
-          "novos_clientes": 583,
-          "cps": 3.311553248,
-          "roas": 1.398957412
+          "investimento": 448011.6525,
+          "sessoes": 134946,
+          "pedidos": 761,
+          "receita": 630443.91,
+          "novos_clientes": 615,
+          "cps": 3.319932806,
+          "roas": 1.407204269
         },
         {
           "canal": "Google Ads",
-          "investimento": 211804.2,
-          "sessoes": 70194,
-          "pedidos": 728,
-          "receita": 470203.63,
-          "novos_clientes": 554,
-          "cps": 3.017411745,
-          "roas": 2.219992002
+          "investimento": 220404.92,
+          "sessoes": 72375,
+          "pedidos": 748,
+          "receita": 483487.55,
+          "novos_clientes": 568,
+          "cps": 3.045318411,
+          "roas": 2.1936332
         },
         {
           "canal": "Outros",
-          "investimento": 24570.73,
-          "sessoes": 87757,
-          "pedidos": 1606,
-          "receita": 1177003.88,
-          "novos_clientes": 978,
-          "cps": 0.279985984,
-          "roas": 47.902682582
+          "investimento": 25224.16,
+          "sessoes": 90652,
+          "pedidos": 1657,
+          "receita": 1220579.65,
+          "novos_clientes": 1013,
+          "cps": 0.278252659,
+          "roas": 48.389308108
         },
         {
           "canal": "Meta Ads 2",
-          "investimento": 16090.965,
-          "sessoes": 6437,
-          "pedidos": 38,
-          "receita": 30757.68,
+          "investimento": 17750.0025,
+          "sessoes": 6866,
+          "pedidos": 41,
+          "receita": 33280.88,
           "novos_clientes": 0,
-          "cps": 2.499761535,
-          "roas": 1.911487596
+          "cps": 2.585202811,
+          "roas": 1.874978891
         }
       ],
       "daily": [
@@ -14017,14 +13986,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 2,
               "receita": 713
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 2,
               "receita": 713
             },
@@ -14477,14 +14446,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Direto",
+              "tipo": "other",
               "pedidos": 3,
               "receita": 793.35
             },
             {
-              "canal": "Direto",
-              "tipo": "other",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 3,
               "receita": 793.35
             }
@@ -14577,14 +14546,14 @@
               "receita": 0
             },
             {
-              "canal": "Outro atribuido",
-              "tipo": "other",
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             },
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
+              "canal": "Outro atribuido",
+              "tipo": "other",
               "pedidos": 0,
               "receita": 0
             }
@@ -14716,20 +14685,20 @@
           ],
           "canais_venda": [
             {
-              "canal": "Outro atribuido",
-              "tipo": "other",
-              "pedidos": 1,
-              "receita": 1098
-            },
-            {
               "canal": "Nao atribuido",
               "tipo": "unmatched",
               "pedidos": 1,
               "receita": 1098
             },
             {
-              "canal": "Direto",
+              "canal": "Outro atribuido",
               "tipo": "other",
+              "pedidos": 1,
+              "receita": 1098
+            },
+            {
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 0,
               "receita": 0
             },
@@ -14740,8 +14709,8 @@
               "receita": 0
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Direto",
+              "tipo": "other",
               "pedidos": 0,
               "receita": 0
             }
@@ -15182,14 +15151,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Direto",
-              "tipo": "other",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 648.77
             },
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Direto",
+              "tipo": "other",
               "pedidos": 1,
               "receita": 648.77
             },
@@ -15661,26 +15630,26 @@
           ],
           "canais_venda": [
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
-              "pedidos": 1,
-              "receita": 357.84
-            },
-            {
               "canal": "Direto",
               "tipo": "other",
               "pedidos": 1,
               "receita": 357.84
             },
             {
-              "canal": "Midia paga",
-              "tipo": "paid",
-              "pedidos": 0,
-              "receita": 0
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
+              "pedidos": 1,
+              "receita": 357.84
             },
             {
               "canal": "Organico",
               "tipo": "organic",
+              "pedidos": 0,
+              "receita": 0
+            },
+            {
+              "canal": "Midia paga",
+              "tipo": "paid",
               "pedidos": 0,
               "receita": 0
             }
@@ -15693,28 +15662,28 @@
           "meta_pedidos": 147,
           "realizado_pedidos": 102,
           "meta_investimento": 24453,
-          "investimento_realizado": 22187.85,
-          "investimento_aquisicao": 24043.53875,
+          "investimento_realizado": 22187.95,
+          "investimento_aquisicao": 24043.65125,
           "sessoes_aquisicao": 10132,
           "pedidos_aquisicao": 102,
           "receita_aquisicao": 76780.74,
           "novos_clientes_aquisicao": 64,
           "roas_meta": 4.34,
-          "roas_realizado": 3.460485806,
-          "cps_aquisicao": 2.373029881,
-          "roas_aquisicao": 3.193404299,
+          "roas_realizado": 3.46047021,
+          "cps_aquisicao": 2.373040984,
+          "roas_aquisicao": 3.193389357,
           "receita_venda_canal": null,
           "pedidos_venda_canal": null,
           "canais_aquisicao": [
             {
               "canal": "Meta Ads 1",
-              "investimento": 15315.98625,
+              "investimento": 15316.09875,
               "sessoes": 4596,
               "pedidos": 23,
               "receita": 19989.02,
               "novos_clientes": 21,
-              "cps": 3.33246002,
-              "roas": 1.305108249
+              "cps": 3.332484497,
+              "roas": 1.305098663
             },
             {
               "canal": "Google Ads",
@@ -15756,28 +15725,28 @@
           "meta_pedidos": 147,
           "realizado_pedidos": 122,
           "meta_investimento": 24453,
-          "investimento_realizado": 22392.16,
-          "investimento_aquisicao": 24185.6825,
+          "investimento_realizado": 22394.8,
+          "investimento_aquisicao": 24188.64125,
           "sessoes_aquisicao": 9488,
           "pedidos_aquisicao": 122,
           "receita_aquisicao": 101473.92,
           "novos_clientes_aquisicao": 81,
           "roas_meta": 4.34,
-          "roas_realizado": 4.531671799,
-          "cps_aquisicao": 2.549081208,
-          "roas_aquisicao": 4.195619454,
+          "roas_realizado": 4.531137586,
+          "cps_aquisicao": 2.549393049,
+          "roas_aquisicao": 4.195106246,
           "receita_venda_canal": 1098,
           "pedidos_venda_canal": 2,
           "canais_aquisicao": [
             {
               "canal": "Meta Ads 1",
-              "investimento": 14936.27625,
-              "sessoes": 4355,
+              "investimento": 14938.70625,
+              "sessoes": 4350,
               "pedidos": 27,
               "receita": 23777.03,
               "novos_clientes": 29,
-              "cps": 3.429684558,
-              "roas": 1.591898114
+              "cps": 3.434185345,
+              "roas": 1.591639169
             },
             {
               "canal": "Google Ads",
@@ -15791,13 +15760,13 @@
             },
             {
               "canal": "Meta Ads 2",
-              "investimento": 1205.33625,
-              "sessoes": 364,
+              "investimento": 1205.865,
+              "sessoes": 369,
               "pedidos": 8,
               "receita": 5937.8,
               "novos_clientes": 0,
-              "cps": 3.311363324,
-              "roas": 4.926260203
+              "cps": 3.267926829,
+              "roas": 4.924100127
             },
             {
               "canal": "Outros",
@@ -15812,14 +15781,14 @@
           ],
           "canais_venda": [
             {
-              "canal": "Nao atribuido",
-              "tipo": "unmatched",
+              "canal": "Organico",
+              "tipo": "organic",
               "pedidos": 1,
               "receita": 549
             },
             {
-              "canal": "Organico",
-              "tipo": "organic",
+              "canal": "Nao atribuido",
+              "tipo": "unmatched",
               "pedidos": 1,
               "receita": 549
             },
@@ -15834,62 +15803,62 @@
         {
           "data": "2026-09-27",
           "meta_receita": 105930.8,
-          "realizado_receita": 5582.12,
+          "realizado_receita": 88391.03,
           "meta_pedidos": 147,
-          "realizado_pedidos": 9,
+          "realizado_pedidos": 111,
           "meta_investimento": 24431.84,
-          "investimento_realizado": 1886.58,
-          "investimento_aquisicao": 2078.33,
-          "sessoes_aquisicao": 792,
-          "pedidos_aquisicao": 9,
-          "receita_aquisicao": 5582.12,
-          "novos_clientes_aquisicao": 7,
+          "investimento_realizado": 26820.38,
+          "investimento_aquisicao": 28996.42125,
+          "sessoes_aquisicao": 10508,
+          "pedidos_aquisicao": 111,
+          "receita_aquisicao": 88391.03,
+          "novos_clientes_aquisicao": 83,
           "roas_meta": 4.34,
-          "roas_realizado": 2.958856767,
-          "cps_aquisicao": 2.62415404,
-          "roas_aquisicao": 2.685867981,
+          "roas_realizado": 3.295666579,
+          "cps_aquisicao": 2.759461482,
+          "roas_aquisicao": 3.048342733,
           "receita_venda_canal": null,
           "pedidos_venda_canal": null,
           "canais_aquisicao": [
             {
               "canal": "Meta Ads 1",
-              "investimento": 1273.91625,
-              "sessoes": 366,
-              "pedidos": 3,
-              "receita": 2175.08,
-              "novos_clientes": 3,
-              "cps": 3.480645492,
-              "roas": 1.707396385
+              "investimento": 17917.57125,
+              "sessoes": 5038,
+              "pedidos": 36,
+              "receita": 28262.91,
+              "novos_clientes": 34,
+              "cps": 3.556484964,
+              "roas": 1.577385105
             },
             {
               "canal": "Google Ads",
-              "investimento": 635.72,
-              "sessoes": 202,
-              "pedidos": 3,
-              "receita": 2328.08,
-              "novos_clientes": 2,
-              "cps": 3.147128713,
-              "roas": 3.662115397
+              "investimento": 8760.91,
+              "sessoes": 2216,
+              "pedidos": 21,
+              "receita": 14701.42,
+              "novos_clientes": 14,
+              "cps": 3.953479242,
+              "roas": 1.678069972
             },
             {
               "canal": "Meta Ads 2",
-              "investimento": 128.19375,
-              "sessoes": 23,
-              "pedidos": 0,
-              "receita": 0,
+              "investimento": 1666.8,
+              "sessoes": 412,
+              "pedidos": 2,
+              "receita": 1769,
               "novos_clientes": 0,
-              "cps": 5.573641304,
-              "roas": 0
+              "cps": 4.045631068,
+              "roas": 1.061315095
             },
             {
               "canal": "Outros",
-              "investimento": 40.5,
-              "sessoes": 201,
-              "pedidos": 3,
-              "receita": 1078.96,
-              "novos_clientes": 2,
-              "cps": 0.201492537,
-              "roas": 26.640987654
+              "investimento": 651.14,
+              "sessoes": 2842,
+              "pedidos": 52,
+              "receita": 43657.7,
+              "novos_clientes": 35,
+              "cps": 0.2291133,
+              "roas": 67.048100255
             }
           ],
           "canais_venda": []
@@ -15897,23 +15866,64 @@
         {
           "data": "2026-09-28",
           "meta_receita": 153256.95,
-          "realizado_receita": null,
+          "realizado_receita": 5028.1,
           "meta_pedidos": 213,
-          "realizado_pedidos": null,
+          "realizado_pedidos": 8,
           "meta_investimento": 35347.12,
-          "investimento_realizado": null,
-          "investimento_aquisicao": null,
-          "sessoes_aquisicao": null,
-          "pedidos_aquisicao": null,
-          "receita_aquisicao": null,
-          "novos_clientes_aquisicao": null,
+          "investimento_realizado": 1560.27,
+          "investimento_aquisicao": 1690.51375,
+          "sessoes_aquisicao": 792,
+          "pedidos_aquisicao": 8,
+          "receita_aquisicao": 5028.1,
+          "novos_clientes_aquisicao": 5,
           "roas_meta": 4.34,
-          "roas_realizado": null,
-          "cps_aquisicao": null,
-          "roas_aquisicao": null,
+          "roas_realizado": 3.222583271,
+          "cps_aquisicao": 2.134487058,
+          "roas_aquisicao": 2.97430293,
           "receita_venda_canal": null,
           "pedidos_venda_canal": null,
-          "canais_aquisicao": [],
+          "canais_aquisicao": [
+            {
+              "canal": "Meta Ads 1",
+              "investimento": 1052.29125,
+              "sessoes": 336,
+              "pedidos": 3,
+              "receita": 2366.29,
+              "novos_clientes": 1,
+              "cps": 3.131819196,
+              "roas": 2.248702534
+            },
+            {
+              "canal": "Google Ads",
+              "investimento": 475.53,
+              "sessoes": 167,
+              "pedidos": 2,
+              "receita": 910.58,
+              "novos_clientes": 2,
+              "cps": 2.84748503,
+              "roas": 1.91487393
+            },
+            {
+              "canal": "Meta Ads 2",
+              "investimento": 119.9025,
+              "sessoes": 35,
+              "pedidos": 1,
+              "receita": 754.2,
+              "novos_clientes": 0,
+              "cps": 3.425785714,
+              "roas": 6.290110715
+            },
+            {
+              "canal": "Outros",
+              "investimento": 42.79,
+              "sessoes": 254,
+              "pedidos": 2,
+              "receita": 997.03,
+              "novos_clientes": 2,
+              "cps": 0.168464567,
+              "roas": 23.300537509
+            }
+          ],
           "canais_venda": []
         },
         {
