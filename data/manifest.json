@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-20T07:08:49-03:00",
+  "generated_at": "2026-10-21T07:08:50-03:00",
   "script_version": "20260928-first-model-buyers-v45",
   "project": "Reise Launch Analysis v2",
   "model_source": "github_json",
@@ -19,18 +19,18 @@
     "linha_cadastro": 6,
     "datas_sazonais": 8,
     "eventos_comerciais_produto": "manual",
-    "canal_atribuicao_pedido_mirror": 37933,
-    "lancamentos_rampa_dia": 1019,
+    "canal_atribuicao_pedido_mirror": 38070,
+    "lancamentos_rampa_dia": 1027,
     "lancamentos_completude_d0": 5,
     "lancamentos_clientes_janelas": 30,
-    "lancamentos_clientes_blocos_28d": 39,
+    "lancamentos_clientes_blocos_28d": 40,
     "lancamentos_produtos_dia": 9213,
-    "lancamentos_rps_dia": 1022,
+    "lancamentos_rps_dia": 1027,
     "auditoria_monochrome": 1,
     "investigacao_linhas_suspeitas": "skipped",
-    "sub_modelos_dia": 2899,
+    "sub_modelos_dia": 2921,
     "estoque": 443,
-    "share_trajetoria": 1017,
+    "share_trajetoria": 1022,
     "midia_paga": 22,
     "crm_disparos": 25,
     "metas_mensais": 22,
@@ -168,17 +168,17 @@
       ],
       "mirror_sync": {
         "status": "synced",
-        "rows": 37933,
-        "refreshed_rows": 1631,
+        "rows": 38070,
+        "refreshed_rows": 1643,
         "paid_rows": 6868,
         "organic_rows": 4688,
         "source_counts": {
           "sem_journey_regra_usuario": 7382,
-          "shopify_journey_latest_v": 11578
+          "shopify_journey_latest_v": 673
         },
         "sheet_rows": 0,
         "sheet_status": "loaded",
-        "bq_rows": 1631,
+        "bq_rows": 1643,
         "bq_status": "synced",
         "bq_error": null,
         "daily_share": {
@@ -186,13 +186,13 @@
           "rows": "skipped",
           "rule": "pedido_real_shopify_journey_latest_v; match source_order_id/order_name; shopify_paid_signal_parity_v41"
         },
-        "range": "2025-12-14..2026-10-20",
-        "refresh_range": "2026-10-07..2026-10-20"
+        "range": "2025-12-14..2026-10-21",
+        "refresh_range": "2026-10-08..2026-10-21"
       }
     },
     "rampa_produtos_dia": {
       "status": "d0_ate_data_atual",
-      "data_fim_exportada": "2026-10-20",
+      "data_fim_exportada": "2026-10-21",
       "fonte": "lancamentos_rampa_dia.json",
       "observacao": "Arquivo agregado por modelo/dia para rampa estendida. Dias sem venda nao geram linha no JSON; o dashboard preenche a linha acumulada quando o manifesto confirma cobertura ate a data atual."
     },
@@ -207,8 +207,8 @@
       "status": "synced",
       "fonte": "lancamentos_clientes_janelas.json",
       "rows": 30,
-      "block_rows": 39,
-      "base_atual_clientes": 123393,
+      "block_rows": 40,
+      "base_atual_clientes": 123488,
       "observacao": "Clientes unicos, novos/recorrentes, base ativada e novos compradores por bloco de 28 dias exportados de forma agregada pelo SSOT, sem PII."
     },
     "rps": {
@@ -216,7 +216,7 @@
       "fonte_receita": "reise-ssot.mart_growth_us.bridge_orders_customers",
       "fonte_sessoes": "reise-ssot.mart_growth_us.shopify_sessions_daily",
       "formula": "receita_total / sessoes",
-      "rows": 1022,
+      "rows": 1027,
       "observacao": "RPS exportado por data calendario e alinhado ao D0 de cada lancamento. Nao usa GA4, marketing, campanhas ou atribuicao."
     }
   },
